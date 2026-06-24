@@ -165,29 +165,35 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFl
             </div>
           ) : (
             messages.map((msg: any) => {
-              const isMe = msg.sender_id === user?.id;
+              const isWa = msg.channel === 'whatsapp';
+              const isMe = !isWa && msg.sender_id === user?.id;
               const isFlagged = showFlaggedHighlight && msg.is_flagged;
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={cn(
                     'max-w-[80%] rounded-lg px-3 py-2',
                     isFlagged ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700' :
+                      isWa ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800' :
                       isMe ? 'bg-primary text-primary-foreground' : 'bg-muted',
                   )}>
-                    {!isMe && <p className="text-[10px] font-medium mb-0.5 opacity-70">{msg.senderName}</p>}
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      {!isMe && <p className="text-[10px] font-medium opacity-70">{msg.senderName}</p>}
+                      {isWa && <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">WhatsApp</span>}
+                    </div>
                     {isFlagged && (
                       <div className="flex items-center gap-1 mb-1">
                         <AlertTriangle className="h-3 w-3 text-amber-600" />
                         <span className="text-[9px] font-medium text-amber-600">Flagged</span>
                       </div>
                     )}
-                    <p className={cn('text-sm', isFlagged && !isMe && 'text-foreground')}>{msg.content}</p>
+                    <p className={cn('text-sm', (isFlagged || isWa) && !isMe && 'text-foreground')}>{msg.content}</p>
                     <p className={cn(
                       'text-[10px] mt-0.5',
                       isFlagged ? 'text-amber-600/60' :
+                        isWa ? 'text-emerald-700/70 dark:text-emerald-400/70' :
                         isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'
                     )}>
-                      {format(new Date(msg.created_at), 'h:mm a')}
+                      {format(new Date(msg.created_at), 'd MMM, h:mm a')}
                     </p>
                   </div>
                 </div>
