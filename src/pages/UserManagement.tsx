@@ -2007,7 +2007,7 @@ export default function UserManagement() {
             {showUnassigned && (activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
               <Card className="overflow-hidden border-amber-300/60 dark:border-amber-800/60 shadow-sm">
                 <CardContent className="p-0">
-                  <Table wrapperClassName="overflow-x-auto">
+                  <Table wrapperClassName="overflow-auto max-h-[calc(100vh-280px)]">
                     <TableHeader className="bg-amber-50/50 dark:bg-amber-950/10">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
@@ -2118,7 +2118,8 @@ export default function UserManagement() {
                     )}
                   </div>
                 ) : (
-                  <Table wrapperClassName="overflow-x-auto">
+                  <Table wrapperClassName="overflow-auto max-h-[calc(100vh-280px)]">
+
                     <TableHeader className="bg-muted/40 backdrop-blur-sm">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         {isSuperAdmin && (
