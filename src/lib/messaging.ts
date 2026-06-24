@@ -1,6 +1,48 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * Find or create a non-course DM between a student and their assigned teacher.
+ * Used by the student dashboard "Message Teacher" quick action.
+ */
+export async function findOrCreateAssignmentDM(
+  studentId: string,
+  teacherId: string,
+  studentName: string,
+  teacherName: string,
+): Promise<string | null> {
+  // Look for an existing DM (course_id null) between these two
+  const { data: existing } = await supabase
+    .from('chat_groups')
+    .select('id, chat_members!inner(user_id)')
+    .eq('is_dm', true)
+    .is('course_id', null);
+
+  if (existing?.length) {
+    for (const g of existing as any[]) {
+      const ids = (g.chat_members || []).map((m: any) => m.user_id);
+      if (ids.includes(studentId) && ids.includes(teacherId)) return g.id;
+    }
+  }
+
+  const { data: newGroup, error } = await supabase.from('chat_groups').insert({
+    name: `${studentName} ↔ ${teacherName}`,
+    type: 'assignment_dm',
+    created_by: studentId,
+    is_dm: true,
+    is_active: true,
+    channel_mode: 'private',
+  }).select('id').single();
+  if (error || !newGroup) return null;
+
+  await supabase.from('chat_members').insert([
+    { group_id: newGroup.id, user_id: studentId, role: 'member' },
+    { group_id: newGroup.id, user_id: teacherId, role: 'member' },
+  ]);
+  return newGroup.id;
+}
+
+
+/**
  * Find or create a course-scoped DM between two users.
  * Returns the chat_group id.
  */
