@@ -95,7 +95,7 @@ export function TransferAssignmentDialog({
       if (isReturnToOriginal && parentAssign) {
         await sb
           .from('assignment_history')
-          .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Substitute ended, original teacher resumed' })
+          .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Substitute ended, original teacher resumed' })
           .eq('assignment_id', assignmentId)
           .is('ended_at', null);
 
@@ -103,7 +103,7 @@ export function TransferAssignmentDialog({
           .from('student_teacher_assignments')
           .update({
             status: 'completed',
-            effective_to_date: effectiveDate,
+            effective_to_date: oldEndDate,
             status_effective_date: effectiveDate,
             status_change_reason: reason || 'Returned to original teacher',
           })
@@ -138,7 +138,7 @@ export function TransferAssignmentDialog({
           .from('student_teacher_assignments')
           .update({
             status: 'completed',
-            effective_to_date: effectiveDate,
+            effective_to_date: oldEndDate,
             status_effective_date: effectiveDate,
           })
           .eq('id', assignmentId);
@@ -148,14 +148,14 @@ export function TransferAssignmentDialog({
           entityId: assignmentId,
           entityLabel: `${studentName} → ${currentTeacherName}`,
           oldValues: { status: 'active' },
-          newValues: { status: 'completed', effective_to_date: effectiveDate },
+          newValues: { status: 'completed', effective_to_date: oldEndDate },
           details: { reason: reason || 'Permanent transfer', transfer_type: 'permanent' },
         });
 
         if (isSubstituteAssignment && parentAssign) {
           await sb
             .from('assignment_history')
-            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute converted to permanent transfer' })
+            .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Temporary substitute converted to permanent transfer' })
             .eq('assignment_id', parentAssign.id)
             .is('ended_at', null);
 
@@ -163,7 +163,7 @@ export function TransferAssignmentDialog({
             .from('student_teacher_assignments')
             .update({
               status: 'completed',
-              effective_to_date: effectiveDate,
+              effective_to_date: oldEndDate,
               status_effective_date: effectiveDate,
               status_change_reason: reason || 'Superseded after substitute period',
             })
@@ -226,7 +226,7 @@ export function TransferAssignmentDialog({
         if (isSubstituteAssignment) {
           await sb
             .from('assignment_history')
-            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute replaced' })
+            .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Temporary substitute replaced' })
             .eq('assignment_id', assignmentId)
             .is('ended_at', null);
 
@@ -234,7 +234,7 @@ export function TransferAssignmentDialog({
             .from('student_teacher_assignments')
             .update({
               status: 'completed',
-              effective_to_date: effectiveDate,
+              effective_to_date: oldEndDate,
               status_effective_date: effectiveDate,
               status_change_reason: reason || 'Replaced by another substitute',
             })
