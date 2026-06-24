@@ -182,7 +182,8 @@ export function StudentDashboard() {
         .from('fee_invoices')
         .select('id, amount, currency, billing_month, due_date, status')
         .eq('student_id', activeStudentId!)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'partially_paid', 'overdue'])
+        .order('due_date', { ascending: true, nullsFirst: false })
         .order('billing_month', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -445,8 +446,11 @@ export function StudentDashboard() {
               <div className={`text-2xl font-bold ${dueColor}`}>
                 {nextInvoice.currency} {Number(nextInvoice.amount || 0).toLocaleString()}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {nextInvoice.billing_month}
+              <div className={`text-xs font-semibold mt-0.5 ${dueColor}`}>
+                Due {nextInvoice.due_date ? format(parseISO(nextInvoice.due_date), 'd MMM yyyy') : `${nextInvoice.billing_month}-10`}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {nextInvoice.billing_month} {dueDays !== null && (dueDays < 0 ? `· ${Math.abs(dueDays)}d overdue` : dueDays === 0 ? '· today' : `· in ${dueDays}d`)}
               </div>
               <button
                 onClick={() => navigate('/finance')}
