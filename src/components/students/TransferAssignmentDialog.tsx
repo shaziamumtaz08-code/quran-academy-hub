@@ -66,6 +66,13 @@ export function TransferAssignmentDialog({
   const transferMutation = useMutation({
     mutationFn: async () => {
       const sb = supabase as any;
+      // Old assignment ends the day BEFORE the new teacher starts (no overlap).
+      const prevDay = (dateStr: string) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        return format(d, 'yyyy-MM-dd');
+      };
+      const oldEndDate = prevDay(effectiveDate);
       const { data: currentAssign, error: currentErr } = await sb
         .from('student_teacher_assignments')
         .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
@@ -88,7 +95,7 @@ export function TransferAssignmentDialog({
       if (isReturnToOriginal && parentAssign) {
         await sb
           .from('assignment_history')
-          .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Substitute ended, original teacher resumed' })
+          .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Substitute ended, original teacher resumed' })
           .eq('assignment_id', assignmentId)
           .is('ended_at', null);
 
@@ -96,7 +103,7 @@ export function TransferAssignmentDialog({
           .from('student_teacher_assignments')
           .update({
             status: 'completed',
-            effective_to_date: effectiveDate,
+            effective_to_date: oldEndDate,
             status_effective_date: effectiveDate,
             status_change_reason: reason || 'Returned to original teacher',
           })
@@ -131,7 +138,7 @@ export function TransferAssignmentDialog({
           .from('student_teacher_assignments')
           .update({
             status: 'completed',
-            effective_to_date: effectiveDate,
+            effective_to_date: oldEndDate,
             status_effective_date: effectiveDate,
           })
           .eq('id', assignmentId);
@@ -141,14 +148,14 @@ export function TransferAssignmentDialog({
           entityId: assignmentId,
           entityLabel: `${studentName} → ${currentTeacherName}`,
           oldValues: { status: 'active' },
-          newValues: { status: 'completed', effective_to_date: effectiveDate },
+          newValues: { status: 'completed', effective_to_date: oldEndDate },
           details: { reason: reason || 'Permanent transfer', transfer_type: 'permanent' },
         });
 
         if (isSubstituteAssignment && parentAssign) {
           await sb
             .from('assignment_history')
-            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute converted to permanent transfer' })
+            .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Temporary substitute converted to permanent transfer' })
             .eq('assignment_id', parentAssign.id)
             .is('ended_at', null);
 
@@ -156,7 +163,7 @@ export function TransferAssignmentDialog({
             .from('student_teacher_assignments')
             .update({
               status: 'completed',
-              effective_to_date: effectiveDate,
+              effective_to_date: oldEndDate,
               status_effective_date: effectiveDate,
               status_change_reason: reason || 'Superseded after substitute period',
             })
@@ -219,7 +226,7 @@ export function TransferAssignmentDialog({
         if (isSubstituteAssignment) {
           await sb
             .from('assignment_history')
-            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute replaced' })
+            .update({ ended_at: new Date(oldEndDate).toISOString(), reason: reason || 'Temporary substitute replaced' })
             .eq('assignment_id', assignmentId)
             .is('ended_at', null);
 
@@ -227,7 +234,7 @@ export function TransferAssignmentDialog({
             .from('student_teacher_assignments')
             .update({
               status: 'completed',
-              effective_to_date: effectiveDate,
+              effective_to_date: oldEndDate,
               status_effective_date: effectiveDate,
               status_change_reason: reason || 'Replaced by another substitute',
             })
@@ -438,6 +445,9 @@ export function TransferAssignmentDialog({
               value={effectiveDate}
               onChange={(e) => setEffectiveDate(e.target.value)}
             />
+            <p className="text-[11px] text-muted-foreground">
+              New teacher starts on this date. Previous assignment auto-closes the day before — no overlap.
+            </p>
           </div>
 
           {/* Substitute End Date */}
