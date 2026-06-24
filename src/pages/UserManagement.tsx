@@ -2118,7 +2118,8 @@ export default function UserManagement() {
                     )}
                   </div>
                 ) : (
-                  <Table wrapperClassName="overflow-x-auto">
+                  <Table wrapperClassName="overflow-auto max-h-[calc(100vh-280px)]">
+
                     <TableHeader className="bg-muted/40 backdrop-blur-sm">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         {isSuperAdmin && (
