@@ -172,10 +172,11 @@ function EmptyState({ canUpload, onUpload }: { canUpload: boolean; onUpload: () 
   );
 }
 export default function Library() {
-  const { user, isSuperAdmin, profile } = useAuth();
+  const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = isSuperAdmin || profile?.role === "admin";
-  const isTeacher = profile?.role === "teacher";
+  const role = (activeRole || profile?.role) as string | undefined;
+  const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
+  const isTeacher = role === "teacher";
   const canUpload = isAdmin || isTeacher;
 
   const [view, setView] = useState<View>("browse");
