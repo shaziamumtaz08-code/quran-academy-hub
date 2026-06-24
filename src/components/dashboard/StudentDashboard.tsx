@@ -57,6 +57,57 @@ export function StudentDashboard() {
   // Active student id: if parent acting on a kid, use the kid; else self.
   const activeStudentId = activeKidId || user?.id || null;
 
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmGroupId, setDmGroupId] = useState<string | null>(null);
+  const [dmTeacherName, setDmTeacherName] = useState<string>('Teacher');
+  const [openingDm, setOpeningDm] = useState(false);
+
+  // Assigned teacher for "Message Teacher" quick action
+  const { data: assignedTeacher } = useQuery({
+    queryKey: ['sd-assigned-teacher', activeStudentId],
+    enabled: !!activeStudentId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_teacher_assignments')
+        .select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)')
+        .eq('student_id', activeStudentId!)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const t: any = (data as any)?.teacher;
+      return t ? { id: t.id, name: t.full_name || 'Teacher' } : null;
+    },
+  });
+
+  const handleMessageTeacher = async () => {
+    if (!activeStudentId) return;
+    if (!assignedTeacher) {
+      toast.error('No assigned teacher found yet.');
+      return;
+    }
+    setOpeningDm(true);
+    try {
+      const studentName = (studentProfile?.full_name as string) || 'Student';
+      const groupId = await findOrCreateAssignmentDM(
+        activeStudentId,
+        assignedTeacher.id,
+        studentName,
+        assignedTeacher.name,
+      );
+      if (!groupId) {
+        toast.error('Could not open conversation');
+        return;
+      }
+      setDmGroupId(groupId);
+      setDmTeacherName(assignedTeacher.name);
+      setDmOpen(true);
+    } finally {
+      setOpeningDm(false);
+    }
+  };
+
+
   // Profile of the active student (for header name + tz)
   const { data: studentProfile } = useQuery({
     queryKey: ['sd-profile', activeStudentId],
