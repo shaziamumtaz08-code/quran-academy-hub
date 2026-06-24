@@ -264,8 +264,22 @@ export default function Library() {
   };
 
   const publishedItems = useMemo(
-    () => items.filter((i) => (i.status ?? "published") === "published"),
-    [items]
+    () => items
+      .filter((i) => (i.status ?? "published") === "published")
+      .filter((i) => {
+        if (isAdmin) return true;
+        // Uploader always sees their own items
+        if (user?.id && i.uploaded_by === user.id) return true;
+        const vis = i.visibility ?? "all";
+        if (vis === "all") return true;
+        if (vis === "admin_only") return false;
+        if (vis === "teachers" && isTeacher) return true;
+        if (vis === "students" && (role === "student" || role === "parent")) return true;
+        if (vis === "custom" && Array.isArray(i.visible_to_roles) && role && i.visible_to_roles.includes(role)) return true;
+        // Default: not assigned to a role → hide from non-admins
+        return false;
+      }),
+    [items, isAdmin, isTeacher, role, user?.id]
   );
 
   const itemById = useMemo(() => {
