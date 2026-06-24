@@ -66,6 +66,13 @@ export function TransferAssignmentDialog({
   const transferMutation = useMutation({
     mutationFn: async () => {
       const sb = supabase as any;
+      // Old assignment ends the day BEFORE the new teacher starts (no overlap).
+      const prevDay = (dateStr: string) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        return format(d, 'yyyy-MM-dd');
+      };
+      const oldEndDate = prevDay(effectiveDate);
       const { data: currentAssign, error: currentErr } = await sb
         .from('student_teacher_assignments')
         .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
