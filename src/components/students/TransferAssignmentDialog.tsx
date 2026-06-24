@@ -445,6 +445,9 @@ export function TransferAssignmentDialog({
               value={effectiveDate}
               onChange={(e) => setEffectiveDate(e.target.value)}
             />
+            <p className="text-[11px] text-muted-foreground">
+              New teacher starts on this date. Previous assignment auto-closes the day before — no overlap.
+            </p>
           </div>
 
           {/* Substitute End Date */}
