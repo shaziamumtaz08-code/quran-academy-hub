@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -16,6 +16,10 @@ import { fetchIslamicDate } from '@/lib/islamicDate';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DMChatSheet } from '@/components/chat/DMChatSheet';
+import { findOrCreateAssignmentDM } from '@/lib/messaging';
+import { toast } from 'sonner';
+
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
 
