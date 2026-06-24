@@ -26,16 +26,18 @@ interface DMChatSheetProps {
   recipientName: string;
   /** If true, flagged messages show yellow highlight (for teachers/moderators) */
   showFlaggedHighlight?: boolean;
+  /** When provided, merge WhatsApp history for this student profile into the timeline */
+  whatsappProfileId?: string | null;
 }
 
-export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false }: DMChatSheetProps) {
+export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false, whatsappProfileId = null }: DMChatSheetProps) {
   const { user } = useAuth();
   const stamp = useActorStamp();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [] } = useQuery({
+  const { data: chatMessages = [] } = useQuery({
     queryKey: ['dm-sheet-messages', groupId],
     queryFn: async () => {
       if (!groupId) return [];
@@ -45,16 +47,52 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFl
         .eq('group_id', groupId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true })
-        .limit(100);
+        .limit(200);
       const senderIds = [...new Set((data || []).map(m => m.sender_id))];
       if (!senderIds.length) return [];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', senderIds);
       const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-      return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'User' }));
+      return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'User', channel: 'dm' as const }));
     },
     enabled: !!groupId && open,
     refetchInterval: open ? 5000 : false,
   });
+
+  const { data: waMessages = [] } = useQuery({
+    queryKey: ['dm-sheet-wa', whatsappProfileId],
+    queryFn: async () => {
+      if (!whatsappProfileId) return [];
+      const { data: contacts } = await supabase
+        .from('whatsapp_contacts')
+        .select('id')
+        .eq('profile_id', whatsappProfileId);
+      const cids = (contacts || []).map((c: any) => c.id);
+      if (!cids.length) return [];
+      const { data } = await supabase
+        .from('whatsapp_messages')
+        .select('id, message_text, direction, created_at, attachment_url')
+        .in('contact_id', cids)
+        .order('created_at', { ascending: true })
+        .limit(200);
+      return (data || []).map((m: any) => ({
+        id: `wa-${m.id}`,
+        content: m.message_text || (m.attachment_url ? '[attachment]' : ''),
+        sender_id: m.direction === 'inbound' ? whatsappProfileId : null,
+        created_at: m.created_at,
+        is_flagged: false,
+        senderName: m.direction === 'inbound' ? 'Student (WhatsApp)' : 'Academy (WhatsApp)',
+        channel: 'whatsapp' as const,
+      }));
+    },
+    enabled: !!whatsappProfileId && open,
+  });
+
+  const messages = React.useMemo(() => {
+    return [...chatMessages, ...waMessages].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [chatMessages, waMessages]);
+
 
   // Realtime
   useEffect(() => {
