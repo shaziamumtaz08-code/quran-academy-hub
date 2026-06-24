@@ -437,8 +437,8 @@ export function StudentDashboard() {
     </div>
   );
 
-  const quickLinks = [
-    { icon: MessageCircle, label: 'Message Teacher', bg: 'bg-blue-50 hover:bg-blue-100', icCol: 'text-blue-500', txCol: 'text-blue-600', to: '/chat' },
+  const quickLinks: Array<{ icon: any; label: string; bg: string; icCol: string; txCol: string; to?: string; onClick?: () => void; disabled?: boolean }> = [
+    { icon: MessageCircle, label: 'Message Teacher', bg: 'bg-blue-50 hover:bg-blue-100', icCol: 'text-blue-500', txCol: 'text-blue-600', onClick: handleMessageTeacher, disabled: openingDm },
     { icon: Send, label: 'Leave Request', bg: 'bg-amber-50 hover:bg-amber-100', icCol: 'text-amber-500', txCol: 'text-amber-600', to: '/hub' },
     { icon: FolderOpen, label: 'My Files', bg: 'bg-violet-50 hover:bg-violet-100', icCol: 'text-violet-500', txCol: 'text-violet-600', to: '/resources' },
     { icon: Network, label: 'My Network', bg: 'bg-emerald-50 hover:bg-emerald-100', icCol: 'text-emerald-500', txCol: 'text-emerald-600', to: '/connections' },
@@ -455,8 +455,9 @@ export function StudentDashboard() {
           return (
             <button
               key={q.label}
-              onClick={() => navigate(q.to)}
-              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-md cursor-pointer transition-all hover:scale-105 ${q.bg}`}
+              disabled={q.disabled}
+              onClick={() => (q.onClick ? q.onClick() : q.to && navigate(q.to))}
+              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-md cursor-pointer transition-all hover:scale-105 disabled:opacity-60 disabled:cursor-wait ${q.bg}`}
             >
               <Icon size={18} className={q.icCol} />
               <span className={`text-[11px] font-medium ${q.txCol} text-center leading-tight`}>{q.label}</span>
@@ -466,6 +467,7 @@ export function StudentDashboard() {
       </div>
     </div>
   );
+
 
   // (Recent Lessons rendered inside LessonsAndResultsCard)
 
