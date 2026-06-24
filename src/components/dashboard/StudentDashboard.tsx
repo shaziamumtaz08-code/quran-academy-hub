@@ -182,7 +182,8 @@ export function StudentDashboard() {
         .from('fee_invoices')
         .select('id, amount, currency, billing_month, due_date, status')
         .eq('student_id', activeStudentId!)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'partially_paid', 'overdue'])
+        .order('due_date', { ascending: true, nullsFirst: false })
         .order('billing_month', { ascending: true })
         .limit(1)
         .maybeSingle();
