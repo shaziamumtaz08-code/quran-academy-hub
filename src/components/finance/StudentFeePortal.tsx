@@ -195,6 +195,21 @@ export function StudentFeePortal({
     return { totalDue, currency, hasOverdue, earliestDue };
   }, [studentInvoices, ledgerPaidMap, cbm]);
 
+  const displayDueDate = useMemo(() => {
+    const openInvoices = studentInvoices
+      .filter(inv => ['pending', 'overdue', 'partially_paid'].includes(inv.status))
+      .filter(inv => {
+        const paid = ledgerPaidMap[inv.id] || 0;
+        const forgiven = Number(inv.forgiven_amount || 0);
+        return Math.max(0, Number(inv.amount) - paid - forgiven) > 0.01;
+      })
+      .sort((a, b) => (a.due_date || `${a.billing_month}-10`).localeCompare(b.due_date || `${b.billing_month}-10`));
+    const latestInvoice = [...studentInvoices]
+      .sort((a, b) => (b.billing_month || '').localeCompare(a.billing_month || '') || (b.due_date || '').localeCompare(a.due_date || ''))[0];
+    const candidate = openInvoices[0] || latestInvoice;
+    return candidate?.due_date || (candidate?.billing_month ? `${candidate.billing_month}-10` : null);
+  }, [studentInvoices, ledgerPaidMap]);
+
   const monthsStrip = useMemo(() => {
     const today = startOfDay(new Date());
     const monthSet = new Set<string>(studentInvoices.map(i => i.billing_month));
@@ -323,9 +338,9 @@ export function StudentFeePortal({
           {/* RIGHT — next due + current month */}
           <div className="min-w-0 flex flex-col items-end text-right">
             <p className="text-[10px] md:text-xs uppercase tracking-widest text-white/60 mb-1.5">Next Due</p>
-            {outstanding.earliestDue ? (
+            {displayDueDate ? (
               <p className="text-base md:text-lg font-semibold leading-tight">
-                {format(parseISO(outstanding.earliestDue), 'dd MMM yyyy')}
+                {format(parseISO(displayDueDate), 'dd MMM yyyy')}
               </p>
             ) : (
               <p className="text-base md:text-lg font-semibold leading-tight text-white/80">—</p>

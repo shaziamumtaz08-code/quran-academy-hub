@@ -82,7 +82,11 @@ export function StudentDashboard() {
 
   const handleMessageTeacher = async () => {
     if (!activeStudentId) return;
-    if (!assignedTeacher) {
+    const ctxTeacherForDm = (dashCtx?.teachers || [])[0] || null;
+    const teacherForDm = assignedTeacher || (ctxTeacherForDm?.teacher_id
+      ? { id: ctxTeacherForDm.teacher_id as string, name: (ctxTeacherForDm.teacher_name as string) || 'Teacher' }
+      : null);
+    if (!teacherForDm) {
       toast.error('No assigned teacher found yet.');
       return;
     }
@@ -91,16 +95,16 @@ export function StudentDashboard() {
       const studentName = (studentProfile?.full_name as string) || 'Student';
       const groupId = await findOrCreateAssignmentDM(
         activeStudentId,
-        assignedTeacher.id,
+        teacherForDm.id,
         studentName,
-        assignedTeacher.name,
+        teacherForDm.name,
       );
       if (!groupId) {
         toast.error('Could not open conversation');
         return;
       }
       setDmGroupId(groupId);
-      setDmTeacherName(assignedTeacher.name);
+      setDmTeacherName(teacherForDm.name);
       setDmOpen(true);
     } finally {
       setOpeningDm(false);
@@ -240,6 +244,23 @@ export function StudentDashboard() {
         .in('status', ['pending', 'partially_paid', 'overdue'])
         .order('due_date', { ascending: true, nullsFirst: false })
         .order('billing_month', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data as any;
+    },
+  });
+
+  const { data: latestDueInvoice } = useQuery({
+    queryKey: ['sd-latest-invoice-due', activeStudentId],
+    enabled: !!activeStudentId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('fee_invoices')
+        .select('id, amount, currency, billing_month, due_date, status')
+        .eq('student_id', activeStudentId!)
+        .neq('status', 'voided')
+        .order('billing_month', { ascending: false })
+        .order('due_date', { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle();
       return data as any;
@@ -471,7 +492,9 @@ export function StudentDashboard() {
 
   // (Recent Lessons rendered inside LessonsAndResultsCard)
 
-  const dueDays = nextInvoice?.due_date ? differenceInDays(parseISO(nextInvoice.due_date), new Date()) : null;
+  const displayDueInvoice = nextInvoice || latestDueInvoice;
+  const displayDueDate = displayDueInvoice?.due_date || (displayDueInvoice?.billing_month ? `${displayDueInvoice.billing_month}-10` : null);
+  const dueDays = displayDueDate ? differenceInDays(parseISO(displayDueDate), new Date()) : null;
   const dueColor =
     dueDays !== null && dueDays < 0 ? 'text-red-600' :
     dueDays !== null && dueDays <= 7 ? 'text-amber-500' : 'text-[hsl(var(--navy))]';
@@ -498,23 +521,27 @@ export function StudentDashboard() {
         </div>
         <div className="text-center py-3 lg:py-0 lg:pl-4">
           <div className="text-xs text-muted-foreground mb-1">Next Due</div>
-          {nextInvoice ? (
+          {displayDueInvoice ? (
             <>
               <div className={`text-2xl font-bold ${dueColor}`}>
-                {nextInvoice.currency} {Number(nextInvoice.amount || 0).toLocaleString()}
+                {nextInvoice
+                  ? `${nextInvoice.currency} ${Number(nextInvoice.amount || 0).toLocaleString()}`
+                  : format(parseISO(displayDueDate!), 'd MMM yyyy')}
               </div>
               <div className={`text-xs font-semibold mt-0.5 ${dueColor}`}>
-                Due {nextInvoice.due_date ? format(parseISO(nextInvoice.due_date), 'd MMM yyyy') : `${nextInvoice.billing_month}-10`}
+                {nextInvoice ? 'Due ' : 'Latest due date · '}{format(parseISO(displayDueDate!), 'd MMM yyyy')}
               </div>
               <div className="text-[10px] text-muted-foreground">
-                {nextInvoice.billing_month} {dueDays !== null && (dueDays < 0 ? `· ${Math.abs(dueDays)}d overdue` : dueDays === 0 ? '· today' : `· in ${dueDays}d`)}
+                {displayDueInvoice.billing_month} {nextInvoice && dueDays !== null && (dueDays < 0 ? `· ${Math.abs(dueDays)}d overdue` : dueDays === 0 ? '· today' : `· in ${dueDays}d`)}{!nextInvoice ? `· ${String(displayDueInvoice.status || 'paid').replace('_', ' ')}` : ''}
               </div>
-              <button
-                onClick={() => navigate('/finance')}
-                className="mt-2 bg-[hsl(var(--navy))] text-white px-3 py-1 rounded text-xs"
-              >
-                Pay →
-              </button>
+              {nextInvoice && (
+                <button
+                  onClick={() => navigate('/finance')}
+                  className="mt-2 bg-[hsl(var(--navy))] text-white px-3 py-1 rounded text-xs"
+                >
+                  Pay →
+                </button>
+              )}
             </>
           ) : (
             <div className="text-muted-foreground text-2xl">—</div>

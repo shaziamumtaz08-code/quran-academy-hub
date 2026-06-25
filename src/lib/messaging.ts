@@ -10,6 +10,17 @@ export async function findOrCreateAssignmentDM(
   studentName: string,
   teacherName: string,
 ): Promise<string | null> {
+  const { data: authData } = await supabase.auth.getUser();
+  const creatorId = authData.user?.id || studentId;
+
+  const { data: rpcGroupId } = await (supabase as any).rpc('find_or_create_assignment_dm', {
+    _student_id: studentId,
+    _teacher_id: teacherId,
+    _student_name: studentName,
+    _teacher_name: teacherName,
+  });
+  if (rpcGroupId) return rpcGroupId as string;
+
   // Look for an existing DM (course_id null) between these two
   const { data: existing } = await supabase
     .from('chat_groups')
@@ -27,17 +38,19 @@ export async function findOrCreateAssignmentDM(
   const { data: newGroup, error } = await supabase.from('chat_groups').insert({
     name: `${studentName} ↔ ${teacherName}`,
     type: 'assignment_dm',
-    created_by: studentId,
+    created_by: creatorId,
     is_dm: true,
     is_active: true,
     channel_mode: 'private',
   }).select('id').single();
   if (error || !newGroup) return null;
 
-  await supabase.from('chat_members').insert([
-    { group_id: newGroup.id, user_id: studentId, role: 'member' },
-    { group_id: newGroup.id, user_id: teacherId, role: 'member' },
-  ]);
+  const members = [studentId, teacherId, creatorId]
+    .filter(Boolean)
+    .filter((id, index, arr) => arr.indexOf(id) === index)
+    .map((id) => ({ group_id: newGroup.id, user_id: id, role: 'member' }));
+
+  await supabase.from('chat_members').insert(members);
   return newGroup.id;
 }
 
