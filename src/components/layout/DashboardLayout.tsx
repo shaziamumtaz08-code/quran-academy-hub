@@ -254,7 +254,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
-      { label: "Work Hub", href: "/work-hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
   }
@@ -273,7 +272,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
-      { label: "Work Hub", href: "/work-hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
   }
