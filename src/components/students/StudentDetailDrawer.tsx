@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft, Network, ExternalLink } from 'lucide-react';
 import { TransferAssignmentDialog } from './TransferAssignmentDialog';
+import { PaidLeaveCoverDialog } from './PaidLeaveCoverDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
