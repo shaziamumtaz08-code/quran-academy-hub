@@ -1881,12 +1881,14 @@ export default function Payments() {
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
                       return (
-                        <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
-                          {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} /></TableCell>}
+                        <TableRow key={inv.id} className={cn(selectedIds.has(inv.id) && 'bg-primary/5', inv.is_archived && 'bg-red-50/45 opacity-90')}>
+                          {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={!!inv.is_archived} /></TableCell>}
                           <TableCell>
                             <span className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><User className="h-4 w-4 text-secondary-foreground" /></div>
                               <span className="font-medium">{inv.profiles?.full_name || 'Unknown'}</span>
+                              {inv.is_archived && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">VOID</Badge>}
+                              {inv.is_revised && !inv.is_archived && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">REVISED</Badge>}
                             </span>
                           </TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{getPackageName(inv)}</Badge></TableCell>
@@ -1899,10 +1901,12 @@ export default function Payments() {
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
-                            {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                            {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
                               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
                                 <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
                               </Button>
+                            ) : inv.is_archived ? (
+                              <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
                             ) : getStatusBadge(inv.status)}
                           </TableCell>
                           {isReadOnlyView && (
@@ -1920,17 +1924,17 @@ export default function Payments() {
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}><FileText className="h-3.5 w-3.5 mr-2" /> View Invoice</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}><FileText className="h-3.5 w-3.5 mr-2" /> {inv.is_archived ? 'View VOID Invoice' : 'View Invoice'}</DropdownMenuItem>
+                                  {!inv.is_archived && <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>}
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }); if (!txns?.length) { toast({ title: 'No payment transactions found', variant: 'destructive' }); return; } setReceiptTransactions(txns); setReceiptViewInvoice(inv); }}><Eye className="h-3.5 w-3.5 mr-2" /> View Receipt</DropdownMenuItem>}
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}><Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt</DropdownMenuItem>}
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid</DropdownMenuItem>}
-                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}><Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount</DropdownMenuItem>
-                                  {inv.status !== 'waived' && <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}><Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee</DropdownMenuItem>}
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'reset_invoice', invoice: inv })}><RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset Invoice</DropdownMenuItem>
+                                  {!inv.is_archived && (inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid</DropdownMenuItem>}
+                                  {!inv.is_archived && <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}><Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount</DropdownMenuItem>}
+                                  {!inv.is_archived && inv.status !== 'waived' && <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}><Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee</DropdownMenuItem>}
+                                  {!inv.is_archived && (inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
+                                  {!inv.is_archived && (inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
+                                  {!inv.is_archived && <DropdownMenuSeparator />}
+                                  {!inv.is_archived && <DropdownMenuItem onClick={() => setActionModal({ type: 'reset_invoice', invoice: inv })}><RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset Invoice</DropdownMenuItem>}
                                   <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
