@@ -193,7 +193,7 @@ export default function Payments() {
   });
 
   // Bulk selection mode state
-  const [effectiveFrom, setEffectiveFrom] = useState(currentBillingMonth);
+  const [effectiveFrom, setEffectiveFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectionMode, setSelectionMode] = useState<'individual' | 'bulk'>('individual');
   const [bulkSearch, setBulkSearch] = useState('');
   const [bulkSort, setBulkSort] = useState<{ column: BulkSortColumn; direction: BulkSortDir }>({ column: 'name', direction: 'asc' });
@@ -873,35 +873,31 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
-        // Fetch current plan values for history before updating
-        const { data: oldPlan } = await supabase.from('student_billing_plans')
-          .select('base_package_id, session_duration, duration_surcharge, flat_discount, net_recurring_fee, currency, global_discount_id')
+        // Load current plan to pass full context to revise_billing_plan RPC.
+        // RPC handles: insert new history row, archive/replace affected month invoice
+        // with mid-month proration (old rate before effective_from, new rate from it),
+        // and reissue future pending invoices at the new rate. Paid invoices are never touched.
+        const { data: cur, error: curErr } = await supabase.from('student_billing_plans')
+          .select('student_id, assignment_id, branch_id, division_id, duration_surcharge')
           .eq('id', editingPlanId).single();
+        if (curErr) throw curErr;
 
-        const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
-        if (error) throw error;
-
-        // Record history
-        if (oldPlan) {
-          const userId = (await supabase.auth.getUser()).data.user?.id;
-          await supabase.from('billing_plan_history').insert({
-            plan_id: editingPlanId,
-            changed_by: userId || null,
-            effective_from: effectiveFrom,
-            previous_values: oldPlan,
-            new_values: planFields,
-            reason: null,
-          } as any);
-        }
-
-        // Cascade update ONLY pending invoices from the effective month onward
-        const { error: invoiceErr } = await supabase
-          .from('fee_invoices')
-          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
-          .eq('plan_id', editingPlanId)
-          .eq('status', 'pending' as any)
-          .gte('billing_month', effectiveFrom);
-        if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
+        const { error: rpcErr } = await (supabase as any).rpc('revise_billing_plan', {
+          _student_id: cur.student_id,
+          _base_package_id: planFields.base_package_id,
+          _session_duration: planFields.session_duration,
+          _flat_discount: planFields.flat_discount,
+          _global_discount_id: planFields.global_discount_id,
+          _net_recurring_fee: planFields.net_recurring_fee,
+          _currency: planFields.currency,
+          _effective_from: effectiveFrom,
+          _change_reason: 'Edited via plan editor',
+          _assignment_id: (cur as any).assignment_id ?? null,
+          _branch_id: (cur as any).branch_id ?? null,
+          _division_id: (cur as any).division_id ?? null,
+          _duration_surcharge: planFields.duration_surcharge ?? (cur as any).duration_surcharge ?? 0,
+        });
+        if (rpcErr) throw rpcErr;
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
@@ -920,7 +916,7 @@ export default function Payments() {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
       if (editingPlanId) queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: editingPlanId ? `Billing plan updated — pending invoices from ${formatBillingMonth(effectiveFrom)} updated` : `${count} billing plan(s) saved successfully` });
+      toast({ title: editingPlanId ? `Billing plan revised — effective ${effectiveFrom}. Affected month is prorated, future pending invoices reissued.` : `${count} billing plan(s) saved successfully` });
       if (editingPlanId) {
         trackActivity({ action: 'billing_plan_updated', entityType: 'billing_plan', entityId: editingPlanId, details: { net_fee: netRecurringFee, currency: feeCurrency } });
       } else {
@@ -940,7 +936,7 @@ export default function Payments() {
     setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '', manual_fee: false, manual_amount: '', manual_currency: 'USD' });
     setEditingPlanId(null);
-    setEffectiveFrom(currentBillingMonth);
+    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
   };
 
   // ─── Invoice generation: preview → confirm → commit ─────────────────
@@ -2424,23 +2420,26 @@ export default function Payments() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
-                  {editingPlanId && (
-                    <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
-                      <Label className="text-xs font-medium">Effective From</Label>
-                      <p className="text-xs text-muted-foreground">Pending invoices from this month onward will be updated to the new fee.</p>
-                      <Select value={effectiveFrom} onValueChange={setEffectiveFrom}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => {
-                            const year = now.getFullYear();
-                            const month = String(i + 1).padStart(2, '0');
-                            const val = `${year}-${month}`;
-                            return <SelectItem key={val} value={val}>{MONTHS[i].label} {year}</SelectItem>;
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {editingPlanId && (() => {
+                    const isMidMonth = effectiveFrom && new Date(effectiveFrom + 'T00:00:00').getDate() !== 1;
+                    return (
+                      <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
+                        <Label className="text-xs font-medium">Effective From</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Pick the exact day this new rate applies. The affected month is split: old rate before this date, new rate from this date onward. Future pending invoices are reissued. Paid invoices are never changed.
+                        </p>
+                        <Input
+                          type="date"
+                          value={effectiveFrom}
+                          onChange={(e) => setEffectiveFrom(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                        {isMidMonth && (
+                          <p className="text-[11px] text-primary">Mid-month change — this month's invoice will be prorated automatically.</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="mt-8 space-y-3">
                   <Button onClick={() => savePlanMutation.mutate()} disabled={!canSavePlan || savePlanMutation.isPending} className="w-full gap-2" size="lg">
