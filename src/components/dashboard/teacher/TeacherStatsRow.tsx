@@ -101,7 +101,7 @@ export function TeacherStatsRow() {
       </div>
       <div className="flex flex-col gap-2 flex-1">
         {rows.map((row, i) => (
-          <div key={i} className="grid grid-cols-3 gap-2">
+          <div key={i} className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {row.map((s) => (
               <div key={s.label} className="text-center bg-secondary/50 rounded-lg py-2 px-1">
                 <p className={`text-lg font-semibold ${s.color}`}>{s.val}</p>
@@ -110,7 +110,7 @@ export function TeacherStatsRow() {
             ))}
           </div>
         ))}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div className="col-span-2 text-center bg-secondary/50 rounded-lg py-2 px-1">
             <p className="text-lg font-semibold text-muted-foreground">—</p>
             <p className="text-[10px] text-muted-foreground">This month earning (net)</p>
