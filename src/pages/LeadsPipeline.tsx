@@ -23,6 +23,16 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Country } from 'country-state-city';
+import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+
+const LEAD_ALL_COUNTRIES = Country.getAllCountries();
+function applyLeadCountry(setForm: any, isoCode: string) {
+  const c = LEAD_ALL_COUNTRIES.find(x => x.isoCode === isoCode);
+  if (!c) return;
+  const tz = (c.timezones && c.timezones[0]?.zoneName) || '';
+  setForm((p: any) => ({ ...p, country: c.name, country_code: c.isoCode, city: '', timezone: tz || p.timezone }));
+}
 
 const PIPELINE_STAGES = [
   { key: 'new', label: 'New', color: 'bg-blue-500' },
@@ -98,7 +108,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const queryClient = useQueryClient();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
-    name: '', email: '', phone_whatsapp: '', country: '', city: '',
+    name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '',
     for_whom: 'child', child_name: '', child_age: '',
     message: '', gender: '',
     current_level_specimen: '', learning_goals: '',
@@ -149,7 +159,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       toast({ title: 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
+      setForm({ name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
       setSelectedSubjects([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -213,8 +223,25 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Country</Label><Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} /></div>
-            <div><Label className="text-xs">City</Label><Input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
+            <div>
+              <Label className="text-xs">Country</Label>
+              <Select value={form.country_code} onValueChange={v => applyLeadCountry(setForm, v)}>
+                <SelectTrigger><SelectValue placeholder="Select country..." /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {LEAD_ALL_COUNTRIES.map(c => (
+                    <SelectItem key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">City</Label>
+              <SearchableCitySelect
+                countryCode={form.country_code}
+                value={form.city}
+                onValueChange={v => setForm(p => ({ ...p, city: v }))}
+              />
+            </div>
           </div>
 
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
@@ -246,13 +273,16 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Preferred Class Time</p>
           <p className="text-[11px] text-muted-foreground -mt-1">Add at least 2 specific slots so we can match a teacher.</p>
           <div>
-            <Label className="text-xs">Timezone</Label>
-            <Select value={form.timezone} onValueChange={v => setForm(p => ({ ...p, timezone: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select timezone..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {LEAD_TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs">Timezone (auto-synced from country)</Label>
+            <div className="mt-1 h-10 px-3 flex items-center justify-between rounded-md border border-input bg-muted/40 text-sm">
+              <span className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className={form.timezone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Select country to set timezone'}
+                </span>
+              </span>
+              {form.timezone && <Badge variant="secondary" className="text-[10px]">Synced</Badge>}
+            </div>
           </div>
           <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
             <p className="text-xs font-semibold">🟢 Slot 1 — Most Preferred</p>

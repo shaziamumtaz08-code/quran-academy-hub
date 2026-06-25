@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import {
   CheckCircle, Loader2, Send, BookOpen, User, Phone, MapPin,
   Clock, MessageSquare, GraduationCap, Star, Sparkles
 } from 'lucide-react';
+import { Country } from 'country-state-city';
+import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 
 const SUBJECTS = [
   { value: 'quran_recitation', label: 'Quran Recitation', emoji: '📖', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
@@ -26,14 +28,17 @@ const SUBJECTS = [
   { value: 'other', label: 'Other (Specify)', emoji: '✨', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
 ];
 
-// Common IANA timezones for students worldwide
-const TIMEZONES = [
-  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
-  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
-  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
-];
+const ALL_COUNTRIES = Country.getAllCountries();
+
+function applyCountrySelection(updateField: (k: string, v: string) => void, isoCode: string) {
+  const c = ALL_COUNTRIES.find(x => x.isoCode === isoCode);
+  if (!c) return;
+  updateField('country', c.name);
+  updateField('country_code', c.isoCode);
+  updateField('city', '');
+  const tz = (c.timezones && c.timezones[0]?.zoneName) || '';
+  if (tz) updateField('timezone', tz);
+}
 
 function SuccessScreen() {
   return (
@@ -127,21 +132,39 @@ function PersonalInfoSection({ form, updateField, selectedSubjects, toggleSubjec
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date of Birth</Label>
-              <Input type="date" value={form.date_of_birth} onChange={e => updateField('date_of_birth', e.target.value)} className="mt-1 h-11" />
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Country *</Label>
+              <Select value={form.country_code || ''} onValueChange={v => applyCountrySelection(updateField, v)}>
+                <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select country..." /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {ALL_COUNTRIES.map(c => (
+                    <SelectItem key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">City</Label>
-              <Input value={form.city} onChange={e => updateField('city', e.target.value)} placeholder="e.g. New York" className="mt-1 h-11" />
+              <SearchableCitySelect
+                countryCode={form.country_code || ''}
+                value={form.city}
+                onValueChange={v => updateField('city', v)}
+                className="mt-1 h-11"
+              />
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Country *</Label>
-              <Input value={form.country} onChange={e => updateField('country', e.target.value)} placeholder="e.g. United States" className="mt-1 h-11" />
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone</Label>
+              <div className="mt-1 h-11 px-3 flex items-center rounded-md border border-input bg-muted/40 text-sm">
+                <Clock className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <span className={form.timezone ? 'text-foreground' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Auto-detected from country'}
+                </span>
+              </div>
             </div>
           </div>
+
         </CardContent>
       </Card>
 
@@ -276,14 +299,18 @@ function ContactSection({ form, updateField }: any) {
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone *</Label>
-            <Select value={form.timezone} onValueChange={v => updateField('timezone', v)}>
-              <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select your timezone..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone (auto-detected)</Label>
+            <div className="mt-1 h-11 px-3 flex items-center justify-between rounded-md border border-input bg-background text-sm">
+              <span className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-blue-600" />
+                <span className={form.timezone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Select country above to set timezone'}
+                </span>
+              </span>
+              {form.timezone && <Badge variant="secondary" className="text-[10px]">Synced</Badge>}
+            </div>
           </div>
+
 
           {/* Slot 1 */}
           <div className="rounded-lg bg-background p-3 border border-border/60">
@@ -350,8 +377,8 @@ export default function PublicInquiryForm() {
   const [submitted, setSubmitted] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
-    name: '', email: '', phone_whatsapp: '', country: '', city: '',
-    for_whom: 'child', gender: '', date_of_birth: '',
+    name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '',
+    for_whom: 'child', gender: '',
     child_age: '', current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
     other_subject: '',
@@ -360,6 +387,7 @@ export default function PublicInquiryForm() {
     slot2_from: '', slot2_to: '', slot2_note: '',
     message: '',
   });
+
 
   const buildPreferredTime = () => {
     const parts: string[] = [];
@@ -399,8 +427,8 @@ export default function PublicInquiryForm() {
         preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
-        date_of_birth: form.date_of_birth || null,
         current_level_specimen: form.current_level_specimen || null,
+
         learning_goals: form.learning_goals || null,
         guardian_name: form.guardian_name || null,
         guardian_relationship: form.guardian_relationship || null,
