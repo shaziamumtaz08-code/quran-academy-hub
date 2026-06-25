@@ -907,6 +907,7 @@ export default function Payments() {
         is_active: true,
         branch_id: branchId,
         division_id: divisionId,
+        effective_from: effectiveFrom,
       }));
       const { error } = await supabase.from('student_billing_plans').insert(rows);
       if (error) throw error;
@@ -2420,13 +2421,15 @@ export default function Payments() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
-                  {editingPlanId && (() => {
+                  {(() => {
                     const isMidMonth = effectiveFrom && new Date(effectiveFrom + 'T00:00:00').getDate() !== 1;
                     return (
                       <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
-                        <Label className="text-xs font-medium">Effective From</Label>
+                        <Label className="text-xs font-medium">{editingPlanId ? 'Effective From' : 'Start Date'}</Label>
                         <p className="text-xs text-muted-foreground">
-                          Pick the exact day this new rate applies. The affected month is split: old rate before this date, new rate from this date onward. Future pending invoices are reissued. Paid invoices are never changed.
+                          {editingPlanId
+                            ? 'Pick the exact day this new rate applies. The affected month is split: old rate before this date, new rate from this date onward. Future pending invoices are reissued. Paid invoices are never changed.'
+                            : 'Pick the exact day billing begins. If mid-month, the first invoice is automatically prorated for the remaining days.'}
                         </p>
                         <Input
                           type="date"
@@ -2435,7 +2438,7 @@ export default function Payments() {
                           className="h-9 text-sm"
                         />
                         {isMidMonth && (
-                          <p className="text-[11px] text-primary">Mid-month change — this month's invoice will be prorated automatically.</p>
+                          <p className="text-[11px] text-primary">Mid-month {editingPlanId ? 'change' : 'start'} — first/affected month invoice will be prorated automatically.</p>
                         )}
                       </div>
                     );
