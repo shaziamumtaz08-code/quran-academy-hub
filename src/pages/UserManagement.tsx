@@ -2138,6 +2138,7 @@ export default function UserManagement() {
                     )}
                   </div>
                 ) : (
+                  <>
                   <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                     <span className="font-medium">Swipe/scroll sideways to see phone, location, and all action icons.</span>
                     <div className="flex gap-1">
@@ -2446,6 +2447,7 @@ export default function UserManagement() {
                       ))}
                     </TableBody>
                   </Table>
+                  </>
                 )}
               </CardContent>
             </Card>
