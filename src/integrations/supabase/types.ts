@@ -7508,6 +7508,50 @@ export type Database = {
           },
         ]
       }
+      schedule_cover_snapshots: {
+        Row: {
+          cover_assignment_id: string
+          created_at: string
+          id: string
+          original_assignment_id: string
+          original_assignment_snapshot: string
+          restored: boolean
+          restored_at: string | null
+          schedule_id: string
+          snapshot_data: Json
+        }
+        Insert: {
+          cover_assignment_id: string
+          created_at?: string
+          id?: string
+          original_assignment_id: string
+          original_assignment_snapshot: string
+          restored?: boolean
+          restored_at?: string | null
+          schedule_id: string
+          snapshot_data: Json
+        }
+        Update: {
+          cover_assignment_id?: string
+          created_at?: string
+          id?: string
+          original_assignment_id?: string
+          original_assignment_snapshot?: string
+          restored?: boolean
+          restored_at?: string | null
+          schedule_id?: string
+          snapshot_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_cover_snapshots_cover_assignment_id_fkey"
+            columns: ["cover_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_overrides: {
         Row: {
           created_at: string | null
@@ -8767,8 +8811,10 @@ export type Database = {
       }
       student_teacher_assignments: {
         Row: {
+          auto_closed_at: string | null
           branch_id: string | null
           calculated_monthly_fee: number | null
+          closed_by_admin: boolean
           created_at: string
           discount_id: string | null
           division_id: string | null
@@ -8780,12 +8826,16 @@ export type Database = {
           first_month_prorated_fee: number | null
           id: string
           is_custom_override: boolean
+          is_temporary: boolean
+          original_assignment_id: string | null
+          original_teacher_id: string | null
           parent_assignment_id: string | null
           payout_amount: number | null
           payout_type: string | null
           requires_attendance: boolean
           requires_planning: boolean
           requires_schedule: boolean
+          salary_linked: boolean
           start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
           status_change_reason: string | null
@@ -8798,11 +8848,15 @@ export type Database = {
           substitute_end_date: string | null
           teacher_id: string
           teacher_timezone: string | null
+          temp_end_date: string | null
+          temp_start_date: string | null
           transfer_type: string | null
         }
         Insert: {
+          auto_closed_at?: string | null
           branch_id?: string | null
           calculated_monthly_fee?: number | null
+          closed_by_admin?: boolean
           created_at?: string
           discount_id?: string | null
           division_id?: string | null
@@ -8814,12 +8868,16 @@ export type Database = {
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          is_temporary?: boolean
+          original_assignment_id?: string | null
+          original_teacher_id?: string | null
           parent_assignment_id?: string | null
           payout_amount?: number | null
           payout_type?: string | null
           requires_attendance?: boolean
           requires_planning?: boolean
           requires_schedule?: boolean
+          salary_linked?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           status_change_reason?: string | null
@@ -8832,11 +8890,15 @@ export type Database = {
           substitute_end_date?: string | null
           teacher_id: string
           teacher_timezone?: string | null
+          temp_end_date?: string | null
+          temp_start_date?: string | null
           transfer_type?: string | null
         }
         Update: {
+          auto_closed_at?: string | null
           branch_id?: string | null
           calculated_monthly_fee?: number | null
+          closed_by_admin?: boolean
           created_at?: string
           discount_id?: string | null
           division_id?: string | null
@@ -8848,12 +8910,16 @@ export type Database = {
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          is_temporary?: boolean
+          original_assignment_id?: string | null
+          original_teacher_id?: string | null
           parent_assignment_id?: string | null
           payout_amount?: number | null
           payout_type?: string | null
           requires_attendance?: boolean
           requires_planning?: boolean
           requires_schedule?: boolean
+          salary_linked?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           status_change_reason?: string | null
@@ -8866,6 +8932,8 @@ export type Database = {
           substitute_end_date?: string | null
           teacher_id?: string
           teacher_timezone?: string | null
+          temp_end_date?: string | null
+          temp_start_date?: string | null
           transfer_type?: string | null
         }
         Relationships: [
@@ -8895,6 +8963,13 @@ export type Database = {
             columns: ["fee_package_id"]
             isOneToOne: false
             referencedRelation: "fee_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_original_assignment_id_fkey"
+            columns: ["original_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
             referencedColumns: ["id"]
           },
           {
@@ -10661,6 +10736,7 @@ export type Database = {
           gov_id_type: string
         }[]
       }
+      auto_close_expired_covers: { Args: never; Returns: number }
       build_split_month_lines: {
         Args: {
           _effective_from: string
@@ -10705,6 +10781,22 @@ export type Database = {
             }
             Returns: boolean
           }
+      close_paid_leave_cover: {
+        Args: { _cover_assignment_id: string; _manual?: boolean }
+        Returns: Json
+      }
+      create_paid_leave_cover: {
+        Args: {
+          _original_assignment_id: string
+          _payout_amount: number
+          _reason?: string
+          _replacement_teacher_id: string
+          _salary_linked?: boolean
+          _temp_end_date: string
+          _temp_start_date: string
+        }
+        Returns: Json
+      }
       ensure_division_root_folders: {
         Args: { _division_id: string }
         Returns: undefined
@@ -10718,6 +10810,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      extend_paid_leave_cover: {
+        Args: {
+          _cover_assignment_id: string
+          _new_temp_end_date: string
+          _reason?: string
+        }
+        Returns: Json
       }
       find_profile_by_gov_id: {
         Args: { _gov_id: string }
