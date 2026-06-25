@@ -403,21 +403,43 @@ export default function Assignments() {
         const newEffectiveFrom = effectiveFromDate || null;
         if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-        // Back-dating is fully allowed. Paid/locked salary months are protected downstream
-        // (archive + insert pattern via revise_salary_payout / regeneration skips locked rows).
-        // We surface a soft notice if paid months exist within the new range, but do NOT block.
+        // Back-dating is fully allowed. For any paid/locked salary months from the new
+        // effective_from forward, run the archive + insert (revise_salary_payout) pattern
+        // so the old locked sheet is preserved (VOID — SUPERSEDED watermark) and a NEW
+        // revised sheet is created with prior_paid_amount carried over.
         const monthKey = newEffectiveFrom.slice(0, 7); // YYYY-MM
+        const oldPayout = Number(prev.payout_amount) || 0;
+        const payoutDelta = newPayout - oldPayout;
+
         const { data: paidInRange } = await supabase
           .from('salary_payouts')
-          .select('salary_month, status')
+          .select('id, salary_month, status, base_salary, extra_class_amount, adjustment_amount, expense_amount, deductions, calculation_json, is_archived')
           .eq('teacher_id', prev.teacher_id)
           .in('status', ['confirmed', 'paid', 'locked', 'partially_paid'])
+          .eq('is_archived', false)
           .gte('salary_month', monthKey)
           .order('salary_month', { ascending: true });
-        if (paidInRange && paidInRange.length > 0) {
+
+        let revisedCount = 0;
+        if (paidInRange && paidInRange.length > 0 && Math.abs(payoutDelta) > 0.001) {
+          for (const p of paidInRange) {
+            const newBase = Number(p.base_salary || 0) + payoutDelta;
+            const { error: rErr } = await (supabase as any).rpc('revise_salary_payout', {
+              _payout_id: p.id,
+              _base_salary: newBase,
+              _extra_class_amount: Number(p.extra_class_amount || 0),
+              _adjustment_amount: Number(p.adjustment_amount || 0),
+              _expense_amount: Number(p.expense_amount || 0),
+              _deductions: Number(p.deductions || 0),
+              _calculation_json: p.calculation_json ?? {},
+              _change_reason: `Payout revised on assignment from ${oldPayout} to ${newPayout} effective ${newEffectiveFrom}`,
+            });
+            if (rErr) throw rErr;
+            revisedCount++;
+          }
           toast({
-            title: 'Back-dated update applied',
-            description: `${paidInRange.length} paid/locked salary month(s) from ${paidInRange[0].salary_month} are protected and left unchanged. Only future/unpaid months will reflect the new payout.`,
+            title: 'Salary sheets revised',
+            description: `${revisedCount} paid/locked month(s) archived as VOID — SUPERSEDED. New revised sheets issued with prior paid amount carried over.`,
           });
         }
 
