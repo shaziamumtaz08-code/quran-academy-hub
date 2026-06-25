@@ -491,7 +491,7 @@ export function StudentDashboard() {
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             innerRadius="70%" outerRadius="100%"
-            data={[{ name: 'Att', value: stats.pct, fill: '#1d9e75' }]}
+            data={[{ name: 'Att', value: stats.total === 0 ? 100 : stats.pct, fill: stats.total === 0 ? 'hsl(var(--muted))' : '#1d9e75' }]}
             startAngle={90} endAngle={-270}
           >
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
@@ -499,8 +499,17 @@ export function StudentDashboard() {
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <div className="text-2xl font-bold text-[hsl(var(--navy))]">{stats.pct}%</div>
-          <div className="text-[10px] text-muted-foreground">Attendance</div>
+          {stats.total === 0 ? (
+            <>
+              <div className="text-sm font-semibold text-muted-foreground">—</div>
+              <div className="text-[10px] text-muted-foreground">No sessions yet</div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-[hsl(var(--navy))]">{stats.pct}%</div>
+              <div className="text-[10px] text-muted-foreground">Attendance</div>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-3 space-y-1.5">
