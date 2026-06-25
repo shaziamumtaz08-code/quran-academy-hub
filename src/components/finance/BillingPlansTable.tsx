@@ -243,6 +243,14 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {revisePlan && (
+        <RevisePlanDialog
+          open={!!revisePlan}
+          onOpenChange={(o) => !o && setRevisePlan(null)}
+          plan={revisePlan as any}
+        />
+      )}
     </div>
   );
 }
