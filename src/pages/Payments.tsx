@@ -1520,12 +1520,12 @@ export default function Payments() {
     const family = familyGroups.find(([pid]) => pid === parentId);
     if (!family) return;
     const familyStudentIds = family[1].studentIds;
-    const familyInvoiceIds = invoices.filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid').map(inv => inv.id);
+    const familyInvoiceIds = activeInvoices.filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid').map(inv => inv.id);
     if (familyInvoiceIds.length === 0) { toast({ title: 'No unpaid invoices for this family', variant: 'destructive' }); return; }
     selectedInvoiceCacheRef.current.clear();
-    invoices.filter(inv => familyInvoiceIds.includes(inv.id)).forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
+    activeInvoices.filter(inv => familyInvoiceIds.includes(inv.id)).forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
     setSelectedIds(new Set(familyInvoiceIds));
-    const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
+    const familyUnpaid = activeInvoices.filter(i => familyInvoiceIds.includes(i.id));
     const total = familyUnpaid.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
     const allFroms = familyUnpaid.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
     const allTos = familyUnpaid.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
