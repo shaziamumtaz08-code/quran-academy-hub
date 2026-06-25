@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle, History, TrendingUp, TrendingDown
+  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle, History, TrendingUp, TrendingDown, FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -841,6 +841,9 @@ export default function SalaryEngine() {
   // ── Helpers ──
 
   const getStatusBadge = (status: string, payout?: any) => {
+    if (payout?.is_revised) {
+      return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> Revised</Badge>;
+    }
     switch (status) {
       case 'locked': return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Lock className="h-3 w-3" /> Locked</Badge>;
       case 'paid': return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>;
@@ -1019,7 +1022,8 @@ export default function SalaryEngine() {
                 {filteredData.map(teacher => {
                   const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
                   const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked' || payout.status === 'partially_paid');
-                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid';
+                  const willReviseLockedSheet = payout && (payout.status === 'locked' || payout.status === 'paid' || payout.status === 'partially_paid');
+                  const canSave = !!payout || teacher.payoutStatus !== 'locked';
                   
                   return (
                     <TableRow key={teacher.teacherId} className="group">
@@ -1074,12 +1078,13 @@ export default function SalaryEngine() {
                             </Button>
                             <Button 
                               size="sm" 
-                              variant="outline" 
+                              variant={willReviseLockedSheet ? 'default' : 'outline'} 
                               onClick={() => savePayout.mutate(teacher)} 
                               disabled={!canSave || savePayout.isPending}
+                              title={willReviseLockedSheet ? 'Archive the locked/paid sheet and create a revised sheet' : 'Save salary sheet'}
                             >
                               {savePayout.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                              Save
+                              {willReviseLockedSheet ? 'Revise' : 'Save'}
                             </Button>
                             {teacher.payoutStatus === 'paid' && (
                               <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
@@ -1115,33 +1120,39 @@ export default function SalaryEngine() {
         </Card>
 
         {/* ── Archived (superseded) payouts — admin audit trail ── */}
-        {archivedPayouts.length > 0 && (
+        {!isTeacherView && (
           <Card className="border-amber-200/60 bg-amber-50/40 dark:bg-amber-950/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
                 <AlertCircle className="h-4 w-4" /> Archived payouts for {salaryMonth} ({archivedPayouts.length})
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Superseded by revisions. Hidden from teachers. Click to view the void statement.</p>
+              <p className="text-xs text-muted-foreground">Locked/paid sheets that were back-date revised appear here as VOID — SUPERSEDED. The active row above is the revised sheet.</p>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="space-y-1.5">
-                {archivedPayouts.map((p: any) => {
-                  const t = allSalariedProfiles.find((x: any) => x.id === p.teacher_id);
-                  return (
-                    <div key={p.id} className="flex items-center justify-between text-xs bg-background/60 rounded px-3 py-2 border border-amber-200/40">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50 text-[10px]">VOID</Badge>
-                        <span className="font-medium">{t?.full_name || p.teacher_id.slice(0,8)}</span>
-                        <span className="text-muted-foreground">Net {Number(p.net_salary).toFixed(2)} · Paid {Number(p.amount_paid).toFixed(2)}</span>
-                        {p.archive_reason && <span className="text-muted-foreground italic">— {p.archive_reason}</span>}
+              {archivedPayouts.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-amber-200/70 bg-background/40 px-3 py-4 text-xs text-muted-foreground">
+                  No archived salary sheets for this month yet.
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {archivedPayouts.map((p: any) => {
+                    const t = allSalariedProfiles.find((x: any) => x.id === p.teacher_id);
+                    return (
+                      <div key={p.id} className="flex items-center justify-between text-xs bg-background/60 rounded px-3 py-2 border border-amber-200/40">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50 text-[10px]">VOID</Badge>
+                          <span className="font-medium">{t?.full_name || p.teacher_id.slice(0,8)}</span>
+                          <span className="text-muted-foreground">Net {Number(p.net_salary).toFixed(2)} · Paid {Number(p.amount_paid).toFixed(2)}</span>
+                          {p.archive_reason && <span className="text-muted-foreground italic">— {p.archive_reason}</span>}
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => window.open(`/finance/print/salary/${p.id}`, '_blank')}>
+                          <FileText className="h-3 w-3" /> View VOID
+                        </Button>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => window.open(`/print-salary/${p.id}`, '_blank')}>
-                        View
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1152,7 +1163,7 @@ export default function SalaryEngine() {
         <SalarySheetDialog
           open={sheetOpen}
           onOpenChange={setSheetOpen}
-          teacher={selectedTeacher ? { ...selectedTeacher, payoutId: (existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.id || null) } as any : null}
+          teacher={selectedTeacher ? { ...selectedTeacher, payoutId: (existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.id || null), payout: existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId) || null } as any : null}
           teacherProfile={selectedProfile}
           teacherAttendance={teacherAttendance}
           adjustments={selectedAdjustments}
