@@ -25,10 +25,10 @@ export function TeacherActionCentre() {
       let plannedIds = new Set<string>();
       if (assignmentIds.length) {
         const { data: plans } = await supabase
-          .from('lesson_plans')
+          .from('student_monthly_plans')
           .select('assignment_id')
           .in('assignment_id', assignmentIds)
-          .gte('plan_month', monthStart);
+          .gte('month', monthStart);
         plannedIds = new Set((plans || []).map((p: any) => p.assignment_id));
       }
 
