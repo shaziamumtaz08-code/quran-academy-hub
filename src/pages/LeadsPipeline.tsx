@@ -223,8 +223,25 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Country</Label><Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} /></div>
-            <div><Label className="text-xs">City</Label><Input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
+            <div>
+              <Label className="text-xs">Country</Label>
+              <Select value={form.country_code} onValueChange={v => applyLeadCountry(setForm, v)}>
+                <SelectTrigger><SelectValue placeholder="Select country..." /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {LEAD_ALL_COUNTRIES.map(c => (
+                    <SelectItem key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">City</Label>
+              <SearchableCitySelect
+                countryCode={form.country_code}
+                value={form.city}
+                onValueChange={v => setForm(p => ({ ...p, city: v }))}
+              />
+            </div>
           </div>
 
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
