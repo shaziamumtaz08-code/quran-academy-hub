@@ -8,8 +8,9 @@ import type { IslamicDateData } from "@/lib/islamicDate";
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
 import { PrayerBar } from "./teacher/PrayerBar";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
-import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
+import { TeacherQuickLinks } from "./teacher/TeacherQuickLinks";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
+import { TeacherActionCentre } from "./teacher/TeacherActionCentre";
 import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSection";
 import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
@@ -66,11 +67,12 @@ export function TeacherDashboard() {
         {/* Rescheduled sessions landing today */}
         <RescheduledTodayBanner />
 
-        {/* Quick Actions */}
-        <TeacherQuickActions />
-
-        {/* My Stats */}
-        <TeacherStatsRow />
+        {/* 3-column grid: Quick links · My stats · Action centre + Spotlight */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <TeacherQuickLinks />
+          <TeacherStatsRow />
+          <TeacherActionCentre />
+        </div>
 
         {/* My Performance */}
         <MyPerformanceSection />
