@@ -487,7 +487,7 @@ export function StudentDashboard() {
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Performance</div>
         <div className="text-[10px] text-muted-foreground">{format(new Date(), 'MMMM yyyy')}</div>
       </div>
-      <div className="relative h-28">
+      <div className="relative h-20 md:h-28">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             innerRadius="70%" outerRadius="100%"
