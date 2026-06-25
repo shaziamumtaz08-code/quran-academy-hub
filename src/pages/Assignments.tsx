@@ -403,10 +403,7 @@ export default function Assignments() {
         const newEffectiveFrom = effectiveFromDate || null;
         if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (newEffectiveFrom < todayStr) {
-          throw new Error('Effective From cannot be in the past — past salary data is locked.');
-        }
+        // Back-dating is allowed; paid/locked salary months below are the real guardrail.
 
         // Hard-block if any paid/locked salary records exist for this teacher from the new month onward
         const monthKey = newEffectiveFrom.slice(0, 7); // YYYY-MM
@@ -1349,9 +1346,8 @@ export default function Assignments() {
                         type="date"
                         value={effectiveFromDate}
                         onChange={(e) => setEffectiveFromDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
                       />
-                      <p className="text-[10px] text-muted-foreground">Past dates disabled. Default: 1st of next month.</p>
+                      <p className="text-[10px] text-muted-foreground">Back-dating allowed. Paid/locked salary months are protected automatically.</p>
                     </div>
                   </div>
                 )}
