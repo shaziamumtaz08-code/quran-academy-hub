@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import {
   CheckCircle, Loader2, Send, BookOpen, User, Phone, MapPin,
   Clock, MessageSquare, GraduationCap, Star, Sparkles
 } from 'lucide-react';
+import { Country } from 'country-state-city';
+import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 
 const SUBJECTS = [
   { value: 'quran_recitation', label: 'Quran Recitation', emoji: '📖', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
@@ -26,14 +28,17 @@ const SUBJECTS = [
   { value: 'other', label: 'Other (Specify)', emoji: '✨', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
 ];
 
-// Common IANA timezones for students worldwide
-const TIMEZONES = [
-  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
-  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
-  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
-];
+const ALL_COUNTRIES = Country.getAllCountries();
+
+function applyCountrySelection(updateField: (k: string, v: string) => void, isoCode: string) {
+  const c = ALL_COUNTRIES.find(x => x.isoCode === isoCode);
+  if (!c) return;
+  updateField('country', c.name);
+  updateField('country_code', c.isoCode);
+  updateField('city', '');
+  const tz = (c.timezones && c.timezones[0]?.zoneName) || '';
+  if (tz) updateField('timezone', tz);
+}
 
 function SuccessScreen() {
   return (
