@@ -1743,7 +1743,8 @@ export default function Payments() {
             )}
 
             {/* LCY / FCY Sub-Tabs */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => setInvoiceTab('lcy')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'lcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
@@ -1758,7 +1759,37 @@ export default function Payments() {
                 Foreign Currency
                 <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyTableInvoices.length}</Badge>
               </button>
+              </div>
+              {!isReadOnlyView && (
+                <div className="flex items-center gap-2 rounded-xl border bg-background/80 px-2 py-1 shadow-sm">
+                  <span className="px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Audit view</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={invoiceArchiveView === 'active' ? 'default' : 'ghost'}
+                    className="h-7 text-xs"
+                    onClick={() => setInvoiceArchiveView('active')}
+                  >
+                    Active <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{activeInvoices.length}</Badge>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={invoiceArchiveView === 'archived' ? 'destructive' : 'ghost'}
+                    className="h-7 text-xs"
+                    onClick={() => setInvoiceArchiveView('archived')}
+                  >
+                    Archived / VOID <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{archivedInvoices.length}</Badge>
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {!isReadOnlyView && invoiceArchiveView === 'archived' && (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                Showing archived invoices only. These are superseded audit records and should carry a VOID — SUPERSEDED watermark when printed.
+              </div>
+            )}
 
             {/* Invoice Search & Filters */}
             <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-3">
