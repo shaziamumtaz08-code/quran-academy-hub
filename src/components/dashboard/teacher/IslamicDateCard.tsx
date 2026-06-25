@@ -70,6 +70,8 @@ export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved, hidde
     return () => clearInterval(interval);
   }, [timezone]);
 
+  if (hidden) return null;
+
   return (
     <div className="bg-primary rounded-2xl px-3 py-1.5 shadow-navy text-center">
       {/* Hijri date — centered, prominent */}
