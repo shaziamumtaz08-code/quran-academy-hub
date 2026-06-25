@@ -916,7 +916,7 @@ export default function Payments() {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
       if (editingPlanId) queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: editingPlanId ? `Billing plan updated — pending invoices from ${formatBillingMonth(effectiveFrom)} updated` : `${count} billing plan(s) saved successfully` });
+      toast({ title: editingPlanId ? `Billing plan revised — effective ${effectiveFrom}. Affected month is prorated, future pending invoices reissued.` : `${count} billing plan(s) saved successfully` });
       if (editingPlanId) {
         trackActivity({ action: 'billing_plan_updated', entityType: 'billing_plan', entityId: editingPlanId, details: { net_fee: netRecurringFee, currency: feeCurrency } });
       } else {
