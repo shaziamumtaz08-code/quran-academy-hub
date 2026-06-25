@@ -23,6 +23,16 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Country } from 'country-state-city';
+import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+
+const LEAD_ALL_COUNTRIES = Country.getAllCountries();
+function applyLeadCountry(setForm: any, isoCode: string) {
+  const c = LEAD_ALL_COUNTRIES.find(x => x.isoCode === isoCode);
+  if (!c) return;
+  const tz = (c.timezones && c.timezones[0]?.zoneName) || '';
+  setForm((p: any) => ({ ...p, country: c.name, country_code: c.isoCode, city: '', timezone: tz || p.timezone }));
+}
 
 const PIPELINE_STAGES = [
   { key: 'new', label: 'New', color: 'bg-blue-500' },
