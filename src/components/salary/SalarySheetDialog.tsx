@@ -60,6 +60,8 @@ interface StudentPayoutRow {
   feeStatus: string;
   lastPaymentDate: string | null;
   invoiceId: string | null;
+  salaryLinked?: boolean;
+  isTemporary?: boolean;
 }
 
 interface TeacherProfile {
@@ -459,7 +461,15 @@ export function SalarySheetDialog({
                       <div className={`hidden sm:grid gap-3 items-center px-4 py-3 ${isTeacherView ? "grid-cols-10" : "grid-cols-12"}`}>
                         <div className="col-span-3">
                           <p className="font-medium text-sm text-foreground">{s.studentName}</p>
-                          <Badge variant="outline" className="text-[10px] mt-0.5 capitalize">{s.payoutType}</Badge>
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            <Badge variant="outline" className="text-[10px] capitalize">{s.payoutType}</Badge>
+                            {s.isTemporary && (
+                              <Badge variant="outline" className="text-[10px] border-rose-300 text-rose-700 bg-rose-50">Cover</Badge>
+                            )}
+                            {s.salaryLinked === false && (
+                              <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">Excluded from payroll</Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="col-span-2 text-sm text-muted-foreground">
                           {format(parseISO(s.dateFrom), "dd MMM")} – {format(parseISO(s.dateTo), "dd MMM")}
@@ -497,6 +507,12 @@ export function SalarySheetDialog({
                             <p className="text-xs text-muted-foreground">
                               {format(parseISO(s.dateFrom), "dd MMM")} – {format(parseISO(s.dateTo), "dd MMM")}
                               <Badge variant="outline" className="text-[9px] ml-1.5 capitalize">{s.payoutType}</Badge>
+                              {s.isTemporary && (
+                                <Badge variant="outline" className="text-[9px] ml-1 border-rose-300 text-rose-700 bg-rose-50">Cover</Badge>
+                              )}
+                              {s.salaryLinked === false && (
+                                <Badge variant="outline" className="text-[9px] ml-1 border-amber-300 text-amber-700 bg-amber-50">Excluded</Badge>
+                              )}
                             </p>
                           </div>
                           {!isTeacherView && <FeeBadge status={s.feeStatus} invoiceId={s.invoiceId} />}

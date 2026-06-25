@@ -57,6 +57,8 @@ interface StudentPayoutRow {
   feeStatus: string;
   lastPaymentDate: string | null;
   invoiceId: string | null;
+  salaryLinked: boolean;
+  isTemporary: boolean;
 }
 
 export interface RoleSalaryRow {
@@ -193,7 +195,7 @@ export default function SalaryEngine() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+        .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
         .in('status', ['active', 'completed']);
       return data || [];
     },
@@ -401,6 +403,10 @@ export default function SalaryEngine() {
           studentInvoices.find((f: any) => f.status === 'paid' || f.status === 'partially_paid') ||
           studentInvoices[0];
 
+        const salaryLinked = assign.salary_linked !== false; // default true
+        const isTemporary = assign.is_temporary === true;
+        const effectiveCalc = salaryLinked ? calculatedAmount : 0;
+
         return {
           studentId: assign.student_id,
           studentName,
@@ -411,7 +417,7 @@ export default function SalaryEngine() {
           payoutType,
           eligibleDays,
           totalDays: totalDaysInRange,
-          calculatedAmount: Math.round(calculatedAmount * 100) / 100,
+          calculatedAmount: Math.round(effectiveCalc * 100) / 100,
           editedAmount: editAmounts[assign.id] !== undefined ? editAmounts[assign.id] : null,
           attendanceDays,
           presentCount,
@@ -423,6 +429,8 @@ export default function SalaryEngine() {
           feeStatus: studentFee?.status || 'no_invoice',
           lastPaymentDate: studentFee?.paid_at || null,
           invoiceId: studentFee?.id || null,
+          salaryLinked,
+          isTemporary,
         };
       }).filter((row): row is StudentPayoutRow => row !== null);
 
