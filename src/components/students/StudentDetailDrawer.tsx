@@ -93,6 +93,7 @@ export function StudentDetailDrawer({
 }: StudentDetailDrawerProps) {
   const { user, activeRole } = useAuth();
   const [transferOpen, setTransferOpen] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   
   // Fetch student's full profile (age, gender, country, city)
