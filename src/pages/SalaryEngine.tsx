@@ -555,17 +555,38 @@ export default function SalaryEngine() {
         status: 'confirmed',
       };
       if (existing) {
-        if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
-        // Preserve payment status for partially_paid records
-        if (existing.status === 'partially_paid') {
-          payload.status = 'partially_paid';
+        if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
+          // Already paid/locked — revise via RPC: archive old, insert new w/ prior_paid carry-forward
+          const reason = window.prompt(
+            `This payout is ${existing.status}. A revision will archive the current row and create a new one with prior paid amount (${existing.amount_paid}) carried over.\n\nReason for revision:`,
+            'Back-dated salary adjustment'
+          );
+          if (!reason) throw new Error('Revision cancelled');
+          const { data, error } = await (supabase as any).rpc('revise_salary_payout', {
+            _payout_id: existing.id,
+            _base_salary: payload.base_salary,
+            _extra_class_amount: payload.extra_class_amount,
+            _adjustment_amount: payload.adjustment_amount,
+            _expense_amount: payload.expense_amount,
+            _deductions: payload.deductions,
+            _calculation_json: payload.calculation_json,
+            _change_reason: reason,
+          });
+          if (error) throw error;
+          const delta = Number(data?.delta_to_settle ?? 0);
+          if (Math.abs(delta) > 0.01) {
+            toast({
+              title: 'Salary revised',
+              description: delta > 0
+                ? `Teacher is owed ${delta.toFixed(2)} — issue a follow-up payout manually.`
+                : `Teacher was overpaid by ${Math.abs(delta).toFixed(2)} — adjust on next month's sheet.`,
+            });
+          }
+          return;
         }
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
-      } else {
-        const { error } = await supabase.from('salary_payouts').insert(payload);
-        if (error) throw error;
-      }
+
     },
     onSuccess: () => {
       toast({ title: 'Salary saved & confirmed' });
