@@ -193,7 +193,7 @@ export default function Payments() {
   });
 
   // Bulk selection mode state
-  const [effectiveFrom, setEffectiveFrom] = useState(currentBillingMonth);
+  const [effectiveFrom, setEffectiveFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectionMode, setSelectionMode] = useState<'individual' | 'bulk'>('individual');
   const [bulkSearch, setBulkSearch] = useState('');
   const [bulkSort, setBulkSort] = useState<{ column: BulkSortColumn; direction: BulkSortDir }>({ column: 'name', direction: 'asc' });
