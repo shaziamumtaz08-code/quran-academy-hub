@@ -25,9 +25,10 @@ function useLiveClock(timezone: string) {
 interface IslamicDateCardProps {
   onIslamicDateLoaded?: (data: IslamicDateData) => void;
   onTimezoneResolved?: (tz: string) => void;
+  hidden?: boolean;
 }
 
-export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: IslamicDateCardProps) {
+export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved, hidden }: IslamicDateCardProps) {
   const { user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
@@ -68,6 +69,8 @@ export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: Isl
     }, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [timezone]);
+
+  if (hidden) return null;
 
   return (
     <div className="bg-primary rounded-2xl px-3 py-1.5 shadow-navy text-center">

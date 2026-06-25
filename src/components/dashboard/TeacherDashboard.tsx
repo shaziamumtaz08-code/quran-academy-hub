@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
-import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
+import { PrayerBar } from "./teacher/PrayerBar";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
@@ -46,24 +45,17 @@ export function TeacherDashboard() {
   return (
     <div className="relative font-sans">
       <div className="p-4 pb-20 md:pb-6 space-y-2 max-w-[1100px] mx-auto">
-        {/* Greeting */}
-        <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
-          <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
-          <button className="relative bg-secondary border border-border rounded-lg w-9 h-9 flex items-center justify-center text-foreground shrink-0">
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center leading-none">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Prayer Bar — greeting + Islamic date + prayer pills + bell */}
+        <PrayerBar
+          firstName={firstName}
+          islamicDate={islamicDate}
+          timezone={timezone}
+          unreadCount={unreadCount}
+        />
 
-        {/* Islamic date */}
-        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
+        {/* Hidden — keeps Islamic date + timezone data loading without UI duplication */}
+        <IslamicDateCard hidden onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
 
-        {/* Prayer widget */}
-        <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
         {/* Next Class — full-width block (1:1 only) */}
         {isOneToOne && <NextClassCountdown />}
