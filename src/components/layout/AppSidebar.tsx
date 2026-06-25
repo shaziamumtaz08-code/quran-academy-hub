@@ -48,7 +48,6 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'My Courses', href: '/my-courses' },
         { label: 'Resources', href: '/resources' },
-        { label: 'Communication', href: '/chat' },
       ],
     };
   }
@@ -152,6 +151,9 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
 }
 
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  if (role === 'student' || role === 'parent') {
+    return { title: 'Communication', subtitle: '', items: [] };
+  }
   const r = (role || 'student') as AppRole;
   const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
@@ -215,6 +217,7 @@ function getReportsSidebar(role?: string | null): { title: string; subtitle: str
 /* ─── Route to section mapping ─── */
 function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null, activeModelType?: string | null) {
   const isStudent = role === 'student';
+  const isStudentOrParent = role === 'student' || role === 'parent';
   if (isStudent && pathname.startsWith('/resources')) {
     return getHomeSidebar(isOneToOne, role, activeModelType);
   }
@@ -228,7 +231,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
     return getFinanceSidebar(isOneToOne, role);
   }
-  if (!isStudent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
+  if (!isStudentOrParent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
     return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity') || pathname.startsWith('/activity-log')) {
