@@ -381,12 +381,13 @@ export default function PublicInquiryForm() {
   const buildPreferredTime = () => {
     const parts: string[] = [];
     if (form.timezone) parts.push(`TZ: ${form.timezone}`);
-    if (form.slot1_from && form.slot1_to) {
-      parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    if (form.slot1_from) {
+      parts.push(`Slot 1: ${form.slot1_from}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
     }
-    if (form.slot2_from && form.slot2_to) {
-      parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    if (form.slot2_from) {
+      parts.push(`Slot 2: ${form.slot2_from}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
     }
+
     return parts.join(' | ') || null;
   };
 
