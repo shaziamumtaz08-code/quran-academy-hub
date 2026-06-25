@@ -1,0 +1,1 @@
+UPDATE public.library_items SET visibility = 'admin_only' WHERE visibility = 'all';
