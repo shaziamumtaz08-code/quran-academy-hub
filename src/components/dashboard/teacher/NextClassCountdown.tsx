@@ -168,9 +168,13 @@ export function NextClassCountdown() {
 
   if (!nextClass) {
     return (
-      <div className="bg-card rounded-xl border border-border px-3.5 py-2.5">
-        <p className="text-xs text-muted-foreground font-semibold">No upcoming classes</p>
-      </div>
+      <NextClassBanner
+        empty
+        studentName=""
+        scheduleLabel=""
+        countdownLabel=""
+        action={null}
+      />
     );
   }
 
