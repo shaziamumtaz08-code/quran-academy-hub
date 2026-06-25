@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Menu,
+  MessageCircle,
   MessageSquare,
   UserCog,
   Users,
