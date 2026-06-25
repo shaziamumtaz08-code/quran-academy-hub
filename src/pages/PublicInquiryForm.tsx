@@ -437,7 +437,7 @@ export default function PublicInquiryForm() {
   };
 
   const otherInvalid = selectedSubjects.includes('other') && !form.other_subject.trim();
-  const slotsInvalid = !form.slot1_from || !form.slot1_to || !form.slot2_from || !form.slot2_to || !form.timezone;
+  const slotsInvalid = !form.slot1_from || !form.slot2_from || !form.timezone;
 
   if (submitted) return <SuccessScreen />;
 
