@@ -669,8 +669,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <button
                     type="button"
                     className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label="Open profile menu"
+                    aria-label={`Open profile menu for ${profileName}`}
+                    title={profileName}
                   >
+                    <span className="hidden md:inline max-w-[120px] truncate text-sm font-medium text-foreground">
+                      {profileName.split(" ")[0]}
+                    </span>
                     <Avatar className="h-9 w-9 border border-border">
                       <AvatarFallback className="bg-secondary text-xs font-semibold text-secondary-foreground">{initials}</AvatarFallback>
                     </Avatar>
