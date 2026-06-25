@@ -586,8 +586,12 @@ export default function SalaryEngine() {
         }
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
-
+      } else {
+        const { error } = await supabase.from('salary_payouts').insert(payload);
+        if (error) throw error;
+      }
     },
+
     onSuccess: () => {
       toast({ title: 'Salary saved & confirmed' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
