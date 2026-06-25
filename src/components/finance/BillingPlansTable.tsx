@@ -211,8 +211,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                       {onViewPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
                       )}
+                      <Button variant="ghost" size="icon" onClick={() => setRevisePlan(plan)} title="Revise rate (insert new history row)">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </Button>
                       {onEditPlan && (
-                        <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit (legacy)"><Pencil className="h-4 w-4" /></Button>
                       )}
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(plan.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                     </div>
