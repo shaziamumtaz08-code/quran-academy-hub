@@ -86,6 +86,8 @@ import {
   Briefcase,
   HelpCircle,
   LogIn,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -1303,6 +1305,13 @@ export default function UserManagement() {
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterStatus || !!filterGender || !!filterDivision || showArchived || !!searchTerm;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const unassignedTableRef = useRef<HTMLDivElement>(null);
+  const usersTableRef = useRef<HTMLDivElement>(null);
+  const scrollTable = (ref: React.RefObject<HTMLDivElement>, direction: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 520), behavior: 'smooth' });
+  };
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
