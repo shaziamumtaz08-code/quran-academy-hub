@@ -223,6 +223,7 @@ export default function Payments() {
   const activeTab: 'invoices' | 'payments' | 'plans' =
     viewParam === 'fee-plans' ? 'plans' : viewParam === 'payments' ? 'payments' : 'invoices';
   const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
+  const [invoiceArchiveView, setInvoiceArchiveView] = useState<'active' | 'archived'>('active');
 
   // Invoice search & filter state
   const [invoiceSearch, setInvoiceSearch] = useState('');
