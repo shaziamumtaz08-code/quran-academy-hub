@@ -39,6 +39,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [revisePlan, setRevisePlan] = useState<BillingPlan | null>(null);
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
