@@ -25,9 +25,10 @@ function useLiveClock(timezone: string) {
 interface IslamicDateCardProps {
   onIslamicDateLoaded?: (data: IslamicDateData) => void;
   onTimezoneResolved?: (tz: string) => void;
+  hidden?: boolean;
 }
 
-export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: IslamicDateCardProps) {
+export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved, hidden }: IslamicDateCardProps) {
   const { user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
