@@ -256,10 +256,25 @@ export default function SalaryEngine() {
       const { data } = await supabase
         .from('salary_payouts')
         .select('*')
-        .eq('salary_month', salaryMonth);
+        .eq('salary_month', salaryMonth)
+        .eq('is_archived', false);
       return data || [];
     },
   });
+
+  // Admin-only: archived (superseded) payouts for audit / watermark history
+  const { data: archivedPayouts = [] } = useQuery({
+    queryKey: ['salary-payouts-archived', salaryMonth],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('salary_payouts')
+        .select('*')
+        .eq('salary_month', salaryMonth)
+        .eq('is_archived', true);
+      return data || [];
+    },
+  });
+
 
   const { data: feeInvoices = [] } = useQuery({
     queryKey: ['fee-invoices-salary', salaryMonth],
