@@ -119,9 +119,11 @@ function CommunicationLandingInner() {
   if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
 
   return (
-    <PageShell title="Communication" description="Chat, WhatsApp, notifications, and Zoom operations.">
-      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
-    </PageShell>
+    <div className="[&_h1]:!text-white [&_h1]:!bg-none [&_h1]:!bg-clip-border [&_p.text-muted-foreground]:!text-white/70">
+      <PageShell title="Communication" description="Chat, WhatsApp, notifications, and Zoom operations.">
+        <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+      </PageShell>
+    </div>
   );
 }
 
