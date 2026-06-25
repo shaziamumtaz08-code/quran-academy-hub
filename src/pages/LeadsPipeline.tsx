@@ -159,7 +159,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       toast({ title: 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
+      setForm({ name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
       setSelectedSubjects([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
