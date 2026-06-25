@@ -1,6 +1,29 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { useSignedUrl } from '@/lib/signedUrl';
+
+function ProofLink({ url }: { url: string }) {
+  const signed = useSignedUrl(url) || url;
+  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  return (
+    <a
+      href={signed}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="border border-gray-200 rounded-lg p-2 inline-block hover:border-emerald-400 transition-colors print:pointer-events-none"
+      title="Click to open full-size proof"
+    >
+      {isImage ? (
+        <img src={signed} alt="Receipt proof" className="max-h-32 rounded" />
+      ) : (
+        <AttachmentPreview url={url} />
+      )}
+      <span className="block text-[10px] text-emerald-600 font-semibold mt-1 text-center print:hidden">Click to view full size →</span>
+    </a>
+  );
+}
+
 
 interface Transaction {
   id: string;
@@ -131,22 +154,9 @@ export function ReceiptTemplate({
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-2">Proof of Payment</p>
           <div className="flex flex-wrap gap-3">
             {transactions.filter(tx => tx.receipt_url).map((tx, idx) => (
-              <a
-                key={idx}
-                href={tx.receipt_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="border border-gray-200 rounded-lg p-2 inline-block hover:border-emerald-400 transition-colors print:pointer-events-none"
-                title="Click to open full-size proof"
-              >
-                {/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(tx.receipt_url!) ? (
-                  <img src={tx.receipt_url!} alt="Receipt proof" className="max-h-32 rounded" />
-                ) : (
-                  <AttachmentPreview url={tx.receipt_url} />
-                )}
-                <span className="block text-[10px] text-emerald-600 font-semibold mt-1 text-center print:hidden">Click to view full size →</span>
-              </a>
+              <ProofLink key={idx} url={tx.receipt_url!} />
             ))}
+
           </div>
         </div>
       )}

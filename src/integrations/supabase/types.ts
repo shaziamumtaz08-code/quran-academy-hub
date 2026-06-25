@@ -10872,6 +10872,10 @@ export type Database = {
         Args: { _parent_id: string }
         Returns: string[]
       }
+      get_parent_children_teacher_ids: {
+        Args: { _parent_id: string }
+        Returns: string[]
+      }
       get_plan_for_month: {
         Args: { _billing_month: string; _student_id: string }
         Returns: string
@@ -10912,6 +10916,10 @@ export type Database = {
           timezone: string
           whatsapp_number: string
         }[]
+      }
+      get_student_teacher_ids: {
+        Args: { _student_id: string }
+        Returns: string[]
       }
       get_teacher_student_ids: {
         Args: { _teacher_id: string }
