@@ -29,6 +29,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
+import { FeePackagesTab, DiscountRulesTab } from '@/pages/FinanceSetup';
 import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel';
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
