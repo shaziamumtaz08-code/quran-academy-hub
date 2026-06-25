@@ -1349,9 +1349,8 @@ export default function Assignments() {
                         type="date"
                         value={effectiveFromDate}
                         onChange={(e) => setEffectiveFromDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
                       />
-                      <p className="text-[10px] text-muted-foreground">Past dates disabled. Default: 1st of next month.</p>
+                      <p className="text-[10px] text-muted-foreground">Back-dating allowed. Paid/locked salary months are protected automatically.</p>
                     </div>
                   </div>
                 )}
