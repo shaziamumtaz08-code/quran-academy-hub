@@ -170,7 +170,7 @@ function CourseFeePlansTab() {
 }
 
 // ─── Fee Packages Tab (1:1) ──────────────────────────────────────────
-function FeePackagesTab() {
+export function FeePackagesTab() {
   const { activeBranch, activeDivision } = useDivision();
   const activeBranchId = activeBranch?.id || null;
   const activeDivisionId = activeDivision?.id || null;
