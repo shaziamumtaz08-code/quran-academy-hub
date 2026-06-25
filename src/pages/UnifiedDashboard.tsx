@@ -15,7 +15,7 @@ import {
   BookOpen, CalendarCheck, CreditCard, Award, AlertTriangle,
   Receipt, User, Search, LayoutDashboard, Users, Clock, CheckSquare
 } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, format, parseISO, differenceInDays } from 'date-fns';
 import AvailableCoursesSection from '@/components/dashboard/AvailableCoursesSection';
 
 export default function UnifiedDashboard() {
@@ -173,19 +173,24 @@ export default function UnifiedDashboard() {
   });
 
   // ─── Stats: Pending fees ───
-  const { data: feeStats = { count: 0, total: 0 }, isLoading: loadingFees } = useQuery({
+  const { data: feeStats = { count: 0, total: 0, nextDueDate: null as string | null, nextDueAmount: 0, nextDueCurrency: '' }, isLoading: loadingFees } = useQuery({
     queryKey: ['dash-pending-fees', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('fee_invoices')
-        .select('amount, amount_paid, status, division_id')
+        .select('amount, amount_paid, status, division_id, due_date, billing_month, currency')
         .eq('student_id', user!.id)
-        .in('status', ['pending', 'overdue']);
+        .in('status', ['pending', 'partially_paid', 'overdue']);
       if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
       const { data } = await query;
-      if (!data?.length) return { count: 0, total: 0 };
+      if (!data?.length) return { count: 0, total: 0, nextDueDate: null, nextDueAmount: 0, nextDueCurrency: '' };
+      const sorted = [...data].sort((a: any, b: any) => String(a.due_date || `${a.billing_month || '9999-12'}-10`).localeCompare(String(b.due_date || `${b.billing_month || '9999-12'}-10`)));
+      const next = sorted[0] as any;
       return {
         count: data.length,
         total: data.reduce((sum, f) => sum + ((f.amount || 0) - (f.amount_paid || 0)), 0),
+        nextDueDate: next?.due_date || (next?.billing_month ? `${next.billing_month}-10` : null),
+        nextDueAmount: Math.max(0, Number(next?.amount || 0) - Number(next?.amount_paid || 0)),
+        nextDueCurrency: next?.currency || '',
       };
     },
     enabled: !!user?.id,

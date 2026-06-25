@@ -71,7 +71,8 @@ export function StudentDashboard() {
         .from('student_teacher_assignments')
         .select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)')
         .eq('student_id', activeStudentId!)
-        .eq('status', 'active')
+        .in('status', ['active', 'on_hold'])
+        .order('status', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
