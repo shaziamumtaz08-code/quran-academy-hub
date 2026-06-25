@@ -490,7 +490,7 @@ export function FeePackagesTab() {
 }
 
 // ─── Discount Rules Tab ──────────────────────────────────────────────
-function DiscountRulesTab() {
+export function DiscountRulesTab() {
   const { activeBranch, activeDivision } = useDivision();
   const activeBranchId = activeBranch?.id || null;
   const activeDivisionId = activeDivision?.id || null;
