@@ -940,7 +940,7 @@ export default function Payments() {
     setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '', manual_fee: false, manual_amount: '', manual_currency: 'USD' });
     setEditingPlanId(null);
-    setEffectiveFrom(currentBillingMonth);
+    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
   };
 
   // ─── Invoice generation: preview → confirm → commit ─────────────────
