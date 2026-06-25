@@ -108,8 +108,27 @@ export default function PrintSalary() {
   const monthLabel = new Date(y, m - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
   const invoiceNumber = payout.invoice_number || `SAL-${payout.salary_month.replace('-', '')}-${teacherProfile?.full_name?.substring(0, 3).toUpperCase() || 'XXX'}`;
 
+  const isArchived = (payout as any).is_archived === true;
+  const isRevised = (payout as any).is_revised === true;
+  const watermarkText = isArchived ? 'VOID — SUPERSEDED' : (isRevised ? 'REVISED' : null);
+
   return (
-    <div id="print-root" style={{ margin: '0 auto' }}>
+    <div id="print-root" style={{ margin: '0 auto', position: 'relative' }}>
+      {watermarkText && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            transform: 'rotate(-28deg)',
+            fontSize: 96, fontWeight: 900, letterSpacing: 6,
+            color: isArchived ? 'rgba(220,38,38,0.18)' : 'rgba(16,185,129,0.18)',
+            border: `8px solid ${isArchived ? 'rgba(220,38,38,0.22)' : 'rgba(16,185,129,0.22)'}`,
+            padding: '18px 48px', borderRadius: 12, whiteSpace: 'nowrap',
+          }}>{watermarkText}</div>
+        </div>
+      )}
+
       <div className="print:hidden flex items-center justify-between px-4 py-3 bg-muted/50 border-b max-w-[794px] mx-auto">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => window.close()}>
           <ArrowLeft className="h-3.5 w-3.5" /> Back

@@ -7367,8 +7367,11 @@ export type Database = {
         Row: {
           adjustment_amount: number
           amount_paid: number
+          archive_reason: string | null
+          archived_at: string | null
           base_salary: number
           calculation_json: Json | null
+          change_reason: string | null
           created_at: string
           deductions: number
           expense_amount: number
@@ -7376,6 +7379,8 @@ export type Database = {
           gross_salary: number
           id: string
           invoice_number: string | null
+          is_archived: boolean
+          is_revised: boolean
           locked_at: string | null
           locked_by: string | null
           net_salary: number
@@ -7386,22 +7391,28 @@ export type Database = {
           payment_channel: string | null
           payment_method: string | null
           payment_reference: string | null
+          prior_paid_amount: number
           receipt_url: string | null
           receipt_urls: string[] | null
           recipient_account_snapshot: Json | null
           revert_reason: string | null
           reverted_at: string | null
           reverted_by: string | null
+          revises_payout_id: string | null
           salary_month: string
           status: string
+          superseded_by_payout_id: string | null
           teacher_id: string
           updated_at: string
         }
         Insert: {
           adjustment_amount?: number
           amount_paid?: number
+          archive_reason?: string | null
+          archived_at?: string | null
           base_salary?: number
           calculation_json?: Json | null
+          change_reason?: string | null
           created_at?: string
           deductions?: number
           expense_amount?: number
@@ -7409,6 +7420,8 @@ export type Database = {
           gross_salary?: number
           id?: string
           invoice_number?: string | null
+          is_archived?: boolean
+          is_revised?: boolean
           locked_at?: string | null
           locked_by?: string | null
           net_salary?: number
@@ -7419,22 +7432,28 @@ export type Database = {
           payment_channel?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          prior_paid_amount?: number
           receipt_url?: string | null
           receipt_urls?: string[] | null
           recipient_account_snapshot?: Json | null
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
+          revises_payout_id?: string | null
           salary_month: string
           status?: string
+          superseded_by_payout_id?: string | null
           teacher_id: string
           updated_at?: string
         }
         Update: {
           adjustment_amount?: number
           amount_paid?: number
+          archive_reason?: string | null
+          archived_at?: string | null
           base_salary?: number
           calculation_json?: Json | null
+          change_reason?: string | null
           created_at?: string
           deductions?: number
           expense_amount?: number
@@ -7442,6 +7461,8 @@ export type Database = {
           gross_salary?: number
           id?: string
           invoice_number?: string | null
+          is_archived?: boolean
+          is_revised?: boolean
           locked_at?: string | null
           locked_by?: string | null
           net_salary?: number
@@ -7452,14 +7473,17 @@ export type Database = {
           payment_channel?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          prior_paid_amount?: number
           receipt_url?: string | null
           receipt_urls?: string[] | null
           recipient_account_snapshot?: Json | null
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
+          revises_payout_id?: string | null
           salary_month?: string
           status?: string
+          superseded_by_payout_id?: string | null
           teacher_id?: string
           updated_at?: string
         }
@@ -7490,6 +7514,20 @@ export type Database = {
             columns: ["paid_by"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_revises_payout_id_fkey"
+            columns: ["revises_payout_id"]
+            isOneToOne: false
+            referencedRelation: "salary_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_superseded_by_payout_id_fkey"
+            columns: ["superseded_by_payout_id"]
+            isOneToOne: false
+            referencedRelation: "salary_payouts"
             referencedColumns: ["id"]
           },
           {
@@ -11014,6 +11052,19 @@ export type Database = {
           _net_recurring_fee: number
           _session_duration: number
           _student_id: string
+        }
+        Returns: Json
+      }
+      revise_salary_payout: {
+        Args: {
+          _adjustment_amount: number
+          _base_salary: number
+          _calculation_json: Json
+          _change_reason: string
+          _deductions: number
+          _expense_amount: number
+          _extra_class_amount: number
+          _payout_id: string
         }
         Returns: Json
       }

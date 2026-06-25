@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -256,10 +256,25 @@ export default function SalaryEngine() {
       const { data } = await supabase
         .from('salary_payouts')
         .select('*')
-        .eq('salary_month', salaryMonth);
+        .eq('salary_month', salaryMonth)
+        .eq('is_archived', false);
       return data || [];
     },
   });
+
+  // Admin-only: archived (superseded) payouts for audit / watermark history
+  const { data: archivedPayouts = [] } = useQuery({
+    queryKey: ['salary-payouts-archived', salaryMonth],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('salary_payouts')
+        .select('*')
+        .eq('salary_month', salaryMonth)
+        .eq('is_archived', true);
+      return data || [];
+    },
+  });
+
 
   const { data: feeInvoices = [] } = useQuery({
     queryKey: ['fee-invoices-salary', salaryMonth],
@@ -540,10 +555,34 @@ export default function SalaryEngine() {
         status: 'confirmed',
       };
       if (existing) {
-        if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
-        // Preserve payment status for partially_paid records
-        if (existing.status === 'partially_paid') {
-          payload.status = 'partially_paid';
+        if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
+          // Already paid/locked — revise via RPC: archive old, insert new w/ prior_paid carry-forward
+          const reason = window.prompt(
+            `This payout is ${existing.status}. A revision will archive the current row and create a new one with prior paid amount (${existing.amount_paid}) carried over.\n\nReason for revision:`,
+            'Back-dated salary adjustment'
+          );
+          if (!reason) throw new Error('Revision cancelled');
+          const { data, error } = await (supabase as any).rpc('revise_salary_payout', {
+            _payout_id: existing.id,
+            _base_salary: payload.base_salary,
+            _extra_class_amount: payload.extra_class_amount,
+            _adjustment_amount: payload.adjustment_amount,
+            _expense_amount: payload.expense_amount,
+            _deductions: payload.deductions,
+            _calculation_json: payload.calculation_json,
+            _change_reason: reason,
+          });
+          if (error) throw error;
+          const delta = Number(data?.delta_to_settle ?? 0);
+          if (Math.abs(delta) > 0.01) {
+            toast({
+              title: 'Salary revised',
+              description: delta > 0
+                ? `Teacher is owed ${delta.toFixed(2)} — issue a follow-up payout manually.`
+                : `Teacher was overpaid by ${Math.abs(delta).toFixed(2)} — adjust on next month's sheet.`,
+            });
+          }
+          return;
         }
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
@@ -552,6 +591,7 @@ export default function SalaryEngine() {
         if (error) throw error;
       }
     },
+
     onSuccess: () => {
       toast({ title: 'Salary saved & confirmed' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
@@ -1073,6 +1113,40 @@ export default function SalaryEngine() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* ── Archived (superseded) payouts — admin audit trail ── */}
+        {archivedPayouts.length > 0 && (
+          <Card className="border-amber-200/60 bg-amber-50/40 dark:bg-amber-950/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <AlertCircle className="h-4 w-4" /> Archived payouts for {salaryMonth} ({archivedPayouts.length})
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Superseded by revisions. Hidden from teachers. Click to view the void statement.</p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-1.5">
+                {archivedPayouts.map((p: any) => {
+                  const t = allSalariedProfiles.find((x: any) => x.id === p.teacher_id);
+                  return (
+                    <div key={p.id} className="flex items-center justify-between text-xs bg-background/60 rounded px-3 py-2 border border-amber-200/40">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50 text-[10px]">VOID</Badge>
+                        <span className="font-medium">{t?.full_name || p.teacher_id.slice(0,8)}</span>
+                        <span className="text-muted-foreground">Net {Number(p.net_salary).toFixed(2)} · Paid {Number(p.amount_paid).toFixed(2)}</span>
+                        {p.archive_reason && <span className="text-muted-foreground italic">— {p.archive_reason}</span>}
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => window.open(`/print-salary/${p.id}`, '_blank')}>
+                        View
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
 
         {/* ── Salary Sheet Dialog ── */}
         <SalarySheetDialog
