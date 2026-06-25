@@ -273,13 +273,16 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Preferred Class Time</p>
           <p className="text-[11px] text-muted-foreground -mt-1">Add at least 2 specific slots so we can match a teacher.</p>
           <div>
-            <Label className="text-xs">Timezone</Label>
-            <Select value={form.timezone} onValueChange={v => setForm(p => ({ ...p, timezone: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select timezone..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {LEAD_TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs">Timezone (auto-synced from country)</Label>
+            <div className="mt-1 h-10 px-3 flex items-center justify-between rounded-md border border-input bg-muted/40 text-sm">
+              <span className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className={form.timezone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Select country to set timezone'}
+                </span>
+              </span>
+              {form.timezone && <Badge variant="secondary" className="text-[10px]">Synced</Badge>}
+            </div>
           </div>
           <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
             <p className="text-xs font-semibold">🟢 Slot 1 — Most Preferred</p>
