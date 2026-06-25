@@ -32,7 +32,7 @@ export function WorkHubCard() {
   });
 
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border shadow-card">
+    <div className="bg-card rounded-2xl p-3 md:p-4 border border-border shadow-card">
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-[12px] font-semibold text-muted-foreground">Work hub</p>
         <button
