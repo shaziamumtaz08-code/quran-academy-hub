@@ -519,7 +519,8 @@ export default function Payments() {
       let q = supabase
         .from('student_billing_plans')
         .select('id', { count: 'exact', head: true })
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .is('superseded_by', null);
       if (branchId) q = q.eq('branch_id', branchId);
       if (divisionId) q = q.eq('division_id', divisionId);
       const { count, error } = await q;
