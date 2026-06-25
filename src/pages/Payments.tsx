@@ -1721,7 +1721,7 @@ export default function Payments() {
                 setStatusViewFilter={setStatusViewFilter}
                 onCloseMonth={() => {
                   const fcyVariance = Math.max(0, pendingPKR - (
-                    invoices
+                    activeInvoices
                       .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
                       .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
                   ));
