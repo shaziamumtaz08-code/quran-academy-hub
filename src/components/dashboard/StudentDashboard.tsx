@@ -406,7 +406,7 @@ export function StudentDashboard() {
 
   const NextClassCard = (
     <div
-      className="rounded-xl border px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+      className="rounded-xl border px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
       style={{
         background: 'linear-gradient(135deg, #0f2a3a 60%, #1a3d4f)',
         borderColor: '#1e4a5e',
