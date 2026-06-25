@@ -654,6 +654,27 @@ export type Database = {
           },
         ]
       }
+      billing_plan_backfill_log: {
+        Row: {
+          id: string
+          logged_at: string
+          note: string
+          plan_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          note: string
+          plan_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          note?: string
+          plan_id?: string
+        }
+        Relationships: []
+      }
       billing_plan_history: {
         Row: {
           changed_by: string | null
@@ -3795,6 +3816,8 @@ export type Database = {
         Row: {
           amount: number
           amount_paid: number
+          archive_reason: string | null
+          archived_at: string | null
           assignment_id: string | null
           billing_month: string
           branch_id: string | null
@@ -3804,21 +3827,31 @@ export type Database = {
           due_date: string | null
           forgiven_amount: number
           id: string
+          is_archived: boolean
+          is_prorated: boolean
+          is_revised: boolean
+          line_items: Json | null
           paid_at: string | null
           payment_instructions: Json | null
           payment_method: string | null
           period_from: string | null
           period_to: string | null
           plan_id: string | null
+          prorated_days: number | null
+          prorated_from_date: string | null
           remark: string | null
+          revises_invoice_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           student_account_snapshot: Json | null
           student_id: string
+          superseded_by_invoice_id: string | null
           updated_at: string
         }
         Insert: {
           amount?: number
           amount_paid?: number
+          archive_reason?: string | null
+          archived_at?: string | null
           assignment_id?: string | null
           billing_month: string
           branch_id?: string | null
@@ -3828,21 +3861,31 @@ export type Database = {
           due_date?: string | null
           forgiven_amount?: number
           id?: string
+          is_archived?: boolean
+          is_prorated?: boolean
+          is_revised?: boolean
+          line_items?: Json | null
           paid_at?: string | null
           payment_instructions?: Json | null
           payment_method?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
+          prorated_days?: number | null
+          prorated_from_date?: string | null
           remark?: string | null
+          revises_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           student_account_snapshot?: Json | null
           student_id: string
+          superseded_by_invoice_id?: string | null
           updated_at?: string
         }
         Update: {
           amount?: number
           amount_paid?: number
+          archive_reason?: string | null
+          archived_at?: string | null
           assignment_id?: string | null
           billing_month?: string
           branch_id?: string | null
@@ -3852,16 +3895,24 @@ export type Database = {
           due_date?: string | null
           forgiven_amount?: number
           id?: string
+          is_archived?: boolean
+          is_prorated?: boolean
+          is_revised?: boolean
+          line_items?: Json | null
           paid_at?: string | null
           payment_instructions?: Json | null
           payment_method?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
+          prorated_days?: number | null
+          prorated_from_date?: string | null
           remark?: string | null
+          revises_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           student_account_snapshot?: Json | null
           student_id?: string
+          superseded_by_invoice_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3894,6 +3945,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fee_invoices_revises_invoice_id_fkey"
+            columns: ["revises_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fee_invoices_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -3905,6 +3963,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_superseded_by_invoice_id_fkey"
+            columns: ["superseded_by_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -8259,10 +8324,12 @@ export type Database = {
           assignment_id: string | null
           base_package_id: string | null
           branch_id: string | null
+          change_reason: string | null
           created_at: string
           currency: string
           division_id: string | null
           duration_surcharge: number
+          effective_from: string
           flat_discount: number
           global_discount_id: string | null
           id: string
@@ -8271,16 +8338,20 @@ export type Database = {
           net_recurring_fee: number
           session_duration: number
           student_id: string
+          superseded_at: string | null
+          superseded_by: string | null
           updated_at: string
         }
         Insert: {
           assignment_id?: string | null
           base_package_id?: string | null
           branch_id?: string | null
+          change_reason?: string | null
           created_at?: string
           currency?: string
           division_id?: string | null
           duration_surcharge?: number
+          effective_from?: string
           flat_discount?: number
           global_discount_id?: string | null
           id?: string
@@ -8289,16 +8360,20 @@ export type Database = {
           net_recurring_fee?: number
           session_duration?: number
           student_id: string
+          superseded_at?: string | null
+          superseded_by?: string | null
           updated_at?: string
         }
         Update: {
           assignment_id?: string | null
           base_package_id?: string | null
           branch_id?: string | null
+          change_reason?: string | null
           created_at?: string
           currency?: string
           division_id?: string | null
           duration_surcharge?: number
+          effective_from?: string
           flat_discount?: number
           global_discount_id?: string | null
           id?: string
@@ -8307,6 +8382,8 @@ export type Database = {
           net_recurring_fee?: number
           session_duration?: number
           student_id?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -8357,6 +8434,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "student_billing_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -10577,6 +10661,18 @@ export type Database = {
           gov_id_type: string
         }[]
       }
+      build_split_month_lines: {
+        Args: {
+          _effective_from: string
+          _new_monthly: number
+          _old_monthly: number
+        }
+        Returns: Json
+      }
+      calc_prorated_amount: {
+        Args: { _from_date: string; _monthly: number }
+        Returns: number
+      }
       calculate_attendance_metrics: {
         Args: {
           _join_time: string
@@ -10666,6 +10762,10 @@ export type Database = {
       get_parent_children_ids: {
         Args: { _parent_id: string }
         Returns: string[]
+      }
+      get_plan_for_month: {
+        Args: { _billing_month: string; _student_id: string }
+        Returns: string
       }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_schema_overview: { Args: never; Returns: Json }
@@ -10774,9 +10874,31 @@ export type Database = {
         Args: { p_country: string; raw_phone: string }
         Returns: string
       }
+      preview_plan_revision: {
+        Args: { _effective_from: string; _student_id: string }
+        Returns: Json
+      }
       release_license: {
         Args: { _session_id: string; _teacher_id: string }
         Returns: boolean
+      }
+      revise_billing_plan: {
+        Args: {
+          _assignment_id?: string
+          _base_package_id: string
+          _branch_id?: string
+          _change_reason?: string
+          _currency: string
+          _division_id?: string
+          _duration_surcharge?: number
+          _effective_from: string
+          _flat_discount: number
+          _global_discount_id: string
+          _net_recurring_fee: number
+          _session_duration: number
+          _student_id: string
+        }
+        Returns: Json
       }
       share_a_class: {
         Args: { _user_a: string; _user_b: string }
