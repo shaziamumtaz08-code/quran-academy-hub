@@ -188,12 +188,13 @@ export function NextClassCountdown() {
 
   return (
     <NextClassBanner
-      title={nextClass.subjectName}
-      scheduleLabel={`${nextClass.studentName} · ${shortDay} · ${timeDisplay}`}
+      studentName={nextClass.studentName}
+      scheduleLabel={`${nextClass.subjectName} · ${shortDay} ${timeDisplay}`}
       countdownLabel={countdownLabel}
+      platform="Online class"
       action={activeSession ? (
         <Button
-          className="dashboard-next-class-banner__join-button gap-2"
+          className="gap-2 w-full md:w-auto"
           onClick={() => {
             const link = (activeSession.license as any)?.meeting_link;
             if (link) window.open(link, '_blank');
@@ -203,7 +204,7 @@ export function NextClassCountdown() {
           Rejoin
         </Button>
       ) : (
-        <StartClassButton className="dashboard-next-class-banner__join-button" />
+        <StartClassButton className="w-full md:w-auto" />
       )}
     />
   );
