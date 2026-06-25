@@ -377,41 +377,107 @@ export function StudentDashboard() {
   const meetingLink = (liveSession as any)?.license?.meeting_link;
 
   const isLive = !!(liveSession && meetingLink);
+
+  // Time until next class
+  const timeUntil = useMemo(() => {
+    if (!sched?.day_of_week || !sched?.student_local_time) return null;
+    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const targetDow = DAYS.indexOf(String(sched.day_of_week).toLowerCase());
+    if (targetDow < 0) return null;
+    const [hh, mm] = String(sched.student_local_time).split(':').map(Number);
+    const now = new Date();
+    const target = new Date(now);
+    let diff = (targetDow - now.getDay() + 7) % 7;
+    target.setDate(now.getDate() + diff);
+    target.setHours(hh, mm || 0, 0, 0);
+    if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 7);
+    const mins = Math.round((target.getTime() - now.getTime()) / 60000);
+    if (mins < 60) return `${mins}m away`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h < 24) return `${h}h ${m}m away`;
+    const d = Math.floor(h / 24);
+    return `${d}d ${h % 24}h away`;
+  }, [sched]);
+
+  const lastLessonText = (recentLessons[0] as any)?.lesson_covered || null;
+  const scheduleStr = sched ? `${String(sched.day_of_week).charAt(0).toUpperCase()}${String(sched.day_of_week).slice(1)} ${fmtTime12(sched.student_local_time)}` : null;
+  const hasUpcoming = !!sched || isLive;
+
   const NextClassCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Next Class</div>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-[hsl(var(--navy))] text-white font-bold flex items-center justify-center shrink-0">
-          {teacherInitial}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-xs text-muted-foreground">Teacher</div>
-          <div className="font-semibold text-sm truncate">{teacherName}</div>
-          <div className="text-sm text-muted-foreground truncate">
-            {subjectName}
+    <div
+      className="rounded-xl border px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+      style={{
+        background: 'linear-gradient(135deg, #0f2a3a 60%, #1a3d4f)',
+        borderColor: '#1e4a5e',
+      }}
+    >
+      {/* Left */}
+      <div className="flex flex-col gap-1 min-w-0">
+        {hasUpcoming ? (
+          <>
+            <span
+              className="inline-flex items-center gap-1.5 self-start text-[10px] font-semibold uppercase tracking-wider rounded-full px-2.5 py-1 border"
+              style={{
+                background: 'rgba(126,207,196,0.15)',
+                color: '#7ecfc4',
+                borderColor: 'rgba(126,207,196,0.25)',
+              }}
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+              </span>
+              {isLive ? 'LIVE NOW' : 'NEXT CLASS'}
+            </span>
+            <div className="text-[16px] font-medium truncate" style={{ color: '#f0f8fa' }}>
+              {teacherName}
+            </div>
+            <div className="text-[12px] truncate" style={{ color: '#7ecfc4' }}>
+              {subjectName}{scheduleStr ? ` · ${scheduleStr}` : ''}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-1.5 text-[11px]" style={{ color: '#a8d8e0' }}>
+              {timeUntil && !isLive && (
+                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {timeUntil}</span>
+              )}
+              {lastLessonText && (
+                <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" /> {lastLessonText}</span>
+              )}
+              <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {stats.present} of {stats.total} sessions</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2 text-[13px]" style={{ color: '#7ecfc4' }}>
+            <Clock className="h-4 w-4" /> No class scheduled today
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
+        )}
+      </div>
+
+      {/* Right */}
+      {hasUpcoming && (
+        <div className="flex flex-col items-stretch md:items-end gap-1.5 shrink-0">
           <a
             href={isLive ? meetingLink : '#'}
             target={isLive ? '_blank' : undefined}
             rel="noreferrer"
             onClick={(e) => { if (!isLive) e.preventDefault(); }}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-white ${
-              isLive
-                ? 'bg-emerald-500 hover:bg-emerald-600 animate-pulse'
-                : 'bg-cyan-500 hover:bg-cyan-600 opacity-60 cursor-not-allowed'
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 text-[13px] font-medium text-white transition-colors ${
+              isLive ? 'animate-pulse' : ''
             }`}
+            style={{
+              background: isLive ? '#1d9e75' : '#1d9e75',
+              opacity: isLive ? 1 : 0.95,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#0f6e56'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#1d9e75'; }}
           >
             {isLive ? 'Join Now' : 'Join Class'} <ExternalLink className="h-3.5 w-3.5" />
           </a>
-          {sched && !isLive && (
-            <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {sched.day_of_week} {fmtTime12(sched.student_local_time)}
-            </div>
-          )}
+          <div className="text-[11px] text-right" style={{ color: '#a8d8e0' }}>
+            {isLive ? 'Class in progress' : 'Link goes live 5 min before'}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
