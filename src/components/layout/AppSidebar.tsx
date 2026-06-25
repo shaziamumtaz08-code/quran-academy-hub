@@ -152,8 +152,10 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
 
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   if (role === 'student' || role === 'parent') {
-    return { title: 'Communication', subtitle: '', items: [] };
+    // Students/parents: hide chat/whatsapp/notifications/zoom, but keep Work Hub access.
+    return { title: 'Work Hub', subtitle: '', items: [{ label: 'Work Hub', href: '/hub' }] };
   }
+
   const r = (role || 'student') as AppRole;
   const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
