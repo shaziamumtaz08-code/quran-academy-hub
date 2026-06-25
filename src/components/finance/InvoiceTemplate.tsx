@@ -192,21 +192,9 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
               </div>
             )}
             {invoice.receipt_url && (
-              <a
-                href={invoice.receipt_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px', borderRadius: 8,
-                  background: '#0a192f', color: '#fff', fontSize: 12, fontWeight: 600,
-                  textDecoration: 'none',
-                }}
-                className="print:hidden"
-              >
-                View Payment Proof ↗
-              </a>
+              <ProofButton url={invoice.receipt_url} />
             )}
+
             {invoice.receipt_url && (
               <p style={{ fontSize: 10, color: '#6b7280', margin: 0, wordBreak: 'break-all', maxWidth: '100%', display: 'none' }} className="only-print">
                 Proof: {invoice.receipt_url}
