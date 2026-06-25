@@ -132,21 +132,39 @@ function PersonalInfoSection({ form, updateField, selectedSubjects, toggleSubjec
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date of Birth</Label>
-              <Input type="date" value={form.date_of_birth} onChange={e => updateField('date_of_birth', e.target.value)} className="mt-1 h-11" />
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Country *</Label>
+              <Select value={form.country_code || ''} onValueChange={v => applyCountrySelection(updateField, v)}>
+                <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select country..." /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {ALL_COUNTRIES.map(c => (
+                    <SelectItem key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">City</Label>
-              <Input value={form.city} onChange={e => updateField('city', e.target.value)} placeholder="e.g. New York" className="mt-1 h-11" />
+              <SearchableCitySelect
+                countryCode={form.country_code || ''}
+                value={form.city}
+                onValueChange={v => updateField('city', v)}
+                className="mt-1 h-11"
+              />
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Country *</Label>
-              <Input value={form.country} onChange={e => updateField('country', e.target.value)} placeholder="e.g. United States" className="mt-1 h-11" />
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone</Label>
+              <div className="mt-1 h-11 px-3 flex items-center rounded-md border border-input bg-muted/40 text-sm">
+                <Clock className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <span className={form.timezone ? 'text-foreground' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Auto-detected from country'}
+                </span>
+              </div>
             </div>
           </div>
+
         </CardContent>
       </Card>
 
