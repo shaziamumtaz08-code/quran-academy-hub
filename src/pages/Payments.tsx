@@ -667,8 +667,8 @@ export default function Payments() {
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
 
   // LCY / FCY invoice splits
-  const lcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
-  const fcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
+  const lcyInvoicesAll = useMemo(() => invoiceViewBase.filter(i => i.currency === 'PKR'), [invoiceViewBase]);
+  const fcyInvoicesAll = useMemo(() => invoiceViewBase.filter(i => i.currency !== 'PKR'), [invoiceViewBase]);
 
   // Invoice filter helper
   const applyInvoiceFilters = useCallback((list: InvoiceRow[]) => {
