@@ -80,21 +80,46 @@ export function TeacherStatsRow() {
 
   if (isLoading) return <Skeleton className="h-28 rounded-2xl" />;
 
+  const rows = [
+    [
+      { val: stats?.sessions ?? 0, label: 'Sessions scheduled', color: 'text-teal' },
+      { val: `${stats?.attendanceRate ?? 0}%`, label: 'Avg attendance', color: 'text-sky' },
+      { val: stats?.students ?? 0, label: 'Active students', color: 'text-gold' },
+    ],
+    [
+      { val: `${stats?.attendanceRate ?? 0}%`, label: 'My attendance rate', color: 'text-teal' },
+      { val: '—', label: 'Student progress', color: 'text-sky' },
+      { val: '—', label: 'Retention', color: 'text-gold' },
+    ],
+  ];
+
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border shadow-card">
-      <p className="font-extrabold text-[15px] text-foreground mb-3">📈 My Stats — {monthName}</p>
-      <div className="grid grid-cols-3 gap-2.5">
-        {[
-          { val: stats?.sessions ?? 0, label: 'Sessions', sub: 'Scheduled', color: 'text-teal' },
-          { val: `${stats?.attendanceRate ?? 0}%`, label: 'Attendance', sub: 'Avg. across students', color: 'text-sky' },
-          { val: stats?.students ?? 0, label: 'Students', sub: 'Active', color: 'text-gold' },
-        ].map((s) => (
-          <div key={s.label} className="text-center bg-secondary/50 rounded-xl py-2.5 px-1.5">
-            <p className={`text-2xl font-black ${s.color}`}>{s.val}</p>
-            <p className="text-xs font-bold text-foreground">{s.label}</p>
-            <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+    <div className="bg-card rounded-2xl p-4 border border-border shadow-card h-full flex flex-col">
+      <div className="flex items-center justify-between mb-2.5">
+        <p className="text-[12px] font-semibold text-muted-foreground">My stats — {monthName}</p>
+        <span className="text-[11px] text-primary">View all →</span>
+      </div>
+      <div className="flex flex-col gap-2 flex-1">
+        {rows.map((row, i) => (
+          <div key={i} className="grid grid-cols-3 gap-2">
+            {row.map((s) => (
+              <div key={s.label} className="text-center bg-secondary/50 rounded-lg py-2 px-1">
+                <p className={`text-lg font-semibold ${s.color}`}>{s.val}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
+              </div>
+            ))}
           </div>
         ))}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2 text-center bg-secondary/50 rounded-lg py-2 px-1">
+            <p className="text-lg font-semibold text-muted-foreground">—</p>
+            <p className="text-[10px] text-muted-foreground">This month earning (net)</p>
+          </div>
+          <div className="text-center bg-secondary/50 rounded-lg py-2 px-1">
+            <p className="text-lg font-semibold text-destructive">0</p>
+            <p className="text-[10px] text-muted-foreground">Missed classes</p>
+          </div>
+        </div>
       </div>
     </div>
   );
