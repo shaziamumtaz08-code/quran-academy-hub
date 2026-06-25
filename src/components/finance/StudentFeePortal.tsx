@@ -79,15 +79,24 @@ const statusBadgeClass = (s: string) => {
 export function StudentFeePortal({
   invoices, isLoading, ledgerPaidMap, getRate, isParentView,
 }: Props) {
+  const { activeKidId, setActiveKidId, kids: contextKids } = useKidContext();
+
+  // Build child list from BOTH the parent's linked kids (KidContext) AND any kids
+  // who appear in the invoice set. A child with zero invoices (e.g. just-wiped plan)
+  // must still appear in the selector — otherwise switching to them silently falls
+  // back to a sibling and the parent sees the wrong child's fees.
   const children = useMemo(() => {
     const map = new Map<string, string>();
+    if (isParentView) {
+      contextKids.forEach(k => map.set(k.id, k.full_name));
+    }
     invoices.forEach(i => {
-      if (i.profiles?.full_name) map.set(i.student_id, i.profiles.full_name);
+      if (i.profiles?.full_name && !map.has(i.student_id)) {
+        map.set(i.student_id, i.profiles.full_name);
+      }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [invoices]);
-
-  const { activeKidId, setActiveKidId } = useKidContext();
+  }, [invoices, isParentView, contextKids]);
   const [selectedChildId, setSelectedChildIdLocal] = useState<string | null>(null);
   const setSelectedChildId = (id: string) => {
     setSelectedChildIdLocal(id);
