@@ -807,8 +807,8 @@ export default function Payments() {
   }, [fcyInvoicesAll, ledgerPaidMap]);
 
   // Counts for summary card 3 (Pending) + tab badges
-  const overdueCount = useMemo(() => invoices.filter(i => i.status === 'overdue').length, [invoices]);
-  const pendingCount = useMemo(() => invoices.filter(i => i.status === 'pending' || i.status === 'partially_paid').length, [invoices]);
+  const overdueCount = useMemo(() => activeInvoices.filter(i => i.status === 'overdue').length, [activeInvoices]);
+  const pendingCount = useMemo(() => activeInvoices.filter(i => i.status === 'pending' || i.status === 'partially_paid').length, [activeInvoices]);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0');
