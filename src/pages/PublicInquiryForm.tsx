@@ -315,15 +315,9 @@ function ContactSection({ form, updateField }: any) {
           {/* Slot 1 */}
           <div className="rounded-lg bg-background p-3 border border-border/60">
             <p className="text-xs font-semibold text-foreground mb-2">🟢 Slot 1 — Most Preferred *</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
-                <Input type="time" value={form.slot1_from} onChange={e => updateField('slot1_from', e.target.value)} className="mt-1 h-11" />
-              </div>
-              <div>
-                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
-                <Input type="time" value={form.slot1_to} onChange={e => updateField('slot1_to', e.target.value)} className="mt-1 h-11" />
-              </div>
+            <div>
+              <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Class start time</Label>
+              <Input type="time" value={form.slot1_from} onChange={e => updateField('slot1_from', e.target.value)} className="mt-1 h-11" />
             </div>
             <Input value={form.slot1_note} onChange={e => updateField('slot1_note', e.target.value)}
               placeholder="Optional note (e.g. weekdays only, after Maghrib)" className="mt-2 h-10 text-xs" />
@@ -332,19 +326,14 @@ function ContactSection({ form, updateField }: any) {
           {/* Slot 2 */}
           <div className="rounded-lg bg-background p-3 border border-border/60">
             <p className="text-xs font-semibold text-foreground mb-2">🟡 Slot 2 — Backup *</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
-                <Input type="time" value={form.slot2_from} onChange={e => updateField('slot2_from', e.target.value)} className="mt-1 h-11" />
-              </div>
-              <div>
-                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
-                <Input type="time" value={form.slot2_to} onChange={e => updateField('slot2_to', e.target.value)} className="mt-1 h-11" />
-              </div>
+            <div>
+              <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Class start time</Label>
+              <Input type="time" value={form.slot2_from} onChange={e => updateField('slot2_from', e.target.value)} className="mt-1 h-11" />
             </div>
             <Input value={form.slot2_note} onChange={e => updateField('slot2_note', e.target.value)}
               placeholder="Optional note" className="mt-2 h-10 text-xs" />
           </div>
+
         </div>
       </CardContent>
     </Card>
@@ -392,12 +381,13 @@ export default function PublicInquiryForm() {
   const buildPreferredTime = () => {
     const parts: string[] = [];
     if (form.timezone) parts.push(`TZ: ${form.timezone}`);
-    if (form.slot1_from && form.slot1_to) {
-      parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    if (form.slot1_from) {
+      parts.push(`Slot 1: ${form.slot1_from}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
     }
-    if (form.slot2_from && form.slot2_to) {
-      parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    if (form.slot2_from) {
+      parts.push(`Slot 2: ${form.slot2_from}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
     }
+
     return parts.join(' | ') || null;
   };
 
@@ -447,7 +437,7 @@ export default function PublicInquiryForm() {
   };
 
   const otherInvalid = selectedSubjects.includes('other') && !form.other_subject.trim();
-  const slotsInvalid = !form.slot1_from || !form.slot1_to || !form.slot2_from || !form.slot2_to || !form.timezone;
+  const slotsInvalid = !form.slot1_from || !form.slot2_from || !form.timezone;
 
   if (submitted) return <SuccessScreen />;
 
