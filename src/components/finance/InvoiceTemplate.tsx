@@ -58,6 +58,10 @@ interface InvoiceTemplateProps {
     period_to?: string | null;
     paid_at?: string | null;
     receipt_url?: string | null;
+    is_archived?: boolean | null;
+    is_revised?: boolean | null;
+    archive_reason?: string | null;
+    superseded_by_invoice_id?: string | null;
   };
   invoiceNumber: string;
   orgName?: string;
@@ -86,9 +90,24 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
   const status = getStatusLabel(invoice.status);
   const outstanding = invoice.amount - invoice.amount_paid - invoice.forgiven_amount;
   const logoSrc = orgLogo || logoDark;
+  const watermarkText = invoice.is_archived ? 'VOID — SUPERSEDED' : (invoice.is_revised ? 'REVISED' : null);
 
   return (
     <div style={{ width: 794, margin: '0 auto', background: '#fff', color: '#111827', fontFamily: "'Inter', 'Segoe UI', sans-serif", position: 'relative', overflow: 'hidden' }}>
+      {watermarkText && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            transform: 'rotate(-28deg)',
+            fontSize: 82, fontWeight: 900, letterSpacing: 5,
+            color: invoice.is_archived ? 'rgba(220,38,38,0.17)' : 'rgba(16,185,129,0.17)',
+            border: `7px solid ${invoice.is_archived ? 'rgba(220,38,38,0.22)' : 'rgba(16,185,129,0.22)'}`,
+            padding: '16px 42px', borderRadius: 12, whiteSpace: 'nowrap',
+          }}>{watermarkText}</div>
+        </div>
+      )}
       {/* Decorative top accent */}
       <div style={{ height: 6, background: 'linear-gradient(90deg, #0a192f 0%, #00a8e8 50%, #0a192f 100%)' }} />
 
@@ -110,6 +129,17 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
           }}>
             {status.label}
           </span>
+          {watermarkText && (
+            <span style={{
+              display: 'inline-block', marginTop: 6, marginLeft: 6, padding: '3px 12px',
+              fontSize: 10, fontWeight: 800, borderRadius: 20,
+              background: invoice.is_archived ? '#fee2e2' : '#dcfce7',
+              color: invoice.is_archived ? '#991b1b' : '#166534',
+              letterSpacing: '0.06em'
+            }}>
+              {watermarkText}
+            </span>
+          )}
         </div>
       </div>
 

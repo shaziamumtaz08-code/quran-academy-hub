@@ -22,6 +22,7 @@ export default function PrintInvoice() {
         .select(`
           id, student_id, amount, currency, billing_month, due_date, status,
           amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
+          is_archived, is_revised, archive_reason, superseded_by_invoice_id,
           payment_instructions, student_account_snapshot,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
@@ -156,6 +157,10 @@ export default function PrintInvoice() {
           teacher_name: teacherName || undefined,
           paid_at: (transactions as any[]).filter(t => t.payment_date).sort((a, b) => (b.payment_date > a.payment_date ? 1 : -1))[0]?.payment_date || null,
           receipt_url: (transactions as any[]).find(t => t.receipt_url)?.receipt_url || null,
+          is_archived: (invoice as any).is_archived,
+          is_revised: (invoice as any).is_revised,
+          archive_reason: (invoice as any).archive_reason,
+          superseded_by_invoice_id: (invoice as any).superseded_by_invoice_id,
         }}
         invoiceNumber={invoiceNumber}
         orgName={org?.name}

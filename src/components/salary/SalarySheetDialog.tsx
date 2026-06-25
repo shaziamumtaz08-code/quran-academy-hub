@@ -195,6 +195,9 @@ export function SalarySheetDialog({
   const hasStudents = teacher.students.length > 0;
   const hasRoleSalaries = (teacher.roleSalaries || []).length > 0;
   const staffType = teacher.staffType || 'teacher';
+  const payoutRecord = (teacher as any)?.payout || null;
+  const isArchivedSheet = payoutRecord?.is_archived === true;
+  const isRevisedSheet = payoutRecord?.is_revised === true;
 
   const handlePrint = () => {
     const payoutId = (teacher as any)?.payoutId;
@@ -281,12 +284,27 @@ export function SalarySheetDialog({
                 <div className="space-y-2 flex-1 min-w-0">
                   <div>
                     <p className="text-[10px] uppercase tracking-widest opacity-70 font-medium">Salary Statement</p>
-                    <h2 className="text-xl sm:text-2xl font-serif font-bold mt-1 truncate">{teacher.teacherName}</h2>
-                    {staffType !== 'teacher' && (
-                      <Badge className="mt-1 text-[10px] bg-white/20 border-white/30">
-                        {staffType === 'dual' ? 'Dual Role' : 'Staff'}
-                      </Badge>
-                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-serif font-bold truncate">{teacher.teacherName}</h2>
+                      {isArchivedSheet && (
+                        <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px]">VOID — SUPERSEDED</Badge>
+                      )}
+                      {isRevisedSheet && !isArchivedSheet && (
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">REVISED</Badge>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {staffType !== 'teacher' && (
+                        <Badge className="text-[10px] bg-white/20 border-white/30">
+                          {staffType === 'dual' ? 'Dual Role' : 'Staff'}
+                        </Badge>
+                      )}
+                      {isRevisedSheet && payoutRecord?.revises_payout_id && (
+                        <Badge className="text-[10px] bg-white/15 border-white/25 text-primary-foreground/90">
+                          replaces {String(payoutRecord.revises_payout_id).slice(0, 8)}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm opacity-90">
                     {teacherProfile?.whatsapp_number && (

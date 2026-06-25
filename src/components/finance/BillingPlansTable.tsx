@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { trackActivity } from '@/lib/activityLogger';
 import RevisePlanDialog from './RevisePlanDialog';
+import { cn } from '@/lib/utils';
 
 interface BillingPlan {
   id: string;
@@ -25,6 +26,10 @@ interface BillingPlan {
   duration_surcharge: number;
   is_active: boolean;
   created_at: string;
+  effective_from?: string | null;
+  superseded_by?: string | null;
+  superseded_at?: string | null;
+  change_reason?: string | null;
   profiles: { full_name: string } | null;
   fee_packages: { name: string; amount: number } | null;
 }
@@ -40,6 +45,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [revisePlan, setRevisePlan] = useState<BillingPlan | null>(null);
+  const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -56,6 +62,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
         .select(`
           id, student_id, base_package_id, session_duration, net_recurring_fee,
           currency, flat_discount, duration_surcharge, is_active, created_at,
+          effective_from, superseded_by, superseded_at, change_reason,
           profiles!student_billing_plans_student_id_fkey(full_name),
           fee_packages!student_billing_plans_base_package_id_fkey(name, amount)
         `)
@@ -77,7 +84,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   }, [plans]);
 
   const filtered = useMemo(() => {
-    let result = plans;
+    let result = plans.filter(p => archiveView === 'archived' ? !!p.superseded_by : !p.superseded_by);
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p =>
@@ -99,8 +106,10 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
       });
     }
     return result;
-  }, [plans, search, currencyFilter, studentFilter, sortCol, sortDir]);
+  }, [plans, archiveView, search, currencyFilter, studentFilter, sortCol, sortDir]);
 
+  const activePlanCount = useMemo(() => plans.filter(p => !p.superseded_by).length, [plans]);
+  const archivedPlanCount = useMemo(() => plans.filter(p => !!p.superseded_by).length, [plans]);
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
@@ -163,8 +172,22 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
             <RotateCcw className="h-4 w-4" />
           </Button>
         )}
+        <div className="flex items-center gap-1 rounded-xl border bg-background/80 px-1 py-1 shadow-sm">
+          <Button type="button" size="sm" variant={archiveView === 'active' ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setArchiveView('active')}>
+            Active <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{activePlanCount}</Badge>
+          </Button>
+          <Button type="button" size="sm" variant={archiveView === 'archived' ? 'destructive' : 'ghost'} className="h-7 text-xs" onClick={() => setArchiveView('archived')}>
+            Archived <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{archivedPlanCount}</Badge>
+          </Button>
+        </div>
         <span className="text-sm text-muted-foreground">{filtered.length} plan(s)</span>
       </div>
+
+      {archiveView === 'archived' && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+          Showing superseded billing plans only. These are read-only audit records created when a plan was revised from an effective date.
+        </div>
+      )}
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {isLoading ? (
@@ -185,14 +208,20 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                 <TableHead>Currency</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
                 <TableHead className="text-center">Active</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>Effective From</TableHead>
+                <TableHead>{archiveView === 'archived' ? 'Archived On' : 'Created'}</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(plan => (
-                <TableRow key={plan.id}>
-                  <TableCell className="font-medium">{plan.profiles?.full_name || '—'}</TableCell>
+                <TableRow key={plan.id} className={cn(plan.superseded_by && 'bg-red-50/45 opacity-90')}>
+                  <TableCell className="font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {plan.profiles?.full_name || '—'}
+                      {plan.superseded_by && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">ARCHIVED</Badge>}
+                    </span>
+                  </TableCell>
                   <TableCell><Badge variant="outline" className="text-xs">{plan.fee_packages?.name || '—'}</Badge></TableCell>
                   <TableCell className="text-center">{plan.session_duration} min</TableCell>
                   <TableCell className="text-right font-mono font-semibold">{Number(plan.net_recurring_fee).toLocaleString()}</TableCell>
@@ -201,23 +230,26 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     {Number(plan.flat_discount) > 0 ? Number(plan.flat_discount).toLocaleString() : '—'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={plan.is_active} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
+                    <Switch checked={plan.is_active} disabled={!!plan.superseded_by} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(plan.created_at).toLocaleDateString()}
+                    {plan.effective_from ? new Date(plan.effective_from).toLocaleDateString() : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date((archiveView === 'archived' && plan.superseded_at) ? plan.superseded_at : plan.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {onViewPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => setRevisePlan(plan)} title="Revise rate (insert new history row)">
+                      {!plan.superseded_by && <Button variant="ghost" size="icon" onClick={() => setRevisePlan(plan)} title="Revise rate (insert new history row)">
                         <Sparkles className="h-4 w-4 text-primary" />
-                      </Button>
-                      {onEditPlan && (
+                      </Button>}
+                      {onEditPlan && !plan.superseded_by && (
                         <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit (legacy)"><Pencil className="h-4 w-4" /></Button>
                       )}
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(plan.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
+                      {!plan.superseded_by && <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(plan.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>}
                     </div>
                   </TableCell>
                 </TableRow>
