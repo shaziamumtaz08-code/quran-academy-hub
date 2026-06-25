@@ -107,11 +107,22 @@ export function StudentFeePortal({
 
 
   const studentInvoices = useMemo(() => {
-    if (isParentView && selectedChildId) {
-      return invoices.filter(i => i.student_id === selectedChildId);
-    }
-    return invoices;
+    const base = (isParentView && selectedChildId)
+      ? invoices.filter(i => i.student_id === selectedChildId)
+      : invoices;
+    // Students/parents never see archived (superseded) invoices — only the active revised one
+    return base.filter(i => !i.is_archived);
   }, [invoices, isParentView, selectedChildId]);
+
+  // IDs of invoices that *replaced* an older one (i.e. revisions). Computed from archived
+  // siblings the admin view exposes; for students RLS may hide them and the set is just empty.
+  const revisedIds = useMemo(() => {
+    const s = new Set<string>();
+    invoices.forEach(i => {
+      if (i.is_archived && i.superseded_by_invoice_id) s.add(i.superseded_by_invoice_id);
+    });
+    return s;
+  }, [invoices]);
 
   const focusedStudentId = isParentView
     ? selectedChildId
@@ -447,9 +458,16 @@ export function StudentFeePortal({
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-1.5 shrink-0">
-                            <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(effectiveStatus))}>
-                              {statusLabel(effectiveStatus)}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              {primaryInvoice && revisedIds.has(primaryInvoice.id) && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-300 text-violet-700 bg-violet-50">
+                                  Revised
+                                </Badge>
+                              )}
+                              <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(effectiveStatus))}>
+                                {statusLabel(effectiveStatus)}
+                              </Badge>
+                            </div>
                             {primaryInvoice && (
                               <button
                                 onClick={() => window.open(`/finance/print/invoice/${primaryInvoice.id}`, '_blank')}
