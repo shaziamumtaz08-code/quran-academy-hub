@@ -299,14 +299,18 @@ function ContactSection({ form, updateField }: any) {
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone *</Label>
-            <Select value={form.timezone} onValueChange={v => updateField('timezone', v)}>
-              <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select your timezone..." /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone (auto-detected)</Label>
+            <div className="mt-1 h-11 px-3 flex items-center justify-between rounded-md border border-input bg-background text-sm">
+              <span className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-blue-600" />
+                <span className={form.timezone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {form.timezone ? form.timezone.replace('_', ' ') : 'Select country above to set timezone'}
+                </span>
+              </span>
+              {form.timezone && <Badge variant="secondary" className="text-[10px]">Synced</Badge>}
+            </div>
           </div>
+
 
           {/* Slot 1 */}
           <div className="rounded-lg bg-background p-3 border border-border/60">
