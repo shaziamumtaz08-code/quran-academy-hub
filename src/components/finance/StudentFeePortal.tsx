@@ -28,6 +28,9 @@ interface InvoiceLite {
   period_from: string | null;
   period_to: string | null;
   paid_at?: string | null;
+  is_archived?: boolean | null;
+  superseded_by_invoice_id?: string | null;
+  archive_reason?: string | null;
   profiles: { full_name: string } | null;
 }
 
