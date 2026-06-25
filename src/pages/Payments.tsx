@@ -873,35 +873,31 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
-        // Fetch current plan values for history before updating
-        const { data: oldPlan } = await supabase.from('student_billing_plans')
-          .select('base_package_id, session_duration, duration_surcharge, flat_discount, net_recurring_fee, currency, global_discount_id')
+        // Load current plan to pass full context to revise_billing_plan RPC.
+        // RPC handles: insert new history row, archive/replace affected month invoice
+        // with mid-month proration (old rate before effective_from, new rate from it),
+        // and reissue future pending invoices at the new rate. Paid invoices are never touched.
+        const { data: cur, error: curErr } = await supabase.from('student_billing_plans')
+          .select('student_id, assignment_id, branch_id, division_id, duration_surcharge')
           .eq('id', editingPlanId).single();
+        if (curErr) throw curErr;
 
-        const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
-        if (error) throw error;
-
-        // Record history
-        if (oldPlan) {
-          const userId = (await supabase.auth.getUser()).data.user?.id;
-          await supabase.from('billing_plan_history').insert({
-            plan_id: editingPlanId,
-            changed_by: userId || null,
-            effective_from: effectiveFrom,
-            previous_values: oldPlan,
-            new_values: planFields,
-            reason: null,
-          } as any);
-        }
-
-        // Cascade update ONLY pending invoices from the effective month onward
-        const { error: invoiceErr } = await supabase
-          .from('fee_invoices')
-          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
-          .eq('plan_id', editingPlanId)
-          .eq('status', 'pending' as any)
-          .gte('billing_month', effectiveFrom);
-        if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
+        const { error: rpcErr } = await (supabase as any).rpc('revise_billing_plan', {
+          _student_id: cur.student_id,
+          _base_package_id: planFields.base_package_id,
+          _session_duration: planFields.session_duration,
+          _flat_discount: planFields.flat_discount,
+          _global_discount_id: planFields.global_discount_id,
+          _net_recurring_fee: planFields.net_recurring_fee,
+          _currency: planFields.currency,
+          _effective_from: effectiveFrom,
+          _change_reason: 'Edited via plan editor',
+          _assignment_id: (cur as any).assignment_id ?? null,
+          _branch_id: (cur as any).branch_id ?? null,
+          _division_id: (cur as any).division_id ?? null,
+          _duration_surcharge: planFields.duration_surcharge ?? (cur as any).duration_surcharge ?? 0,
+        });
+        if (rpcErr) throw rpcErr;
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
