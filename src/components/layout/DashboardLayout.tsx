@@ -651,6 +651,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DivisionSwitcher />
               </div>
               <NotificationBell />
+              {activeRole && activeRole !== "admin" && activeRole !== "super_admin" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                  onClick={() => navigate("/communication?view=dms&recipient=admin")}
+                  aria-label="Chat with admin"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Chat admin</span>
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
