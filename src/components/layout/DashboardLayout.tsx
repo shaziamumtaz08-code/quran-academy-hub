@@ -648,7 +648,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <img src={logoDark} alt="Al-Quran Time" className="h-8 w-8 rounded-md object-cover" />
             </Link>
             <div className="ml-auto flex min-w-0 items-center gap-2 md:gap-3">
-              <div className="max-w-[190px] min-w-0">
+              <div className="hidden md:block max-w-[190px] min-w-0">
                 <DivisionSwitcher />
               </div>
               <NotificationBell />
