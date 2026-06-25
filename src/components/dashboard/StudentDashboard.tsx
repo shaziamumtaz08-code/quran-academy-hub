@@ -406,7 +406,7 @@ export function StudentDashboard() {
 
   const NextClassCard = (
     <div
-      className="rounded-xl border px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+      className="rounded-xl border px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
       style={{
         background: 'linear-gradient(135deg, #0f2a3a 60%, #1a3d4f)',
         borderColor: '#1e4a5e',
@@ -455,13 +455,13 @@ export function StudentDashboard() {
 
       {/* Right */}
       {hasUpcoming && (
-        <div className="flex flex-col items-stretch md:items-end gap-1.5 shrink-0">
+        <div className="flex flex-col items-stretch md:items-end gap-1.5 shrink-0 w-full md:w-auto">
           <a
             href={isLive ? meetingLink : '#'}
             target={isLive ? '_blank' : undefined}
             rel="noreferrer"
             onClick={(e) => { if (!isLive) e.preventDefault(); }}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 text-[13px] font-medium text-white transition-colors ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 text-[13px] font-medium text-white transition-colors w-full md:w-auto ${
               isLive ? 'animate-pulse' : ''
             }`}
             style={{
@@ -482,12 +482,12 @@ export function StudentDashboard() {
   );
 
   const PerformanceCard = (
-    <div className="bg-card border border-border rounded-xl p-3.5">
+    <div className="bg-card border border-border rounded-xl p-3 md:p-3.5">
       <div className="flex items-center justify-between mb-2.5">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Performance</div>
         <div className="text-[10px] text-muted-foreground">{format(new Date(), 'MMMM yyyy')}</div>
       </div>
-      <div className="relative h-28">
+      <div className="relative h-20 md:h-28">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             innerRadius="70%" outerRadius="100%"
@@ -557,7 +557,7 @@ export function StudentDashboard() {
   ];
 
   const QuickLinksCard = (
-    <div className="bg-card border border-border rounded-xl p-3.5">
+    <div className="bg-card border border-border rounded-xl p-3 md:p-3.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Quick links</div>
       <div className="grid grid-cols-3 gap-2">
         {quickLinks.map(q => {
@@ -590,7 +590,7 @@ export function StudentDashboard() {
   const hasAnyFee = !!(lastPayment || displayDueInvoice);
 
   const FeeStatusCard = !hasAnyFee ? null : (
-    <div className="bg-card border border-border rounded-xl p-3.5">
+    <div className="bg-card border border-border rounded-xl p-3 md:p-3.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Fee status</div>
       {!displayDueInvoice && lastPayment ? (
         <div className="flex items-center gap-2 py-1">
@@ -652,7 +652,7 @@ export function StudentDashboard() {
   if (openTicketCount > 0) actionItems.push({ icon: Tag, iconCol: 'text-slate-600', dotCol: 'bg-slate-400', label: `${openTicketCount} open request${openTicketCount > 1 ? 's' : ''}`, href: '/hub' });
 
   const ActionCenterCard = (
-    <div className="bg-card border border-border rounded-xl px-3.5 py-3">
+    <div className="bg-card border border-border rounded-xl px-3 py-3 md:px-3.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Action centre</div>
       {actionItems.length === 0 ? (
         <div className="flex items-center gap-2 py-0.5">
@@ -684,7 +684,7 @@ export function StudentDashboard() {
     : 0;
 
   const RecentLessonsCard = (
-    <div className="bg-card border border-border rounded-xl p-3.5">
+    <div className="bg-card border border-border rounded-xl p-3 md:p-3.5">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent lessons</div>
         <button onClick={() => navigate('/my-courses')} className="text-[11px] text-teal-600 hover:underline">View all →</button>
@@ -725,7 +725,7 @@ export function StudentDashboard() {
   );
 
   const RecentResultsCard = (
-    <div className="bg-card border border-border rounded-xl p-3.5">
+    <div className="bg-card border border-border rounded-xl p-3 md:p-3.5">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent results</div>
         <button onClick={() => navigate('/student-reports')} className="text-[11px] text-teal-600 hover:underline">View all →</button>
