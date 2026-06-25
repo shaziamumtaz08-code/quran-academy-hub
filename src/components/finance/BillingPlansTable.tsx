@@ -6,12 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { trackActivity } from '@/lib/activityLogger';
+import RevisePlanDialog from './RevisePlanDialog';
 
 interface BillingPlan {
   id: string;
@@ -38,6 +39,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [revisePlan, setRevisePlan] = useState<BillingPlan | null>(null);
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -209,8 +211,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                       {onViewPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
                       )}
+                      <Button variant="ghost" size="icon" onClick={() => setRevisePlan(plan)} title="Revise rate (insert new history row)">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </Button>
                       {onEditPlan && (
-                        <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit (legacy)"><Pencil className="h-4 w-4" /></Button>
                       )}
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(plan.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -238,6 +243,14 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {revisePlan && (
+        <RevisePlanDialog
+          open={!!revisePlan}
+          onOpenChange={(o) => !o && setRevisePlan(null)}
+          plan={revisePlan as any}
+        />
+      )}
     </div>
   );
 }

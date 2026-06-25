@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft, Network, ExternalLink } from 'lucide-react';
 import { TransferAssignmentDialog } from './TransferAssignmentDialog';
+import { PaidLeaveCoverDialog } from './PaidLeaveCoverDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
@@ -92,6 +93,7 @@ export function StudentDetailDrawer({
 }: StudentDetailDrawerProps) {
   const { user, activeRole } = useAuth();
   const [transferOpen, setTransferOpen] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   
   // Fetch student's full profile (age, gender, country, city)
@@ -377,20 +379,31 @@ export function StudentDetailDrawer({
               </div>
             </div>
 
-            {/* Transfer / Substitute Button — Admin only */}
+            {/* Transfer / Substitute / Paid Leave Cover — Admin only */}
             {isAdmin && currentAssignment && (
               <>
                 <Separator />
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => setTransferOpen(true)}
-                >
-                  <ArrowRightLeft className="h-4 w-4" />
-                  Transfer / Assign Substitute
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setTransferOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Transfer / Substitute
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setCoverOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Paid Leave Cover
+                  </Button>
+                </div>
               </>
             )}
+
 
             </TabsContent>
 
@@ -421,6 +434,16 @@ export function StudentDetailDrawer({
           currentTeacherId={teacherId}
           currentTeacherName={teacherProfile?.full_name || 'Current Teacher'} 
           assignmentId={currentAssignment.id}
+        />
+      )}
+
+      {student && currentAssignment && (
+        <PaidLeaveCoverDialog
+          open={coverOpen}
+          onOpenChange={setCoverOpen}
+          originalAssignmentId={currentAssignment.id}
+          originalTeacherName={teacherProfile?.full_name || 'Current Teacher'}
+          studentName={student.full_name}
         />
       )}
     </Sheet>
