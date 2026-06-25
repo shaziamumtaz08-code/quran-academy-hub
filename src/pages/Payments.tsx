@@ -907,6 +907,7 @@ export default function Payments() {
         is_active: true,
         branch_id: branchId,
         division_id: divisionId,
+        effective_from: effectiveFrom,
       }));
       const { error } = await supabase.from('student_billing_plans').insert(rows);
       if (error) throw error;
