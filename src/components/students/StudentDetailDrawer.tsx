@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft, Network, ExternalLink } from 'lucide-react';
 import { TransferAssignmentDialog } from './TransferAssignmentDialog';
 import { PaidLeaveCoverDialog } from './PaidLeaveCoverDialog';
+import { CoverManagementPanel } from './CoverManagementPanel';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
@@ -401,6 +402,7 @@ export function StudentDetailDrawer({
                     Paid Leave Cover
                   </Button>
                 </div>
+                <CoverManagementPanel originalAssignmentId={currentAssignment.id} />
               </>
             )}
 
