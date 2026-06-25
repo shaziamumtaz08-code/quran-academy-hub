@@ -528,6 +528,13 @@ export default function Payments() {
     enabled: !!branchId && !isReadOnlyView,
   });
 
+  const activeInvoices = useMemo(() => invoices.filter(i => !i.is_archived), [invoices]);
+  const archivedInvoices = useMemo(() => invoices.filter(i => !!i.is_archived), [invoices]);
+  const invoiceViewBase = useMemo(() => {
+    if (isReadOnlyView) return activeInvoices;
+    return invoiceArchiveView === 'archived' ? archivedInvoices : activeInvoices;
+  }, [isReadOnlyView, invoiceArchiveView, activeInvoices, archivedInvoices]);
+
   const familyGroups = useMemo(() => {
     const map: Record<string, { parentName: string; studentIds: string[] }> = {};
     parentLinks.forEach(link => {
@@ -539,9 +546,9 @@ export default function Payments() {
       }
     });
     return Object.entries(map).filter(([_, fam]) =>
-      invoices.some(inv => fam.studentIds.includes(inv.student_id) && inv.status !== 'paid')
+      activeInvoices.some(inv => fam.studentIds.includes(inv.student_id) && inv.status !== 'paid')
     );
-  }, [parentLinks, invoices]);
+  }, [parentLinks, activeInvoices]);
 
   // ─── Computed Values ─────────────────────────────────────────────
   const selectedPkg = useMemo(() => packages.find(p => p.id === feeForm.base_package_id), [packages, feeForm.base_package_id]);
