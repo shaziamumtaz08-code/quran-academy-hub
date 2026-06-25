@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
-import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
+import { PrayerBar } from "./teacher/PrayerBar";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
