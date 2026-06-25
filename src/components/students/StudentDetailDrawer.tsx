@@ -379,20 +379,31 @@ export function StudentDetailDrawer({
               </div>
             </div>
 
-            {/* Transfer / Substitute Button — Admin only */}
+            {/* Transfer / Substitute / Paid Leave Cover — Admin only */}
             {isAdmin && currentAssignment && (
               <>
                 <Separator />
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => setTransferOpen(true)}
-                >
-                  <ArrowRightLeft className="h-4 w-4" />
-                  Transfer / Assign Substitute
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setTransferOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Transfer / Substitute
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setCoverOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Paid Leave Cover
+                  </Button>
+                </div>
               </>
             )}
+
 
             </TabsContent>
 
