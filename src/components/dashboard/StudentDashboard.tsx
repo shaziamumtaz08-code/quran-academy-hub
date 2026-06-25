@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import {
-  MessageCircle, Send, FolderOpen, Network, Video, FileText,
-  Clock, ExternalLink, CheckCircle2, XCircle, AlertCircle, Tag, Bell,
+  MessageCircle, CalendarOff, FolderOpen, Users, Video, FileText, ClipboardList,
+  Clock, ExternalLink, CheckCircle2, XCircle, AlertCircle, Tag, Bell, Flame, CheckCircle,
 } from 'lucide-react';
 import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer,
