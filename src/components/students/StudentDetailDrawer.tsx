@@ -436,6 +436,16 @@ export function StudentDetailDrawer({
           assignmentId={currentAssignment.id}
         />
       )}
+
+      {student && currentAssignment && (
+        <PaidLeaveCoverDialog
+          open={coverOpen}
+          onOpenChange={setCoverOpen}
+          originalAssignmentId={currentAssignment.id}
+          originalTeacherName={teacherProfile?.full_name || 'Current Teacher'}
+          studentName={student.full_name}
+        />
+      )}
     </Sheet>
   );
 }
