@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1552,7 +1551,7 @@ export default function Payments() {
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -3182,6 +3181,6 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

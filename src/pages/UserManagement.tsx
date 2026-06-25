@@ -86,6 +86,8 @@ import {
   Briefcase,
   HelpCircle,
   LogIn,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -1303,6 +1305,13 @@ export default function UserManagement() {
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterStatus || !!filterGender || !!filterDivision || showArchived || !!searchTerm;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const unassignedTableRef = useRef<HTMLDivElement>(null);
+  const usersTableRef = useRef<HTMLDivElement>(null);
+  const scrollTable = (ref: React.RefObject<HTMLDivElement>, direction: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 520), behavior: 'smooth' });
+  };
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
@@ -2007,7 +2016,18 @@ export default function UserManagement() {
             {showUnassigned && (activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
               <Card className="overflow-hidden border-amber-300/60 dark:border-amber-800/60 shadow-sm">
                 <CardContent className="p-0">
-                  <Table wrapperClassName="overflow-auto max-h-[calc(100vh-280px)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-amber-200/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
+                    <span className="font-medium">Swipe/scroll sideways to see every column and action.</span>
+                    <div className="flex gap-1">
+                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(unassignedTableRef, -1)}>
+                        <ChevronsLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(unassignedTableRef, 1)}>
+                        <ChevronsRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Table wrapperRef={unassignedTableRef} className="min-w-[1180px]" wrapperClassName="max-h-[calc(100vh-300px)] overflow-x-scroll overflow-y-auto overscroll-contain">
                     <TableHeader className="bg-amber-50/50 dark:bg-amber-950/10">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
@@ -2118,7 +2138,19 @@ export default function UserManagement() {
                     )}
                   </div>
                 ) : (
-                  <Table wrapperClassName="overflow-auto max-h-[calc(100vh-280px)]">
+                  <>
+                  <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    <span className="font-medium">Swipe/scroll sideways to see phone, location, and all action icons.</span>
+                    <div className="flex gap-1">
+                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(usersTableRef, -1)}>
+                        <ChevronsLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(usersTableRef, 1)}>
+                        <ChevronsRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Table wrapperRef={usersTableRef} className="min-w-[1280px]" wrapperClassName="max-h-[calc(100vh-300px)] overflow-x-scroll overflow-y-auto overscroll-contain">
 
                     <TableHeader className="bg-muted/40 backdrop-blur-sm">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
@@ -2415,6 +2447,7 @@ export default function UserManagement() {
                       ))}
                     </TableBody>
                   </Table>
+                  </>
                 )}
               </CardContent>
             </Card>

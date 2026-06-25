@@ -15,7 +15,7 @@ import {
   BookOpen, CalendarCheck, CreditCard, Award, AlertTriangle,
   Receipt, User, Search, LayoutDashboard, Users, Clock, CheckSquare
 } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, format, parseISO, differenceInDays } from 'date-fns';
 import AvailableCoursesSection from '@/components/dashboard/AvailableCoursesSection';
 
 export default function UnifiedDashboard() {
@@ -173,19 +173,24 @@ export default function UnifiedDashboard() {
   });
 
   // ─── Stats: Pending fees ───
-  const { data: feeStats = { count: 0, total: 0 }, isLoading: loadingFees } = useQuery({
+  const { data: feeStats = { count: 0, total: 0, nextDueDate: null as string | null, nextDueAmount: 0, nextDueCurrency: '' }, isLoading: loadingFees } = useQuery({
     queryKey: ['dash-pending-fees', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('fee_invoices')
-        .select('amount, amount_paid, status, division_id')
+        .select('amount, amount_paid, status, division_id, due_date, billing_month, currency')
         .eq('student_id', user!.id)
-        .in('status', ['pending', 'overdue']);
+        .in('status', ['pending', 'partially_paid', 'overdue']);
       if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
       const { data } = await query;
-      if (!data?.length) return { count: 0, total: 0 };
+      if (!data?.length) return { count: 0, total: 0, nextDueDate: null, nextDueAmount: 0, nextDueCurrency: '' };
+      const sorted = [...data].sort((a: any, b: any) => String(a.due_date || `${a.billing_month || '9999-12'}-10`).localeCompare(String(b.due_date || `${b.billing_month || '9999-12'}-10`)));
+      const next = sorted[0] as any;
       return {
         count: data.length,
         total: data.reduce((sum, f) => sum + ((f.amount || 0) - (f.amount_paid || 0)), 0),
+        nextDueDate: next?.due_date || (next?.billing_month ? `${next.billing_month}-10` : null),
+        nextDueAmount: Math.max(0, Number(next?.amount || 0) - Number(next?.amount_paid || 0)),
+        nextDueCurrency: next?.currency || '',
       };
     },
     enabled: !!user?.id,
@@ -416,11 +421,20 @@ export default function UnifiedDashboard() {
   });
 
   const statsLoading = loadingCourses || loadingAtt || loadingFees || loadingCerts;
+  const nextDueDateLabel = feeStats.nextDueDate ? format(parseISO(feeStats.nextDueDate), 'd MMM yyyy') : '—';
+  const nextDueDays = feeStats.nextDueDate ? differenceInDays(parseISO(feeStats.nextDueDate), new Date()) : null;
+  const nextDueSubLabel = feeStats.nextDueDate
+    ? nextDueDays !== null && nextDueDays < 0
+      ? `${Math.abs(nextDueDays)}d overdue`
+      : nextDueDays === 0
+        ? 'Due today'
+        : `Due in ${nextDueDays}d`
+    : 'No open invoice';
 
   const statCards = [
     { icon: isOneToOne ? Users : BookOpen, label: isOneToOne ? 'Active students' : 'Active courses', value: activeCourses, color: 'text-blue-600' },
     { icon: CalendarCheck, label: 'Attendance', value: `${attendancePct}%`, color: 'text-emerald-600' },
-    { icon: CreditCard, label: 'Pending fees', value: feeStats.count, color: 'text-amber-600' },
+    { icon: CreditCard, label: 'Next due date', value: nextDueDateLabel, subValue: nextDueSubLabel, color: nextDueDays !== null && nextDueDays < 0 ? 'text-red-600' : 'text-amber-600' },
     { icon: Award, label: 'Certificates', value: certCount, color: 'text-violet-600' },
   ];
 
@@ -477,9 +491,10 @@ export default function UnifiedDashboard() {
                 <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center bg-muted", s.color)}>
                   <s.icon className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold text-foreground truncate">{s.value}</p>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
+                  {'subValue' in s && s.subValue ? <p className="text-[10px] text-muted-foreground mt-0.5">{s.subValue}</p> : null}
                 </div>
               </>
             )}

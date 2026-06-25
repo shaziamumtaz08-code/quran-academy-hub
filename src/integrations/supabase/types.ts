@@ -10819,6 +10819,15 @@ export type Database = {
         }
         Returns: Json
       }
+      find_or_create_assignment_dm: {
+        Args: {
+          _student_id: string
+          _student_name?: string
+          _teacher_id: string
+          _teacher_name?: string
+        }
+        Returns: string
+      }
       find_profile_by_gov_id: {
         Args: { _gov_id: string }
         Returns: {

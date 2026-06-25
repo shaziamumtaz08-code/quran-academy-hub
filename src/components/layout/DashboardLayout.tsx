@@ -254,8 +254,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
-      { label: "Communication", href: "/communication", icon: MessageSquare },
-      { label: "Work Hub", href: "/work-hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
   }
@@ -274,8 +272,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
-      { label: "Communication", href: "/communication", icon: MessageSquare },
-      { label: "Work Hub", href: "/work-hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
   }
@@ -689,7 +685,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
+          <main className="flex-1 overflow-auto bg-background">
             <ActingAsBanner />
             {children}
           </main>
