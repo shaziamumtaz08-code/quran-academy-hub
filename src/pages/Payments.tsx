@@ -29,6 +29,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
+import { FeePackagesTab, DiscountRulesTab } from '@/pages/FinanceSetup';
 import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel';
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
@@ -2052,15 +2053,40 @@ export default function Payments() {
 
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
-              <BillingPlansAuditPanel
-                onSetupForStudent={(sid) => {
-                  resetFeeForm();
-                  setSelectedStudentIds([sid]);
-                  setSelectionMode('individual');
-                  setSetupOpen(true);
-                }}
-              />
-              <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
+              <Tabs defaultValue="student-plans" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="student-plans">Student Plans</TabsTrigger>
+                  <TabsTrigger value="packages">Fee Packages</TabsTrigger>
+                  <TabsTrigger value="discounts">Discount Rules</TabsTrigger>
+                </TabsList>
+                <TabsContent value="student-plans" className="space-y-4">
+                  <BillingPlansAuditPanel
+                    onSetupForStudent={(sid) => {
+                      resetFeeForm();
+                      setSelectedStudentIds([sid]);
+                      setSelectionMode('individual');
+                      setSetupOpen(true);
+                    }}
+                  />
+                  <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
+                </TabsContent>
+                <TabsContent value="packages">
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Named package templates (e.g. "UAE 30min", "USD 45min"). Used as the <strong>Base Package</strong> in Student Plans.
+                    </p>
+                    <FeePackagesTab />
+                  </div>
+                </TabsContent>
+                <TabsContent value="discounts">
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Reusable discount rules (% or flat) that can be applied as the <strong>Global Discount</strong> in Student Plans.
+                    </p>
+                    <DiscountRulesTab />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
           )}
         </Tabs>
