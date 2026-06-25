@@ -478,6 +478,7 @@ export default function Payments() {
   useEffect(() => {
     if (!invoices.length || !Object.keys(ledgerPaidMap).length) return;
     const drifted = invoices.filter(inv => {
+      if (inv.is_archived) return false;
       const ledgerPaid = ledgerPaidMap[inv.id];
       if (ledgerPaid === undefined) return false;
       return Math.abs(Number(inv.amount_paid || 0) - ledgerPaid) > 0.01;
