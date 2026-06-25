@@ -1114,6 +1114,40 @@ export default function SalaryEngine() {
           </CardContent>
         </Card>
 
+        {/* ── Archived (superseded) payouts — admin audit trail ── */}
+        {archivedPayouts.length > 0 && (
+          <Card className="border-amber-200/60 bg-amber-50/40 dark:bg-amber-950/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <AlertCircle className="h-4 w-4" /> Archived payouts for {salaryMonth} ({archivedPayouts.length})
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Superseded by revisions. Hidden from teachers. Click to view the void statement.</p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-1.5">
+                {archivedPayouts.map((p: any) => {
+                  const t = allSalariedProfiles.find((x: any) => x.id === p.teacher_id);
+                  return (
+                    <div key={p.id} className="flex items-center justify-between text-xs bg-background/60 rounded px-3 py-2 border border-amber-200/40">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50 text-[10px]">VOID</Badge>
+                        <span className="font-medium">{t?.full_name || p.teacher_id.slice(0,8)}</span>
+                        <span className="text-muted-foreground">Net {Number(p.net_salary).toFixed(2)} · Paid {Number(p.amount_paid).toFixed(2)}</span>
+                        {p.archive_reason && <span className="text-muted-foreground italic">— {p.archive_reason}</span>}
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => window.open(`/print-salary/${p.id}`, '_blank')}>
+                        View
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
+
         {/* ── Salary Sheet Dialog ── */}
         <SalarySheetDialog
           open={sheetOpen}
