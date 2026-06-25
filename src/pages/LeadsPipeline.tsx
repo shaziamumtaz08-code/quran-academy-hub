@@ -108,7 +108,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const queryClient = useQueryClient();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
-    name: '', email: '', phone_whatsapp: '', country: '', city: '',
+    name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '',
     for_whom: 'child', child_name: '', child_age: '',
     message: '', gender: '',
     current_level_specimen: '', learning_goals: '',
