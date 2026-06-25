@@ -4,7 +4,21 @@ import logoDark from '@/assets/logo-dark.jpg';
 import { useSignedUrl } from '@/lib/signedUrl';
 
 function ProofButton({ url }: { url: string }) {
-  const signed = useSignedUrl(url) || url;
+  const signed = useSignedUrl(url);
+  if (!signed) {
+    return (
+      <span
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '8px 16px', borderRadius: 8,
+          background: '#e5e7eb', color: '#6b7280', fontSize: 12, fontWeight: 600,
+        }}
+        className="print:hidden"
+      >
+        Loading proof…
+      </span>
+    );
+  }
   return (
     <a
       href={signed}
@@ -22,6 +36,7 @@ function ProofButton({ url }: { url: string }) {
     </a>
   );
 }
+
 
 
 interface InvoiceTemplateProps {

@@ -4,8 +4,15 @@ import { AttachmentPreview } from '@/components/shared/FileUploadField';
 import { useSignedUrl } from '@/lib/signedUrl';
 
 function ProofLink({ url }: { url: string }) {
-  const signed = useSignedUrl(url) || url;
+  const signed = useSignedUrl(url);
   const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  if (!signed) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2 text-xs text-gray-500">
+        <span className="animate-pulse">Loading proof…</span>
+      </div>
+    );
+  }
   return (
     <a
       href={signed}
@@ -23,6 +30,7 @@ function ProofLink({ url }: { url: string }) {
     </a>
   );
 }
+
 
 
 interface Transaction {
