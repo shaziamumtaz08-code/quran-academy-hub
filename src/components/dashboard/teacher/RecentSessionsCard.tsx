@@ -28,7 +28,7 @@ export function RecentSessionsCard() {
   });
 
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border shadow-card h-full">
+    <div className="bg-card rounded-2xl p-3 md:p-4 border border-border shadow-card h-full">
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-[12px] font-semibold text-muted-foreground">Recent sessions</p>
         <button

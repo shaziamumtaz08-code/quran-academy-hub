@@ -34,7 +34,7 @@ export function TeacherQuickLinks() {
   ];
 
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border shadow-card h-full">
+    <div className="bg-card rounded-2xl p-3 md:p-4 border border-border shadow-card h-full">
       <p className="text-[12px] font-semibold text-muted-foreground mb-2.5">Quick links</p>
       <div className="grid grid-cols-3 gap-1.5">
         {items.map(({ icon: Icon, label, tone, onClick }) => {

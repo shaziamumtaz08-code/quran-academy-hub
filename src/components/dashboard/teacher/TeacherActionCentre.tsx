@@ -47,7 +47,7 @@ export function TeacherActionCentre() {
 
   return (
     <div className="flex flex-col gap-2.5 h-full">
-      <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex-1">
+      <div className="bg-card rounded-2xl p-3 md:p-4 border border-border shadow-card flex-1">
         <p className="text-[12px] font-semibold text-muted-foreground mb-2">Action centre</p>
 
         <div className="flex items-start gap-2 py-2 border-b border-border">
