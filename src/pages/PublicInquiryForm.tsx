@@ -427,8 +427,8 @@ export default function PublicInquiryForm() {
         preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
-        date_of_birth: form.date_of_birth || null,
         current_level_specimen: form.current_level_specimen || null,
+
         learning_goals: form.learning_goals || null,
         guardian_name: form.guardian_name || null,
         guardian_relationship: form.guardian_relationship || null,
