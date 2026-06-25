@@ -1,6 +1,28 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import logoDark from '@/assets/logo-dark.jpg';
+import { useSignedUrl } from '@/lib/signedUrl';
+
+function ProofButton({ url }: { url: string }) {
+  const signed = useSignedUrl(url) || url;
+  return (
+    <a
+      href={signed}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 16px', borderRadius: 8,
+        background: '#0a192f', color: '#fff', fontSize: 12, fontWeight: 600,
+        textDecoration: 'none',
+      }}
+      className="print:hidden"
+    >
+      View Payment Proof ↗
+    </a>
+  );
+}
+
 
 interface InvoiceTemplateProps {
   invoice: {
