@@ -1,6 +1,29 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { useSignedUrl } from '@/lib/signedUrl';
+
+function ProofLink({ url }: { url: string }) {
+  const signed = useSignedUrl(url) || url;
+  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  return (
+    <a
+      href={signed}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="border border-gray-200 rounded-lg p-2 inline-block hover:border-emerald-400 transition-colors print:pointer-events-none"
+      title="Click to open full-size proof"
+    >
+      {isImage ? (
+        <img src={signed} alt="Receipt proof" className="max-h-32 rounded" />
+      ) : (
+        <AttachmentPreview url={url} />
+      )}
+      <span className="block text-[10px] text-emerald-600 font-semibold mt-1 text-center print:hidden">Click to view full size →</span>
+    </a>
+  );
+}
+
 
 interface Transaction {
   id: string;
