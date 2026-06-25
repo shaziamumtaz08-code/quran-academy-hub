@@ -377,8 +377,8 @@ export default function PublicInquiryForm() {
   const [submitted, setSubmitted] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
-    name: '', email: '', phone_whatsapp: '', country: '', city: '',
-    for_whom: 'child', gender: '', date_of_birth: '',
+    name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '',
+    for_whom: 'child', gender: '',
     child_age: '', current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
     other_subject: '',
@@ -387,6 +387,7 @@ export default function PublicInquiryForm() {
     slot2_from: '', slot2_to: '', slot2_note: '',
     message: '',
   });
+
 
   const buildPreferredTime = () => {
     const parts: string[] = [];
