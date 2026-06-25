@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
+import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
 
@@ -358,33 +359,13 @@ export function StudentDashboard() {
   });
 
   // Pieces -------------------------------------------------------------
+  const firstName = (displayName || 'Student').split(' ')[0];
   const Header = (
-    <div className="bg-[hsl(var(--navy))] text-white px-4 lg:px-6 py-4 rounded-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-bold">Assalamu Alaikum, {displayName}</h1>
-        <p className="text-xs text-cyan-400 mt-0.5">
-          {gregorian} {hijriStr ? <> · {hijriStr}</> : null}
-        </p>
-      </div>
-      {islamic?.prayers?.Fajr && (
-        <div className="flex flex-wrap gap-2">
-          {PRAYERS.map(p => {
-            const isActive = activePrayer === p;
-            return (
-              <div
-                key={p}
-                className={`px-3 py-2 rounded-md text-xs text-white text-center min-w-[70px] ${
-                  isActive ? 'bg-cyan-500/30 border border-cyan-400' : 'bg-white/5'
-                }`}
-              >
-                <div className={`text-[10px] ${isActive ? 'text-cyan-300' : 'text-white/60'}`}>{p}</div>
-                <div className="font-semibold">{fmtTime12(islamic.prayers[p])}</div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <PrayerBar
+      firstName={firstName}
+      islamicDate={islamic ?? null}
+      timezone={tz}
+    />
   );
 
   const sched = (assignment?.schedules || []).find((s: any) => s.is_active);
