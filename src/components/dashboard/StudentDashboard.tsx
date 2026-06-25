@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
+import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
 
