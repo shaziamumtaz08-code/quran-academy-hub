@@ -13,6 +13,9 @@ import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherActionCentre } from "./teacher/TeacherActionCentre";
 import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSection";
 import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
+import { RecentSessionsCard } from "./teacher/RecentSessionsCard";
+import { SalaryLeaveCard } from "./teacher/SalaryLeaveCard";
+import { WorkHubCard } from "./teacher/WorkHubCard";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
 import { AiInsightsWidget } from "./AiInsightsWidget";
 import { TeacherGroupAcademyWidgets } from "./teacher/TeacherGroupAcademyWidgets";
@@ -74,10 +77,21 @@ export function TeacherDashboard() {
           <TeacherActionCentre />
         </div>
 
+        {/* 2-col row: Recent sessions (2fr) + Salary/Leave & Work Hub (1fr) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2">
+            <RecentSessionsCard />
+          </div>
+          <div className="flex flex-col gap-3">
+            <SalaryLeaveCard />
+            <WorkHubCard />
+          </div>
+        </div>
+
         {/* My Performance */}
         <MyPerformanceSection />
 
-        {/* Recent Sessions with Comments */}
+        {/* Recent Sessions with full comment threads */}
         <TeacherAttendanceComments />
 
         {/* AI Insights */}
