@@ -482,13 +482,16 @@ export function StudentDashboard() {
   );
 
   const PerformanceCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Performance</div>
-      <div className="relative h-32">
+    <div className="bg-card border border-border rounded-xl p-3.5">
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Performance</div>
+        <div className="text-[10px] text-muted-foreground">{format(new Date(), 'MMMM yyyy')}</div>
+      </div>
+      <div className="relative h-28">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             innerRadius="70%" outerRadius="100%"
-            data={[{ name: 'Att', value: stats.pct, fill: 'hsl(189 94% 43%)' }]}
+            data={[{ name: 'Att', value: stats.pct, fill: '#1d9e75' }]}
             startAngle={90} endAngle={-270}
           >
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
@@ -496,28 +499,57 @@ export function StudentDashboard() {
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <div className="text-3xl font-bold text-[hsl(var(--navy))]">{stats.pct}%</div>
+          <div className="text-2xl font-bold text-[hsl(var(--navy))]">{stats.pct}%</div>
           <div className="text-[10px] text-muted-foreground">Attendance</div>
         </div>
       </div>
-      <div className="text-xs text-muted-foreground text-center mt-1">
-        {stats.present}/{stats.total} Sessions
+      <div className="mt-3 space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">Sessions attended</span>
+          <span className="font-semibold" style={{ color: '#1d9e75' }}>{stats.present}/{stats.total}</span>
+        </div>
+        {(() => {
+          const ym = format(new Date(), 'yyyy-MM');
+          const monthAtt = (attendance as any[]).filter(a => (a.class_date || '').startsWith(ym));
+          const monthPresent = monthAtt.filter(a => a.status === 'present').length;
+          return (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">This month</span>
+              <span className="font-medium">{monthPresent}/{monthAtt.length} sessions</span>
+            </div>
+          );
+        })()}
+        {(() => {
+          let streak = 0;
+          for (const a of attendance as any[]) {
+            if (a.status === 'present') streak++; else break;
+          }
+          if (streak < 2) return null;
+          return (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Streak</span>
+              <span className="inline-flex items-center gap-1 font-medium text-amber-600">
+                <Flame className="h-3 w-3" /> {streak} in a row
+              </span>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 
-  const quickLinks: Array<{ icon: any; label: string; bg: string; icCol: string; txCol: string; to?: string; onClick?: () => void; disabled?: boolean }> = [
-    { icon: MessageCircle, label: 'Message Teacher', bg: 'bg-blue-50 hover:bg-blue-100', icCol: 'text-blue-500', txCol: 'text-blue-600', onClick: handleMessageTeacher, disabled: openingDm },
-    { icon: Send, label: 'Leave Request', bg: 'bg-amber-50 hover:bg-amber-100', icCol: 'text-amber-500', txCol: 'text-amber-600', to: '/hub' },
-    { icon: FolderOpen, label: 'My Files', bg: 'bg-violet-50 hover:bg-violet-100', icCol: 'text-violet-500', txCol: 'text-violet-600', to: '/resources' },
-    { icon: Network, label: 'My Network', bg: 'bg-emerald-50 hover:bg-emerald-100', icCol: 'text-emerald-500', txCol: 'text-emerald-600', to: '/connections' },
-    { icon: Video, label: 'Recordings', bg: 'bg-rose-50 hover:bg-rose-100', icCol: 'text-rose-500', txCol: 'text-rose-600', to: '/my-courses' },
-    { icon: FileText, label: 'Exam Results', bg: 'bg-cyan-50 hover:bg-cyan-100', icCol: 'text-cyan-500', txCol: 'text-cyan-600', to: '/student-reports' },
+  const quickLinks: Array<{ icon: any; label: string; iconBg: string; iconCol: string; to?: string; onClick?: () => void; disabled?: boolean }> = [
+    { icon: MessageCircle, label: 'Message teacher', iconBg: 'bg-teal-50', iconCol: 'text-teal-600', onClick: handleMessageTeacher, disabled: openingDm },
+    { icon: CalendarOff, label: 'Request absence', iconBg: 'bg-amber-50', iconCol: 'text-amber-600', to: '/hub' },
+    { icon: FolderOpen, label: 'My files', iconBg: 'bg-violet-50', iconCol: 'text-violet-600', to: '/resources' },
+    { icon: Users, label: 'My network', iconBg: 'bg-blue-50', iconCol: 'text-blue-600', to: '/connections' },
+    { icon: Video, label: 'Recordings', iconBg: 'bg-rose-50', iconCol: 'text-rose-600', to: '/my-courses' },
+    { icon: ClipboardList, label: 'Exam results', iconBg: 'bg-emerald-50', iconCol: 'text-emerald-600', to: '/student-reports' },
   ];
 
   const QuickLinksCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Quick Links</div>
+    <div className="bg-card border border-border rounded-xl p-3.5">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Quick links</div>
       <div className="grid grid-cols-3 gap-2">
         {quickLinks.map(q => {
           const Icon = q.icon;
@@ -526,10 +558,12 @@ export function StudentDashboard() {
               key={q.label}
               disabled={q.disabled}
               onClick={() => (q.onClick ? q.onClick() : q.to && navigate(q.to))}
-              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-md cursor-pointer transition-all hover:scale-105 disabled:opacity-60 disabled:cursor-wait ${q.bg}`}
+              className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors disabled:opacity-60 disabled:cursor-wait"
             >
-              <Icon size={18} className={q.icCol} />
-              <span className={`text-[11px] font-medium ${q.txCol} text-center leading-tight`}>{q.label}</span>
+              <span className={`flex items-center justify-center w-[30px] h-[30px] rounded-md ${q.iconBg}`}>
+                <Icon size={16} className={q.iconCol} />
+              </span>
+              <span className="text-[10px] font-medium text-foreground text-center leading-tight">{q.label}</span>
             </button>
           );
         })}
@@ -537,167 +571,167 @@ export function StudentDashboard() {
     </div>
   );
 
-
-  // (Recent Lessons rendered inside LessonsAndResultsCard)
-
   const displayDueInvoice = nextInvoice || latestDueInvoice;
   const displayDueDate = displayDueInvoice?.due_date || (displayDueInvoice?.billing_month ? `${displayDueInvoice.billing_month}-10` : null);
   const dueDays = displayDueDate ? differenceInDays(parseISO(displayDueDate), new Date()) : null;
   const dueColor =
     dueDays !== null && dueDays < 0 ? 'text-red-600' :
-    dueDays !== null && dueDays <= 7 ? 'text-amber-500' : 'text-[hsl(var(--navy))]';
+    dueDays !== null && dueDays <= 7 ? 'text-amber-600' : 'text-[hsl(var(--navy))]';
 
-  const FeeStatusCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Fee Status</div>
-      <div className="grid grid-cols-2 divide-x">
-        <div className="text-center py-3 lg:py-0 lg:pr-4">
-          <div className="text-xs text-muted-foreground mb-1">Last Payment</div>
-          {lastPayment ? (
-            <>
-              <div className="text-2xl font-bold text-[hsl(var(--navy))]">
-                {lastPayment.currency_local} {Number(lastPayment.amount_local || 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {lastPayment.payment_date ? format(parseISO(lastPayment.payment_date), 'd MMM yyyy') : ''}
-              </div>
-              <Badge className="mt-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Paid</Badge>
-            </>
-          ) : (
-            <div className="text-muted-foreground text-2xl">—</div>
-          )}
-        </div>
-        <div className="text-center py-3 lg:py-0 lg:pl-4">
-          <div className="text-xs text-muted-foreground mb-1">Next Due</div>
-          {displayDueInvoice ? (
-            <>
-              <div className={`text-2xl font-bold ${dueColor}`}>
-                {nextInvoice
-                  ? `${nextInvoice.currency} ${Number(nextInvoice.amount || 0).toLocaleString()}`
-                  : format(parseISO(displayDueDate!), 'd MMM yyyy')}
-              </div>
-              <div className={`text-xs font-semibold mt-0.5 ${dueColor}`}>
-                {nextInvoice ? 'Due ' : 'Latest due date · '}{format(parseISO(displayDueDate!), 'd MMM yyyy')}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                {displayDueInvoice.billing_month} {nextInvoice && dueDays !== null && (dueDays < 0 ? `· ${Math.abs(dueDays)}d overdue` : dueDays === 0 ? '· today' : `· in ${dueDays}d`)}{!nextInvoice ? `· ${String(displayDueInvoice.status || 'paid').replace('_', ' ')}` : ''}
-              </div>
-              {nextInvoice && (
-                <button
-                  onClick={() => navigate('/finance')}
-                  className="mt-2 bg-[hsl(var(--navy))] text-white px-3 py-1 rounded text-xs"
-                >
-                  Pay →
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="text-muted-foreground text-2xl">—</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const hasAnyFee = !!(lastPayment || displayDueInvoice);
 
-  const PriorityInboxCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold">Priority Inbox</div>
-        {inbox.length > 0 && <Badge variant="secondary">{inbox.length}</Badge>}
-      </div>
-      {inbox.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-4">No new items</div>
+  const FeeStatusCard = !hasAnyFee ? null : (
+    <div className="bg-card border border-border rounded-xl p-3.5">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Fee status</div>
+      {!displayDueInvoice && lastPayment ? (
+        <div className="flex items-center gap-2 py-1">
+          <CheckCircle className="h-4 w-4 text-emerald-500" />
+          <span className="text-[12px] text-muted-foreground">No fees due</span>
+        </div>
       ) : (
-        inbox.map((it, i) => {
-          const borderCol =
-            it.kind === 'chat' ? 'border-blue-500'
-            : it.kind === 'ticket' ? 'border-amber-500'
-            : 'border-emerald-500';
-          return (
-            <div
-              key={i}
-              onClick={() => navigate(it.href)}
-              className={`flex items-start gap-2 py-2 border-b last:border-0 border-l-[3px] ${borderCol} pl-2 cursor-pointer hover:bg-muted/50`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold truncate">{it.title}</div>
-                <div className="text-xs text-muted-foreground truncate">{(it.preview || '').slice(0, 50)}</div>
-              </div>
-              <div className="text-[10px] text-muted-foreground shrink-0">
-                {format(parseISO(it.ts), 'd MMM')}
-              </div>
-            </div>
-          );
-        })
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-muted/40 p-2.5">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-0.5">Last payment</div>
+            {lastPayment ? (
+              <>
+                <div className="text-sm font-semibold text-[hsl(var(--navy))]">
+                  {lastPayment.currency_local} {Number(lastPayment.amount_local || 0).toLocaleString()}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {lastPayment.payment_date ? format(parseISO(lastPayment.payment_date), 'd MMM yyyy') : ''}
+                </div>
+              </>
+            ) : (
+              <div className="text-[12px] text-muted-foreground">No payments yet</div>
+            )}
+          </div>
+          <div className="rounded-lg bg-muted/40 p-2.5">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-0.5">Next due</div>
+            {displayDueInvoice ? (
+              <>
+                <div className={`text-sm font-semibold ${dueColor}`}>
+                  {nextInvoice
+                    ? `${nextInvoice.currency} ${Number(nextInvoice.amount || 0).toLocaleString()}`
+                    : 'Paid'}
+                </div>
+                <div className={`text-[10px] mt-0.5 ${dueColor}`}>
+                  {displayDueDate ? format(parseISO(displayDueDate), 'd MMM yyyy') : '—'}
+                  {nextInvoice && dueDays !== null && (dueDays < 0 ? ` · ${Math.abs(dueDays)}d overdue` : dueDays === 0 ? ' · today' : ` · in ${dueDays}d`)}
+                </div>
+                {nextInvoice && (
+                  <button
+                    onClick={() => navigate('/finance')}
+                    className="mt-1.5 text-[10px] font-medium text-white rounded px-2 py-0.5"
+                    style={{ background: '#1d9e75' }}
+                  >
+                    Pay →
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="text-[12px] text-muted-foreground">All clear</div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 
-  const actionItems: Array<{ icon: any; iconCol: string; label: string; href: string }> = [];
-  if (overdueInvoice) actionItems.push({ icon: AlertCircle, iconCol: 'text-amber-400', label: 'Fee overdue — Pay Now', href: '/finance' });
-  if (unreadChatCount > 0) actionItems.push({ icon: MessageCircle, iconCol: 'text-blue-400', label: `${unreadChatCount} unread message${unreadChatCount > 1 ? 's' : ''}`, href: '/chat' });
-  if (openTicketCount > 0) actionItems.push({ icon: Tag, iconCol: 'text-slate-300', label: `${openTicketCount} open request${openTicketCount > 1 ? 's' : ''}`, href: '/hub' });
+  const actionItems: Array<{ icon: any; iconCol: string; dotCol: string; label: string; href: string }> = [];
+  if (overdueInvoice) actionItems.push({ icon: AlertCircle, iconCol: 'text-amber-600', dotCol: 'bg-amber-500', label: 'Fee overdue — Pay now', href: '/finance' });
+  if (unreadChatCount > 0) actionItems.push({ icon: MessageCircle, iconCol: 'text-blue-600', dotCol: 'bg-blue-500', label: `${unreadChatCount} unread message${unreadChatCount > 1 ? 's' : ''}`, href: '/chat' });
+  if (openTicketCount > 0) actionItems.push({ icon: Tag, iconCol: 'text-slate-600', dotCol: 'bg-slate-400', label: `${openTicketCount} open request${openTicketCount > 1 ? 's' : ''}`, href: '/hub' });
 
   const ActionCenterCard = (
-    <div className="p-4 border rounded-md bg-[hsl(var(--navy))] text-white">
-      <div className="text-xs font-semibold uppercase tracking-wide text-white/60 mb-3">Action Center</div>
+    <div className="bg-card border border-border rounded-xl px-3.5 py-3">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Action centre</div>
       {actionItems.length === 0 ? (
-        <div className="text-emerald-400 text-sm text-center py-2">All caught up ✓</div>
+        <div className="flex items-center gap-2 py-0.5">
+          <CheckCircle className="h-4 w-4 text-emerald-500" />
+          <span className="text-[13px] text-foreground">All caught up</span>
+        </div>
       ) : (
-        actionItems.map((a, i) => {
-          const Icon = a.icon;
-          return (
-            <div
+        <div className="flex flex-col gap-1">
+          {actionItems.map((a, i) => (
+            <button
               key={i}
               onClick={() => navigate(a.href)}
-              className="flex items-center justify-between py-2 border-b border-white/10 last:border-0 text-sm cursor-pointer hover:text-cyan-300"
+              className="flex items-center justify-between gap-2 py-1.5 text-left hover:bg-muted/40 rounded-md px-1 -mx-1"
             >
-              <span className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 ${a.iconCol}`} /> {a.label}
+              <span className="flex items-center gap-2 text-[12px] text-foreground">
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${a.dotCol}`} />
+                {a.label}
               </span>
-              <span>→</span>
-            </div>
-          );
-        })
+              <span className="text-muted-foreground text-xs">→</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 
-  const LessonsAndResultsCard = (
-    <div className="p-4 border rounded-md bg-card flex flex-col">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Lessons</div>
+  const syllabusPct = stats.total
+    ? Math.round(((attendance as any[]).filter(a => a.lesson_covered).length / stats.total) * 100)
+    : 0;
+
+  const RecentLessonsCard = (
+    <div className="bg-card border border-border rounded-xl p-3.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent lessons</div>
+        <button onClick={() => navigate('/my-courses')} className="text-[11px] text-teal-600 hover:underline">View all →</button>
+      </div>
       {recentLessons.length === 0 ? (
         <div className="text-xs text-muted-foreground text-center py-3">No lessons recorded yet</div>
       ) : (
-        recentLessons.map((l: any) => {
-          const present = l.status === 'present';
-          return (
-            <div key={l.id} className="flex items-center justify-between py-2 border-b last:border-0 gap-3">
-              <div className="flex items-start gap-2 min-w-0 flex-1">
-                {present
-                  ? <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                  : <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />}
-                <div className="min-w-0">
-                  <div className="text-sm truncate">{l.lesson_covered || <span className="text-muted-foreground">No lesson recorded</span>}</div>
-                  <div className="text-xs text-muted-foreground truncate">{l.homework || 'No homework'}</div>
-                </div>
+        <div className="flex flex-col">
+          {recentLessons.map((l: any, idx: number) => (
+            <div key={l.id} className={`flex items-start gap-2.5 py-2 ${idx < recentLessons.length - 1 ? 'border-b border-border/60' : ''}`}>
+              <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-medium text-foreground truncate">{l.lesson_covered || 'No lesson recorded'}</div>
+                {l.homework && (
+                  <div
+                    className="text-[13px] text-foreground/80 truncate"
+                    style={{ fontFamily: '"Noto Naskh Arabic", "Noto Nastaliq Urdu", serif' }}
+                  >
+                    {l.homework}
+                  </div>
+                )}
               </div>
-              <div className="text-xs text-muted-foreground shrink-0">{format(parseISO(l.class_date), 'd MMM')}</div>
+              <div className="text-[11px] text-muted-foreground shrink-0 pt-0.5">{format(parseISO(l.class_date), 'd MMM')}</div>
             </div>
-          );
-        })
+          ))}
+        </div>
       )}
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+          <span>Syllabus progress</span>
+          <span>{syllabusPct}% complete</span>
+        </div>
+        <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${syllabusPct}%`, background: '#1d9e75' }} />
+        </div>
+      </div>
+    </div>
+  );
 
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 mt-4 pt-3 border-t">Recent Results</div>
+  const RecentResultsCard = (
+    <div className="bg-card border border-border rounded-xl p-3.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent results</div>
+        <button onClick={() => navigate('/student-reports')} className="text-[11px] text-teal-600 hover:underline">View all →</button>
+      </div>
       {exams.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-3">No results yet</div>
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-3">
+          <ClipboardList className="h-3.5 w-3.5" /> No exams recorded yet
+        </div>
       ) : (
-        exams.map((e: any) => {
+        exams.slice(0, 3).map((e: any) => {
           const passed = (e.percentage || 0) >= 50;
           return (
-            <div key={e.id} className="flex items-center justify-between py-2 border-b last:border-0 gap-2">
+            <div key={e.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-border/60 gap-2">
               <div className="min-w-0">
-                <div className="text-xs font-medium truncate">{e.template?.name || 'Exam'}</div>
+                <div className="text-[12px] font-medium truncate">{e.template?.name || 'Exam'}</div>
                 <div className="text-[10px] text-muted-foreground">
                   {e.exam_date ? format(parseISO(e.exam_date), 'd MMM yyyy') : ''}
                 </div>
@@ -713,29 +747,19 @@ export function StudentDashboard() {
   );
 
   const SpotlightCard = (
-    <div className="p-0 border rounded-md bg-card overflow-hidden">
-      {spotlight?.image_url ? (
-        <img src={spotlight.image_url} alt={spotlight.title || 'Spotlight'} className="w-full h-32 object-cover" />
-      ) : (
-        <div className="w-full h-32 bg-gradient-to-br from-cyan-50 to-slate-100 flex items-center justify-center text-xs text-muted-foreground">
-          Spotlight
-        </div>
-      )}
-      <div className="p-3">
-        <div className="font-semibold text-sm">{spotlight?.title || 'Featured'}</div>
-        {spotlight?.description && (
-          <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{spotlight.description}</div>
-        )}
-        {spotlight?.link ? (
-          <Button asChild className="w-full bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-dark))] text-white mt-2 text-xs h-8">
-            <a href={spotlight.link} target="_blank" rel="noreferrer">{spotlight?.cta || 'Open'}</a>
-          </Button>
-        ) : (
-          <Button disabled className="w-full bg-[hsl(var(--navy))] text-white mt-2 text-xs h-8 opacity-70">
-            Coming Soon
-          </Button>
-        )}
-      </div>
+    <div
+      className="rounded-xl border p-3.5 flex flex-col items-center justify-center text-center"
+      style={{
+        background: 'linear-gradient(135deg, #eeedfe, #e1f5ee)',
+        borderColor: 'rgba(126,207,196,0.35)',
+        minHeight: 100,
+      }}
+    >
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Spotlight</div>
+      <div className="text-[12px] text-muted-foreground mb-2">Announcements &amp; featured items</div>
+      <span className="inline-flex items-center text-[11px] text-muted-foreground rounded-md border border-border px-2 py-0.5">
+        Coming soon
+      </span>
     </div>
   );
 
@@ -750,11 +774,11 @@ export function StudentDashboard() {
           return (
             <button
               key={q.label}
-              onClick={() => navigate(q.to)}
+              onClick={() => (q.onClick ? q.onClick() : q.to && navigate(q.to))}
               className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 active:opacity-60 transition-opacity"
             >
-              <Icon size={18} className={q.icCol} />
-              <span className={`text-[9px] font-medium ${q.txCol} text-center leading-tight truncate w-full`}>{q.label}</span>
+              <Icon size={18} className={q.iconCol} />
+              <span className="text-[9px] font-medium text-foreground text-center leading-tight truncate w-full">{q.label}</span>
             </button>
           );
         })}
@@ -763,37 +787,30 @@ export function StudentDashboard() {
   );
 
   return (
-    <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4 pb-24 lg:pb-4">
+    <div className="flex flex-col gap-3 p-3 lg:p-4 pb-24 lg:pb-4">
       {Header}
+      {NextClassCard}
 
-      {/* Desktop: 3-column layout matching reference */}
-      <div className="hidden lg:grid lg:grid-cols-[280px_1fr_300px] gap-4">
-        {/* TOP ROW spans all three columns */}
-        <div className="lg:col-span-2 grid grid-cols-[1fr_280px] gap-4">
-          {NextClassCard}
+      {/* 3-column grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Column 1 */}
+        <div className="flex flex-col gap-3">
+          {QuickLinksCard}
+          {FeeStatusCard}
+        </div>
+
+        {/* Column 2 */}
+        <div className="flex flex-col gap-3">
+          {RecentLessonsCard}
+          {RecentResultsCard}
+        </div>
+
+        {/* Column 3 */}
+        <div className="flex flex-col gap-3">
           {PerformanceCard}
+          {ActionCenterCard}
+          {SpotlightCard}
         </div>
-        {PriorityInboxCard}
-
-        {/* SECOND ROW — aligned 3x2 grid: left/right rows match, middle spans both */}
-        <div className="lg:col-span-3 grid grid-cols-[280px_1fr_300px] grid-rows-[auto_1fr] gap-4">
-          <div className="row-start-1 col-start-1">{QuickLinksCard}</div>
-          <div className="row-start-2 col-start-1">{FeeStatusCard}</div>
-          <div className="row-span-2 col-start-2 [&>div]:h-full">{LessonsAndResultsCard}</div>
-          <div className="row-start-1 col-start-3">{ActionCenterCard}</div>
-          <div className="row-start-2 col-start-3">{SpotlightCard}</div>
-        </div>
-      </div>
-
-      {/* Mobile: stacked single column (Quick Links shown as fixed bottom bar) */}
-      <div className="flex flex-col gap-3 lg:hidden">
-        {NextClassCard}
-        {PerformanceCard}
-        {PriorityInboxCard}
-        {ActionCenterCard}
-        {LessonsAndResultsCard}
-        {FeeStatusCard}
-        {SpotlightCard}
       </div>
 
       {MobileQuickLinksBar}
