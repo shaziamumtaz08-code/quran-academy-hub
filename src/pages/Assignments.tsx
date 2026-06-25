@@ -403,20 +403,22 @@ export default function Assignments() {
         const newEffectiveFrom = effectiveFromDate || null;
         if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-        // Back-dating is allowed; paid/locked salary months below are the real guardrail.
-
-        // Hard-block if any paid/locked salary records exist for this teacher from the new month onward
+        // Back-dating is fully allowed. Paid/locked salary months are protected downstream
+        // (archive + insert pattern via revise_salary_payout / regeneration skips locked rows).
+        // We surface a soft notice if paid months exist within the new range, but do NOT block.
         const monthKey = newEffectiveFrom.slice(0, 7); // YYYY-MM
-        const { data: blocking } = await supabase
+        const { data: paidInRange } = await supabase
           .from('salary_payouts')
           .select('salary_month, status')
           .eq('teacher_id', prev.teacher_id)
           .in('status', ['confirmed', 'paid', 'locked', 'partially_paid'])
           .gte('salary_month', monthKey)
-          .order('salary_month', { ascending: true })
-          .limit(1);
-        if (blocking && blocking.length > 0) {
-          throw new Error(`Cannot backdate — paid salary records exist from ${blocking[0].salary_month}. Choose a later date.`);
+          .order('salary_month', { ascending: true });
+        if (paidInRange && paidInRange.length > 0) {
+          toast({
+            title: 'Back-dated update applied',
+            description: `${paidInRange.length} paid/locked salary month(s) from ${paidInRange[0].salary_month} are protected and left unchanged. Only future/unpaid months will reflect the new payout.`,
+          });
         }
 
         const { error: upErr } = await supabase
