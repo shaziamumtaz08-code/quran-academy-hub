@@ -2420,23 +2420,26 @@ export default function Payments() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
-                  {editingPlanId && (
-                    <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
-                      <Label className="text-xs font-medium">Effective From</Label>
-                      <p className="text-xs text-muted-foreground">Pending invoices from this month onward will be updated to the new fee.</p>
-                      <Select value={effectiveFrom} onValueChange={setEffectiveFrom}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => {
-                            const year = now.getFullYear();
-                            const month = String(i + 1).padStart(2, '0');
-                            const val = `${year}-${month}`;
-                            return <SelectItem key={val} value={val}>{MONTHS[i].label} {year}</SelectItem>;
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {editingPlanId && (() => {
+                    const isMidMonth = effectiveFrom && new Date(effectiveFrom + 'T00:00:00').getDate() !== 1;
+                    return (
+                      <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
+                        <Label className="text-xs font-medium">Effective From</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Pick the exact day this new rate applies. The affected month is split: old rate before this date, new rate from this date onward. Future pending invoices are reissued. Paid invoices are never changed.
+                        </p>
+                        <Input
+                          type="date"
+                          value={effectiveFrom}
+                          onChange={(e) => setEffectiveFrom(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                        {isMidMonth && (
+                          <p className="text-[11px] text-primary">Mid-month change — this month's invoice will be prorated automatically.</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="mt-8 space-y-3">
                   <Button onClick={() => savePlanMutation.mutate()} disabled={!canSavePlan || savePlanMutation.isPending} className="w-full gap-2" size="lg">
