@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays, FolderOpen, Activity } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays, FolderOpen, Activity, Wallet, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 
 interface MobileTabItem {
@@ -22,18 +22,22 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
     ];
   }
   if (role === 'teacher') {
+    // Top-level destinations only — quick actions live in dashboard Quick Links card
     return [
-      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-      { label: 'Performance', href: '/performance', icon: Activity },
-      { label: 'Comms', href: '/communication', icon: MessageSquare },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Classes', href: '/teaching?view=schedules', icon: BookOpen },
+      { label: 'Students', href: '/teaching?view=one-to-one', icon: Users },
+      { label: 'Work Hub', href: '/hub', icon: Briefcase },
+      { label: 'Salary', href: '/salary', icon: Wallet },
     ];
   }
   if (role === 'student') {
+    // Top-level destinations only — quick actions live in dashboard Quick Links card
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Courses', href: '/my-courses', icon: BookOpen },
+      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
+      { label: 'Fees', href: '/payments', icon: CreditCard },
       { label: 'Library', href: '/library', icon: FolderOpen },
     ];
   }
