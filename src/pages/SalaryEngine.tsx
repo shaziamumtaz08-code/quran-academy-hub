@@ -849,8 +849,11 @@ export default function SalaryEngine() {
   // ── Helpers ──
 
   const getStatusBadge = (status: string, payout?: any) => {
+    if (payout?.is_archived) {
+      return <Badge className="bg-red-50 text-red-700 border-red-200 gap-1"><AlertCircle className="h-3 w-3" /> VOID</Badge>;
+    }
     if (payout?.is_revised) {
-      return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> Revised</Badge>;
+      return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> REVISED</Badge>;
     }
     switch (status) {
       case 'locked': return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Lock className="h-3 w-3" /> Locked</Badge>;
@@ -911,6 +914,21 @@ export default function SalaryEngine() {
           </div>
           {!isTeacherView && (
             <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={salaryView === 'active' ? 'default' : 'outline'}
+                onClick={() => setSalaryView('active')}
+              >
+                Active Sheets
+              </Button>
+              <Button
+                size="sm"
+                variant={salaryView === 'archived' ? 'default' : 'outline'}
+                className={salaryView === 'archived' ? '' : 'border-red-200 text-red-700 hover:bg-red-50'}
+                onClick={() => setSalaryView('archived')}
+              >
+                <AlertCircle className="h-4 w-4 mr-1" /> VOID Archive ({archivedPayouts.length})
+              </Button>
               <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => setBulkAddOpen(true)}>
                 <TrendingUp className="h-4 w-4 mr-1" /> Bulk Addition
               </Button>
@@ -1008,7 +1026,15 @@ export default function SalaryEngine() {
         )}
 
         {/* ── Summary Table ── */}
-        <Card>
+        <Card className={salaryView === 'archived' ? 'border-red-200/70' : undefined}>
+          {!isTeacherView && salaryView === 'archived' && (
+            <CardHeader className="pb-2 bg-red-50/70 border-b border-red-100">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-800">
+                <AlertCircle className="h-4 w-4" /> VOID / Superseded Salary Sheets
+              </CardTitle>
+              <p className="text-xs text-red-700/80">These are old locked/paid sheets kept only for audit. Open them to see the VOID watermark.</p>
+            </CardHeader>
+          )}
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -1024,10 +1050,45 @@ export default function SalaryEngine() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.length === 0 && (
+                {salaryView === 'active' && filteredData.length === 0 && (
                   <TableRow><TableCell colSpan={isTeacherView ? 7 : 8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
                 )}
-                {filteredData.map(teacher => {
+                {salaryView === 'archived' && archivedPayouts.length === 0 && (
+                  <TableRow><TableCell colSpan={isTeacherView ? 7 : 8} className="text-center py-12 text-muted-foreground">No VOID / superseded salary sheets for this month yet.</TableCell></TableRow>
+                )}
+                {salaryView === 'archived' && archivedPayouts.map((p: any) => {
+                  const profile = allSalariedProfiles.find((x: any) => x.id === p.teacher_id);
+                  return (
+                    <TableRow key={p.id} className="bg-red-50/25">
+                      <TableCell>
+                        <div className="font-medium text-foreground">{profile?.full_name || p.teacher_id.slice(0, 8)}</div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50 text-[10px]">VOID — SUPERSEDED</Badge>
+                          {p.archive_reason && <span className="text-xs text-muted-foreground italic">{p.archive_reason}</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">PKR {Number(p.base_salary || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums">PKR {Number(p.extra_class_amount || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-600">PKR {Number(p.adjustment_amount || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-red-600">PKR {Number(p.deductions || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        <div className="space-y-0.5">
+                          <div>PKR {Number(p.net_salary || 0).toFixed(2)}</div>
+                          <div className="text-xs font-normal text-muted-foreground">Paid: PKR {Number(p.amount_paid || 0).toFixed(2)}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(p.status || 'paid', p)}</TableCell>
+                      {!isTeacherView && (
+                        <TableCell className="text-right">
+                          <Button variant="outline" size="sm" className="gap-1 border-red-200 text-red-700 hover:bg-red-50" onClick={() => window.open(`/finance/print/salary/${p.id}`, '_blank')}>
+                            <FileText className="h-3.5 w-3.5" /> View VOID Sheet
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {salaryView === 'active' && filteredData.map(teacher => {
                   const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
                   const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked' || payout.status === 'partially_paid');
                   const willReviseLockedSheet = payout && (payout.status === 'locked' || payout.status === 'paid' || payout.status === 'partially_paid');
@@ -1051,6 +1112,9 @@ export default function SalaryEngine() {
                             <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
                           )}
                           {getStaffTypeBadge(teacher.staffType)}
+                          {payout?.is_revised && (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
@@ -1086,13 +1150,13 @@ export default function SalaryEngine() {
                             </Button>
                             <Button 
                               size="sm" 
-                              variant={willReviseLockedSheet ? 'default' : 'outline'} 
+                              variant="default" 
                               onClick={() => savePayout.mutate(teacher)} 
                               disabled={!canSave || savePayout.isPending}
                               title={willReviseLockedSheet ? 'Archive the locked/paid sheet and create a revised sheet' : 'Save salary sheet'}
                             >
                               {savePayout.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                              {willReviseLockedSheet ? 'Revise' : 'Save'}
+                              {willReviseLockedSheet ? 'Revise' : (payout ? 'Update' : 'Create')}
                             </Button>
                             {teacher.payoutStatus === 'paid' && (
                               <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
