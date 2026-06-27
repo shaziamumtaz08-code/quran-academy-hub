@@ -1153,10 +1153,10 @@ export default function SalaryEngine() {
                               variant="default" 
                               onClick={() => savePayout.mutate(teacher)} 
                               disabled={!canSave || savePayout.isPending}
-                              title={willReviseLockedSheet ? 'Archive the locked/paid sheet and create a revised sheet' : 'Save salary sheet'}
+                              title={willReviseLockedSheet ? 'Archive the locked/paid sheet and create a revised sheet' : (payout ? 'Revise this salary sheet' : 'Create salary sheet')}
                             >
                               {savePayout.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                              {willReviseLockedSheet ? 'Revise' : (payout ? 'Update' : 'Create')}
+                              {payout ? 'Revise' : 'Create'}
                             </Button>
                             {teacher.payoutStatus === 'paid' && (
                               <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
