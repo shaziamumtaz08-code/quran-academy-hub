@@ -97,6 +97,7 @@ const REVERT_REASONS = [
 ];
 
 type StaffFilter = 'all' | 'teachers' | 'staff';
+type SalaryView = 'active' | 'archived';
 
 export default function SalaryEngine() {
   const { user, activeRole } = useAuth();
@@ -109,6 +110,7 @@ export default function SalaryEngine() {
   const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
   const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
   const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
+  const [salaryView, setSalaryView] = useState<SalaryView>('active');
 
   // Modals
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -257,7 +259,7 @@ export default function SalaryEngine() {
         .from('salary_payouts')
         .select('*')
         .eq('salary_month', salaryMonth)
-        .eq('is_archived', false);
+        .or('is_archived.is.null,is_archived.eq.false');
       return data || [];
     },
   });
@@ -595,6 +597,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Salary saved & confirmed' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -609,7 +612,7 @@ export default function SalaryEngine() {
           await savePayout.mutateAsync(teacher);
         }
       }
-      const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
+      const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).or('is_archived.is.null,is_archived.eq.false').single()).data;
       if (!payoutRefresh) throw new Error('Save payout first');
 
       // Use the current calculated net salary from UI, falling back to DB value
@@ -648,6 +651,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -680,6 +684,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Top-up payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -699,6 +704,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Payment proofs updated' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -718,6 +724,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Payout locked' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -755,6 +762,7 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Reverted to draft' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
       setRevertModalOpen(false);
       setRevertTeacherId(null);
       setRevertReason('');
