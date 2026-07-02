@@ -10775,6 +10775,10 @@ export type Database = {
         }[]
       }
       auto_close_expired_covers: { Args: never; Returns: number }
+      auto_generate_plan_invoices: {
+        Args: { _plan_id: string }
+        Returns: undefined
+      }
       build_split_month_lines: {
         Args: {
           _effective_from: string
