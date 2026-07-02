@@ -82,7 +82,7 @@ export default function MessagesTab() {
         .in('user_id', otherIds);
       const roleMap: Record<string, string> = {};
       (roles || []).forEach((r: any) => { if (!roleMap[r.user_id]) roleMap[r.user_id] = r.role; });
-      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, { ...p, primary_role: roleMap[p.id] || null }]));
 
       // last message per group
       const { data: msgs } = await supabase
