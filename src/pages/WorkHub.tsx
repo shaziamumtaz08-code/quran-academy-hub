@@ -48,36 +48,14 @@ export default function WorkHub() {
       const userId = profile?.id;
       if (!userId) return { inbox: 0, overdue: 0, unread: 0 };
 
-      const [inboxRes, overdueRes, memRes] = await Promise.all([
+      const [inboxRes, overdueRes] = await Promise.all([
         supabase.from('tickets').select('id', { count: 'exact', head: true })
           .eq('assignee_id', userId).in('status', ['open', 'in_progress', 'awaiting_input']),
         supabase.from('tickets').select('id', { count: 'exact', head: true })
           .eq('assignee_id', userId).eq('is_overdue', true).in('status', ['open', 'in_progress', 'awaiting_input']),
-        supabase.from('chat_members').select('group_id, last_read_at').eq('user_id', userId),
       ]);
 
-      let unread = 0;
-      const mems = memRes.data || [];
-      if (mems.length) {
-        const gids = mems.map(m => m.group_id);
-        const { data: msgs } = await supabase
-          .from('chat_messages')
-          .select('group_id, created_at, sender_id')
-          .in('group_id', gids)
-          .eq('is_deleted', false)
-          .neq('sender_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(500);
-        const lastRead: Record<string, string> = Object.fromEntries(mems.map(m => [m.group_id, m.last_read_at || '1970-01-01']));
-        const seen = new Set<string>();
-        (msgs || []).forEach(m => {
-          if (seen.has(m.group_id)) return;
-          if (new Date(m.created_at) > new Date(lastRead[m.group_id] || 0)) unread++;
-          seen.add(m.group_id);
-        });
-      }
-
-      return { inbox: inboxRes.count || 0, overdue: overdueRes.count || 0, unread };
+      return { inbox: inboxRes.count || 0, overdue: overdueRes.count || 0, unread: 0 };
     },
     enabled: !!profile?.id,
     refetchInterval: 30000,
