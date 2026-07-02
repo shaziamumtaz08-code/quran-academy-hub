@@ -16,6 +16,15 @@ interface TicketListProps {
   userId?: string;
 }
 
+const CATEGORY_BORDER: Record<string, string> = {
+  complaint: 'border-l-red-500',
+  feedback: 'border-l-emerald-500',
+  suggestion: 'border-l-amber-500',
+  task: 'border-l-blue-500',
+  leave_request: 'border-l-purple-500',
+  general: 'border-l-slate-400',
+};
+
 const CATEGORY_COLORS: Record<string, string> = {
   complaint: 'bg-destructive/10 text-destructive border-destructive/20',
   feedback: 'bg-accent/10 text-accent border-accent/20',
