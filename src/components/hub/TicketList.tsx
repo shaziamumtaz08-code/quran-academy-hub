@@ -191,7 +191,7 @@ export function TicketList({ view, userId }: TicketListProps) {
           {filteredTickets.map((ticket: any) => (
             <Card
               key={ticket.id}
-              className="card-interactive cursor-pointer hover:shadow-card-hover transition-all"
+              className={`card-interactive cursor-pointer hover:shadow-md transition-all rounded-xl border-l-4 ${CATEGORY_BORDER[ticket.category] || 'border-l-slate-400'}`}
               onClick={() => setSelectedTicketId(ticket.id)}
             >
               <CardContent className="p-3 sm:p-4">
