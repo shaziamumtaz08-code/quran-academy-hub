@@ -1012,7 +1012,7 @@ export default function Payments() {
     };
 
     // 1) Billing plans
-    let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
+    let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id, effective_from').eq('is_active', true);
     if (branchId) pq = pq.eq('branch_id', branchId);
     if (divisionId) pq = pq.eq('division_id', divisionId);
     const { data: plans } = await pq;
@@ -1034,11 +1034,16 @@ export default function Payments() {
       (studentAssigns || []).forEach((a: any) => { if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a; });
     }
 
+    const laterDate = (a: string | null, b: string | null): string | null => {
+      if (!a) return b; if (!b) return a; return a > b ? a : b;
+    };
+
     (plans || []).forEach((p: any) => {
       if (p.net_recurring_fee > 0) {
         const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
         if (assign && !['active'].includes(assign.status)) return;
-        const startDate = assign?.effective_from_date || null;
+        // Honor plan.effective_from (billing start date) — use later of it and assignment start
+        const startDate = laterDate(assign?.effective_from_date || null, p.effective_from || null);
         const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
         const prorated = computeProration(p.net_recurring_fee, startDate, endDate, targetMonth);
         if (!prorated) return;
