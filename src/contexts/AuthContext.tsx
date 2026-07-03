@@ -71,12 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeRolePermissions, setActiveRolePermissions] = useState<string[]>([]);
 
   // Keep active role aligned with the current authenticated user's real roles.
+  // NOTE: Only clear activeRole if the user has no roles AND no profile at all
+  // (i.e. fully signed out). A transient empty-roles read must NOT wipe it,
+  // otherwise RouteGuard bounces the user back to /login on the next click.
   useEffect(() => {
-    if (!profile?.roles?.length) {
-      if (activeRole) setActiveRoleState(null);
-      return;
-    }
-
+    if (!profile) return;
+    if (!profile.roles?.length) return; // keep last known activeRole
     if (!activeRole || !profile.roles.includes(activeRole)) {
       setActiveRoleState(profile.role || profile.roles[0]);
     }
