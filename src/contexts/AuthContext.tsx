@@ -71,12 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeRolePermissions, setActiveRolePermissions] = useState<string[]>([]);
 
   // Keep active role aligned with the current authenticated user's real roles.
+  // NOTE: Only clear activeRole if the user has no roles AND no profile at all
+  // (i.e. fully signed out). A transient empty-roles read must NOT wipe it,
+  // otherwise RouteGuard bounces the user back to /login on the next click.
   useEffect(() => {
-    if (!profile?.roles?.length) {
-      if (activeRole) setActiveRoleState(null);
-      return;
-    }
-
+    if (!profile) return;
+    if (!profile.roles?.length) return; // keep last known activeRole
     if (!activeRole || !profile.roles.includes(activeRole)) {
       setActiveRoleState(profile.role || profile.roles[0]);
     }
@@ -118,44 +118,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Fetch user profile and ALL roles
+  // Fetch user profile and ALL roles.
+  // IMPORTANT: On transient errors (network blip, 429 rate-limit on mobile),
+  // do NOT overwrite an existing good profile with null/empty. That would
+  // clear activeRole and cause RouteGuard to redirect to /login on next click.
   const fetchProfile = async (userId: string) => {
     try {
-      // Get profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const [{ data: profileData, error: profileError }, { data: rolesData, error: rolesError }] =
+        await Promise.all([
+          supabase.from("profiles").select("*").eq("id", userId).single(),
+          supabase.from("user_roles").select("role").eq("user_id", userId),
+        ]);
 
-      if (profileError && profileError.code !== "PGRST116") {
-        console.error("Error fetching profile:", profileError);
+      const profileFailed = profileError && profileError.code !== "PGRST116";
+      const rolesFailed = !!rolesError;
+
+      // If the roles read failed transiently, keep whatever we had — never
+      // clear roles/activeRole based on an errored response.
+      if (rolesFailed) {
+        console.warn("[AuthContext] Transient roles fetch error; keeping cached roles.", rolesError);
+        return;
       }
-
-      // Get ALL user roles (not just one)
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-
-      if (rolesError && rolesError.code !== "PGRST116") {
-        console.error("Error fetching roles:", rolesError);
+      if (profileFailed) {
+        console.warn("[AuthContext] Transient profile fetch error.", profileError);
       }
 
       const roles: AppRole[] = (rolesData || []).map((r) => r.role as AppRole);
-      const primaryRole = getPrimaryRole(roles);
 
-      setProfile({
-        id: userId,
-        email: profileData?.email || null,
-        full_name: profileData?.full_name || "User",
-        roles,
-        role: primaryRole,
+      setProfile((prev) => {
+        // If roles came back empty but we previously had roles for this same
+        // user, treat as transient (RLS/session hiccup) and keep the cached set.
+        const effectiveRoles =
+          roles.length === 0 && prev && prev.id === userId && prev.roles.length > 0
+            ? prev.roles
+            : roles;
+        const primaryRole = getPrimaryRole(effectiveRoles);
+        return {
+          id: userId,
+          email: profileData?.email ?? prev?.email ?? null,
+          full_name: profileData?.full_name ?? prev?.full_name ?? "User",
+          roles: effectiveRoles,
+          role: primaryRole,
+        };
       });
 
       setActiveRoleState((currentRole) => {
-        if (!primaryRole) return null;
-        return currentRole && roles.includes(currentRole) ? currentRole : primaryRole;
+        const effectiveRoles =
+          roles.length === 0 && currentRole ? [currentRole] : roles;
+        const primaryRole = getPrimaryRole(effectiveRoles);
+        if (!primaryRole) return currentRole; // keep whatever we had
+        return currentRole && effectiveRoles.includes(currentRole) ? currentRole : primaryRole;
       });
     } catch (error) {
       console.error("Error in fetchProfile:", error);
@@ -182,22 +194,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Auth state listener handles subsequent changes (token refresh, sign out, etc.)
+    // IMPORTANT: Only re-fetch profile on real sign-in events. Re-fetching on
+    // every TOKEN_REFRESHED spams /token and profiles reads, which on mobile
+    // networks hits Supabase's 429 rate-limit and causes intermittent redirects
+    // back to /login when the user clicks anything.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
 
-      if (session?.user) {
-        // On a fresh sign-in, gate downstream guards until profile is loaded
-        // to avoid redirect races (LoginRedirect → RouteGuard → /login loop).
-        if (event === 'SIGNED_IN') {
-          setIsLoading(true);
-          setActiveRoleState(null);
-          setActiveRolePermissions([]);
-        }
-
-        // Defer to avoid Supabase deadlock on rapid state changes
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Gate downstream guards until profile is loaded to avoid redirect races.
+        setIsLoading(true);
         setTimeout(() => {
           fetchProfile(session.user.id).finally(() => {
             initialised = true;
@@ -205,7 +214,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }, 0);
       } else if (event === 'SIGNED_OUT') {
-        // Only clear profile on explicit sign-out, not transient auth events
         setProfile(null);
         setActiveRoleState(null);
         setActiveRolePermissions([]);
@@ -214,6 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         }
       }
+      // TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION → just update session,
+      // do NOT re-fetch profile. Initial load is handled by getSession() above.
     });
 
     return () => subscription.unsubscribe();
