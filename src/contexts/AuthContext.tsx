@@ -118,44 +118,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Fetch user profile and ALL roles
+  // Fetch user profile and ALL roles.
+  // IMPORTANT: On transient errors (network blip, 429 rate-limit on mobile),
+  // do NOT overwrite an existing good profile with null/empty. That would
+  // clear activeRole and cause RouteGuard to redirect to /login on next click.
   const fetchProfile = async (userId: string) => {
     try {
-      // Get profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const [{ data: profileData, error: profileError }, { data: rolesData, error: rolesError }] =
+        await Promise.all([
+          supabase.from("profiles").select("*").eq("id", userId).single(),
+          supabase.from("user_roles").select("role").eq("user_id", userId),
+        ]);
 
-      if (profileError && profileError.code !== "PGRST116") {
-        console.error("Error fetching profile:", profileError);
+      const profileFailed = profileError && profileError.code !== "PGRST116";
+      const rolesFailed = !!rolesError;
+
+      // If the roles read failed transiently, keep whatever we had — never
+      // clear roles/activeRole based on an errored response.
+      if (rolesFailed) {
+        console.warn("[AuthContext] Transient roles fetch error; keeping cached roles.", rolesError);
+        return;
       }
-
-      // Get ALL user roles (not just one)
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-
-      if (rolesError && rolesError.code !== "PGRST116") {
-        console.error("Error fetching roles:", rolesError);
+      if (profileFailed) {
+        console.warn("[AuthContext] Transient profile fetch error.", profileError);
       }
 
       const roles: AppRole[] = (rolesData || []).map((r) => r.role as AppRole);
-      const primaryRole = getPrimaryRole(roles);
 
-      setProfile({
-        id: userId,
-        email: profileData?.email || null,
-        full_name: profileData?.full_name || "User",
-        roles,
-        role: primaryRole,
+      setProfile((prev) => {
+        // If roles came back empty but we previously had roles for this same
+        // user, treat as transient (RLS/session hiccup) and keep the cached set.
+        const effectiveRoles =
+          roles.length === 0 && prev && prev.id === userId && prev.roles.length > 0
+            ? prev.roles
+            : roles;
+        const primaryRole = getPrimaryRole(effectiveRoles);
+        return {
+          id: userId,
+          email: profileData?.email ?? prev?.email ?? null,
+          full_name: profileData?.full_name ?? prev?.full_name ?? "User",
+          roles: effectiveRoles,
+          role: primaryRole,
+        };
       });
 
       setActiveRoleState((currentRole) => {
-        if (!primaryRole) return null;
-        return currentRole && roles.includes(currentRole) ? currentRole : primaryRole;
+        const effectiveRoles =
+          roles.length === 0 && currentRole ? [currentRole] : roles;
+        const primaryRole = getPrimaryRole(effectiveRoles);
+        if (!primaryRole) return currentRole; // keep whatever we had
+        return currentRole && effectiveRoles.includes(currentRole) ? currentRole : primaryRole;
       });
     } catch (error) {
       console.error("Error in fetchProfile:", error);
