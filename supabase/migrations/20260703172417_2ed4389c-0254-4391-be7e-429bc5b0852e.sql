@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "student_can_select_chat_members" ON public.chat_members;
