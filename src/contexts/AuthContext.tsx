@@ -194,22 +194,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Auth state listener handles subsequent changes (token refresh, sign out, etc.)
+    // IMPORTANT: Only re-fetch profile on real sign-in events. Re-fetching on
+    // every TOKEN_REFRESHED spams /token and profiles reads, which on mobile
+    // networks hits Supabase's 429 rate-limit and causes intermittent redirects
+    // back to /login when the user clicks anything.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
 
-      if (session?.user) {
-        // On a fresh sign-in, gate downstream guards until profile is loaded
-        // to avoid redirect races (LoginRedirect → RouteGuard → /login loop).
-        if (event === 'SIGNED_IN') {
-          setIsLoading(true);
-          setActiveRoleState(null);
-          setActiveRolePermissions([]);
-        }
-
-        // Defer to avoid Supabase deadlock on rapid state changes
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Gate downstream guards until profile is loaded to avoid redirect races.
+        setIsLoading(true);
         setTimeout(() => {
           fetchProfile(session.user.id).finally(() => {
             initialised = true;
@@ -217,7 +214,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }, 0);
       } else if (event === 'SIGNED_OUT') {
-        // Only clear profile on explicit sign-out, not transient auth events
         setProfile(null);
         setActiveRoleState(null);
         setActiveRolePermissions([]);
@@ -226,6 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         }
       }
+      // TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION → just update session,
+      // do NOT re-fetch profile. Initial load is handled by getSession() above.
     });
 
     return () => subscription.unsubscribe();
