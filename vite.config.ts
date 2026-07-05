@@ -17,8 +17,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mcpPlugin(),
     mode === "development" && componentTagger(),
     VitePWA({
+
       registerType: "autoUpdate",
       injectRegister: null, // we register manually with iframe/preview guard
       devOptions: { enabled: false },
