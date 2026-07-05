@@ -46,6 +46,8 @@ const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Resources = lazy(() => import("./pages/Resources"));
 const Library = lazy(() => import("./pages/Library"));
 const LibraryShare = lazy(() => import("./pages/LibraryShare"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+
 const Assignments = lazy(() => import("./pages/Assignments"));
 const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
 const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
@@ -304,6 +306,15 @@ function LoginRedirect() {
   const location = useLocation();
   const from = (location.state as any)?.from;
 
+  // Honor `?next=` so external flows (e.g. the OAuth consent page bouncing
+  // an unauthenticated user through /login) return the user to where they
+  // came from instead of the role-based default route. Only accept
+  // same-origin relative paths.
+  const search = new URLSearchParams(location.search);
+  const rawNext = search.get("next");
+  const nextTarget =
+    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
@@ -325,10 +336,11 @@ function LoginRedirect() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={from || getDefaultRoute()} replace />;
+    return <Navigate to={nextTarget || from || getDefaultRoute()} replace />;
   }
   return <Login />;
 }
+
 
 function DashboardWrapper() {
   return (
@@ -355,7 +367,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
       <Route path="/login/:slug" element={<TenantLoginPage />} />
+      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/trust" element={<Trust />} />
+
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
         <ProtectedRoute>
