@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Loader2, BookOpen, Download, ExternalLink, Calendar, Globe, FileText, User, Building2 } from "lucide-react";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
 
 export default function LibraryShare() {
   const { token } = useParams<{ token: string }>();
@@ -15,7 +20,12 @@ export default function LibraryShare() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const { data } = await (supabase.from("library_items") as any)
+      // Anon-scoped client that forwards the share token so RLS can match it.
+      const shareClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
+        global: { headers: { "x-share-token": token } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data } = await (shareClient.from("library_items") as any)
         .select("*").eq("share_token", token).maybeSingle();
       setItem(data);
       if (data?.cover_image) {
@@ -25,6 +35,7 @@ export default function LibraryShare() {
       setLoading(false);
     })();
   }, [token]);
+
 
   const handleDownload = async () => {
     if (!item) return;
