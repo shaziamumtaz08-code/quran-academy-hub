@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
+declare const process: { env: Record<string, string | undefined> };
+
 function userClient(ctx: ToolContext) {
   return createClient(
     process.env.SUPABASE_URL!,
@@ -12,6 +14,7 @@ function userClient(ctx: ToolContext) {
     },
   );
 }
+
 
 export default defineTool({
   name: "get_my_profile",
