@@ -144,6 +144,7 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
       ...(can(r, 'finance_setup', 'view') ? [{ label: 'Setup', href: '/finance?view=setup' }] : []),
       ...(isOneToOne && can(r, 'salary', 'view') ? [{ label: 'Salaries', href: '/finance?view=salaries' }] : []),
       ...(!isOneToOne && can(r, 'staff_salaries', 'view') ? [{ label: 'Teacher Payouts', href: '/finance?view=payouts' }] : []),
+      ...(can(r, 'staff_salaries', 'view') ? [{ label: 'Staff Salary Setup', href: '/staff-salaries' }] : []),
       ...(can(r, 'expenses', 'view') ? [{ label: 'Expenses', href: '/finance?view=expenses' }] : []),
       ...(isOneToOne && can(r, 'cash_advances', 'view') ? [{ label: 'Cash Advances', href: '/finance?view=cash-advances' }] : []),
     ],
