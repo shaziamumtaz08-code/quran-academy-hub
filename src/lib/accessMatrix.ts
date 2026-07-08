@@ -87,7 +87,15 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
 export const isAdminRole = (role: AppRole): boolean =>
   ['super_admin','admin','admin_division','admin_admissions','admin_fees','admin_academic'].includes(role);
 
+// Modules restricted to super_admin (cross-division / platform-level tools).
+// admin_division has full access to everything else within their division scope.
+const SUPER_ADMIN_ONLY = new Set(['select_division','org_settings','schema_explorer','qa_testmate']);
+
 export const can = (role: AppRole, moduleId: string, cap: Capability): boolean => {
+  // super_admin: unrestricted platform-wide
+  if (role === 'super_admin') return true;
+  // admin_division: full-access within their division (blocked only from super-admin-only tools)
+  if (role === 'admin_division' && !SUPER_ADMIN_ONLY.has(moduleId)) return true;
   const mod = ACCESS_MATRIX.find(m => m.id === moduleId);
   return mod?.roles[role]?.includes(cap) ?? false;
 };
