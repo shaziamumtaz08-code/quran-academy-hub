@@ -6230,6 +6230,60 @@ export type Database = {
           },
         ]
       }
+      profile_sensitive_data: {
+        Row: {
+          bank_account_number: string | null
+          bank_iban: string | null
+          created_at: string
+          date_of_birth: string | null
+          emergency_contact_phone: string | null
+          gov_id_doc_url: string | null
+          gov_id_number: string | null
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          bank_account_number?: string | null
+          bank_iban?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_phone?: string | null
+          gov_id_doc_url?: string | null
+          gov_id_number?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          bank_account_number?: string | null
+          bank_iban?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_phone?: string | null
+          gov_id_doc_url?: string | null
+          gov_id_number?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_sensitive_data_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_sensitive_data_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_status: string | null
@@ -10889,6 +10943,18 @@ export type Database = {
           license_id: string
           meeting_link: string
           zoom_email: string
+        }[]
+      }
+      get_course_quiz_questions_for_student: {
+        Args: { _quiz_id: string }
+        Returns: {
+          id: string
+          options: Json
+          points: number
+          question_text: string
+          question_type: string
+          quiz_id: string
+          sort_order: number
         }[]
       }
       get_course_webhook_secret: {
