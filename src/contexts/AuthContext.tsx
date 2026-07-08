@@ -373,11 +373,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasPermission = (permission: string): boolean => {
-    // Check based on activeRole, not all roles
-    if (activeRole === "super_admin") {
-      return true;
-    }
-    // Check if active role has this permission
+    // super_admin: unrestricted
+    if (activeRole === "super_admin") return true;
+    // admin_division: full access within their division scope (division filtering
+    // is enforced separately by the Division Context Engine)
+    if (activeRole === "admin_division") return true;
     return activeRolePermissions.includes(permission);
   };
 
