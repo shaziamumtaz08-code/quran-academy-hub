@@ -84,7 +84,20 @@ export function FileUploadField({
         <div className="flex items-center gap-2 mt-1">
           {isImage && <Image className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           {isPdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-          <a href={viewHref || value} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-[200px] flex items-center gap-1">
+          <a
+            href={viewHref || value}
+            target="_blank"
+            rel="noreferrer"
+            onClick={async (e) => {
+              // Always resolve a fresh URL on click. The stored URL may be a
+              // stale /object/public/... path for a now-private bucket, which
+              // 404s with "Bucket not found".
+              e.preventDefault();
+              const fresh = await resolveFileUrl(value);
+              if (fresh) window.open(fresh, '_blank', 'noopener,noreferrer');
+            }}
+            className="text-xs text-primary hover:underline truncate max-w-[200px] flex items-center gap-1"
+          >
             View Attachment <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         </div>
@@ -99,7 +112,17 @@ export function AttachmentPreview({ url, className }: { url: string | null; clas
   if (!url) return null;
   const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
   return (
-    <a href={href || url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 text-xs text-primary hover:underline ${className || ''}`}>
+    <a
+      href={href || url}
+      target="_blank"
+      rel="noreferrer"
+      onClick={async (e) => {
+        e.preventDefault();
+        const fresh = await resolveFileUrl(url);
+        if (fresh) window.open(fresh, '_blank', 'noopener,noreferrer');
+      }}
+      className={`inline-flex items-center gap-1 text-xs text-primary hover:underline ${className || ''}`}
+    >
       {isImage ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
       View
       <ExternalLink className="h-3 w-3" />
