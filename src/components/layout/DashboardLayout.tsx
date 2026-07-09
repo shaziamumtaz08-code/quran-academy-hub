@@ -136,6 +136,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Invoices", href: "/finance?view=invoices" },
               { label: "Payments", href: "/finance?view=payments" },
               { label: "Fee Plans", href: "/finance?view=fee-plans" },
+              { label: "Staff Salary Setup", href: "/finance?view=staff-salary-setup" },
               { label: "Salaries", href: "/finance?view=salaries" },
               { label: "Expenses", href: "/finance?view=expenses" },
               { label: "Cash Advances", href: "/finance?view=cash-advances" },
