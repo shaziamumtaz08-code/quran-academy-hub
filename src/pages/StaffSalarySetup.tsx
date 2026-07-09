@@ -509,8 +509,8 @@ export default function StaffSalarySetup() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
     </>
+
 
   );
 }
