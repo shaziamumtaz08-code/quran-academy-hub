@@ -9,6 +9,7 @@ const Expenses = lazy(() => import('./Expenses'));
 const CashAdvances = lazy(() => import('./CashAdvances'));
 const FinanceSetup = lazy(() => import('./FinanceSetup'));
 const TeacherPayouts = lazy(() => import('./TeacherPayouts'));
+const StaffSalarySetup = lazy(() => import('./StaffSalarySetup'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -16,6 +17,7 @@ const views = [
   { label: 'Invoices', value: 'invoices' },
   { label: 'Payments', value: 'payments' },
   { label: 'Fee Plans', value: 'fee-plans' },
+  { label: 'Staff Salary Setup', value: 'staff-salary-setup' },
   { label: 'Salaries', value: 'salaries' },
   { label: 'Expenses', value: 'expenses' },
   { label: 'Cash Advances', value: 'cash-advances' },
@@ -32,6 +34,7 @@ export default function FinanceLanding() {
     invoices: <Suspense fallback={<Loading />}><Payments /></Suspense>,
     payments: <Suspense fallback={<Loading />}><Payments /></Suspense>,
     'fee-plans': <Suspense fallback={<Loading />}><Payments /></Suspense>,
+    'staff-salary-setup': <Suspense fallback={<Loading />}><StaffSalarySetup /></Suspense>,
     salaries: <Suspense fallback={<Loading />}><SalaryEngine /></Suspense>,
     expenses: <Suspense fallback={<Loading />}><Expenses /></Suspense>,
     'cash-advances': <Suspense fallback={<Loading />}><CashAdvances /></Suspense>,
