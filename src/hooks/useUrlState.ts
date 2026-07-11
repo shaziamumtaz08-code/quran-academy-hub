@@ -5,15 +5,12 @@ import { useSearchParams } from "react-router-dom";
  * URL-persisted state hook. Behaves like useState but reads/writes a query param
  * so state survives remounts, tab switches, and page refreshes.
  *
- * Uses `replace: true` (no history spam). Pass an empty string default ("")
- * to represent "no value" (param is removed from URL when set to "" or default).
- *
  * For string-literal unions (e.g. 'a' | 'b' | 'all'), pass the generic explicitly:
  *   const [tab, setTab] = useUrlState<'a' | 'b'>('tab', 'a');
  */
 export function useUrlState<T extends string = string>(
   key: string,
-  defaultValue: T,
+  defaultValue: string,
   options: { historyMode?: "push" | "replace" } = {},
 ): [T, (value: T) => void] {
   const [searchParams, setSearchParams] = useSearchParams();
