@@ -22,6 +22,8 @@ import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { trackActivity } from '@/lib/activityLogger';
+import { useUrlState } from '@/hooks/useUrlState';
+import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 
 const MONTHS = [
   { value: '01', label: 'January' }, { value: '02', label: 'February' },
