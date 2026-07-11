@@ -5,40 +5,31 @@ import { useSearchParams } from "react-router-dom";
  * URL-persisted state hook. Behaves like useState but reads/writes a query param
  * so state survives remounts, tab switches, and page refreshes.
  *
- * Uses `replace: true` (no history spam). Pass an empty string default (`""`)
- * or `null` default to represent "no value" (param is removed from URL).
+ * Uses `replace: true` (no history spam). Pass an empty string default ("")
+ * to represent "no value" (param is removed from URL when set to "" or default).
  *
- * Generic parameter lets you constrain to a string-literal union, e.g.
- *   useUrlState<'a' | 'b' | 'all'>('tab', 'all')
+ * For string-literal unions (e.g. 'a' | 'b' | 'all'), pass the generic explicitly:
+ *   const [tab, setTab] = useUrlState<'a' | 'b'>('tab', 'a');
  */
 export function useUrlState<T extends string = string>(
   key: string,
   defaultValue: T,
-  options?: { historyMode?: "push" | "replace" },
-): [T, (value: T) => void];
-export function useUrlState<T extends string>(
-  key: string,
-  defaultValue: T | null,
-  options?: { historyMode?: "push" | "replace" },
-): [T | null, (value: T | null) => void];
-export function useUrlState(
-  key: string,
-  defaultValue: string | null,
   options: { historyMode?: "push" | "replace" } = {},
-): [string | null, (value: string | null) => void] {
+): [T, (value: T) => void] {
   const [searchParams, setSearchParams] = useSearchParams();
   const raw = searchParams.get(key);
-  const value = raw ?? defaultValue;
+  const value = (raw ?? defaultValue) as T;
 
   const setValue = useCallback(
-    (next: string | null) => {
+    (next: T) => {
       setSearchParams(
         (prev) => {
           const p = new URLSearchParams(prev);
-          if (next === null || next === undefined || next === "" || next === defaultValue) {
+          const s = next as unknown as string;
+          if (s === null || s === undefined || s === "" || s === defaultValue) {
             p.delete(key);
           } else {
-            p.set(key, String(next));
+            p.set(key, s);
           }
           return p;
         },
@@ -51,17 +42,43 @@ export function useUrlState(
   return [value, setValue];
 }
 
+/** Nullable variant — `null` clears the param. */
+export function useUrlStateNullable(
+  key: string,
+  defaultValue: string | null = null,
+): [string | null, (value: string | null) => void] {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const raw = searchParams.get(key);
+  const value = raw ?? defaultValue;
+
+  const setValue = useCallback(
+    (next: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          if (next === null || next === undefined || next === "") p.delete(key);
+          else p.set(key, next);
+          return p;
+        },
+        { replace: true },
+      );
+    },
+    [key, setSearchParams],
+  );
+
+  return [value, setValue];
+}
+
 /** Number variant. */
 export function useUrlNumberState(
   key: string,
   defaultValue: number,
 ): [number, (value: number) => void] {
-  const [raw, setRaw] = useUrlState("__num_" + key, String(defaultValue));
-  const [, setActual] = useUrlState(key, String(defaultValue));
+  const [raw, setRaw] = useUrlState(key, String(defaultValue));
   const value = useMemo(() => {
     const n = Number(raw);
     return Number.isFinite(n) ? n : defaultValue;
   }, [raw, defaultValue]);
-  const setValue = useCallback((n: number) => setActual(String(n)), [setActual]);
+  const setValue = useCallback((n: number) => setRaw(String(n)), [setRaw]);
   return [value, setValue];
 }
