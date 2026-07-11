@@ -88,14 +88,14 @@ export default function Assignments() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useUrlState<AssignmentStatus | 'all'>('status', 'active') as [AssignmentStatus | 'all', (v: AssignmentStatus | 'all') => void];
+  const [statusFilter, setStatusFilter] = useUrlState<AssignmentStatus | 'all'>('status', 'active');
   const [searchTerm, setSearchTerm] = useUrlState('q', '');
   const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Per-column sort + filters
   type SortKey = 'teacher_name' | 'student_name' | 'subject_name' | 'payout_amount' | 'status' | 'created_at';
-  const [sortKey, setSortKey] = useUrlState<SortKey>('sort', 'created_at') as [SortKey, (v: SortKey) => void];
-  const [sortDir, setSortDir] = useUrlState<'asc' | 'desc'>('dir', 'desc') as ['asc' | 'desc', (v: 'asc' | 'desc') => void];
+  const [sortKey, setSortKey] = useUrlState<SortKey>('sort', 'created_at');
+  const [sortDir, setSortDir] = useUrlState<'asc' | 'desc'>('dir', 'desc');
   const [teacherFilter, setTeacherFilter] = useUrlState('teacher', 'all');
   const [subjectFilter, setSubjectFilter] = useUrlState('subject', 'all');
   const [payoutTypeFilter, setPayoutTypeFilter] = useUrlState('payout', 'all');
