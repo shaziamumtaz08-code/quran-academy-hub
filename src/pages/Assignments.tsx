@@ -32,6 +32,8 @@ import { AssignmentDetailDialog } from '@/components/assignments/AssignmentDetai
 import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
 import { cn } from '@/lib/utils';
+import { useUrlState } from '@/hooks/useUrlState';
+import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 
 import { ASSIGNMENT_STATUS_RULES, getStatusRule, shouldArchiveOnLeft, type AssignmentStatus as RuleAssignmentStatus } from '@/lib/assignmentStatusRules';
 import { trackActivity } from '@/lib/activityLogger';
@@ -86,17 +88,17 @@ export default function Assignments() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useUrlState<AssignmentStatus | 'all'>('status', 'active');
+  const [searchTerm, setSearchTerm] = useUrlState('q', '');
   const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Per-column sort + filters
   type SortKey = 'teacher_name' | 'student_name' | 'subject_name' | 'payout_amount' | 'status' | 'created_at';
-  const [sortKey, setSortKey] = useState<SortKey>('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [teacherFilter, setTeacherFilter] = useState<string>('all');
-  const [subjectFilter, setSubjectFilter] = useState<string>('all');
-  const [payoutTypeFilter, setPayoutTypeFilter] = useState<string>('all');
+  const [sortKey, setSortKey] = useUrlState<SortKey>('sort', 'created_at');
+  const [sortDir, setSortDir] = useUrlState<'asc' | 'desc'>('dir', 'desc');
+  const [teacherFilter, setTeacherFilter] = useUrlState('teacher', 'all');
+  const [subjectFilter, setSubjectFilter] = useUrlState('subject', 'all');
+  const [payoutTypeFilter, setPayoutTypeFilter] = useUrlState('payout', 'all');
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
@@ -1142,7 +1144,7 @@ export default function Assignments() {
   };
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
   };
 

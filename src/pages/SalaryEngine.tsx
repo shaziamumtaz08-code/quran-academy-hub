@@ -22,6 +22,8 @@ import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { trackActivity } from '@/lib/activityLogger';
+import { useUrlState } from '@/hooks/useUrlState';
+import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 
 const MONTHS = [
   { value: '01', label: 'January' }, { value: '02', label: 'February' },
@@ -105,12 +107,12 @@ export default function SalaryEngine() {
   const isTeacherView = activeRole === 'teacher';
   const queryClient = useQueryClient();
 
-  const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [salaryMonth, setSalaryMonth] = useUrlState('month', currentSalaryMonth);
+  const [searchQuery, setSearchQuery] = useUrlState('q', '');
   const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
   const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
-  const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
-  const [salaryView, setSalaryView] = useState<SalaryView>('active');
+  const [staffFilter, setStaffFilter] = useUrlState<StaffFilter>('staff', 'all');
+  const [salaryView, setSalaryView] = useUrlState<SalaryView>('view', 'active');
 
   // Modals
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);

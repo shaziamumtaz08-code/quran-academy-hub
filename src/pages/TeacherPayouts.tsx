@@ -20,17 +20,19 @@ import {
   Users, DollarSign, ChevronDown, ChevronRight, Check, Clock, Download,
   Loader2, Heart, FileText, Calendar, Filter
 } from 'lucide-react';
+import { useUrlState, useUrlStateNullable } from '@/hooks/useUrlState';
+import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 
 type PeriodMode = 'monthly' | 'weekly' | 'custom';
 
 export default function TeacherPayouts() {
   const qc = useQueryClient();
-  const [periodMode, setPeriodMode] = useState<PeriodMode>('monthly');
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+  const [periodMode, setPeriodMode] = useUrlState<PeriodMode>('period', 'monthly');
+  const [selectedMonth, setSelectedMonth] = useUrlState('month', format(new Date(), 'yyyy-MM'));
+  const [customFrom, setCustomFrom] = useUrlState('from', '');
+  const [customTo, setCustomTo] = useUrlState('to', '');
+  const [statusFilter, setStatusFilter] = useUrlState('status', 'all');
+  const [expandedTeacher, setExpandedTeacher] = useUrlStateNullable('teacher');
   const [payDialog, setPayDialog] = useState<{ id: string; name: string; amount: number } | null>(null);
   const [payRef, setPayRef] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
@@ -339,7 +341,7 @@ export default function TeacherPayouts() {
         <>
           {grouped.length > 0 && (
             <Card>
-              <div className="overflow-x-auto">
+              <StickyScrollTable>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -442,7 +444,7 @@ export default function TeacherPayouts() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
+              </StickyScrollTable>
             </Card>
           )}
 
@@ -454,7 +456,7 @@ export default function TeacherPayouts() {
                   <Heart className="h-4 w-4 text-rose-500" /> Volunteer Teachers
                 </CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
+              <StickyScrollTable>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -479,7 +481,7 @@ export default function TeacherPayouts() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </StickyScrollTable>
             </Card>
           )}
         </>

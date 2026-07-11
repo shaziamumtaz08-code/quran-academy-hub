@@ -1,64 +1,107 @@
-## Goal
-Let teachers mark each daily attendance as either a **New Lesson** or **Same Lesson Retained** (no new progress today), with a required reason when retained. Apply to Nazra first, then Hifz and academic subjects. Also make the Manzil (revision) Yes/No mandatory before saving.
+# Plan: Site-wide navigation persistence + sticky horizontal scrollbar
 
-## UX (inside `UnifiedAttendanceForm` when status = Present)
+Two cross-cutting UX fixes applied consistently across the admin app.
 
-A new "Lesson Today" card at the top of the academic section:
+---
 
-```text
-Lesson Today
-( ● New Lesson   ○ Same as last class )
+## Part 1 — Persist tab/sub-view state across tab switch & refresh
 
-If "Same as last class":
-   Reason *  [ Student didn't memorize ▾ ]
-              - Student didn't memorize
-              - Menstrual period (girls)
-              - Student unwell / low energy
-              - Teacher revised instead
-              - Other → free-text
-   Notes (optional)  [ ___________ ]
-   → Sabaq range inputs become read-only,
-     pre-filled from the previous class.
+### Root causes to eliminate
+1. Selected month / user / record / sub-tab held only in `useState`, so remount = reset.
+2. `useQuery` refetch-on-window-focus can re-trigger effects that reset local selection to defaults.
+3. Sub-views not reflected in URL, so refresh drops the user back to the module's landing view.
 
-Manzil / Revision *   ( ● Yes  ○ No )   ← required, no default
+### Approach — one shared pattern everywhere
+Introduce a tiny helper hook `useUrlState` (wrapper around `useSearchParams`) that behaves like `useState` but reads/writes a query param. Every place currently doing:
+
+```ts
+const [month, setMonth] = useState(currentMonth);
+const [selectedId, setSelectedId] = useState<string | null>(null);
+const [tab, setTab] = useState("overview");
 ```
 
-Auto-detect badge: if the teacher enters a Sabaq range identical to the previous class's range, show an inline hint "Looks like the same lesson — switch to 'Same as last class'?" with a one-click switch.
+becomes:
 
-## Validation
-- `lesson_type` is required (New | Repeat).
-- If `lesson_type = 'repeat'` → `repeat_reason` required.
-- `manzil_done` required for Nazra/Hifz (cannot save while null).
-- Save blocked with toast until all three satisfied.
+```ts
+const [month, setMonth] = useUrlState("month", currentMonth);
+const [selectedId, setSelectedId] = useUrlState("id", null);
+const [tab, setTab] = useUrlState("tab", "overview");
+```
 
-## Data model
-`attendance.lesson_type` already exists (text). Reuse it with values `new` | `repeat`. Add two new columns:
+This guarantees:
+- Refresh → URL still has `?month=2026-05&id=abc&tab=payroll` → same view rehydrates.
+- Browser tab switch → nothing resets; even if the component remounts it reads from URL.
+- Back/forward buttons work naturally.
 
-- `repeat_reason text` — enum-like: `not_memorized | menstrual | unwell | teacher_revised | other`
-- `repeat_reason_note text` — free text when reason = other
+### Guarding "reset on focus" behavior
+Audit for:
+- `useEffect(() => { setX(default) }, [])` that runs on remount and clobbers URL state → change to read URL first.
+- React Query defaults: set `refetchOnWindowFocus: false` **only on queries that reset UI selection via `onSuccess`**. Keep it on for pure data.
+- Any `visibilitychange` / `focus` listeners that reset selection → remove.
 
-Manzil already stored in `manzil_done boolean` — keep, just enforce non-null on save by defaulting the UI to unselected and blocking submit.
+### Pages to update (audit list)
+Modules with inner sub-views identified from the codebase:
 
-Migration adds the two columns (nullable, no backfill needed). No RLS changes.
+- Finance: `FinanceLanding`, `SalaryEngine`, `StaffSalarySetup`, `TeacherPayouts`, `CashAdvances`, `Expenses`, `FinanceSetup` — persist `?month=`, `?teacher=`, `?tab=`.
+- Reports: `Reports`, `ReportsLanding`, `StudentReports`, `TeacherPerformance`, `StudentEngagement` — persist `?range=`, `?tab=`, `?student=`.
+- People: `Students`, `Teachers`, `Parents`, `PeopleLanding`, `HolisticUserProfileDrawer` — persist `?userId=` for open drawer, `?tab=` inside drawer.
+- Assignments / Schedules: `AssignmentDetailDialog`, `TransferAssignmentDialog`, `MonthlyCalendarView`, `DailySlotCalendar` — persist `?assignmentId=`, `?date=`.
+- Hub / Work Hub: `WorkHub`, `TicketDetail`, `TaskDetailDialog` — persist `?ticket=`, `?task=`, `?tab=`.
+- Courses / Teaching: `Courses`, `CourseCatalog`, `TeachingOS*` pages — persist `?courseId=`, `?sessionId=`, `?phase=`.
+- Communication: `CommunicationLanding`, `GroupChat`, `WhatsAppInbox` — persist `?group=`, `?thread=`.
+- Settings: `SettingsLanding`, `OrganizationSettings`, `AuthenticationSettings` — persist `?tab=`.
 
-## Scope of subjects
-- **Nazra** + **Hifz**: full UI (lesson type + reason + mandatory Manzil).
-- **Academic (other subjects)**: lesson type + reason only (no Manzil block). The existing `AcademicAttendanceFields` gets the same "Lesson Today" card at the top; when "Same as last class" is selected, the "Lesson/Topic Taught" field is locked and shows previous topic.
+`HubPageShell` already reads `tab` from the URL — extend the same pattern to the rest.
 
-## Files to change
-1. `supabase/migrations/…` — add `repeat_reason`, `repeat_reason_note` to `attendance`.
-2. `src/components/attendance/UnifiedAttendanceForm.tsx`
-   - new state: `lessonType`, `repeatReason`, `repeatReasonNote`
-   - fetch previous class's sabaq range/topic for the same student/subject (already partially loaded as "last lesson")
-   - validation guard before insert
-   - pass props down + persist new columns
-3. New `src/components/attendance/LessonTypeSection.tsx` — the toggle + reason UI, reused by Nazra/Hifz/Academic.
-4. `src/components/attendance/NazraAttendanceFields.tsx` & `HifzAttendanceFields.tsx` — mount `LessonTypeSection` at top; pass `isRepeatLesson` to disable Sabaq inputs when repeating; enforce Manzil with no default.
-5. `src/components/attendance/AcademicAttendanceFields.tsx` — mount `LessonTypeSection`; lock topic field when repeating.
-6. `RecentAttendanceCards` (read-only) — show a small "Repeated" chip with reason on cards where `lesson_type='repeat'`, so parents/students can see why no progress was logged.
+### Unsaved edit protection
+For form-heavy pages (assignment edit, salary sheet edit, report card form, template builder):
+- New hook `useDraftPersistence(key, values)` that writes form state to `sessionStorage` on change (debounced) and rehydrates on mount.
+- Clear the draft on successful save/cancel.
 
-## Out of scope (ask later)
-- Reporting/analytics aggregation of repeat-lesson counts per student/month.
-- Notifying parents automatically when too many consecutive repeats occur.
+---
 
-Want me to include those analytics in this pass, or keep this build focused on capture + display only?
+## Part 2 — Sticky horizontal scrollbar for wide tables
+
+### Approach
+One shared component `<StickyScrollTable>` that wraps a wide table and adds a floating horizontal scrollbar synced to the table's `scrollLeft`.
+
+Implementation:
+- Wrapper `div` with `overflow-x-auto` holds the table (as today).
+- Sibling floating bar: `position: sticky; bottom: 0` inside the same scroll container, or `position: fixed; bottom: 0` visible only while the table is in the viewport (IntersectionObserver).
+- Inner spacer div width = table's `scrollWidth`; two-way scroll sync via `onScroll` handlers on both the table wrapper and the sticky bar.
+- Auto-hide when table fits within viewport width.
+
+### Where it's applied
+Replace the current `<div className="overflow-x-auto">` wrapper on every wide admin table:
+
+- `TeacherPerformance.tsx`, `StudentEngagement.tsx`
+- `Students.tsx`, `Teachers.tsx`, `Parents.tsx`
+- `SalaryEngine`, `StaffSalarySetup`, `TeacherPayouts`, `CashAdvances`, `Expenses`
+- `Reports` module tables
+- Assignments tables, `MonthlyCalendarView` grid
+- Work Hub `TicketList`
+- Any other `overflow-x-auto` table wrapper found by ripgrep
+
+A single ripgrep for `overflow-x-auto` on `<table` neighbors will produce the exhaustive list; each site gets the component swapped in.
+
+---
+
+## Technical details
+
+**New files**
+- `src/hooks/useUrlState.ts` — typed URL-param state hook (string/number/enum overloads).
+- `src/hooks/useDraftPersistence.ts` — sessionStorage draft sync.
+- `src/components/ui/sticky-scroll-table.tsx` — wide-table wrapper with floating scrollbar.
+
+**Edits**
+- Swap `useState` → `useUrlState` on every listed page for selection/tab/month/id state.
+- Swap `<div className="overflow-x-auto">…<table>` → `<StickyScrollTable>…<table>` on every wide-table page.
+- Remove any `refetchOnWindowFocus`-triggered UI resets; keep data refetches.
+- Wire `useDraftPersistence` into the four heavy edit forms.
+
+**Non-goals**
+- No visual/theme changes.
+- No data-model or RLS changes.
+- No changes to backend/edge functions.
+
+Estimated scope: ~3 new files + edits across ~25 existing files (mostly small swaps).
