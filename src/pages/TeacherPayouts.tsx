@@ -20,19 +20,19 @@ import {
   Users, DollarSign, ChevronDown, ChevronRight, Check, Clock, Download,
   Loader2, Heart, FileText, Calendar, Filter
 } from 'lucide-react';
-import { useUrlState } from '@/hooks/useUrlState';
+import { useUrlState, useUrlStateNullable } from '@/hooks/useUrlState';
 import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 
 type PeriodMode = 'monthly' | 'weekly' | 'custom';
 
 export default function TeacherPayouts() {
   const qc = useQueryClient();
-  const [periodMode, setPeriodMode] = useUrlState<PeriodMode>('period', 'monthly') as [PeriodMode, (v: PeriodMode) => void];
+  const [periodMode, setPeriodMode] = useUrlState<PeriodMode>('period', 'monthly');
   const [selectedMonth, setSelectedMonth] = useUrlState('month', format(new Date(), 'yyyy-MM'));
   const [customFrom, setCustomFrom] = useUrlState('from', '');
   const [customTo, setCustomTo] = useUrlState('to', '');
   const [statusFilter, setStatusFilter] = useUrlState('status', 'all');
-  const [expandedTeacher, setExpandedTeacher] = useUrlState<string | null>('teacher', null);
+  const [expandedTeacher, setExpandedTeacher] = useUrlStateNullable('teacher');
   const [payDialog, setPayDialog] = useState<{ id: string; name: string; amount: number } | null>(null);
   const [payRef, setPayRef] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
