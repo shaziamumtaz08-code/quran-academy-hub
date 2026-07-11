@@ -105,12 +105,12 @@ export default function SalaryEngine() {
   const isTeacherView = activeRole === 'teacher';
   const queryClient = useQueryClient();
 
-  const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [salaryMonth, setSalaryMonth] = useUrlState('month', currentSalaryMonth);
+  const [searchQuery, setSearchQuery] = useUrlState('q', '');
   const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
   const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
-  const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
-  const [salaryView, setSalaryView] = useState<SalaryView>('active');
+  const [staffFilter, setStaffFilter] = useUrlState<StaffFilter>('staff', 'all') as [StaffFilter, (v: StaffFilter) => void];
+  const [salaryView, setSalaryView] = useUrlState<SalaryView>('view', 'active') as [SalaryView, (v: SalaryView) => void];
 
   // Modals
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
