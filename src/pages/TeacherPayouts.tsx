@@ -341,7 +341,7 @@ export default function TeacherPayouts() {
         <>
           {grouped.length > 0 && (
             <Card>
-              <div className="overflow-x-auto">
+              <StickyScrollTable>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -444,7 +444,7 @@ export default function TeacherPayouts() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
+              </StickyScrollTable>
             </Card>
           )}
 
@@ -456,7 +456,7 @@ export default function TeacherPayouts() {
                   <Heart className="h-4 w-4 text-rose-500" /> Volunteer Teachers
                 </CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
+              <StickyScrollTable>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -481,7 +481,7 @@ export default function TeacherPayouts() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </StickyScrollTable>
             </Card>
           )}
         </>
