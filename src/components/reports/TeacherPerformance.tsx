@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StickyScrollTable } from "@/components/ui/sticky-scroll-table";
 import { Download } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -120,7 +121,7 @@ export default function TeacherPerformance() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <StickyScrollTable>
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
@@ -146,7 +147,7 @@ export default function TeacherPerformance() {
                 {sorted.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No data found</td></tr>}
               </tbody>
             </table>
-          </div>
+          </StickyScrollTable>
         </CardContent>
       </Card>
     </div>

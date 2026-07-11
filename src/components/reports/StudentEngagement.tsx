@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { StickyScrollTable } from "@/components/ui/sticky-scroll-table";
 import { Download, Search, Flame } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
@@ -130,7 +131,7 @@ export default function StudentEngagement() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <StickyScrollTable>
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
@@ -162,7 +163,7 @@ export default function StudentEngagement() {
                 {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No data found</td></tr>}
               </tbody>
             </table>
-          </div>
+          </StickyScrollTable>
         </CardContent>
       </Card>
     </div>
