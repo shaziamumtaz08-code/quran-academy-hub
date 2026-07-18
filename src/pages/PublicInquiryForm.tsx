@@ -49,7 +49,7 @@ function SuccessScreen() {
             <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h2 className="text-2xl font-bold text-foreground">JazakAllah Khair!</h2>
-          <p className="text-muted-foreground">We've received your inquiry. Our team will contact you within 24 hours via WhatsApp or email.</p>
+          <p className="text-muted-foreground">Thanks for submitting your details. Our admin team will review your inquiry and get back to you soon via WhatsApp or email.</p>
           <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground pt-2">
             {[1,2,3,4,5].map(n => <Star key={n} className="h-3 w-3 text-amber-500" fill="currentColor" />)}
             <span className="ml-1">Trusted by 500+ families worldwide</span>
@@ -452,7 +452,7 @@ export default function PublicInquiryForm() {
         <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || otherInvalid || slotsInvalid || submitMutation.isPending}
           className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all" size="lg">
           {submitMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
-          Continue to Pre-Demo Screening ↗
+          Submit
         </Button>
 
         <div className="text-center space-y-2 pt-2">
