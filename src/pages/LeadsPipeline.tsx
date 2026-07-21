@@ -1156,6 +1156,21 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
 
 // ── Lead Card ──
 function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const copyPhone = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!lead.phone_whatsapp) return;
+    try {
+      await navigator.clipboard.writeText(lead.phone_whatsapp);
+      setCopied(true);
+      toast({ title: 'Copied', description: 'Phone number copied to clipboard' });
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast({ title: 'Copy failed', description: 'Could not copy phone number', variant: 'destructive' });
+    }
+  };
+
   return (
     <div
       onClick={onClick}
@@ -1177,6 +1192,23 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
         {lead.email && <span className="truncate max-w-[120px]">{lead.email}</span>}
         <span>{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
       </div>
+      {lead.phone_whatsapp && (
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Phone className="h-3.5 w-3.5" />
+            <span className="truncate">{lead.phone_whatsapp}</span>
+          </div>
+          <button
+            type="button"
+            onClick={copyPhone}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
+            title="Copy phone number"
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
