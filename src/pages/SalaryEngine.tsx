@@ -112,7 +112,7 @@ export default function SalaryEngine() {
   const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
   const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
   const [staffFilter, setStaffFilter] = useUrlState<StaffFilter>('staff', 'all');
-  const [salaryView, setSalaryView] = useUrlState<SalaryView>('view', 'active');
+  const [salaryView, setSalaryView] = useUrlState<SalaryView>('sheet', 'active');
 
   // Modals
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
