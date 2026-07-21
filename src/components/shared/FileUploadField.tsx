@@ -29,6 +29,8 @@ export function FileUploadField({
   onUploadStateChange,
 }: FileUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
+  const [linkInput, setLinkInput] = useState('');
+  const [showLinkFallback, setShowLinkFallback] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -53,12 +55,34 @@ export function FileUploadField({
       onChange(urlData.publicUrl);
       toast({ title: 'Uploaded successfully' });
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+      const msg: string = err?.message || '';
+      // Storage service schema mismatch — surface the paste-link fallback so users aren't blocked.
+      if (/schema is invalid or incompatible|Bucket not found/i.test(msg)) {
+        setShowLinkFallback(true);
+        toast({
+          title: 'Uploads temporarily unavailable',
+          description: 'Paste a link to the proof (Drive, Dropbox, WhatsApp export, etc.) as a workaround.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
+      }
     } finally {
       setUploading(false);
       onUploadStateChange?.(false);
       if (fileRef.current) fileRef.current.value = '';
     }
+  };
+
+  const handleSaveLink = () => {
+    const url = linkInput.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      toast({ title: 'Invalid link', description: 'Enter a full URL starting with http(s)://', variant: 'destructive' });
+      return;
+    }
+    onChange(url);
+    setLinkInput('');
+    toast({ title: 'Link saved' });
   };
 
   const isImage = value && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
@@ -79,6 +103,31 @@ export function FileUploadField({
         />
         {uploading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
       </div>
+      {!value && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="text-[10px] text-primary hover:underline"
+            onClick={() => setShowLinkFallback((v) => !v)}
+          >
+            {showLinkFallback ? 'Hide link option' : 'Or paste a link instead'}
+          </button>
+        </div>
+      )}
+      {showLinkFallback && !value && (
+        <div className="flex gap-2 items-center">
+          <Input
+            type="url"
+            placeholder="https://drive.google.com/…"
+            value={linkInput}
+            onChange={(e) => setLinkInput(e.target.value)}
+            className="text-xs h-8"
+          />
+          <Button type="button" size="sm" className="h-8" onClick={handleSaveLink} disabled={!linkInput.trim()}>
+            Save
+          </Button>
+        </div>
+      )}
       {hint && !value && <p className="text-[9px] text-muted-foreground">{hint}</p>}
       {value && (
         <div className="flex items-center gap-2 mt-1">
