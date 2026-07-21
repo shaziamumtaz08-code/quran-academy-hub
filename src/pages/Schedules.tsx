@@ -1249,7 +1249,10 @@ export default function Schedules() {
                   Add Schedule
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent
+                className="max-w-2xl"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
                 <DialogHeader>
                   <DialogTitle className="font-serif">{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
                 </DialogHeader>
