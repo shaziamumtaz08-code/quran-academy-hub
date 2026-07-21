@@ -67,6 +67,11 @@ export default function Dashboard() {
     case 'student':
       return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
     case 'parent':
+      // Dual-role users (their own student + parent) with no linked children
+      // should see their student dashboard instead of an empty "My Children" shell.
+      if (profile.roles?.includes('student')) {
+        return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
+      }
       return <ParentDashboard />;
     case 'examiner':
       return <ExaminerDashboard />;
