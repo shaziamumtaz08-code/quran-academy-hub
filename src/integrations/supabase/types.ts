@@ -396,6 +396,7 @@ export type Database = {
           class_time: string
           course_id: string | null
           created_at: string
+          created_by: string | null
           division_id: string | null
           duration_minutes: number
           homework: string | null
@@ -445,6 +446,7 @@ export type Database = {
           teacher_id: string
           teacher_join_time: string | null
           updated_at: string
+          updated_by: string | null
           variance_reason: string | null
           voice_note_url: string | null
         }
@@ -457,6 +459,7 @@ export type Database = {
           class_time: string
           course_id?: string | null
           created_at?: string
+          created_by?: string | null
           division_id?: string | null
           duration_minutes?: number
           homework?: string | null
@@ -506,6 +509,7 @@ export type Database = {
           teacher_id: string
           teacher_join_time?: string | null
           updated_at?: string
+          updated_by?: string | null
           variance_reason?: string | null
           voice_note_url?: string | null
         }
@@ -518,6 +522,7 @@ export type Database = {
           class_time?: string
           course_id?: string | null
           created_at?: string
+          created_by?: string | null
           division_id?: string | null
           duration_minutes?: number
           homework?: string | null
@@ -567,6 +572,7 @@ export type Database = {
           teacher_id?: string
           teacher_join_time?: string | null
           updated_at?: string
+          updated_by?: string | null
           variance_reason?: string | null
           voice_note_url?: string | null
         }
@@ -621,6 +627,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      attendance_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          attendance_id: string
+          changed_at: string
+          id: string
+          new_row: Json | null
+          old_row: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          attendance_id: string
+          changed_at?: string
+          id?: string
+          new_row?: Json | null
+          old_row?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          attendance_id?: string
+          changed_at?: string
+          id?: string
+          new_row?: Json | null
+          old_row?: Json | null
+        }
+        Relationships: []
       }
       attendance_comments: {
         Row: {

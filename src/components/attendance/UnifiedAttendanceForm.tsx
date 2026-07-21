@@ -297,23 +297,29 @@ export function UnifiedAttendanceForm({
     enabled: open && !!effectiveTeacherId,
   });
 
-  // Check for duplicate attendance (skipped in edit mode — the row being edited is itself the match)
+  // Check for duplicate attendance at the SAME date+time+teacher (matches the DB
+  // duplicate-guard trigger). Skipped in edit mode — the row being edited is itself
+  // the match.
   const { data: existingAttendance } = useQuery({
-    queryKey: ['attendance-check-unified', student.id, classDate, isEdit],
+    queryKey: ['attendance-check-unified', student.id, classDate, classTime, effectiveTeacherId, isEdit],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('attendance')
-        .select('id, class_date, status')
+        .select('id, class_date, class_time, status')
         .eq('student_id', student.id)
         .eq('class_date', classDate);
-      
+      if (classTime) q = q.eq('class_time', classTime);
+      if (effectiveTeacherId) q = q.eq('teacher_id', effectiveTeacherId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
     enabled: open && !!classDate && !isEdit,
+    staleTime: 0,
   });
 
   const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
+
 
   // Fetch the student's most recent prior attendance with lesson coverage — used to
   // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
