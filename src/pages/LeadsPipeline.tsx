@@ -19,7 +19,8 @@ import {
   Plus, Search, Phone, Mail, MapPin, Clock, User, Calendar,
   MessageSquare, ArrowRight, X as XIcon, ChevronRight, Eye,
   UserPlus, Send, Star, ThumbsUp, ThumbsDown, Minus, GripVertical,
-  Filter, RefreshCw, MoreVertical, Shield, FileText, Upload, Mic
+  Filter, RefreshCw, MoreVertical, Shield, FileText, Upload, Mic,
+  Copy, Check
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
