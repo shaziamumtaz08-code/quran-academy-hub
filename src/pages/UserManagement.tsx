@@ -2103,6 +2103,7 @@ export default function UserManagement() {
                       ))}
                     </TableBody>
                   </Table>
+                  </StickyScrollTable>
                 </CardContent>
               </Card>
             )}
