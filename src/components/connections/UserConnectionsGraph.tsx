@@ -121,6 +121,11 @@ function CenterNode({ data }: NodeProps<NodeData>) {
           <p className="font-bold text-white text-base leading-tight truncate">{data.title}</p>
           {data.primaryRoleLabel && <p className="text-[11px] text-slate-300 mt-0.5 truncate">{data.primaryRoleLabel}</p>}
         </div>
+        {data.isArchived && (
+          <span className="text-[9px] font-bold text-white bg-amber-600 px-2 py-0.5 rounded-full shadow-sm shrink-0">
+            ARCHIVED
+          </span>
+        )}
       </div>
       {sortedRoles.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/10">
