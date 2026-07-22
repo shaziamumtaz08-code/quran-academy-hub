@@ -22,7 +22,7 @@ export function WorkHubCard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('tickets')
-        .select('id, title, category, status')
+        .select('id, subject, category, status')
         .eq('assignee_id', user!.id)
         .in('status', ['open', 'in_progress', 'pending'])
         .order('created_at', { ascending: false })
@@ -54,7 +54,7 @@ export function WorkHubCard() {
       ) : (
         tickets.map((t: any) => (
           <div key={t.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-border">
-            <p className="text-[12px] text-foreground truncate flex-1">{t.title}</p>
+            <p className="text-[12px] text-foreground truncate flex-1">{t.subject}</p>
             <div className="flex items-center gap-1 flex-shrink-0">
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
                 {CATEGORY_LABEL[t.category] || t.category}
