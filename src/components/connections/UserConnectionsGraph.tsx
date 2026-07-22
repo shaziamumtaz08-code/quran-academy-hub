@@ -427,8 +427,16 @@ function buildGraph(
         },
       });
     });
-    // Subject cards (1:1 student "what am I studying")
+    // Subject cards — only surface subjects that aren't already implicit in a teacher card
+    // (in 1:1 mode the teacher card already shows the subject as subtitle, so a separate
+    // subject node was showing the same relationship twice from a different angle).
+    const teacherSubjects = new Set(
+      (data.studentData!.teachers || [])
+        .map((t: any) => (t.subject || '').toLowerCase().trim())
+        .filter(Boolean),
+    );
     (data.studentData!.subjects || []).forEach((sub: any) => {
+      if (teacherSubjects.has((sub.name || '').toLowerCase().trim())) return;
       below.push({
         id: `s-subj-${sub.key}`,
         rel: 'subject',
