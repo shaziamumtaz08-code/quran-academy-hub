@@ -47,10 +47,18 @@ async function logAction(admin: any, action: string, entity_id: string | null, d
   });
 }
 
+import { requireRole } from "../_shared/auth.ts";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+  const auth = await requireRole(req, ["super_admin"]);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const admin = auth.adminClient;
   const actions: string[] = [];
   const errors: string[] = [];
 

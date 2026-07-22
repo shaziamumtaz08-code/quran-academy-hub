@@ -489,8 +489,18 @@ const MODULES: Record<ModuleKey, () => Promise<CheckResult[]>> = {
   rls_isolation: checkRls,
 };
 
+import { requireRole } from "../_shared/auth.ts";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireRole(req, ["super_admin"]);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
 
   let triggeredBy: string | null = null;
   let triggerSource = "manual";

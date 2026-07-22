@@ -159,14 +159,19 @@ ${args.link}
 — ${SENDER_NAME}, Al Quran Time Academy`;
 }
 
+import { requireRole } from "../_shared/auth.ts";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const auth = await requireRole(req, ["super_admin", "admin", "admin_division"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = auth.adminClient;
 
     const body = await req.json();
     const demoSessionId: string | undefined = body.demo_session_id;
