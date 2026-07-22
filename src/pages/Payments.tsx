@@ -1575,11 +1575,11 @@ export default function Payments() {
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className="font-serif text-2xl md:text-3xl font-bold text-foreground tracking-tight">
-              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Payments & Billing'}
+              {isParentView ? 'Fees' : isStudentView ? 'My Fees' : 'Payments & Billing'}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {isParentView
-                ? 'View and pay fees for your children'
+                ? 'View and pay fees for the selected child'
                 : isStudentView
                   ? 'View your fee invoices'
                   : activeTab === 'payments'

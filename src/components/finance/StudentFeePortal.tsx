@@ -79,41 +79,13 @@ const statusBadgeClass = (s: string) => {
 export function StudentFeePortal({
   invoices, isLoading, ledgerPaidMap, getRate, isParentView,
 }: Props) {
-  const { activeKidId, setActiveKidId, kids: contextKids } = useKidContext();
+  const { activeKidId } = useKidContext();
 
-  // Build child list from BOTH the parent's linked kids (KidContext) AND any kids
-  // who appear in the invoice set. A child with zero invoices (e.g. just-wiped plan)
-  // must still appear in the selector — otherwise switching to them silently falls
-  // back to a sibling and the parent sees the wrong child's fees.
-  const children = useMemo(() => {
-    const map = new Map<string, string>();
-    if (isParentView) {
-      contextKids.forEach(k => map.set(k.id, k.full_name));
-    }
-    invoices.forEach(i => {
-      if (i.profiles?.full_name && !map.has(i.student_id)) {
-        map.set(i.student_id, i.profiles.full_name);
-      }
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [invoices, isParentView, contextKids]);
-  const [selectedChildId, setSelectedChildIdLocal] = useState<string | null>(null);
-  const setSelectedChildId = (id: string) => {
-    setSelectedChildIdLocal(id);
-    if (isParentView && id) setActiveKidId(id);
-  };
-  React.useEffect(() => {
-    if (!isParentView || children.length === 0) return;
-    // Prefer KidContext's active kid if it's in the list, else fall back to first
-    const preferred = activeKidId && children.some(c => c.id === activeKidId)
-      ? activeKidId
-      : children[0].id;
-    if (preferred !== selectedChildId) {
-      setSelectedChildIdLocal(preferred);
-      if (preferred !== activeKidId) setActiveKidId(preferred);
-    }
-  }, [isParentView, children, activeKidId, selectedChildId, setActiveKidId]);
-
+  // Parents always view a single child at a time — the child is chosen via
+  // the top ActingAsBanner switcher (or by entering through "Login to Child's
+  // Account"). No per-page duplicate switcher; this mirrors the actual student
+  // view exactly.
+  const selectedChildId = isParentView ? activeKidId : null;
 
   const studentInvoices = useMemo(() => {
     const base = (isParentView && selectedChildId)
@@ -122,6 +94,7 @@ export function StudentFeePortal({
     // Students/parents never see archived (superseded) invoices — only the active revised one
     return base.filter(i => !i.is_archived);
   }, [invoices, isParentView, selectedChildId]);
+
 
   // IDs of invoices that *replaced* an older one (i.e. revisions). Computed from archived
   // siblings the admin view exposes; for students RLS may hide them and the set is just empty.
@@ -301,18 +274,8 @@ export function StudentFeePortal({
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {isParentView && children.length > 0 && (
-        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Viewing fees for:</span>
-          <Select value={selectedChildId || ''} onValueChange={setSelectedChildId}>
-            <SelectTrigger className="h-9 w-[220px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {children.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Sibling switcher lives in the top ActingAsBanner — no duplicate here. */}
+
 
       {/* HERO BALANCE CARD */}
       <div
