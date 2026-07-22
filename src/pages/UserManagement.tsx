@@ -2017,18 +2017,9 @@ export default function UserManagement() {
             {showUnassigned && (activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
               <Card className="overflow-hidden border-amber-300/60 dark:border-amber-800/60 shadow-sm">
                 <CardContent className="p-0">
-                  <div className="flex items-center justify-between gap-3 border-b border-amber-200/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
-                    <span className="font-medium">Swipe/scroll sideways to see every column and action.</span>
-                    <div className="flex gap-1">
-                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(unassignedTableRef, -1)}>
-                        <ChevronsLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(unassignedTableRef, 1)}>
-                        <ChevronsRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  <Table wrapperRef={unassignedTableRef} className="min-w-[1180px]" wrapperClassName="max-h-[calc(100vh-300px)] overflow-x-scroll overflow-y-auto overscroll-contain">
+                  <StickyScrollTable innerClassName="max-h-none">
+                  <Table wrapperRef={unassignedTableRef} className="min-w-[1180px]" wrapperClassName="overflow-visible max-h-none">
+
                     <TableHeader className="bg-amber-50/50 dark:bg-amber-950/10">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
