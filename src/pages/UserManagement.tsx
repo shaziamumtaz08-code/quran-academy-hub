@@ -1192,7 +1192,6 @@ export default function UserManagement() {
 
   const filteredAll = users
     ?.filter(user => {
-      const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
       const q = searchTerm.trim().toLowerCase();
       const qDigits = q.replace(/\D/g, '');
       const phoneDigits = (user.whatsapp_number || '').replace(/\D/g, '');
@@ -1202,6 +1201,11 @@ export default function UserManagement() {
         user.registration_id?.toLowerCase().includes(q) ||
         user.id?.toLowerCase().includes(q) ||
         (qDigits && phoneDigits.includes(qDigits));
+      // When actively searching, surface archived matches too (badge distinguishes them).
+      // Otherwise honor the Archived tab toggle strictly.
+      const matchesArchive = q
+        ? (showArchived ? !!user.archived_at : true)
+        : (showArchived ? !!user.archived_at : !user.archived_at);
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
       const matchesGender = !filterGender || (user.gender || '').toLowerCase() === filterGender;
