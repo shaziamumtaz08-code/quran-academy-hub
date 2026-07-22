@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -6,6 +7,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const auth = await requireRole(req, ["super_admin", "admin", "admin_division", "teacher"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { prompt, lessonTitle } = await req.json();
 
     if (!prompt || !lessonTitle) {

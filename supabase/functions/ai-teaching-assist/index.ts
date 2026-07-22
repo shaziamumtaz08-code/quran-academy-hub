@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
+import { requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -7,6 +8,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const auth = await requireRole(req, ["super_admin", "admin", "admin_division", "teacher"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language, context } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
