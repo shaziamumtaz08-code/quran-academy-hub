@@ -93,6 +93,7 @@ interface NodeData {
   primaryRoleLabel?: string;
   navUserId?: string;
   navUserType?: ConnUserType;
+  isArchived?: boolean;
 }
 
 /* ---------- Center node ---------- */
@@ -120,6 +121,11 @@ function CenterNode({ data }: NodeProps<NodeData>) {
           <p className="font-bold text-white text-base leading-tight truncate">{data.title}</p>
           {data.primaryRoleLabel && <p className="text-[11px] text-slate-300 mt-0.5 truncate">{data.primaryRoleLabel}</p>}
         </div>
+        {data.isArchived && (
+          <span className="text-[9px] font-bold text-white bg-amber-600 px-2 py-0.5 rounded-full shadow-sm shrink-0">
+            ARCHIVED
+          </span>
+        )}
       </div>
       {sortedRoles.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/10">
@@ -325,7 +331,7 @@ async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType
   const isParent  = roleSet.has('parent')  || hintedRole === 'parent';
 
   const [profileRes, teacherData, studentData, parentData, siblings, parentsOfStudent] = await Promise.all([
-    supabase.from('profiles').select('id, full_name').eq('id', userId).maybeSingle(),
+    supabase.from('profiles').select('id, full_name, archived_at').eq('id', userId).maybeSingle(),
     isTeacher ? fetchAsTeacher(userId) : Promise.resolve(null),
     isStudent ? fetchAsStudent(userId) : Promise.resolve(null),
     isParent  ? fetchAsParent(userId)  : Promise.resolve(null),
@@ -421,8 +427,16 @@ function buildGraph(
         },
       });
     });
-    // Subject cards (1:1 student "what am I studying")
+    // Subject cards — only surface subjects that aren't already implicit in a teacher card
+    // (in 1:1 mode the teacher card already shows the subject as subtitle, so a separate
+    // subject node was showing the same relationship twice from a different angle).
+    const teacherSubjects = new Set(
+      (data.studentData!.teachers || [])
+        .map((t: any) => (t.subject || '').toLowerCase().trim())
+        .filter(Boolean),
+    );
     (data.studentData!.subjects || []).forEach((sub: any) => {
+      if (teacherSubjects.has((sub.name || '').toLowerCase().trim())) return;
       below.push({
         id: `s-subj-${sub.key}`,
         rel: 'subject',
@@ -482,7 +496,7 @@ function buildGraph(
     id: selfId,
     type: 'center',
     position: { x: -CENTER_W / 2, y: -CENTER_H / 2 },
-    data: { kind: 'self', title: data.self?.full_name || 'User', primaryRoleLabel: primaryLabel, roles: data.allRoles } as NodeData,
+    data: { kind: 'self', title: data.self?.full_name || 'User', primaryRoleLabel: primaryLabel, roles: data.allRoles, isArchived: !!(data.self as any)?.archived_at } as NodeData,
     draggable: false,
   });
 
