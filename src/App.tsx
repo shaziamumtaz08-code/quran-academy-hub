@@ -421,6 +421,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><RouteGuard moduleId="dashboard"><DashboardWrapper /></RouteGuard></ProtectedRoute>} />
       <Route path="/my-courses" element={<ProtectedRoute><RouteGuard moduleId="my_courses"><DashboardLayout><MyCourses /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><RouteGuard moduleId="my_courses"><DashboardLayout><StudentCourseView /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/recordings" element={<ProtectedRoute><Recordings /></ProtectedRoute>} />
       <Route path="/my-teaching/:courseId" element={<ProtectedRoute><RouteGuard moduleId="my_teaching"><DashboardLayout><TeacherCourseView /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><RouteGuard moduleId="user_management"><UserManagement /></RouteGuard></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><RouteGuard moduleId="assignments"><Assignments /></RouteGuard></ProtectedRoute>} />
