@@ -331,7 +331,7 @@ async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType
   const isParent  = roleSet.has('parent')  || hintedRole === 'parent';
 
   const [profileRes, teacherData, studentData, parentData, siblings, parentsOfStudent] = await Promise.all([
-    supabase.from('profiles').select('id, full_name').eq('id', userId).maybeSingle(),
+    supabase.from('profiles').select('id, full_name, archived_at').eq('id', userId).maybeSingle(),
     isTeacher ? fetchAsTeacher(userId) : Promise.resolve(null),
     isStudent ? fetchAsStudent(userId) : Promise.resolve(null),
     isParent  ? fetchAsParent(userId)  : Promise.resolve(null),
