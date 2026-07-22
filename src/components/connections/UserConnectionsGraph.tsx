@@ -488,7 +488,7 @@ function buildGraph(
     id: selfId,
     type: 'center',
     position: { x: -CENTER_W / 2, y: -CENTER_H / 2 },
-    data: { kind: 'self', title: data.self?.full_name || 'User', primaryRoleLabel: primaryLabel, roles: data.allRoles } as NodeData,
+    data: { kind: 'self', title: data.self?.full_name || 'User', primaryRoleLabel: primaryLabel, roles: data.allRoles, isArchived: !!(data.self as any)?.archived_at } as NodeData,
     draggable: false,
   });
 
