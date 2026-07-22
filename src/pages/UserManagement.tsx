@@ -2132,18 +2132,9 @@ export default function UserManagement() {
                   </div>
                 ) : (
                   <>
-                  <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                    <span className="font-medium">Swipe/scroll sideways to see phone, location, and all action icons.</span>
-                    <div className="flex gap-1">
-                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(usersTableRef, -1)}>
-                        <ChevronsLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => scrollTable(usersTableRef, 1)}>
-                        <ChevronsRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  <Table wrapperRef={usersTableRef} className="min-w-[1280px]" wrapperClassName="max-h-[calc(100vh-300px)] overflow-x-scroll overflow-y-auto overscroll-contain">
+                  <StickyScrollTable innerClassName="max-h-none">
+                  <Table wrapperRef={usersTableRef} className="min-w-[1280px]" wrapperClassName="overflow-visible max-h-none">
+
 
                     <TableHeader className="bg-muted/40 backdrop-blur-sm">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
