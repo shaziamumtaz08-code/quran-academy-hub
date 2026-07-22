@@ -274,18 +274,8 @@ export function StudentFeePortal({
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {isParentView && children.length > 0 && (
-        <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Viewing fees for:</span>
-          <Select value={selectedChildId || ''} onValueChange={setSelectedChildId}>
-            <SelectTrigger className="h-9 w-[220px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {children.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Sibling switcher lives in the top ActingAsBanner — no duplicate here. */}
+
 
       {/* HERO BALANCE CARD */}
       <div
