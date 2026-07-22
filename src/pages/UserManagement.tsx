@@ -1113,7 +1113,7 @@ export default function UserManagement() {
   const [showUnassigned, setShowUnassigned] = useState(false);
 
   // Cycling placeholder for the search input — premium polish
-  const SEARCH_PLACEHOLDERS = ['Search by name or email…', 'Search by ID…', 'Search by phone…'];
+  const SEARCH_PLACEHOLDERS = ['Search by name, phone, or ID…'];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   useEffect(() => {
     if (searchTerm) return; // Pause cycling while user is typing
@@ -1193,9 +1193,15 @@ export default function UserManagement() {
   const filteredAll = users
     ?.filter(user => {
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
-      const matchesSearch = !searchTerm ||
-        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const q = searchTerm.trim().toLowerCase();
+      const qDigits = q.replace(/\D/g, '');
+      const phoneDigits = (user.whatsapp_number || '').replace(/\D/g, '');
+      const matchesSearch = !q ||
+        user.full_name?.toLowerCase().includes(q) ||
+        user.email?.toLowerCase().includes(q) ||
+        user.registration_id?.toLowerCase().includes(q) ||
+        user.id?.toLowerCase().includes(q) ||
+        (qDigits && phoneDigits.includes(qDigits));
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
       const matchesGender = !filterGender || (user.gender || '').toLowerCase() === filterGender;
