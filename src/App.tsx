@@ -76,6 +76,7 @@ const EnrollmentForm = lazy(() => import("./pages/EnrollmentForm"));
 const PublicInquiryForm = lazy(() => import("./pages/PublicInquiryForm"));
 const StudentCourseView = lazy(() => import("./pages/StudentCourseView"));
 const MyCourses = lazy(() => import("./pages/MyCourses"));
+const Recordings = lazy(() => import("./pages/Recordings"));
 const TeacherCourseView = lazy(() => import("./pages/TeacherCourseView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const IdentityResolution = lazy(() => import("./pages/IdentityResolution"));
