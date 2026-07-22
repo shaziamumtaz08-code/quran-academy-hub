@@ -1113,7 +1113,7 @@ export default function UserManagement() {
   const [showUnassigned, setShowUnassigned] = useState(false);
 
   // Cycling placeholder for the search input — premium polish
-  const SEARCH_PLACEHOLDERS = ['Search by name or email…', 'Search by ID…', 'Search by phone…'];
+  const SEARCH_PLACEHOLDERS = ['Search by name, phone, or ID…'];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   useEffect(() => {
     if (searchTerm) return; // Pause cycling while user is typing
