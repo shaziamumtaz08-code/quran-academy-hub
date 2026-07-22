@@ -13,6 +13,7 @@ export const STUDENT_ALLOWED_ROUTES: readonly string[] = [
   '/dashboard',
   '/my-courses',         // matches /my-courses and /my-courses/:id
   '/my-quizzes',
+  '/recordings',
   '/student-reports',
   '/resources',          // student-accessible read view (assigned / shared)
   '/my-resources',

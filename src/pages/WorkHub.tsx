@@ -1,4 +1,5 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,6 +42,18 @@ export default function WorkHub() {
   const [inboxView, setInboxView] = useState<'inbox' | 'sent' | 'watching' | 'all'>('inbox');
   const [fabOpen, setFabOpen] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      const cat = searchParams.get('category') || undefined;
+      setDefaultCategory(cat);
+      setCreateOpen(true);
+      searchParams.delete('new');
+      searchParams.delete('category');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: counts } = useQuery({
     queryKey: ['workhub-badge-counts', profile?.id],
