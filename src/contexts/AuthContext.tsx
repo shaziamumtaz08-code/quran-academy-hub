@@ -176,6 +176,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let initialised = false;
+    // Track which user id we've already loaded a profile for. Supabase's
+    // onAuthStateChange fires SIGNED_IN not only on real sign-in, but ALSO
+    // whenever the tab regains focus and the session is re-hydrated / a token
+    // is refreshed. Treating those as fresh sign-ins flips isLoading=true,
+    // which unmounts every page (RouteGuard/DashboardLayout show a spinner)
+    // and wipes local view state (open dialogs, "which record am I editing").
+    // We must only run the full sign-in flow when the user actually changes.
+    let loadedUserId: string | null = null;
 
     // THEN check for existing session first to set initial state
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -183,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        loadedUserId = session.user.id;
         fetchProfile(session.user.id).finally(() => {
           initialised = true;
           setIsLoading(false);
@@ -205,6 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        // Supabase fires SIGNED_IN on tab refocus too. Only run the full
+        // loading flow when the signed-in user is genuinely new (or first),
+        // otherwise every tab switch unmounts the current view and resets
+        // local state.
+        if (loadedUserId === session.user.id) {
+          if (!initialised) {
+            initialised = true;
+            setIsLoading(false);
+          }
+          return;
+        }
+        loadedUserId = session.user.id;
         // Gate downstream guards until profile is loaded to avoid redirect races.
         setIsLoading(true);
         setTimeout(() => {
@@ -214,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }, 0);
       } else if (event === 'SIGNED_OUT') {
+        loadedUserId = null;
         setProfile(null);
         setActiveRoleState(null);
         setActiveRolePermissions([]);
@@ -228,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
 
   // Update user's timezone in profile ONLY if not already set
   const updateUserTimezone = async (userId: string) => {
