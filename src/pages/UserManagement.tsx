@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
 import {
   Dialog,
   DialogContent,
