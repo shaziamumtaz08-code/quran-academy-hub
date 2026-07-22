@@ -93,6 +93,7 @@ interface NodeData {
   primaryRoleLabel?: string;
   navUserId?: string;
   navUserType?: ConnUserType;
+  isArchived?: boolean;
 }
 
 /* ---------- Center node ---------- */
