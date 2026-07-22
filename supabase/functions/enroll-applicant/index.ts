@@ -1,14 +1,17 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { requireRole } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const auth = await requireRole(req, ["super_admin", "admin", "admin_division"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseAdmin = auth.adminClient;
 
     const { submission_id, course_id } = await req.json();
 

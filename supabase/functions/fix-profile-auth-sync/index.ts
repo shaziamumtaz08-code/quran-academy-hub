@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { requireRole } from "../_shared/auth.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -13,10 +13,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const auth = await requireRole(req, ["super_admin"]);
+    if (!auth.ok) return json(auth.status, { error: auth.error });
+    const supabaseAdmin = auth.adminClient;
 
     // STEP 1: Fetch all auth users via listUsers (paginated)
     const emailToAuthId = new Map<string, string>();
