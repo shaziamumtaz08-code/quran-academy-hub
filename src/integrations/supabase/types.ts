@@ -11189,6 +11189,10 @@ export type Database = {
         }
         Returns: Json
       }
+      user_in_chat_group: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
