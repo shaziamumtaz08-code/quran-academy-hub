@@ -28,7 +28,7 @@ export function FeesAdminDashboard() {
     queryKey: ['fees-admin-dashboard', divisionId, liveRates],
     queryFn: async () => {
       const currentMonth = format(new Date(), 'yyyy-MM');
-      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency');
+      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency').is('voided_at', null);
       query = query.eq('billing_month', currentMonth);
       if (divisionId) query = query.eq('division_id', divisionId);
       const { data: fees } = await query;
@@ -46,16 +46,39 @@ export function FeesAdminDashboard() {
         collectedPKR = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
       }
 
-      // Expected in PKR: PKR invoices use amount directly, FCY use live rate with spread
-      const expectedPKR = invoices.reduce((s, f: any) => {
-        if (f.currency === 'PKR') return s + Number(f.amount);
-        const rate = getRate(f.currency);
-        return s + (rate > 0 ? Number(f.amount) * rate : 0);
+      // Split forecast: PKR native vs FCY native (per currency)
+      const pkrExpected = invoices
+        .filter((f: any) => f.currency === 'PKR')
+        .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+
+      const fcyByCurrency: Record<string, number> = {};
+      invoices.forEach((f: any) => {
+        if (f.currency && f.currency !== 'PKR') {
+          fcyByCurrency[f.currency] = (fcyByCurrency[f.currency] || 0) + Number(f.amount || 0);
+        }
+      });
+      const fcyEntries = Object.entries(fcyByCurrency);
+
+      // Tentative combined (PKR equivalent) — live rates
+      const fcyEstPKR = fcyEntries.reduce((s, [code, amt]) => {
+        const r = getRate(code);
+        return s + (r > 0 ? amt * r : 0);
       }, 0);
+      const tentativeCombinedPKR = pkrExpected + fcyEstPKR;
+
+      const expectedPKR = tentativeCombinedPKR;
       const pendingPKR = expectedPKR - collectedPKR;
       const overdue = invoices.filter(f => f.status === 'overdue');
 
-      return { expected: Math.round(expectedPKR), collected: Math.round(collectedPKR), pending: Math.round(pendingPKR), overdueCount: overdue.length };
+      return {
+        expected: Math.round(expectedPKR),
+        collected: Math.round(collectedPKR),
+        pending: Math.round(pendingPKR),
+        overdueCount: overdue.length,
+        pkrExpected: Math.round(pkrExpected),
+        fcyEntries,
+        tentativeCombinedPKR: Math.round(tentativeCombinedPKR),
+      };
     },
   });
 
@@ -80,13 +103,46 @@ export function FeesAdminDashboard() {
 
   const leftContent = (
     <>
+      {/* Forecasted collection — PKR and FCY shown separately, plus tentative combined */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+            📈 Forecasted Collection · {format(new Date(), 'MMM yyyy')}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-black text-foreground tabular-nums">
+            <span className="text-[10px] font-bold text-muted-foreground mr-1">PKR</span>
+            ₨ {(stats?.pkrExpected || 0).toLocaleString()}
+          </p>
+          {(stats?.fcyEntries || []).length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">No FCY invoices this month</p>
+          ) : (
+            (stats?.fcyEntries || []).slice(0, 4).map(([code, amt]) => (
+              <p key={code} className="text-sm font-bold text-foreground tabular-nums">
+                <span className="text-[10px] font-bold text-muted-foreground mr-1">{code}</span>
+                {(amt as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </p>
+            ))
+          )}
+        </div>
+        <div className="pt-1.5 border-t border-border/60">
+          <p className="text-[11px] text-muted-foreground">
+            ≈ <span className="font-bold text-foreground">₨ {(stats?.tentativeCombinedPKR || 0).toLocaleString()}</span> tentative combined
+          </p>
+          <p className="text-[10px] text-muted-foreground/80 leading-snug mt-0.5">
+            PKR equivalent is indicative — actuals vary with live FX rates, bank/processor fees and any taxes or waivers.
+          </p>
+        </div>
+      </div>
+
       {/* This Month Summary */}
       <div className="grid grid-cols-2 gap-2.5">
         {[
-          { label: 'Expected', value: stats?.expected?.toLocaleString() || '0', color: 'text-foreground' },
           { label: 'Collected', value: stats?.collected?.toLocaleString() || '0', color: 'text-teal' },
           { label: 'Pending', value: stats?.pending?.toLocaleString() || '0', color: 'text-gold' },
           { label: 'Overdue', value: stats?.overdueCount || 0, color: 'text-destructive' },
+          { label: 'Expected*', value: stats?.expected?.toLocaleString() || '0', color: 'text-foreground' },
         ].map((item) => (
           <div key={item.label} className="bg-card rounded-2xl border border-border p-3.5 shadow-card text-center">
             <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>

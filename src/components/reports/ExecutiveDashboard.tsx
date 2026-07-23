@@ -57,7 +57,7 @@ export default function ExecutiveDashboard() {
   const { data: feeStats } = useQuery({
     queryKey: ["exec-fees", currentBillingMonth, divisionId],
     queryFn: async () => {
-      let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount");
+      let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount").is('voided_at', null);
       invQuery = invQuery.eq("billing_month", currentBillingMonth);
       if (divisionId) invQuery = invQuery.eq("division_id", divisionId);
       const { data: invoices } = await invQuery;
@@ -146,7 +146,7 @@ export default function ExecutiveDashboard() {
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         const bm = format(d, "yyyy-MM");
-        let query = supabase.from("fee_invoices").select("id, amount, amount_paid").eq("billing_month", bm);
+        let query = supabase.from("fee_invoices").select("id, amount, amount_paid").eq("billing_month", bm).is('voided_at', null);
         if (divisionId) query = query.eq("division_id", divisionId);
         const { data: inv } = await query;
         const invoices = inv || [];

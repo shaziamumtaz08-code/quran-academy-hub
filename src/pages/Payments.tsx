@@ -325,6 +325,7 @@ export default function Payments() {
             session_duration
           )
         `)
+        .is('voided_at', null)
         .order('created_at', { ascending: false });
 
       // For admin views, scope to branch/division
@@ -355,6 +356,7 @@ export default function Payments() {
       const { data } = await supabase
         .from('fee_invoices')
         .select('id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount')
+        .is('voided_at', null)
         .ilike('remark', `%arrears from ${monthLabel}%`);
       return data || [];
     },
@@ -1632,10 +1634,12 @@ export default function Payments() {
           lcyCollected={lcyCollected}
           lcyPending={lcyPending}
           fcyCurrencyBreakdown={fcyCurrencyBreakdown}
+          pkrExpectedMonth={localTotalPKR}
           pkrCollectedMonth={lcyCollected}
           pendingCount={pendingCount}
           overdueCount={overdueCount}
           activePlansCount={activePlansCount}
+          getRate={getRate}
         />
 
         {/* Sidebar drives view selection — no in-page tabs */}
