@@ -64,7 +64,7 @@ export function TeacherActionCentre() {
                   {data?.pendingNames}
                 </p>
                 <button
-                  onClick={() => navigate('/planning')}
+                  onClick={() => navigate('/teaching?view=planning')}
                   className="mt-1 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-md px-2 py-0.5 hover:bg-primary/15"
                 >
                   Fill now →
