@@ -10929,6 +10929,7 @@ export type Database = {
         }
         Returns: Json
       }
+      enforce_assignment_windows_all: { Args: never; Returns: number }
       ensure_division_root_folders: {
         Args: { _division_id: string }
         Returns: undefined
