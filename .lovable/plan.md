@@ -1,107 +1,67 @@
-# Plan: Site-wide navigation persistence + sticky horizontal scrollbar
 
-Two cross-cutting UX fixes applied consistently across the admin app.
+# Fix the three sisters' finance (Dua, Areej, Ayesha Khan)
 
----
+## Target state
 
-## Part 1 — Persist tab/sub-view state across tab switch & refresh
+| Period | Fee per sister | Total fee | Payout per assignment | Total payout |
+|---|---|---|---|---|
+| Jan – Feb 2026 | 2,333 PKR | 7,000 | 1,666.67 PKR | 5,000 |
+| Mar – Jun 2026 | 3,000 PKR | 9,000 | 1,666.67 PKR | 5,000 |
+| Jul 2026 onward | 3,000 PKR | 9,000 | **2,000 PKR** | **6,000** |
 
-### Root causes to eliminate
-1. Selected month / user / record / sub-tab held only in `useState`, so remount = reset.
-2. `useQuery` refetch-on-window-focus can re-trigger effects that reset local selection to defaults.
-3. Sub-views not reflected in URL, so refresh drops the user back to the module's landing view.
-
-### Approach — one shared pattern everywhere
-Introduce a tiny helper hook `useUrlState` (wrapper around `useSearchParams`) that behaves like `useState` but reads/writes a query param. Every place currently doing:
-
-```ts
-const [month, setMonth] = useState(currentMonth);
-const [selectedId, setSelectedId] = useState<string | null>(null);
-const [tab, setTab] = useState("overview");
-```
-
-becomes:
-
-```ts
-const [month, setMonth] = useUrlState("month", currentMonth);
-const [selectedId, setSelectedId] = useUrlState("id", null);
-const [tab, setTab] = useUrlState("tab", "overview");
-```
-
-This guarantees:
-- Refresh → URL still has `?month=2026-05&id=abc&tab=payroll` → same view rehydrates.
-- Browser tab switch → nothing resets; even if the component remounts it reads from URL.
-- Back/forward buttons work naturally.
-
-### Guarding "reset on focus" behavior
-Audit for:
-- `useEffect(() => { setX(default) }, [])` that runs on remount and clobbers URL state → change to read URL first.
-- React Query defaults: set `refetchOnWindowFocus: false` **only on queries that reset UI selection via `onSuccess`**. Keep it on for pure data.
-- Any `visibilitychange` / `focus` listeners that reset selection → remove.
-
-### Pages to update (audit list)
-Modules with inner sub-views identified from the codebase:
-
-- Finance: `FinanceLanding`, `SalaryEngine`, `StaffSalarySetup`, `TeacherPayouts`, `CashAdvances`, `Expenses`, `FinanceSetup` — persist `?month=`, `?teacher=`, `?tab=`.
-- Reports: `Reports`, `ReportsLanding`, `StudentReports`, `TeacherPerformance`, `StudentEngagement` — persist `?range=`, `?tab=`, `?student=`.
-- People: `Students`, `Teachers`, `Parents`, `PeopleLanding`, `HolisticUserProfileDrawer` — persist `?userId=` for open drawer, `?tab=` inside drawer.
-- Assignments / Schedules: `AssignmentDetailDialog`, `TransferAssignmentDialog`, `MonthlyCalendarView`, `DailySlotCalendar` — persist `?assignmentId=`, `?date=`.
-- Hub / Work Hub: `WorkHub`, `TicketDetail`, `TaskDetailDialog` — persist `?ticket=`, `?task=`, `?tab=`.
-- Courses / Teaching: `Courses`, `CourseCatalog`, `TeachingOS*` pages — persist `?courseId=`, `?sessionId=`, `?phase=`.
-- Communication: `CommunicationLanding`, `GroupChat`, `WhatsAppInbox` — persist `?group=`, `?thread=`.
-- Settings: `SettingsLanding`, `OrganizationSettings`, `AuthenticationSettings` — persist `?tab=`.
-
-`HubPageShell` already reads `tab` from the URL — extend the same pattern to the rest.
-
-### Unsaved edit protection
-For form-heavy pages (assignment edit, salary sheet edit, report card form, template builder):
-- New hook `useDraftPersistence(key, values)` that writes form state to `sessionStorage` on change (debounced) and rehydrates on mount.
-- Clear the draft on successful save/cancel.
+Currency stays PKR. Teacher stays the same (`82237100-…`). No academic records touched.
 
 ---
 
-## Part 2 — Sticky horizontal scrollbar for wide tables
+## Step 1 — Ayesha's duplicate invoices (root cause of "arrears")
 
-### Approach
-One shared component `<StickyScrollTable>` that wraps a wide table and adds a floating horizontal scrollbar synced to the table's `scrollLeft`.
+Ayesha has **3 duplicate invoices per month** for Jan, Feb, Mar, Apr, May 2026. Real payments got smeared across duplicates so each one shows as partially paid → phantom arrears.
 
-Implementation:
-- Wrapper `div` with `overflow-x-auto` holds the table (as today).
-- Sibling floating bar: `position: sticky; bottom: 0` inside the same scroll container, or `position: fixed; bottom: 0` visible only while the table is in the viewport (IntersectionObserver).
-- Inner spacer div width = table's `scrollWidth`; two-way scroll sync via `onScroll` handlers on both the table wrapper and the sticky bar.
-- Auto-hide when table fits within viewport width.
+For each affected month, keep **one** invoice per sister and drop the extras:
 
-### Where it's applied
-Replace the current `<div className="overflow-x-auto">` wrapper on every wide admin table:
+- **Jan 2026 (Ayesha)** — keep 1 invoice at 2,333, mark paid (7,000 total paid across duplicates already). Delete the other 2 duplicates + their payment_transactions after re-pointing them to the kept invoice.
+- **Feb 2026 (Ayesha)** — same treatment, kept invoice at 2,333, paid.
+- **Mar / Apr 2026 (Ayesha)** — keep 1 invoice at 3,000, mark paid. Delete 2 duplicates each month, re-point transactions.
+- **May 2026 (Ayesha)** — keep 1 invoice at 3,000, mark paid (one duplicate already paid, two are pending zeros → just delete the two unpaid duplicates).
 
-- `TeacherPerformance.tsx`, `StudentEngagement.tsx`
-- `Students.tsx`, `Teachers.tsx`, `Parents.tsx`
-- `SalaryEngine`, `StaffSalarySetup`, `TeacherPayouts`, `CashAdvances`, `Expenses`
-- `Reports` module tables
-- Assignments tables, `MonthlyCalendarView` grid
-- Work Hub `TicketList`
-- Any other `overflow-x-auto` table wrapper found by ripgrep
+Result: Ayesha's account matches Dua & Areej — one invoice per month, all Jan–Jun paid in full.
 
-A single ripgrep for `overflow-x-auto` on `<table` neighbors will produce the exhaustive list; each site gets the component swapped in.
+## Step 2 — Rewrite Jan–Feb fee to 2,333 per sister
+
+Dua and Areej's Jan-Feb invoices are currently 2,500 each (paid 2,500). Update them to 2,333, keep `amount_paid` intact, and record a 167 PKR **credit adjustment** on each so ledger balances (available toward July).
+
+Ayesha's Jan-Feb kept invoice from Step 1 goes in at 2,333 (paid 2,333); the extra 667 PKR she paid each month (2,333 vs 3,000 previously billed) also becomes a credit adjustment.
+
+_Alternative if you prefer no credit adjustments:_ leave Jan-Feb Dua/Areej at 2,500 as historical and set only Ayesha to 2,333 — say the word and I'll take that path instead.
+
+## Step 3 — Backdate Ayesha's assignment to align with sisters
+
+Ayesha's `student_teacher_assignments.effective_from_date` is currently **01-Apr-2026** while Dua/Areej are **01-Jan-2026**. Since teacher was paid 1,666.67 for Ayesha from Jan (part of the 5,000 total), backdate Ayesha's assignment `effective_from_date` to **01-Jan-2026** so historical payroll math ties out.
+
+## Step 4 — Raise all three payouts to 2,000 from July
+
+Update `student_teacher_assignments.payout_amount` from **1,666.60 → 2,000** on all three assignments, effective **01-Jul-2026** (`effective_from_date` stays Jan; we use the existing salary revision flow so history stays at 1,666.67 and Jul onward is 2,000). If your payroll model requires a new row per rate change, I'll close the current rows on 30-Jun and insert three fresh ones from 01-Jul instead — flag which model you use.
+
+## Step 5 — Regenerate July→ invoices via auto-generator
+
+Trigger `auto_generate_plan_invoices` for all three billing plans. Existing Jul-Oct pending invoices are already 3,000 PKR ✓ so no change expected; the run just confirms nothing stale remains.
+
+## Step 6 — Verification query
+
+Run a single readback showing per-sister per-month: invoice amount, amount_paid, status, plus per-assignment monthly payout, and confirm:
+- 3 sisters × (Jan-Feb 2,333) + (Mar-Jun 3,000) all marked paid
+- Jul-Oct 3,000 each, pending
+- Payouts 1,666.67 for Jan-Jun, 2,000 for Jul+
+
+Screenshot / paste of the readback returned to you.
 
 ---
 
 ## Technical details
 
-**New files**
-- `src/hooks/useUrlState.ts` — typed URL-param state hook (string/number/enum overloads).
-- `src/hooks/useDraftPersistence.ts` — sessionStorage draft sync.
-- `src/components/ui/sticky-scroll-table.tsx` — wide-table wrapper with floating scrollbar.
+- All writes go through the `supabase--insert` tool for data (UPDATE / DELETE on `fee_invoices`, `payment_transactions`, `invoice_adjustments`, `student_teacher_assignments`) since these are data-only changes on existing tables — no schema migration.
+- `trg_sync_invoice_from_transactions` will auto-recompute `amount_paid` / `status` on affected invoices after we re-point transactions.
+- `trg_recompute_plans_on_assignment_change` will fire when we backdate Ayesha's assignment; we'll disable regeneration for closed months by relying on the "paid invoices never modified" rule already in `auto_generate_plan_invoices`.
+- Nothing touches academic tables (attendance, schedules, enrollments).
 
-**Edits**
-- Swap `useState` → `useUrlState` on every listed page for selection/tab/month/id state.
-- Swap `<div className="overflow-x-auto">…<table>` → `<StickyScrollTable>…<table>` on every wide-table page.
-- Remove any `refetchOnWindowFocus`-triggered UI resets; keep data refetches.
-- Wire `useDraftPersistence` into the four heavy edit forms.
-
-**Non-goals**
-- No visual/theme changes.
-- No data-model or RLS changes.
-- No changes to backend/edge functions.
-
-Estimated scope: ~3 new files + edits across ~25 existing files (mostly small swaps).
+Reply **go** to run it, or tell me to switch Step 2 to the "keep 2,500" alternative and I'll adjust.
