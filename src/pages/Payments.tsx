@@ -325,6 +325,7 @@ export default function Payments() {
             session_duration
           )
         `)
+        .is('voided_at', null)
         .order('created_at', { ascending: false });
 
       // For admin views, scope to branch/division
