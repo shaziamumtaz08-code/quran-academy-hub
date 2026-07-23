@@ -103,13 +103,46 @@ export function FeesAdminDashboard() {
 
   const leftContent = (
     <>
+      {/* Forecasted collection — PKR and FCY shown separately, plus tentative combined */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+            📈 Forecasted Collection · {format(new Date(), 'MMM yyyy')}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-black text-foreground tabular-nums">
+            <span className="text-[10px] font-bold text-muted-foreground mr-1">PKR</span>
+            ₨ {(stats?.pkrExpected || 0).toLocaleString()}
+          </p>
+          {(stats?.fcyEntries || []).length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">No FCY invoices this month</p>
+          ) : (
+            (stats?.fcyEntries || []).slice(0, 4).map(([code, amt]) => (
+              <p key={code} className="text-sm font-bold text-foreground tabular-nums">
+                <span className="text-[10px] font-bold text-muted-foreground mr-1">{code}</span>
+                {(amt as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </p>
+            ))
+          )}
+        </div>
+        <div className="pt-1.5 border-t border-border/60">
+          <p className="text-[11px] text-muted-foreground">
+            ≈ <span className="font-bold text-foreground">₨ {(stats?.tentativeCombinedPKR || 0).toLocaleString()}</span> tentative combined
+          </p>
+          <p className="text-[10px] text-muted-foreground/80 leading-snug mt-0.5">
+            PKR equivalent is indicative — actuals vary with live FX rates, bank/processor fees and any taxes or waivers.
+          </p>
+        </div>
+      </div>
+
       {/* This Month Summary */}
       <div className="grid grid-cols-2 gap-2.5">
         {[
-          { label: 'Expected', value: stats?.expected?.toLocaleString() || '0', color: 'text-foreground' },
           { label: 'Collected', value: stats?.collected?.toLocaleString() || '0', color: 'text-teal' },
           { label: 'Pending', value: stats?.pending?.toLocaleString() || '0', color: 'text-gold' },
           { label: 'Overdue', value: stats?.overdueCount || 0, color: 'text-destructive' },
+          { label: 'Expected*', value: stats?.expected?.toLocaleString() || '0', color: 'text-foreground' },
         ].map((item) => (
           <div key={item.label} className="bg-card rounded-2xl border border-border p-3.5 shadow-card text-center">
             <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
