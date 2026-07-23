@@ -26,6 +26,7 @@ interface PlanRow {
   manual_discount_reason: string | null;
   created_at: string;
   profiles: { full_name: string; registration_id: string | null } | null;
+  assignment?: { id: string; status: string; effective_from_date: string | null; effective_to_date: string | null } | null;
 }
 
 interface InvoiceRow {
