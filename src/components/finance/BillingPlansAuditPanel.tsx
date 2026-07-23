@@ -26,6 +26,7 @@ interface PlanRow {
   manual_discount_reason: string | null;
   created_at: string;
   profiles: { full_name: string; registration_id: string | null } | null;
+  assignment?: { id: string; status: string; effective_from_date: string | null; effective_to_date: string | null } | null;
 }
 
 interface InvoiceRow {
@@ -76,7 +77,8 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
         .from('student_billing_plans')
         .select(`id, student_id, base_package_id, assignment_id, session_duration, duration_surcharge, flat_discount,
                  net_recurring_fee, currency, is_active, branch_id, division_id, global_discount_id, manual_discount_reason, created_at,
-                 profiles!student_billing_plans_student_id_fkey(full_name, registration_id)`)
+                 profiles!student_billing_plans_student_id_fkey(full_name, registration_id),
+                 assignment:student_teacher_assignments!student_billing_plans_assignment_id_fkey(id, status, effective_from_date, effective_to_date)`)
         .order('created_at', { ascending: false });
       if (branchId) q = q.eq('branch_id', branchId);
       if (divisionId) q = q.eq('division_id', divisionId);
@@ -120,8 +122,19 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
   });
 
   const { duplicateGroups, activeCount } = useMemo(() => {
+    // Only consider plans whose assignment is currently billing.
+    // Plans linked to on_hold / completed / left assignments are legitimate
+    // historical records for prior classes and must NOT be flagged as duplicates.
+    const isStillBilling = (p: PlanRow) => {
+      const status = p.assignment?.status;
+      // No linked assignment → fall back to plan.is_active (legacy plans)
+      if (!p.assignment_id || !status) return p.is_active;
+      return status === 'active';
+    };
+
     const byStudent = new Map<string, PlanRow[]>();
     plans.forEach(p => {
+      if (!isStillBilling(p)) return;
       const arr = byStudent.get(p.student_id) || [];
       arr.push(p);
       byStudent.set(p.student_id, arr);

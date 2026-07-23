@@ -339,6 +339,71 @@ export type Database = {
           },
         ]
       }
+      assignment_window_change_log: {
+        Row: {
+          affected_at_risk_flags: number
+          affected_attendance_count: number
+          affected_paid_invoices: number
+          affected_paid_payouts: number
+          affected_unpaid_invoices: number
+          assignment_id: string
+          changed_at: string
+          changed_by: string | null
+          field_name: string
+          id: string
+          is_retroactive: boolean
+          new_value: string | null
+          old_value: string | null
+          reason: string | null
+          student_id: string
+          teacher_id: string | null
+        }
+        Insert: {
+          affected_at_risk_flags?: number
+          affected_attendance_count?: number
+          affected_paid_invoices?: number
+          affected_paid_payouts?: number
+          affected_unpaid_invoices?: number
+          assignment_id: string
+          changed_at?: string
+          changed_by?: string | null
+          field_name: string
+          id?: string
+          is_retroactive?: boolean
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+          student_id: string
+          teacher_id?: string | null
+        }
+        Update: {
+          affected_at_risk_flags?: number
+          affected_attendance_count?: number
+          affected_paid_invoices?: number
+          affected_paid_payouts?: number
+          affected_unpaid_invoices?: number
+          assignment_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          field_name?: string
+          id?: string
+          is_retroactive?: boolean
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+          student_id?: string
+          teacher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_window_change_log_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       at_risk_flags: {
         Row: {
           ai_summary: string | null
@@ -347,6 +412,8 @@ export type Database = {
           flagged_at: string
           id: string
           intervention_plan: Json | null
+          period_excluded_at: string | null
+          period_excluded_by_assignment_change: string | null
           resolved_at: string | null
           resolved_by: string | null
           risk_reasons: Json | null
@@ -359,6 +426,8 @@ export type Database = {
           flagged_at?: string
           id?: string
           intervention_plan?: Json | null
+          period_excluded_at?: string | null
+          period_excluded_by_assignment_change?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           risk_reasons?: Json | null
@@ -371,6 +440,8 @@ export type Database = {
           flagged_at?: string
           id?: string
           intervention_plan?: Json | null
+          period_excluded_at?: string | null
+          period_excluded_by_assignment_change?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           risk_reasons?: Json | null
@@ -3882,6 +3953,9 @@ export type Database = {
           student_id: string
           superseded_by_invoice_id: string | null
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount?: number
@@ -3916,6 +3990,9 @@ export type Database = {
           student_id: string
           superseded_by_invoice_id?: string | null
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -3950,6 +4027,9 @@ export type Database = {
           student_id?: string
           superseded_by_invoice_id?: string | null
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -7494,6 +7574,9 @@ export type Database = {
           superseded_by_payout_id: string | null
           teacher_id: string
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           adjustment_amount?: number
@@ -7535,6 +7618,9 @@ export type Database = {
           superseded_by_payout_id?: string | null
           teacher_id: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           adjustment_amount?: number
@@ -7576,6 +7662,9 @@ export type Database = {
           superseded_by_payout_id?: string | null
           teacher_id?: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
