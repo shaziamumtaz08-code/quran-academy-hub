@@ -1634,10 +1634,12 @@ export default function Payments() {
           lcyCollected={lcyCollected}
           lcyPending={lcyPending}
           fcyCurrencyBreakdown={fcyCurrencyBreakdown}
+          pkrExpectedMonth={localTotalPKR}
           pkrCollectedMonth={lcyCollected}
           pendingCount={pendingCount}
           overdueCount={overdueCount}
           activePlansCount={activePlansCount}
+          getRate={getRate}
         />
 
         {/* Sidebar drives view selection — no in-page tabs */}
