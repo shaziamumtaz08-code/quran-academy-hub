@@ -122,8 +122,19 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
   });
 
   const { duplicateGroups, activeCount } = useMemo(() => {
+    // Only consider plans whose assignment is currently billing.
+    // Plans linked to on_hold / completed / left assignments are legitimate
+    // historical records for prior classes and must NOT be flagged as duplicates.
+    const isStillBilling = (p: PlanRow) => {
+      const status = p.assignment?.status;
+      // No linked assignment → fall back to plan.is_active (legacy plans)
+      if (!p.assignment_id || !status) return p.is_active;
+      return status === 'active';
+    };
+
     const byStudent = new Map<string, PlanRow[]>();
     plans.forEach(p => {
+      if (!isStillBilling(p)) return;
       const arr = byStudent.get(p.student_id) || [];
       arr.push(p);
       byStudent.set(p.student_id, arr);
