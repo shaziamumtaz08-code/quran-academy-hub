@@ -356,6 +356,7 @@ export default function Payments() {
       const { data } = await supabase
         .from('fee_invoices')
         .select('id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount')
+        .is('voided_at', null)
         .ilike('remark', `%arrears from ${monthLabel}%`);
       return data || [];
     },
