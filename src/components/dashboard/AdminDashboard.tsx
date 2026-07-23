@@ -35,7 +35,7 @@ export function AdminDashboard() {
         attendanceQuery,
         (() => {
           const currentMonth = format(new Date(), 'yyyy-MM');
-          let feeQuery = supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth);
+          let feeQuery = supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth).is('voided_at', null);
           if (divisionId) feeQuery = feeQuery.eq('division_id', divisionId);
           return feeQuery;
         })(),
