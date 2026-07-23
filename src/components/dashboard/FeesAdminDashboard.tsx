@@ -28,7 +28,7 @@ export function FeesAdminDashboard() {
     queryKey: ['fees-admin-dashboard', divisionId, liveRates],
     queryFn: async () => {
       const currentMonth = format(new Date(), 'yyyy-MM');
-      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency');
+      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency').is('voided_at', null);
       query = query.eq('billing_month', currentMonth);
       if (divisionId) query = query.eq('division_id', divisionId);
       const { data: fees } = await query;
@@ -46,16 +46,39 @@ export function FeesAdminDashboard() {
         collectedPKR = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
       }
 
-      // Expected in PKR: PKR invoices use amount directly, FCY use live rate with spread
-      const expectedPKR = invoices.reduce((s, f: any) => {
-        if (f.currency === 'PKR') return s + Number(f.amount);
-        const rate = getRate(f.currency);
-        return s + (rate > 0 ? Number(f.amount) * rate : 0);
+      // Split forecast: PKR native vs FCY native (per currency)
+      const pkrExpected = invoices
+        .filter((f: any) => f.currency === 'PKR')
+        .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+
+      const fcyByCurrency: Record<string, number> = {};
+      invoices.forEach((f: any) => {
+        if (f.currency && f.currency !== 'PKR') {
+          fcyByCurrency[f.currency] = (fcyByCurrency[f.currency] || 0) + Number(f.amount || 0);
+        }
+      });
+      const fcyEntries = Object.entries(fcyByCurrency);
+
+      // Tentative combined (PKR equivalent) — live rates
+      const fcyEstPKR = fcyEntries.reduce((s, [code, amt]) => {
+        const r = getRate(code);
+        return s + (r > 0 ? amt * r : 0);
       }, 0);
+      const tentativeCombinedPKR = pkrExpected + fcyEstPKR;
+
+      const expectedPKR = tentativeCombinedPKR;
       const pendingPKR = expectedPKR - collectedPKR;
       const overdue = invoices.filter(f => f.status === 'overdue');
 
-      return { expected: Math.round(expectedPKR), collected: Math.round(collectedPKR), pending: Math.round(pendingPKR), overdueCount: overdue.length };
+      return {
+        expected: Math.round(expectedPKR),
+        collected: Math.round(collectedPKR),
+        pending: Math.round(pendingPKR),
+        overdueCount: overdue.length,
+        pkrExpected: Math.round(pkrExpected),
+        fcyEntries,
+        tentativeCombinedPKR: Math.round(tentativeCombinedPKR),
+      };
     },
   });
 
