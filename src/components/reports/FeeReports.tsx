@@ -31,6 +31,7 @@ export default function FeeReports() {
         .from("fee_invoices")
         .select("*, student:profiles!fee_invoices_student_id_fkey(full_name)")
         .eq("billing_month", selectedMonth)
+        .is('voided_at', null)
         .order("created_at", { ascending: false });
       if (divisionId) query = query.eq("division_id", divisionId);
       const { data } = await query;
