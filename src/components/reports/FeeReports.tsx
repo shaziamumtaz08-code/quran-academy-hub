@@ -47,7 +47,7 @@ export default function FeeReports() {
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         const bm = format(d, "yyyy-MM");
-        let query = supabase.from("fee_invoices").select("id, amount, amount_paid, forgiven_amount").eq("billing_month", bm);
+        let query = supabase.from("fee_invoices").select("id, amount, amount_paid, forgiven_amount").eq("billing_month", bm).is('voided_at', null);
         if (divisionId) query = query.eq("division_id", divisionId);
         const { data } = await query;
         const inv = data || [];
