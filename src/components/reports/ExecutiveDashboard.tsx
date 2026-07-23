@@ -57,7 +57,7 @@ export default function ExecutiveDashboard() {
   const { data: feeStats } = useQuery({
     queryKey: ["exec-fees", currentBillingMonth, divisionId],
     queryFn: async () => {
-      let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount");
+      let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount").is('voided_at', null);
       invQuery = invQuery.eq("billing_month", currentBillingMonth);
       if (divisionId) invQuery = invQuery.eq("division_id", divisionId);
       const { data: invoices } = await invQuery;
