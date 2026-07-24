@@ -1,0 +1,12 @@
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_admin(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_super_admin(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.user_in_chat_group(uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.user_created_chat_group(uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_chat_member(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_super_admin(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_in_chat_group(uuid, uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_created_chat_group(uuid, uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_chat_member(uuid, uuid) TO authenticated, service_role;
