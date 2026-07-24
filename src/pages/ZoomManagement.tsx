@@ -491,7 +491,8 @@ export default function ZoomManagement() {
                 <CardTitle className="font-serif">Zoom Licenses</CardTitle>
                 <CardDescription>Manage your Zoom meeting room licenses</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <ValidateZoomAccountDialog />
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => fetchHostIds()} disabled={refreshingHostIds}>
                   <RefreshCw className={cn("h-4 w-4", refreshingHostIds && "animate-spin")} />
                   {refreshingHostIds ? 'Fetching...' : 'Refresh Host IDs'}
