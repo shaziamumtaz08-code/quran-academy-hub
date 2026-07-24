@@ -128,6 +128,69 @@ function sameParticipant(log: any, participantName: string, participantEmail: st
   return Boolean(logName && currentName && logName === currentName);
 }
 
+function isHostParticipant(participantName: string, participantEmail: string, hostEmail?: string | null): boolean {
+  const currentEmail = normalizeParticipantValue(participantEmail);
+  const currentName = normalizeParticipantValue(participantName);
+  const normalizedHostEmail = normalizeParticipantValue(hostEmail);
+
+  if (currentEmail && normalizedHostEmail && currentEmail === normalizedHostEmail) return true;
+
+  const hostLocalPart = normalizedHostEmail.split("@")[0];
+  if (hostLocalPart && currentName && currentName === hostLocalPart) return true;
+
+  return currentName.includes("al-quran time class") || currentName.includes("al quran time class");
+}
+
+async function resolveParticipantIdentity(
+  supabase: any,
+  session: any,
+  participantName: string,
+  participantEmail: string,
+  hostEmail?: string | null,
+): Promise<{ matchedUserId: string | null; matchedRole: string }> {
+  if (isHostParticipant(participantName, participantEmail, hostEmail)) {
+    return { matchedUserId: session.teacher_id || null, matchedRole: "teacher" };
+  }
+
+  if (participantEmail) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", participantEmail)
+      .maybeSingle();
+
+    if (profile?.id) {
+      if (profile.id === session.teacher_id) return { matchedUserId: profile.id, matchedRole: "teacher" };
+      if (profile.id === session.student_id) return { matchedUserId: profile.id, matchedRole: "student" };
+
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.id);
+      const roles = (roleRows || []).map((row: any) => row.role);
+      if (roles.includes("teacher")) return { matchedUserId: profile.id, matchedRole: "teacher" };
+      if (roles.includes("student")) return { matchedUserId: profile.id, matchedRole: "student" };
+      return { matchedUserId: profile.id, matchedRole: roles[0] || "unknown" };
+    }
+  }
+
+  if (session.student_id) {
+    return { matchedUserId: session.student_id, matchedRole: "student" };
+  }
+
+  if (session.assignment_id || session.schedule_id) {
+    const scheduledStudentId = await findScheduledStudent(supabase, session.teacher_id);
+    if (scheduledStudentId) {
+      await supabase.from("live_sessions")
+        .update({ student_id: scheduledStudentId })
+        .eq("id", session.id);
+      return { matchedUserId: scheduledStudentId, matchedRole: "student" };
+    }
+  }
+
+  return { matchedUserId: null, matchedRole: "unknown" };
+}
+
 async function findExistingLeaveLog(
   supabase: any,
   params: {
@@ -196,9 +259,9 @@ async function findOrCreateZoomSession(
   if (meetingUuid) {
     const { data: sessionByMeeting } = await supabase
       .from("live_sessions")
-      .select("id, teacher_id, actual_start, student_id, status")
+        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
       .eq("zoom_meeting_uuid", meetingUuid)
-      .in("status", ["live", "scheduled"])
+        .in("status", ["live", "scheduled", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -209,7 +272,7 @@ async function findOrCreateZoomSession(
   const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
   const query = supabase
     .from("live_sessions")
-    .select("id, teacher_id, actual_start, student_id, status")
+    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
     .eq("license_id", licenseId)
     .in("status", ["live", "scheduled"])
     .gte("created_at", recentCutoff)
@@ -245,10 +308,20 @@ async function findOrCreateZoomSession(
       zoom_meeting_uuid: meetingUuid,
       recording_status: "pending",
     })
-    .select("id, teacher_id, actual_start, student_id, status")
+    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
     .single();
 
   if (error || !createdSession) {
+    if (meetingUuid && error?.code === "23505") {
+      const { data: existingSession } = await supabase
+        .from("live_sessions")
+        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+        .eq("zoom_meeting_uuid", meetingUuid)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingSession) return existingSession;
+    }
     console.error("Could not create monitor session for Zoom webhook:", error);
     return null;
   }
@@ -346,7 +419,7 @@ Deno.serve(async (req) => {
         const startedAt = event.payload.object?.start_time || eventTime(event);
         const { data: license } = await supabase
           .from("zoom_licenses")
-          .select("id")
+          .select("id, zoom_email")
           .eq("host_id", hostId)
           .maybeSingle();
         if (license) {
@@ -521,7 +594,10 @@ Deno.serve(async (req) => {
           console.log("Session activated by participant join:", session.id);
         }
 
-        // Step 3: Determine if this is the teacher or student
+        // Step 3: Determine if this is the teacher/student without assuming
+        // the first participant is the teacher. Direct Zoom test meetings often
+        // have a monitor session owned by an admin/teacher, but that owner is
+        // not necessarily the person who just joined.
         // Check existing open join logs first. Zoom may send duplicate webhook
         // deliveries for the same participant; keep one open join per person.
         const { data: existingLogs } = await supabase
@@ -546,32 +622,13 @@ Deno.serve(async (req) => {
           break;
         }
 
-        const teacherAlreadyJoined = (existingLogs || []).some((l: any) => l.role === "teacher");
-
-        let matchedUserId: string | null = null;
-        let matchedRole = "unknown";
-
-        if (!teacherAlreadyJoined) {
-          // First participant → teacher
-          matchedUserId = session.teacher_id;
-          matchedRole = "teacher";
-          console.log("First participant → teacher:", matchedUserId);
-        } else {
-          // Second participant → find scheduled student
-          matchedRole = "student";
-          const studentId = await findScheduledStudent(supabase, session.teacher_id);
-          if (studentId) {
-            matchedUserId = studentId;
-            console.log("Second participant → student:", matchedUserId);
-
-            // Update live_session with student_id
-            await supabase.from("live_sessions")
-              .update({ student_id: studentId })
-              .eq("id", session.id);
-          } else {
-            console.log("Second participant → could not match student from schedule");
-          }
-        }
+        const { matchedUserId, matchedRole } = await resolveParticipantIdentity(
+          supabase,
+          session,
+          pName,
+          pEmail,
+          license.zoom_email,
+        );
 
         let isLate = false;
         let lateMinutes = 0;
@@ -627,7 +684,7 @@ Deno.serve(async (req) => {
         // Find license → session
         const { data: license } = await supabase
           .from("zoom_licenses")
-          .select("id")
+          .select("id, zoom_email")
           .eq("host_id", hostId)
           .maybeSingle();
 
@@ -640,7 +697,7 @@ Deno.serve(async (req) => {
         if (meetingUuidTop) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
             .eq("zoom_meeting_uuid", meetingUuidTop)
             .in("status", ["live", "scheduled", "completed"])
             .order("actual_start", { ascending: false })
@@ -652,7 +709,7 @@ Deno.serve(async (req) => {
         if (!session) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled", "completed"])
             .gte("created_at", new Date(leaveTime.getTime() - 2 * 60 * 60 * 1000).toISOString())
@@ -698,16 +755,7 @@ Deno.serve(async (req) => {
         // Try to match by participant name/email
         let matchedLog = null;
         if (joinLog && joinLog.length > 0) {
-          // If only one unresolved join, use it
-          if (joinLog.length === 1) {
-            matchedLog = joinLog[0];
-          } else {
-            matchedLog = joinLog.find((entry: any) => {
-              const sameName = entry.participant_name && entry.participant_name === pName;
-              const sameEmail = entry.participant_email && pEmail && entry.participant_email === pEmail;
-              return sameName || sameEmail;
-            }) || joinLog[0];
-          }
+          matchedLog = joinLog.find((entry: any) => sameParticipant(entry, pName, pEmail)) || null;
         }
 
         if (!matchedLog) {
