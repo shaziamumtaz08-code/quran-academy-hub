@@ -3312,6 +3312,13 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
       </div>
+      <PaymentProofDialog
+        invoice={proofInvoice as any}
+        onClose={() => setProofInvoice(null)}
+        onRejected={() => queryClient.invalidateQueries({ queryKey: ['fee-invoices'] })}
+        onMarkPaid={(inv) => { openSinglePay(inv.id); }}
+      />
     </>
+
   );
 }
