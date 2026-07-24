@@ -74,10 +74,14 @@ export default function Recordings() {
                       {when ? format(new Date(when), 'PP p') : '—'}
                     </div>
                   </div>
-                  {url ? (
+                  {url && status !== 'expired' ? (
                     <Button size="sm" variant="default" onClick={() => handleWatch(url)}>
                       Watch <ExternalLink className="h-3.5 w-3.5 ml-1" />
                     </Button>
+                  ) : status === 'expired' ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Recording expired (60-day limit)
+                    </span>
                   ) : status === 'failed' ? (
                     <span className="inline-flex items-center gap-1 text-xs text-destructive">
                       <AlertTriangle className="h-3.5 w-3.5" /> Recording unavailable
