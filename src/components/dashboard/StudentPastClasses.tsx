@@ -208,6 +208,10 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
                         <Loader2 className="h-3 w-3 animate-spin mr-1" />
                         Processing
                       </Badge>
+                    ) : session.recordingStatus === 'expired' ? (
+                      <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">
+                        Expired (60-day limit)
+                      </Badge>
                     ) : session.recordingStatus === 'failed' ? (
                       <Badge variant="outline" className="text-[9px] bg-destructive/10 text-destructive border-destructive/20">
                         No Recording
