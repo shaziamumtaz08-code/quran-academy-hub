@@ -904,8 +904,8 @@ export default function ZoomManagement() {
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
                   {attendanceLogs?.map((log: any) => {
-                    const isJoin = log.action === 'join' || log.action === 'join_intent';
-                    const isLeave = log.action === 'leave';
+                    const isLeave = log.action === 'leave' || Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left';
+                    const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
                     return (
                       <div key={log.id} className={cn(
                         "flex items-center gap-3 p-3 rounded-xl border transition-colors",
