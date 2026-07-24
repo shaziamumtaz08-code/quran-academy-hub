@@ -374,6 +374,11 @@ async function findOrCreateZoomSession(
 async function insertZoomLog(supabase: any, payload: Record<string, unknown>) {
   const { error } = await supabase.from("zoom_attendance_logs").insert(payload);
   if (error) {
+    // 23505 = unique_violation — expected when Zoom re-delivers the same event; safe to ignore.
+    if ((error as any).code === "23505" || /duplicate key|already exists/i.test(error.message || "")) {
+      console.log("Duplicate Zoom log ignored (unique index):", payload.action, payload.participant_name);
+      return;
+    }
     console.error("Error inserting Zoom attendance log:", error, payload);
   }
 }
