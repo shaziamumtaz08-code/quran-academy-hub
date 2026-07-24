@@ -412,6 +412,27 @@ export default function ZoomManagement() {
                       <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
                     </div>
                     <Separator className="my-2" />
+                    {(() => {
+                      const pcount = participantCountBySession.get(session.id) || 0;
+                      const startedMin = session.actual_start
+                        ? Math.floor((Date.now() - new Date(session.actual_start).getTime()) / 60000)
+                        : 0;
+                      const groupAtRisk = pcount >= 3;
+                      return groupAtRisk ? (
+                        <div className={cn(
+                          "flex items-center gap-1.5 rounded-md px-2 py-1 mb-2 border text-[10px]",
+                          startedMin >= 30
+                            ? "bg-destructive/10 border-destructive/30 text-destructive"
+                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                        )}>
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span className="font-semibold">
+                            {pcount} participants · Basic tier cap 40 min
+                            {startedMin >= 30 && ` · ${40 - startedMin}m left`}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Duration</span>
                       {session.actual_start && <LiveTimer startTime={session.actual_start} />}
