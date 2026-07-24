@@ -103,6 +103,7 @@ const QuizEngine = lazy(() => import("./pages/QuizEngine"));
 const PublicQuiz = lazy(() => import("./pages/PublicQuiz"));
 const StudentQuizView = lazy(() => import("./pages/StudentQuizView"));
 const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
+const LiveClasses = lazy(() => import("./pages/LiveClasses"));
 const SchemaExplorer = lazy(() => import("./pages/SchemaExplorer"));
 const QATestMate = lazy(() => import("./pages/QATestMate"));
 const UserConnections = lazy(() => import("./pages/UserConnections"));
