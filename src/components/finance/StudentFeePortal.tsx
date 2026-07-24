@@ -101,6 +101,33 @@ export function StudentFeePortal({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const selectedInvoicesForProof = invoices.filter(i => selectedIds.has(i.id));
+  const submitProof = async () => {
+    if (!proofUrl.trim()) {
+      toast({ title: 'Attach a payment slip', variant: 'destructive' });
+      return;
+    }
+    if (selectedInvoicesForProof.length === 0) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.rpc('submit_payment_proof' as any, {
+        _invoice_ids: selectedInvoicesForProof.map(i => i.id),
+        _proof_url: proofUrl,
+        _note: proofNote || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Proof submitted', description: 'Admin will verify and mark your invoice(s) as paid.' });
+      setUploadOpen(false);
+      setProofUrl(''); setProofNote(''); setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+    } catch (err: any) {
+      toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+
 
   // Parents always view a single child at a time — the child is chosen via
   // the top ActingAsBanner switcher (or by entering through "Login to Child's
