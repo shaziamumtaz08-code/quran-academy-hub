@@ -10858,10 +10858,15 @@ export type Database = {
           participant_email: string | null
           participant_name: string | null
           role: string | null
-          session_id: string
+          session_id: string | null
           timestamp: string
           total_duration_minutes: number | null
           user_id: string | null
+          zoom_event_type: string | null
+          zoom_host_id: string | null
+          zoom_license_id: string | null
+          zoom_meeting_id: string | null
+          zoom_meeting_uuid: string | null
         }
         Insert: {
           action: Database["public"]["Enums"]["attendance_action"]
@@ -10871,10 +10876,15 @@ export type Database = {
           participant_email?: string | null
           participant_name?: string | null
           role?: string | null
-          session_id: string
+          session_id?: string | null
           timestamp?: string
           total_duration_minutes?: number | null
           user_id?: string | null
+          zoom_event_type?: string | null
+          zoom_host_id?: string | null
+          zoom_license_id?: string | null
+          zoom_meeting_id?: string | null
+          zoom_meeting_uuid?: string | null
         }
         Update: {
           action?: Database["public"]["Enums"]["attendance_action"]
@@ -10884,10 +10894,15 @@ export type Database = {
           participant_email?: string | null
           participant_name?: string | null
           role?: string | null
-          session_id?: string
+          session_id?: string | null
           timestamp?: string
           total_duration_minutes?: number | null
           user_id?: string | null
+          zoom_event_type?: string | null
+          zoom_host_id?: string | null
+          zoom_license_id?: string | null
+          zoom_meeting_id?: string | null
+          zoom_meeting_uuid?: string | null
         }
         Relationships: [
           {
@@ -10895,6 +10910,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_attendance_logs_zoom_license_id_fkey"
+            columns: ["zoom_license_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_licenses"
             referencedColumns: ["id"]
           },
         ]
@@ -11336,6 +11358,10 @@ export type Database = {
       user_in_chat_group: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
+      }
+      zoom_monitor_teacher_for_license: {
+        Args: { _license_id: string }
+        Returns: string
       }
     }
     Enums: {
