@@ -103,6 +103,7 @@ const QuizEngine = lazy(() => import("./pages/QuizEngine"));
 const PublicQuiz = lazy(() => import("./pages/PublicQuiz"));
 const StudentQuizView = lazy(() => import("./pages/StudentQuizView"));
 const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
+const LiveClasses = lazy(() => import("./pages/LiveClasses"));
 const SchemaExplorer = lazy(() => import("./pages/SchemaExplorer"));
 const QATestMate = lazy(() => import("./pages/QATestMate"));
 const UserConnections = lazy(() => import("./pages/UserConnections"));
@@ -481,6 +482,7 @@ function AppRoutes() {
       <Route path="/my-quizzes" element={<ProtectedRoute><RouteGuard moduleId="my_quizzes"><StudentQuizView /></RouteGuard></ProtectedRoute>} />
       <Route path="/quiz/:token" element={<PublicQuiz />} />
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
+      <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
       <Route path="/qa-testmate" element={<ProtectedRoute><RouteGuard moduleId="qa_testmate"><QATestMate /></RouteGuard></ProtectedRoute>} />
       <Route path="/connections/:userType/:userId" element={<ProtectedRoute><RouteGuard moduleId="connections"><UserConnections /></RouteGuard></ProtectedRoute>} />
