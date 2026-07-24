@@ -95,10 +95,17 @@ interface InvoiceRow {
   is_revised?: boolean | null;
   archive_reason?: string | null;
   superseded_by_invoice_id?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_note?: string | null;
+  payment_proof_submitted_at?: string | null;
+  payment_proof_submitted_by?: string | null;
+  payment_proof_rejected_at?: string | null;
+  payment_proof_rejection_reason?: string | null;
   profiles: { full_name: string } | null;
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
 }
+
 interface StudentOption { id: string; full_name: string; country: string | null }
 interface StudentSubjects { [studentId: string]: string[] }
 interface PackageOption { id: string; name: string; amount: number; currency: string }
