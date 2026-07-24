@@ -139,20 +139,21 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_attendance_logs')
-        .select('id, user_id, action, timestamp, session_id, join_time, leave_time, total_duration_minutes, participant_name, participant_email, role')
-        .not('session_id', 'is', null)
+        .select('id, user_id, action, timestamp, session_id, join_time, leave_time, total_duration_minutes, participant_name, participant_email, role, zoom_license_id, zoom_meeting_uuid, zoom_host_id, zoom_event_type')
         .order('timestamp', { ascending: false })
         .limit(100);
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map((l: any) => l.user_id))] as string[];
-      const { data: users } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      const userIds = [...new Set(data.map((l: any) => l.user_id).filter(Boolean))] as string[];
+      const { data: users } = userIds.length
+        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : { data: [] } as { data: Array<{ id: string; full_name: string | null }> };
       const userMap = new Map(users?.map(u => [u.id, u.full_name]) || []);
 
       return data.map((log: any) => ({
         ...log,
-        userName: userMap.get(log.user_id) || log.participant_name || 'Unknown',
+        userName: userMap.get(log.user_id) || log.participant_name || 'Zoom participant',
       }));
     },
     refetchInterval: 15000,
