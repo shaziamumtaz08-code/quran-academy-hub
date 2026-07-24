@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
     }
 
     const hostId = event.payload.object?.host_id;
+    const meetingUuidTop = event.payload.object?.uuid || null;
 
     switch (event.event) {
       case "meeting.started": {
