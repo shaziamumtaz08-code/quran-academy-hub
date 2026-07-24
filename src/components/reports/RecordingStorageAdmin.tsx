@@ -14,28 +14,39 @@ export default function RecordingStorageAdmin() {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('live_sessions')
-        .select('id, recording_status, stored_file_size_mb, zoom_deleted_at, download_last_error, download_attempts')
+        .select('id, recording_status, stored_file_size_mb, original_file_size_mb, compression_status, zoom_deleted_at, retention_expires_at, download_last_error, download_attempts, scheduled_start')
         .not('recording_status', 'is', null);
       if (error) throw error;
       const list = rows || [];
+      const now = Date.now();
+      const in7d = now + 7 * 24 * 60 * 60 * 1000;
+      const expiringSoon = list.filter((r: any) =>
+        r.recording_status === 'ready' &&
+        r.retention_expires_at &&
+        new Date(r.retention_expires_at).getTime() <= in7d &&
+        new Date(r.retention_expires_at).getTime() >= now
+      ).sort((a: any, b: any) => new Date(a.retention_expires_at).getTime() - new Date(b.retention_expires_at).getTime());
       return {
         totalMb: list.reduce((sum, r: any) => sum + (r.stored_file_size_mb || 0), 0),
         ready: list.filter((r: any) => r.recording_status === 'ready').length,
         pending: list.filter((r: any) => r.recording_status === 'pending').length,
         failed: list.filter((r: any) => r.recording_status === 'failed').length,
+        expired: list.filter((r: any) => r.recording_status === 'expired').length,
         awaitingCleanup: list.filter((r: any) => r.recording_status === 'ready' && !r.zoom_deleted_at).length,
         cleanedUp: list.filter((r: any) => r.zoom_deleted_at).length,
         failures: list.filter((r: any) => r.recording_status === 'failed').slice(0, 20),
+        expiringSoon: expiringSoon.slice(0, 25),
+        expiringSoonCount: expiringSoon.length,
       };
     },
   });
 
-  const runFn = async (fn: 'zoom-download-recording' | 'zoom-cleanup-recordings') => {
+  const runFn = async (fn: 'zoom-download-recording' | 'zoom-cleanup-recordings' | 'zoom-expire-recordings') => {
     setBusy(fn);
     try {
       const { error } = await supabase.functions.invoke(fn, { body: {} });
       if (error) throw error;
-      toast({ title: 'Done', description: fn === 'zoom-download-recording' ? 'Retried pending downloads.' : 'Ran Zoom cleanup pass.' });
+      toast({ title: 'Done', description: fn === 'zoom-download-recording' ? 'Retried pending downloads.' : fn === 'zoom-cleanup-recordings' ? 'Ran Zoom cleanup pass.' : 'Ran retention expiry pass.' });
       refetch();
     } catch (e: any) {
       toast({ title: 'Failed', description: String(e?.message || e), variant: 'destructive' });
