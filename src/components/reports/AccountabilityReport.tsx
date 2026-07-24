@@ -278,6 +278,8 @@ export default function AccountabilityReport() {
 
   return (
     <div className="space-y-6">
+      {/* Recording pipeline health */}
+      <RecordingStorageAdmin />
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
