@@ -88,9 +88,12 @@ Deno.serve(async (req) => {
         ok: false,
         detail: `HTTP ${userResp.status}: ${userBody.message || JSON.stringify(userBody).slice(0, 300)}`,
       });
-      const scopeHint = scopes.includes("user:read:admin") || scopes.includes("user:read")
+      const hasUserScope = scopes.some((s: string) =>
+        s.startsWith("user:read:user") || s === "user:read" || s === "user:read:admin"
+      );
+      const scopeHint = hasUserScope
         ? "Email may not exist on this account."
-        : "Missing scope 'user:read:admin' — add it to the S2S app and reactivate.";
+        : "Missing user read scope — add 'user:read:user:admin' (Granular) or 'user:read:admin' (Classic) to the S2S app and reactivate.";
       return json({ ok: false, checks, verdict: `Fix: ${scopeHint}` });
     }
     const hostId = userBody.id;
