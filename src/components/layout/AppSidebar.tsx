@@ -70,6 +70,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
       subtitle: 'Your classes',
       items: [
         { label: 'My Classes', href: '/teaching' },
+        { label: 'Live Classes', href: '/live-classes' },
         { label: 'Schedules', href: '/my-schedule' },
         { label: 'Attendance', href: '/attendance' },
         { label: 'Planning', href: '/monthly-planning' },
