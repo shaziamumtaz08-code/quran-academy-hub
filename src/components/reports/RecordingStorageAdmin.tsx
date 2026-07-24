@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { HardDrive, Loader2, AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
+import { HardDrive, Loader2, AlertTriangle, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -14,28 +14,39 @@ export default function RecordingStorageAdmin() {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('live_sessions')
-        .select('id, recording_status, stored_file_size_mb, zoom_deleted_at, download_last_error, download_attempts')
+        .select('id, recording_status, stored_file_size_mb, original_file_size_mb, compression_status, zoom_deleted_at, retention_expires_at, download_last_error, download_attempts, scheduled_start')
         .not('recording_status', 'is', null);
       if (error) throw error;
       const list = rows || [];
+      const now = Date.now();
+      const in7d = now + 7 * 24 * 60 * 60 * 1000;
+      const expiringSoon = list.filter((r: any) =>
+        r.recording_status === 'ready' &&
+        r.retention_expires_at &&
+        new Date(r.retention_expires_at).getTime() <= in7d &&
+        new Date(r.retention_expires_at).getTime() >= now
+      ).sort((a: any, b: any) => new Date(a.retention_expires_at).getTime() - new Date(b.retention_expires_at).getTime());
       return {
         totalMb: list.reduce((sum, r: any) => sum + (r.stored_file_size_mb || 0), 0),
         ready: list.filter((r: any) => r.recording_status === 'ready').length,
         pending: list.filter((r: any) => r.recording_status === 'pending').length,
         failed: list.filter((r: any) => r.recording_status === 'failed').length,
+        expired: list.filter((r: any) => r.recording_status === 'expired').length,
         awaitingCleanup: list.filter((r: any) => r.recording_status === 'ready' && !r.zoom_deleted_at).length,
         cleanedUp: list.filter((r: any) => r.zoom_deleted_at).length,
         failures: list.filter((r: any) => r.recording_status === 'failed').slice(0, 20),
+        expiringSoon: expiringSoon.slice(0, 25),
+        expiringSoonCount: expiringSoon.length,
       };
     },
   });
 
-  const runFn = async (fn: 'zoom-download-recording' | 'zoom-cleanup-recordings') => {
+  const runFn = async (fn: 'zoom-download-recording' | 'zoom-cleanup-recordings' | 'zoom-expire-recordings') => {
     setBusy(fn);
     try {
       const { error } = await supabase.functions.invoke(fn, { body: {} });
       if (error) throw error;
-      toast({ title: 'Done', description: fn === 'zoom-download-recording' ? 'Retried pending downloads.' : 'Ran Zoom cleanup pass.' });
+      toast({ title: 'Done', description: fn === 'zoom-download-recording' ? 'Retried pending downloads.' : fn === 'zoom-cleanup-recordings' ? 'Ran Zoom cleanup pass.' : 'Ran retention expiry pass.' });
       refetch();
     } catch (e: any) {
       toast({ title: 'Failed', description: String(e?.message || e), variant: 'destructive' });
@@ -49,12 +60,13 @@ export default function RecordingStorageAdmin() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <StatCard icon={<HardDrive className="h-4 w-4" />} label="Storage used" value={`${(data.totalMb / 1024).toFixed(2)} GB`} />
         <StatCard label="Ready" value={data.ready} />
         <StatCard label="Pending" value={data.pending} tone={data.pending > 0 ? 'warn' : undefined} />
         <StatCard label="Failed" value={data.failed} tone={data.failed > 0 ? 'error' : undefined} />
-        <StatCard label="Awaiting Zoom cleanup" value={data.awaitingCleanup} />
+        <StatCard label="Expired" value={data.expired} />
+        <StatCard icon={<Clock className="h-4 w-4" />} label="Expiring in 7 days" value={data.expiringSoonCount} tone={data.expiringSoonCount > 0 ? 'warn' : undefined} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -66,7 +78,31 @@ export default function RecordingStorageAdmin() {
           {busy === 'zoom-cleanup-recordings' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
           Run Zoom cleanup now
         </Button>
+        <Button size="sm" variant="outline" onClick={() => runFn('zoom-expire-recordings')} disabled={!!busy}>
+          {busy === 'zoom-expire-recordings' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+          Run retention expiry now
+        </Button>
       </div>
+
+      {data.expiringSoon.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-600" /> Expiring in next 7 days ({data.expiringSoonCount})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-xs">
+            {data.expiringSoon.map((f: any) => (
+              <div key={f.id} className="p-2 rounded bg-muted/50 flex justify-between gap-2">
+                <span className="font-mono truncate">{f.id}</span>
+                <span className="text-muted-foreground shrink-0">
+                  expires {new Date(f.retention_expires_at).toLocaleDateString()} · {f.stored_file_size_mb || 0} MB
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {data.failures.length > 0 && (
         <Card>

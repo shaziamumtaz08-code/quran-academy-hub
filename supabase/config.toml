@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.zoom-cleanup-recordings]
 verify_jwt = false
+
+[functions.zoom-expire-recordings]
+verify_jwt = false

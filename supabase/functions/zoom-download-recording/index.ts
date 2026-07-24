@@ -85,12 +85,24 @@ Deno.serve(async (req) => {
           throw new Error(`Zoom download HTTP ${dl.status}: ${await dl.text().catch(() => "")}`);
         }
 
-        const buf = new Uint8Array(await dl.arrayBuffer());
-        const sizeMb = Math.round((buf.byteLength / 1048576) * 100) / 100;
+        const originalBuf = new Uint8Array(await dl.arrayBuffer());
+        const originalSizeMb = Math.round((originalBuf.byteLength / 1048576) * 100) / 100;
         const ext = (rec.file_type || "MP4").toLowerCase();
+
+        // COMPRESSION: Deno edge runtime cannot execute native ffmpeg and
+        // ffmpeg.wasm is not viable for multi-hundred-MB class recordings
+        // (memory + 150s CPU cap). We record compression_status so admins
+        // can see the file went through the pipeline; heavy re-encoding is
+        // handled downstream by an external worker if/when configured.
+        // If future infra allows in-line compression, swap `finalBuf` here.
+        let finalBuf = originalBuf;
+        let compressionStatus: "skipped_runtime" | "compressed" | "failed_fallback_original" = "skipped_runtime";
+        // (Placeholder for future ffmpeg step — keep fallback semantics intact.)
+        const finalSizeMb = Math.round((finalBuf.byteLength / 1048576) * 100) / 100;
+
         const path = `${session.teacher_id}/${sessionId}/${rec.recording_type || "recording"}-${rec.id}.${ext}`;
 
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, buf, {
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, finalBuf, {
           contentType: ext === "mp4" ? "video/mp4" : "application/octet-stream",
           upsert: true,
         });
@@ -102,18 +114,23 @@ Deno.serve(async (req) => {
           status: "available",
           play_url: storageUrl,
           download_url: storageUrl,
-          file_size_mb: sizeMb,
+          file_size_mb: finalSizeMb,
         }).eq("id", rec.id);
 
+        const fetchedAt = new Date();
+        const retentionAt = new Date(fetchedAt.getTime() + 60 * 24 * 60 * 60 * 1000);
         await supabase.from("live_sessions").update({
           recording_status: "ready",
           recording_link: storageUrl,
-          recording_fetched_at: new Date().toISOString(),
-          stored_file_size_mb: sizeMb,
+          recording_fetched_at: fetchedAt.toISOString(),
+          retention_expires_at: retentionAt.toISOString(),
+          stored_file_size_mb: finalSizeMb,
+          original_file_size_mb: originalSizeMb,
+          compression_status: compressionStatus,
           download_last_error: null,
         }).eq("id", sessionId);
 
-        results.push({ sessionId, ok: true, sizeMb });
+        results.push({ sessionId, ok: true, sizeMb: finalSizeMb, originalSizeMb, compressionStatus });
       } catch (err: any) {
         console.error("Download failed for", sessionId, err);
         const msg = String(err?.message || err);

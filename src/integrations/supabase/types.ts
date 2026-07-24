@@ -5118,16 +5118,19 @@ export type Database = {
           actual_end: string | null
           actual_start: string | null
           assignment_id: string | null
+          compression_status: string | null
           created_at: string
           download_attempts: number
           download_last_error: string | null
           group_id: string | null
           id: string
           license_id: string | null
+          original_file_size_mb: number | null
           recording_fetched_at: string | null
           recording_link: string | null
           recording_password: string | null
           recording_status: string | null
+          retention_expires_at: string | null
           schedule_id: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
@@ -5143,16 +5146,19 @@ export type Database = {
           actual_end?: string | null
           actual_start?: string | null
           assignment_id?: string | null
+          compression_status?: string | null
           created_at?: string
           download_attempts?: number
           download_last_error?: string | null
           group_id?: string | null
           id?: string
           license_id?: string | null
+          original_file_size_mb?: number | null
           recording_fetched_at?: string | null
           recording_link?: string | null
           recording_password?: string | null
           recording_status?: string | null
+          retention_expires_at?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
@@ -5168,16 +5174,19 @@ export type Database = {
           actual_end?: string | null
           actual_start?: string | null
           assignment_id?: string | null
+          compression_status?: string | null
           created_at?: string
           download_attempts?: number
           download_last_error?: string | null
           group_id?: string | null
           id?: string
           license_id?: string | null
+          original_file_size_mb?: number | null
           recording_fetched_at?: string | null
           recording_link?: string | null
           recording_password?: string | null
           recording_status?: string | null
+          retention_expires_at?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
