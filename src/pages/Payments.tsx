@@ -34,6 +34,8 @@ import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel'
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { PaymentProofDialog } from '@/components/finance/PaymentProofDialog';
+
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards';
@@ -95,10 +97,17 @@ interface InvoiceRow {
   is_revised?: boolean | null;
   archive_reason?: string | null;
   superseded_by_invoice_id?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_note?: string | null;
+  payment_proof_submitted_at?: string | null;
+  payment_proof_submitted_by?: string | null;
+  payment_proof_rejected_at?: string | null;
+  payment_proof_rejection_reason?: string | null;
   profiles: { full_name: string } | null;
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
 }
+
 interface StudentOption { id: string; full_name: string; country: string | null }
 interface StudentSubjects { [studentId: string]: string[] }
 interface PackageOption { id: string; name: string; amount: number; currency: string }
@@ -166,6 +175,8 @@ export default function Payments() {
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending' | 'reset_invoice'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
+  const [proofInvoice, setProofInvoice] = useState<InvoiceRow | null>(null);
+
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
@@ -316,6 +327,8 @@ export default function Payments() {
           id, assignment_id, plan_id, student_id, amount, currency, billing_month,
           due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
           is_archived, is_revised, superseded_by_invoice_id, archive_reason,
+          payment_proof_url, payment_proof_note, payment_proof_submitted_at, payment_proof_submitted_by,
+          payment_proof_rejected_at, payment_proof_rejection_reason,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             fee_packages!student_teacher_assignments_fee_package_id_fkey(name)
@@ -325,6 +338,7 @@ export default function Payments() {
             session_duration
           )
         `)
+
         .is('voided_at', null)
         .order('created_at', { ascending: false });
 
@@ -1516,11 +1530,15 @@ export default function Payments() {
     setSelectedIds(new Set([invoiceId]));
     const due = Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
     const fallback = getDefaultPeriodDates(inv.billing_month);
+    const proofNote = inv.payment_proof_url && inv.payment_proof_note
+      ? `Proof note: ${inv.payment_proof_note}`
+      : '';
     setPayForm({
-      amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
+      amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: proofNote,
       payment_date: new Date().toISOString().split('T')[0],
       period_from: inv.period_from || fallback.from, period_to: inv.period_to || fallback.to, payment_method: '',
     });
+
     setReceiptFile(null);
     setBulkPayOpen(true);
   };
@@ -1912,14 +1930,27 @@ export default function Payments() {
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
-                            {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
-                              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
-                                <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
-                              </Button>
-                            ) : inv.is_archived ? (
-                              <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
-                            ) : getStatusBadge(inv.status)}
+                            <div className="flex flex-col items-center gap-1">
+                              {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                  <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
+                                </Button>
+                              ) : inv.is_archived ? (
+                                <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
+                              ) : getStatusBadge(inv.status)}
+                              {inv.payment_proof_url && inv.status !== 'paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setProofInvoice(inv)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-medium hover:bg-amber-100"
+                                  title="View submitted payment proof"
+                                >
+                                  📎 Proof submitted
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
+
                           {isReadOnlyView && (
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -2033,14 +2064,27 @@ export default function Payments() {
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
-                            {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
-                              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
-                                <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
-                              </Button>
-                            ) : inv.is_archived ? (
-                              <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
-                            ) : getStatusBadge(inv.status)}
+                            <div className="flex flex-col items-center gap-1">
+                              {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                  <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
+                                </Button>
+                              ) : inv.is_archived ? (
+                                <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
+                              ) : getStatusBadge(inv.status)}
+                              {inv.payment_proof_url && inv.status !== 'paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setProofInvoice(inv)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-medium hover:bg-amber-100"
+                                  title="View submitted payment proof"
+                                >
+                                  📎 Proof submitted
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
+
                           {isReadOnlyView && (
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -3272,6 +3316,13 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
       </div>
+      <PaymentProofDialog
+        invoice={proofInvoice as any}
+        onClose={() => setProofInvoice(null)}
+        onRejected={() => queryClient.invalidateQueries({ queryKey: ['fee-invoices'] })}
+        onMarkPaid={(inv) => { openSinglePay(inv.id); }}
+      />
     </>
+
   );
 }

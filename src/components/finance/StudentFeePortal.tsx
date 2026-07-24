@@ -1,19 +1,26 @@
 import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, Clock, AlertTriangle, Download, Receipt, Calendar, User, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { FileUploadField } from '@/components/shared/FileUploadField';
+import { CheckCircle2, Clock, AlertTriangle, Download, Receipt, Calendar, User, ArrowRight, Upload, Paperclip, X } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useKidContext } from '@/contexts/KidContext';
+import { useToast } from '@/hooks/use-toast';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const formatBM = (bm: string) => { const [y,m] = bm.split('-'); return `${MONTHS[parseInt(m,10)-1] || m} ${y}`; };
 const shortBM = (bm: string) => { const [y,m] = bm.split('-'); return `${MONTHS[parseInt(m,10)-1]?.slice(0,3) || m} ${y.slice(2)}`; };
+
 
 interface InvoiceLite {
   id: string;
@@ -31,8 +38,13 @@ interface InvoiceLite {
   is_archived?: boolean | null;
   superseded_by_invoice_id?: string | null;
   archive_reason?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_note?: string | null;
+  payment_proof_submitted_at?: string | null;
+  payment_proof_rejection_reason?: string | null;
   profiles: { full_name: string } | null;
 }
+
 
 const currentBillingMonth = () => {
   const n = new Date();
@@ -80,6 +92,42 @@ export function StudentFeePortal({
   invoices, isLoading, ledgerPaidMap, getRate, isParentView,
 }: Props) {
   const { activeKidId } = useKidContext();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [proofUrl, setProofUrl] = useState('');
+  const [proofNote, setProofNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const selectedInvoicesForProof = invoices.filter(i => selectedIds.has(i.id));
+  const submitProof = async () => {
+    if (!proofUrl.trim()) {
+      toast({ title: 'Attach a payment slip', variant: 'destructive' });
+      return;
+    }
+    if (selectedInvoicesForProof.length === 0) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.rpc('submit_payment_proof' as any, {
+        _invoice_ids: selectedInvoicesForProof.map(i => i.id),
+        _proof_url: proofUrl,
+        _note: proofNote || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Proof submitted', description: 'Admin will verify and mark your invoice(s) as paid.' });
+      setUploadOpen(false);
+      setProofUrl(''); setProofNote(''); setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+    } catch (err: any) {
+      toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+
 
   // Parents always view a single child at a time — the child is chosen via
   // the top ActingAsBanner switcher (or by entering through "Login to Child's
@@ -387,9 +435,28 @@ export function StudentFeePortal({
           });
         const visible = showAllTxns ? rows : rows.slice(0, 12);
 
+        const selectableIds = rows
+          .filter(r => r.effectiveStatus !== 'paid' && r.primaryInvoice && !r.primaryInvoice.payment_proof_url)
+          .map(r => r.primaryInvoice!.id);
+
+
+
         return (
           <div>
-            <h3 className="text-base font-semibold mb-3">Payment History</h3>
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+              <h3 className="text-base font-semibold">Payment History</h3>
+              {selectableIds.length > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setUploadOpen(true)}
+                  disabled={selectedIds.size === 0}
+                  className="gap-1.5 h-8"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload Payment Proof{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                </Button>
+              )}
+            </div>
             {rows.length === 0 ? (
               <div className="bg-card rounded-xl border border-dashed border-border p-6 text-center">
                 <Receipt className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2" />
@@ -407,25 +474,51 @@ export function StudentFeePortal({
                       )} />
                       <div className="bg-card rounded-lg border border-border px-3.5 py-2.5 hover:shadow-sm transition-shadow">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                              <span className="font-medium tabular-nums text-foreground/80">
-                                Fee {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                              {earliestDue && (
-                                <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
-                              )}
-                              {totalPaid > 0 && (
-                                <span className="text-emerald-700">
-                                  <span className="text-muted-foreground/40">·</span> Paid {currency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                  {lastPaidDate && <> on {format(parseISO(lastPaidDate), 'dd MMM yyyy')}</>}
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            {primaryInvoice && effectiveStatus !== 'paid' && !primaryInvoice.payment_proof_url && (
+                              <Checkbox
+                                className="mt-1"
+                                checked={selectedIds.has(primaryInvoice.id)}
+                                onCheckedChange={() => {
+                                  setSelectedIds(prev => {
+                                    const n = new Set(prev);
+                                    n.has(primaryInvoice.id) ? n.delete(primaryInvoice.id) : n.add(primaryInvoice.id);
+                                    return n;
+                                  });
+                                }}
+                                aria-label={`Select ${formatBM(bm)}`}
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                                <span className="font-medium tabular-nums text-foreground/80">
+                                  Fee {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
+                                {earliestDue && (
+                                  <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
+                                )}
+                                {totalPaid > 0 && (
+                                  <span className="text-emerald-700">
+                                    <span className="text-muted-foreground/40">·</span> Paid {currency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {lastPaidDate && <> on {format(parseISO(lastPaidDate), 'dd MMM yyyy')}</>}
+                                  </span>
+                                )}
+                                {remaining > 0.01 && effectiveStatus !== 'paid' && (
+                                  <span className="text-rose-700">
+                                    <span className="text-muted-foreground/40">·</span> Balance {currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </span>
+                                )}
+                              </div>
+                              {primaryInvoice?.payment_proof_url && effectiveStatus !== 'paid' && !primaryInvoice.payment_proof_rejection_reason && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-medium">
+                                  <Paperclip className="h-3 w-3" /> Proof submitted — awaiting admin review
+                                </div>
                               )}
-                              {remaining > 0.01 && effectiveStatus !== 'paid' && (
-                                <span className="text-rose-700">
-                                  <span className="text-muted-foreground/40">·</span> Balance {currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </span>
+                              {primaryInvoice?.payment_proof_rejection_reason && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 text-rose-800 px-2 py-0.5 text-[10px] font-medium">
+                                  <X className="h-3 w-3" /> Proof rejected: {primaryInvoice.payment_proof_rejection_reason}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -467,6 +560,53 @@ export function StudentFeePortal({
           </div>
         );
       })()}
+
+      <Dialog open={uploadOpen} onOpenChange={(v) => { if (!submitting) setUploadOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Payment Proof</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs">
+              <div className="font-medium mb-1.5">Applying to {selectedIds.size} invoice{selectedIds.size === 1 ? '' : 's'}:</div>
+              <ul className="space-y-0.5 text-muted-foreground">
+                {invoices
+                  .filter(i => selectedIds.has(i.id))
+                  .map(i => (
+                    <li key={i.id}>
+                      • {i.profiles?.full_name || 'Student'} — {formatBM(i.billing_month)} ({i.currency} {Number(i.amount).toLocaleString()})
+                    </li>
+                  ))}
+              </ul>
+            </div>
+            <FileUploadField
+              label="Payment slip *"
+              bucket="payment-receipts"
+              value={proofUrl}
+              onChange={setProofUrl}
+              accept="image/*,application/pdf"
+              hint="Screenshot / photo / PDF of your bank transfer or wallet payment"
+              onUploadStateChange={setUploading}
+            />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Note (optional)</Label>
+              <Textarea
+                value={proofNote}
+                onChange={(e) => setProofNote(e.target.value)}
+                placeholder="e.g. Wise transfer ref #ABC123, paid on 12 Jun"
+                className="text-sm min-h-[70px]"
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submitProof} disabled={submitting || uploading || !proofUrl.trim()}>
+              {submitting ? 'Submitting…' : 'Submit for review'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
