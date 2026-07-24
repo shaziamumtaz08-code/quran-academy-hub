@@ -3941,6 +3941,12 @@ export type Database = {
           paid_at: string | null
           payment_instructions: Json | null
           payment_method: string | null
+          payment_proof_note: string | null
+          payment_proof_rejected_at: string | null
+          payment_proof_rejection_reason: string | null
+          payment_proof_submitted_at: string | null
+          payment_proof_submitted_by: string | null
+          payment_proof_url: string | null
           period_from: string | null
           period_to: string | null
           plan_id: string | null
@@ -3978,6 +3984,12 @@ export type Database = {
           paid_at?: string | null
           payment_instructions?: Json | null
           payment_method?: string | null
+          payment_proof_note?: string | null
+          payment_proof_rejected_at?: string | null
+          payment_proof_rejection_reason?: string | null
+          payment_proof_submitted_at?: string | null
+          payment_proof_submitted_by?: string | null
+          payment_proof_url?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
@@ -4015,6 +4027,12 @@ export type Database = {
           paid_at?: string | null
           payment_instructions?: Json | null
           payment_method?: string | null
+          payment_proof_note?: string | null
+          payment_proof_rejected_at?: string | null
+          payment_proof_rejection_reason?: string | null
+          payment_proof_submitted_at?: string | null
+          payment_proof_submitted_by?: string | null
+          payment_proof_url?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
@@ -11229,6 +11247,10 @@ export type Database = {
         Args: { _effective_from: string; _student_id: string }
         Returns: Json
       }
+      reject_payment_proof: {
+        Args: { _invoice_id: string; _reason: string }
+        Returns: undefined
+      }
       release_license: {
         Args: { _session_id: string; _teacher_id: string }
         Returns: boolean
@@ -11278,6 +11300,10 @@ export type Database = {
           _token: string
         }
         Returns: Json
+      }
+      submit_payment_proof: {
+        Args: { _invoice_ids: string[]; _note: string; _proof_url: string }
+        Returns: number
       }
       user_in_chat_group: {
         Args: { _group_id: string; _user_id: string }
