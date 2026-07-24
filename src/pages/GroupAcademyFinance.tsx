@@ -68,7 +68,7 @@ export default function GroupAcademyFinance() {
         students: new Set(fees.map((f: any) => f.student_id)).size,
       };
 
-      return { courses, perCourse, totals, paymentsCount: payments.length };
+      return { courses, perCourse, totals };
     },
   });
 
