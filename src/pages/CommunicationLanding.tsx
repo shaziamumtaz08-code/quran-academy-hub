@@ -111,7 +111,6 @@ function CommunicationLandingInner() {
     'academy-chat': <div className="space-y-4"><RecentActivityStrip /><Suspense fallback={<Loading />}><GroupChat /></Suspense></div>,
     whatsapp: <Suspense fallback={<Loading />}><WhatsAppInbox /></Suspense>,
     notifications: <Suspense fallback={<Loading />}><NotificationCenter /></Suspense>,
-    zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
