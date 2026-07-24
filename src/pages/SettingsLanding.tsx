@@ -8,7 +8,6 @@ const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
 const Resources = lazy(() => import('./Resources'));
 const SchemaExplorer = lazy(() => import('./SchemaExplorer'));
 const FinanceSetup = lazy(() => import('./FinanceSetup'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
 const IntegrityAudit = lazy(() => import('./IntegrityAudit'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
@@ -22,7 +21,6 @@ const views = [
   'classroom',
   'schema',
   'finance-setup',
-  'teaching-config',
   'integrity',
 ] as const;
 
