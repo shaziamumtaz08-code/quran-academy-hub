@@ -18,6 +18,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
+import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
+import { AlertTriangle } from 'lucide-react';
 
 function LiveTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = React.useState(0);
@@ -164,6 +166,23 @@ export default function ZoomManagement() {
     });
     return map;
   }, [liveSessions]);
+
+  // Count distinct participants per live session — used to surface the
+  // free-tier 40-min cap warning when a group class hits 3+ attendees.
+  const participantCountBySession = React.useMemo(() => {
+    const map = new Map<string, number>();
+    (attendanceLogs || []).forEach((log: any) => {
+      if (!log.session_id) return;
+      const key = `${log.session_id}::${log.user_id || log.participant_email || log.participant_name}`;
+      const existing = map.get(log.session_id) || 0;
+      // Simple dedupe by session — using a Set-per-session would be cleaner but this suffices
+      if (!(map as any)[`__seen_${key}`]) {
+        (map as any)[`__seen_${key}`] = true;
+        map.set(log.session_id, existing + 1);
+      }
+    });
+    return map;
+  }, [attendanceLogs]);
 
   const addLicenseMutation = useMutation({
     mutationFn: async (license: typeof newLicense) => {
@@ -393,6 +412,27 @@ export default function ZoomManagement() {
                       <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
                     </div>
                     <Separator className="my-2" />
+                    {(() => {
+                      const pcount = participantCountBySession.get(session.id) || 0;
+                      const startedMin = session.actual_start
+                        ? Math.floor((Date.now() - new Date(session.actual_start).getTime()) / 60000)
+                        : 0;
+                      const groupAtRisk = pcount >= 3;
+                      return groupAtRisk ? (
+                        <div className={cn(
+                          "flex items-center gap-1.5 rounded-md px-2 py-1 mb-2 border text-[10px]",
+                          startedMin >= 30
+                            ? "bg-destructive/10 border-destructive/30 text-destructive"
+                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                        )}>
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span className="font-semibold">
+                            {pcount} participants · Basic tier cap 40 min
+                            {startedMin >= 30 && ` · ${40 - startedMin}m left`}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Duration</span>
                       {session.actual_start && <LiveTimer startTime={session.actual_start} />}
@@ -489,7 +529,8 @@ export default function ZoomManagement() {
                 <CardTitle className="font-serif">Zoom Licenses</CardTitle>
                 <CardDescription>Manage your Zoom meeting room licenses</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <ValidateZoomAccountDialog />
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => fetchHostIds()} disabled={refreshingHostIds}>
                   <RefreshCw className={cn("h-4 w-4", refreshingHostIds && "animate-spin")} />
                   {refreshingHostIds ? 'Fetching...' : 'Refresh Host IDs'}
