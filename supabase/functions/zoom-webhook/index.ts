@@ -141,6 +141,21 @@ function isHostParticipant(participantName: string, participantEmail: string, ho
   return currentName.includes("al-quran time class") || currentName.includes("al quran time class");
 }
 
+function participantMatchesProfile(
+  participantName: string,
+  participantEmail: string,
+  profile?: { full_name?: string | null; email?: string | null } | null,
+): boolean {
+  if (!profile) return false;
+  const currentEmail = normalizeParticipantValue(participantEmail);
+  const profileEmail = normalizeParticipantValue(profile.email);
+  if (currentEmail && profileEmail && currentEmail === profileEmail) return true;
+
+  const currentName = normalizeParticipantValue(participantName);
+  const profileName = normalizeParticipantValue(profile.full_name);
+  return Boolean(currentName && profileName && currentName === profileName);
+}
+
 async function resolveParticipantIdentity(
   supabase: any,
   session: any,
@@ -155,7 +170,7 @@ async function resolveParticipantIdentity(
   if (participantEmail) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, full_name, email")
       .ilike("email", participantEmail)
       .maybeSingle();
 
@@ -174,13 +189,37 @@ async function resolveParticipantIdentity(
     }
   }
 
-  if (session.student_id) {
-    return { matchedUserId: session.student_id, matchedRole: "student" };
+  const candidateIds = [session.teacher_id, session.student_id].filter(Boolean);
+  if (candidateIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", candidateIds);
+
+    const studentProfile = (profiles || []).find((profile: any) => profile.id === session.student_id);
+    if (participantMatchesProfile(participantName, participantEmail, studentProfile)) {
+      return { matchedUserId: session.student_id, matchedRole: "student" };
+    }
+
+    const teacherProfile = (profiles || []).find((profile: any) => profile.id === session.teacher_id);
+    if (participantMatchesProfile(participantName, participantEmail, teacherProfile)) {
+      return { matchedUserId: session.teacher_id, matchedRole: "teacher" };
+    }
   }
 
   if (session.assignment_id || session.schedule_id) {
     const scheduledStudentId = await findScheduledStudent(supabase, session.teacher_id);
     if (scheduledStudentId) {
+      const { data: scheduledProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", scheduledStudentId)
+        .maybeSingle();
+
+      if (!participantMatchesProfile(participantName, participantEmail, scheduledProfile)) {
+        return { matchedUserId: null, matchedRole: "unknown" };
+      }
+
       await supabase.from("live_sessions")
         .update({ student_id: scheduledStudentId })
         .eq("id", session.id);
