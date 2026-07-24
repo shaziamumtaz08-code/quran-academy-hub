@@ -1926,14 +1926,27 @@ export default function Payments() {
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
-                            {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
-                              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
-                                <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
-                              </Button>
-                            ) : inv.is_archived ? (
-                              <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
-                            ) : getStatusBadge(inv.status)}
+                            <div className="flex flex-col items-center gap-1">
+                              {!inv.is_archived && (inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                  <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
+                                </Button>
+                              ) : inv.is_archived ? (
+                                <Badge className="bg-red-100 text-red-700 border-red-200">VOID</Badge>
+                              ) : getStatusBadge(inv.status)}
+                              {inv.payment_proof_url && inv.status !== 'paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setProofInvoice(inv)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-medium hover:bg-amber-100"
+                                  title="View submitted payment proof"
+                                >
+                                  📎 Proof submitted
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
+
                           {isReadOnlyView && (
                             <TableCell>
                               <div className="flex items-center gap-1">
