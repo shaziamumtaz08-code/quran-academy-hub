@@ -437,6 +437,26 @@ Deno.serve(async (req) => {
     const event: ZoomEvent = JSON.parse(body);
     console.log("=== ZOOM WEBHOOK ===", event.event, new Date().toISOString());
 
+    // Persist raw payload BEFORE any processing so admins can audit what Zoom actually sent
+    // (including duplicate deliveries) vs what ended up in Join Logs. Never let this fail the request.
+    if (event.event !== "endpoint.url_validation") {
+      try {
+        const p = event.payload?.object || ({} as any);
+        await supabase.from("zoom_webhook_events").insert({
+          event_type: event.event,
+          event_ts: event.event_ts ? new Date(event.event_ts).toISOString() : null,
+          zoom_meeting_uuid: p.uuid || null,
+          zoom_meeting_id: p.id?.toString() || null,
+          zoom_host_id: p.host_id || null,
+          participant_name: p.participant?.user_name || null,
+          participant_email: p.participant?.email || null,
+          raw_payload: event as unknown as Record<string, unknown>,
+        });
+      } catch (e) {
+        console.error("Failed to log raw zoom webhook event:", e);
+      }
+    }
+
     // Handle URL validation challenge
     if (event.event === "endpoint.url_validation") {
       const plainToken = event.payload.plainToken;
