@@ -115,7 +115,7 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id, zoom_meeting_uuid')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
