@@ -53,10 +53,25 @@ export default function ExecutiveDashboard() {
     },
   });
 
-  // Fees — use billing_month + payment_transactions ledger (source of truth)
+  // Fees — 1:1 uses fee_invoices ledger; Group uses course_student_fees
   const { data: feeStats } = useQuery({
-    queryKey: ["exec-fees", currentBillingMonth, divisionId],
+    queryKey: ["exec-fees", currentBillingMonth, divisionId, isGroup],
     queryFn: async () => {
+      if (isGroup && divisionId) {
+        const { data: courses } = await supabase.from("courses").select("id").eq("division_id", divisionId);
+        const courseIds = (courses || []).map((c: any) => c.id);
+        if (courseIds.length === 0) return { collected: 0, pending: 0, expected: 0, total: 0 };
+        const { data: fees } = await supabase
+          .from("course_student_fees")
+          .select("total_due, total_paid, status")
+          .in("course_id", courseIds);
+        const rows = fees || [];
+        const expected = rows.reduce((s: number, f: any) => s + Number(f.total_due || 0), 0);
+        const collected = rows.reduce((s: number, f: any) => s + Number(f.total_paid || 0), 0);
+        const pending = Math.max(0, expected - collected);
+        return { collected: Math.round(collected), pending: Math.round(pending), expected: Math.round(expected), total: rows.length };
+      }
+
       let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount").is('voided_at', null);
       invQuery = invQuery.eq("billing_month", currentBillingMonth);
       if (divisionId) invQuery = invQuery.eq("division_id", divisionId);
