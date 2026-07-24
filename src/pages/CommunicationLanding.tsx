@@ -10,14 +10,12 @@ import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, use
 const GroupChat = lazy(() => import('./GroupChat'));
 const WhatsAppInbox = lazy(() => import('./WhatsAppInbox'));
 const NotificationCenter = lazy(() => import('./NotificationCenter'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 const views = [
   { label: 'Academy Chat', value: 'academy-chat' },
   { label: 'WhatsApp', value: 'whatsapp' },
   { label: 'Notifications', value: 'notifications' },
-  { label: 'Zoom Control Room', value: 'zoom' },
 ] as const;
 
 function RecentActivityStrip() {
