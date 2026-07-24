@@ -115,17 +115,22 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id, zoom_meeting_uuid')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const profileIds = [...new Set(data.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
+      const uniqueSessions = data.filter((session: any, index: number, rows: any[]) => {
+        if (!session.zoom_meeting_uuid) return true;
+        return rows.findIndex((candidate: any) => candidate.zoom_meeting_uuid === session.zoom_meeting_uuid) === index;
+      });
+
+      const profileIds = [...new Set(uniqueSessions.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', profileIds);
       const profileMap = new Map(profiles?.map(t => [t.id, t.full_name]) || []);
 
-      return data.map((session: any) => ({
+      return uniqueSessions.map((session: any) => ({
         ...session,
         teacherName: profileMap.get(session.teacher_id) || 'Unknown',
         studentName: session.student_id ? (profileMap.get(session.student_id) || 'Student') : null,
@@ -145,15 +150,29 @@ export default function ZoomManagement() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map((l: any) => l.user_id).filter(Boolean))] as string[];
+      const uniqueLogs = data.filter((log: any, index: number, rows: any[]) => {
+        const eventMinute = log.timestamp ? new Date(log.timestamp).toISOString().slice(0, 16) : '';
+        const participantKey = (log.participant_email || log.participant_name || log.user_id || '').toLowerCase();
+        const meetingKey = log.zoom_meeting_uuid || log.session_id || log.zoom_license_id || '';
+        const key = `${meetingKey}:${participantKey}:${log.action}:${eventMinute}`;
+        return rows.findIndex((candidate: any) => {
+          const candidateMinute = candidate.timestamp ? new Date(candidate.timestamp).toISOString().slice(0, 16) : '';
+          const candidateParticipant = (candidate.participant_email || candidate.participant_name || candidate.user_id || '').toLowerCase();
+          const candidateMeeting = candidate.zoom_meeting_uuid || candidate.session_id || candidate.zoom_license_id || '';
+          return `${candidateMeeting}:${candidateParticipant}:${candidate.action}:${candidateMinute}` === key;
+        }) === index;
+      });
+
+      const userIds = [...new Set(uniqueLogs.map((l: any) => l.user_id).filter(Boolean))] as string[];
       const { data: users } = userIds.length
         ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
         : { data: [] } as { data: Array<{ id: string; full_name: string | null }> };
       const userMap = new Map(users?.map(u => [u.id, u.full_name]) || []);
 
-      return data.map((log: any) => ({
+      return uniqueLogs.map((log: any) => ({
         ...log,
-        userName: userMap.get(log.user_id) || log.participant_name || 'Zoom participant',
+        userName: log.participant_name || userMap.get(log.user_id) || 'Zoom participant',
+        matchedProfileName: log.user_id ? userMap.get(log.user_id) : null,
       }));
     },
     refetchInterval: 15000,
@@ -167,6 +186,19 @@ export default function ZoomManagement() {
     });
     return map;
   }, [liveSessions]);
+
+  const activeParticipantNamesBySession = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (attendanceLogs || []).forEach((log: any) => {
+      if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
+      const label = log.participant_name || log.userName;
+      if (!label) return;
+      const existing = map.get(log.session_id) || new Set<string>();
+      existing.add(label);
+      map.set(log.session_id, existing);
+    });
+    return map;
+  }, [attendanceLogs]);
 
   // Count distinct participants per live session — used to surface the
   // free-tier 40-min cap warning when a group class hits 3+ attendees.
@@ -341,7 +373,9 @@ export default function ZoomManagement() {
                     </p>
                     {session ? (
                       <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-foreground truncate">{session.teacherName}</p>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || session.teacherName}
+                        </p>
                         <div className="flex items-center gap-1 text-destructive">
                           <Timer className="h-3 w-3" />
                           <LiveTimer startTime={session.actual_start} />
@@ -870,8 +904,8 @@ export default function ZoomManagement() {
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
                   {attendanceLogs?.map((log: any) => {
-                    const isJoin = log.action === 'join' || log.action === 'join_intent';
-                    const isLeave = log.action === 'leave';
+                    const isLeave = log.action === 'leave' || Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left';
+                    const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
                     return (
                       <div key={log.id} className={cn(
                         "flex items-center gap-3 p-3 rounded-xl border transition-colors",
