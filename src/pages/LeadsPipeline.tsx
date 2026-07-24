@@ -1346,6 +1346,9 @@ Content-Type: application/json
 }
 
 export default function LeadsPipeline() {
+  const { activeDivision, activeBranch } = useDivision();
+  const divisionId = activeDivision?.id || null;
+  const branchId = activeBranch?.id || null;
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -1354,12 +1357,15 @@ export default function LeadsPipeline() {
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['leads'],
+    queryKey: ['leads', divisionId, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
+      if (divisionId) q = q.eq('division_id', divisionId);
+      if (branchId) q = q.eq('branch_id', branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Lead[];
     },
