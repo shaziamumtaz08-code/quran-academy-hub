@@ -216,12 +216,17 @@ export default function ZoomManagement() {
     return new Map((licenses || []).map((license: any) => [license.id, license.zoom_email]));
   }, [licenses]);
 
+  const visibleAttendanceLogs = React.useMemo(() => {
+    return (attendanceLogs || []).filter((log: any) => {
+      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
+      return !isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail);
+    });
+  }, [attendanceLogs, roomEmailByLicense]);
+
   const activeParticipantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
-    (attendanceLogs || []).forEach((log: any) => {
+    visibleAttendanceLogs.forEach((log: any) => {
       if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
-      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
-      if (isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail)) return;
       const label = log.participant_name || log.userName;
       if (!label) return;
       const existing = map.get(log.session_id) || new Set<string>();
@@ -229,14 +234,12 @@ export default function ZoomManagement() {
       map.set(log.session_id, existing);
     });
     return map;
-  }, [attendanceLogs, roomEmailByLicense]);
+  }, [visibleAttendanceLogs]);
 
   const participantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
-    (attendanceLogs || []).forEach((log: any) => {
+    visibleAttendanceLogs.forEach((log: any) => {
       if (!log.session_id) return;
-      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
-      if (isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail)) return;
       const label = log.participant_name || log.userName;
       if (!label) return;
       const existing = map.get(log.session_id) || new Set<string>();
@@ -244,7 +247,7 @@ export default function ZoomManagement() {
       map.set(log.session_id, existing);
     });
     return map;
-  }, [attendanceLogs, roomEmailByLicense]);
+  }, [visibleAttendanceLogs]);
 
   const getSessionPrimaryLabel = React.useCallback((session: any) => {
     const participantNames = Array.from(participantNamesBySession.get(session.id) || []);
@@ -258,7 +261,7 @@ export default function ZoomManagement() {
   // free-tier 40-min cap warning when a group class hits 3+ attendees.
   const participantCountBySession = React.useMemo(() => {
     const map = new Map<string, number>();
-    (attendanceLogs || []).forEach((log: any) => {
+    visibleAttendanceLogs.forEach((log: any) => {
       if (!log.session_id) return;
       const key = `${log.session_id}::${log.user_id || log.participant_email || log.participant_name}`;
       const existing = map.get(log.session_id) || 0;
@@ -269,7 +272,7 @@ export default function ZoomManagement() {
       }
     });
     return map;
-  }, [attendanceLogs]);
+  }, [visibleAttendanceLogs]);
 
   const addLicenseMutation = useMutation({
     mutationFn: async (license: typeof newLicense) => {
@@ -370,7 +373,7 @@ export default function ZoomManagement() {
   const sectionButtons = [
     { id: 'rooms' as const, label: 'Rooms', icon: Settings, count: totalCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
-    { id: 'logs' as const, label: 'Join Logs', icon: Users, count: attendanceLogs?.length || 0 },
+    { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
 
   return (
@@ -963,7 +966,7 @@ export default function ZoomManagement() {
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
-                  {attendanceLogs?.map((log: any) => {
+                  {visibleAttendanceLogs.map((log: any) => {
                     const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
                     const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
                     return (
@@ -1002,7 +1005,7 @@ export default function ZoomManagement() {
                       </div>
                     );
                   })}
-                  {(!attendanceLogs || attendanceLogs.length === 0) && (
+                  {visibleAttendanceLogs.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">No join logs recorded yet.</div>
                   )}
                 </div>
