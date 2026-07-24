@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
     }
 
     const hostId = event.payload.object?.host_id;
+    const meetingUuidTop = event.payload.object?.uuid || null;
 
     switch (event.event) {
       case "meeting.started": {
@@ -207,6 +208,7 @@ Deno.serve(async (req) => {
             await supabase.from("live_sessions").update({
               status: "live",
               actual_start: new Date().toISOString(),
+              zoom_meeting_uuid: meetingUuidTop,
             }).eq("id", pendingSession.id);
             console.log("Activated pending session:", pendingSession.id);
           } else {
@@ -224,6 +226,7 @@ Deno.serve(async (req) => {
                 status: "live",
                 actual_start: new Date().toISOString(),
                 license_id: license.id,
+                zoom_meeting_uuid: meetingUuidTop,
               }).eq("id", unlinkedSession.id);
               console.log("Linked and activated unlinked session:", unlinkedSession.id);
             }
@@ -528,56 +531,93 @@ Deno.serve(async (req) => {
         console.log("=== RECORDING COMPLETED ===", hostId);
         const recordingFiles = event.payload.object?.recording_files || [];
         const recordingPassword = event.payload.object?.password || null;
+        const meetingUuid = event.payload.object?.uuid || null;
+        const meetingId = event.payload.object?.id || null;
 
-        const { data: license } = await supabase
-          .from("zoom_licenses")
-          .select("id")
-          .eq("host_id", hostId)
-          .maybeSingle();
+        let session: any = null;
+        if (meetingUuid) {
+          const { data } = await supabase
+            .from("live_sessions")
+            .select("id, teacher_id")
+            .eq("zoom_meeting_uuid", meetingUuid)
+            .maybeSingle();
+          session = data;
+        }
 
-        if (!license) { console.log("No license for host:", hostId); break; }
+        if (!session) {
+          const { data: license } = await supabase
+            .from("zoom_licenses")
+            .select("id")
+            .eq("host_id", hostId)
+            .maybeSingle();
+          if (license) {
+            const { data } = await supabase
+              .from("live_sessions")
+              .select("id, teacher_id")
+              .eq("license_id", license.id)
+              .eq("status", "completed")
+              .order("actual_end", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            session = data;
+          }
+        }
 
-        const { data: session } = await supabase
-          .from("live_sessions")
-          .select("id")
-          .eq("license_id", license.id)
-          .eq("status", "completed")
-          .order("actual_end", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (!session) { console.log("No completed session for license:", license.id); break; }
+        if (!session) {
+          console.error("RECORDING UNMATCHED — manual review needed", { hostId, meetingUuid, meetingId });
+          try {
+            await supabase.from("system_logs").insert({
+              log_type: "zoom_recording_unmatched",
+              severity: "warning",
+              message: `Zoom recording completed but no matching session. host=${hostId} uuid=${meetingUuid}`,
+              metadata: { hostId, meetingUuid, meetingId, files: recordingFiles.length },
+            });
+          } catch (_) { /* ignore */ }
+          break;
+        }
 
         const recordingInserts = recordingFiles.map((file: any) => ({
           session_id: session.id,
-          recording_type: file.recording_type || 'unknown',
+          recording_type: file.recording_type || "unknown",
           play_url: file.play_url || null,
           download_url: file.download_url || null,
           password: recordingPassword,
-          file_size_mb: file.file_size ? Math.round(file.file_size / 1048576 * 100) / 100 : null,
-          file_type: file.file_type || 'MP4',
+          file_size_mb: file.file_size ? Math.round((file.file_size / 1048576) * 100) / 100 : null,
+          file_type: file.file_type || "MP4",
           recording_start: file.recording_start || null,
           recording_end: file.recording_end || null,
-          status: 'available',
+          status: "pending",
         }));
 
         if (recordingInserts.length > 0) {
           const { error: recErr } = await supabase.from("session_recordings").insert(recordingInserts);
           if (recErr) console.error("Error inserting recordings:", recErr);
-          else console.log(`Inserted ${recordingInserts.length} recording(s) for session ${session.id}`);
         }
 
-        const mp4File = recordingFiles.find((f: any) => f.file_type === "MP4");
-        const playUrl = mp4File?.play_url || mp4File?.download_url || null;
-
         await supabase.from("live_sessions").update({
-          recording_status: "ready",
-          recording_link: playUrl,
+          recording_status: "pending",
+          zoom_meeting_uuid: meetingUuid,
           recording_password: recordingPassword,
-          recording_fetched_at: new Date().toISOString(),
+          recording_fetched_at: null,
+          download_attempts: 0,
+          download_last_error: null,
         }).eq("id", session.id);
 
-        console.log("Recording saved to session:", session.id);
+        // Fire-and-forget invoke of the downloader
+        try {
+          fetch(`${supabaseUrl}/functions/v1/zoom-download-recording`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({ session_id: session.id }),
+          }).catch((e) => console.error("Invoke downloader failed:", e));
+        } catch (e) {
+          console.error("Failed to invoke downloader:", e);
+        }
+
+        console.log("Recording queued for download:", session.id);
         break;
       }
 

@@ -5119,6 +5119,8 @@ export type Database = {
           actual_start: string | null
           assignment_id: string | null
           created_at: string
+          download_attempts: number
+          download_last_error: string | null
           group_id: string | null
           id: string
           license_id: string | null
@@ -5129,16 +5131,21 @@ export type Database = {
           schedule_id: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
+          stored_file_size_mb: number | null
           stream_url: string | null
           student_id: string | null
           teacher_id: string
           updated_at: string
+          zoom_deleted_at: string | null
+          zoom_meeting_uuid: string | null
         }
         Insert: {
           actual_end?: string | null
           actual_start?: string | null
           assignment_id?: string | null
           created_at?: string
+          download_attempts?: number
+          download_last_error?: string | null
           group_id?: string | null
           id?: string
           license_id?: string | null
@@ -5149,16 +5156,21 @@ export type Database = {
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          stored_file_size_mb?: number | null
           stream_url?: string | null
           student_id?: string | null
           teacher_id: string
           updated_at?: string
+          zoom_deleted_at?: string | null
+          zoom_meeting_uuid?: string | null
         }
         Update: {
           actual_end?: string | null
           actual_start?: string | null
           assignment_id?: string | null
           created_at?: string
+          download_attempts?: number
+          download_last_error?: string | null
           group_id?: string | null
           id?: string
           license_id?: string | null
@@ -5169,10 +5181,13 @@ export type Database = {
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          stored_file_size_mb?: number | null
           stream_url?: string | null
           student_id?: string | null
           teacher_id?: string
           updated_at?: string
+          zoom_deleted_at?: string | null
+          zoom_meeting_uuid?: string | null
         }
         Relationships: [
           {

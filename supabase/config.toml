@@ -56,3 +56,9 @@ verify_jwt = false
 
 [functions.mcp]
 verify_jwt = false
+
+[functions.zoom-download-recording]
+verify_jwt = false
+
+[functions.zoom-cleanup-recordings]
+verify_jwt = false

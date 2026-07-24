@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { resolveFileUrl } from '@/lib/signedUrl';
 
 interface StudentPastClassesProps {
   studentId: string;
@@ -116,9 +117,11 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
     );
   }
 
-  const openRecording = (url: string, password?: string) => {
-    const fullUrl = password ? `${url}?pwd=${encodeURIComponent(password)}` : url;
-    window.open(fullUrl, '_blank');
+  const openRecording = async (url: string, password?: string) => {
+    const resolved = await resolveFileUrl(url);
+    if (!resolved) return;
+    const fullUrl = password && !resolved.includes('token=') ? `${resolved}?pwd=${encodeURIComponent(password)}` : resolved;
+    window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
