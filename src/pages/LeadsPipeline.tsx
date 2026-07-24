@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,6 +107,7 @@ const LEAD_TIMEZONES = [
 
 // ── Create Lead Dialog ──
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
@@ -153,6 +155,8 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         guardian_name: form.guardian_name || null,
         guardian_relationship: form.guardian_relationship || null,
         status: 'new',
+        division_id: activeDivision?.id ?? null,
+        branch_id: activeBranch?.id ?? null,
       } as any);
       if (error) throw error;
     },
@@ -1342,6 +1346,9 @@ Content-Type: application/json
 }
 
 export default function LeadsPipeline() {
+  const { activeDivision, activeBranch } = useDivision();
+  const divisionId = activeDivision?.id || null;
+  const branchId = activeBranch?.id || null;
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -1350,12 +1357,15 @@ export default function LeadsPipeline() {
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['leads'],
+    queryKey: ['leads', divisionId, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
+      if (divisionId) q = q.eq('division_id', divisionId);
+      if (branchId) q = q.eq('branch_id', branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Lead[];
     },
