@@ -129,16 +129,14 @@ function sameParticipant(log: any, participantName: string, participantEmail: st
 }
 
 function isHostParticipant(participantName: string, participantEmail: string, hostEmail?: string | null): boolean {
+  // Only treat a participant as the "room bot" when their email exactly matches the pooled
+  // Zoom account's email. Previously we also dropped anyone whose display name looked like
+  // the room label — that silently threw away legitimate teachers who signed in on the pooled
+  // account, so the 3rd participant never made it into Join Logs.
   const currentEmail = normalizeParticipantValue(participantEmail);
-  const currentName = normalizeParticipantValue(participantName);
   const normalizedHostEmail = normalizeParticipantValue(hostEmail);
-
-  if (currentEmail && normalizedHostEmail && currentEmail === normalizedHostEmail) return true;
-
-  const hostLocalPart = normalizedHostEmail.split("@")[0];
-  if (hostLocalPart && currentName && currentName === hostLocalPart) return true;
-
-  return currentName.includes("al-quran time class") || currentName.includes("al quran time class");
+  if (!currentEmail || !normalizedHostEmail) return false;
+  return currentEmail === normalizedHostEmail;
 }
 
 function participantMatchesProfile(
