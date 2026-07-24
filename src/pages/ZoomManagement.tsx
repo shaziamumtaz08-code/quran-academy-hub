@@ -167,6 +167,23 @@ export default function ZoomManagement() {
     return map;
   }, [liveSessions]);
 
+  // Count distinct participants per live session — used to surface the
+  // free-tier 40-min cap warning when a group class hits 3+ attendees.
+  const participantCountBySession = React.useMemo(() => {
+    const map = new Map<string, number>();
+    (attendanceLogs || []).forEach((log: any) => {
+      if (!log.session_id) return;
+      const key = `${log.session_id}::${log.user_id || log.participant_email || log.participant_name}`;
+      const existing = map.get(log.session_id) || 0;
+      // Simple dedupe by session — using a Set-per-session would be cleaner but this suffices
+      if (!(map as any)[`__seen_${key}`]) {
+        (map as any)[`__seen_${key}`] = true;
+        map.set(log.session_id, existing + 1);
+      }
+    });
+    return map;
+  }, [attendanceLogs]);
+
   const addLicenseMutation = useMutation({
     mutationFn: async (license: typeof newLicense) => {
       const { error } = await supabase.from('zoom_licenses').insert({
