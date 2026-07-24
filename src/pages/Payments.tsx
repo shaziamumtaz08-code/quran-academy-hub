@@ -175,6 +175,8 @@ export default function Payments() {
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending' | 'reset_invoice'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
+  const [proofInvoice, setProofInvoice] = useState<InvoiceRow | null>(null);
+
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
