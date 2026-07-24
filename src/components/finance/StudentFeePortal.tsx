@@ -438,33 +438,8 @@ export function StudentFeePortal({
         const selectableIds = rows
           .filter(r => r.effectiveStatus !== 'paid' && r.primaryInvoice && !r.primaryInvoice.payment_proof_url)
           .map(r => r.primaryInvoice!.id);
-        const selectedInvoices = rows
-          .map(r => r.primaryInvoice)
-          .filter((inv): inv is InvoiceLite => !!inv && selectedIds.has(inv.id));
-        const submitProof = async () => {
-          if (!proofUrl.trim()) {
-            toast({ title: 'Attach a payment slip', variant: 'destructive' });
-            return;
-          }
-          if (selectedInvoices.length === 0) return;
-          setSubmitting(true);
-          try {
-            const { error } = await supabase.rpc('submit_payment_proof' as any, {
-              _invoice_ids: selectedInvoices.map(i => i.id),
-              _proof_url: proofUrl,
-              _note: proofNote || null,
-            });
-            if (error) throw error;
-            toast({ title: 'Proof submitted', description: 'Admin will verify and mark your invoice(s) as paid.' });
-            setUploadOpen(false);
-            setProofUrl(''); setProofNote(''); setSelectedIds(new Set());
-            queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-          } catch (err: any) {
-            toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
-          } finally {
-            setSubmitting(false);
-          }
-        };
+
+
 
         return (
           <div>
