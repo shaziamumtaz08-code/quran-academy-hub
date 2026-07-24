@@ -550,7 +550,7 @@ Deno.serve(async (req) => {
         // Step 1: Find the license by host_id
         const { data: license } = await supabase
           .from("zoom_licenses")
-          .select("id")
+          .select("id, zoom_email")
           .eq("host_id", hostId)
           .maybeSingle();
 

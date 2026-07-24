@@ -153,7 +153,8 @@ export default function ZoomManagement() {
 
       return data.map((log: any) => ({
         ...log,
-        userName: userMap.get(log.user_id) || log.participant_name || 'Zoom participant',
+        userName: log.participant_name || userMap.get(log.user_id) || 'Zoom participant',
+        matchedProfileName: log.user_id ? userMap.get(log.user_id) : null,
       }));
     },
     refetchInterval: 15000,
@@ -167,6 +168,19 @@ export default function ZoomManagement() {
     });
     return map;
   }, [liveSessions]);
+
+  const activeParticipantNamesBySession = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (attendanceLogs || []).forEach((log: any) => {
+      if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
+      const label = log.participant_name || log.userName;
+      if (!label) return;
+      const existing = map.get(log.session_id) || new Set<string>();
+      existing.add(label);
+      map.set(log.session_id, existing);
+    });
+    return map;
+  }, [attendanceLogs]);
 
   // Count distinct participants per live session — used to surface the
   // free-tier 40-min cap warning when a group class hits 3+ attendees.
@@ -341,7 +355,9 @@ export default function ZoomManagement() {
                     </p>
                     {session ? (
                       <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-foreground truncate">{session.teacherName}</p>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || session.teacherName}
+                        </p>
                         <div className="flex items-center gap-1 text-destructive">
                           <Timer className="h-3 w-3" />
                           <LiveTimer startTime={session.actual_start} />
