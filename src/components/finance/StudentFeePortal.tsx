@@ -558,6 +558,53 @@ export function StudentFeePortal({
           </div>
         );
       })()}
+
+      <Dialog open={uploadOpen} onOpenChange={(v) => { if (!submitting) setUploadOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Payment Proof</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs">
+              <div className="font-medium mb-1.5">Applying to {selectedIds.size} invoice{selectedIds.size === 1 ? '' : 's'}:</div>
+              <ul className="space-y-0.5 text-muted-foreground">
+                {invoices
+                  .filter(i => selectedIds.has(i.id))
+                  .map(i => (
+                    <li key={i.id}>
+                      • {i.profiles?.full_name || 'Student'} — {formatBM(i.billing_month)} ({i.currency} {Number(i.amount).toLocaleString()})
+                    </li>
+                  ))}
+              </ul>
+            </div>
+            <FileUploadField
+              label="Payment slip *"
+              bucket="payment-receipts"
+              value={proofUrl}
+              onChange={setProofUrl}
+              accept="image/*,application/pdf"
+              hint="Screenshot / photo / PDF of your bank transfer or wallet payment"
+              onUploadStateChange={setUploading}
+            />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Note (optional)</Label>
+              <Textarea
+                value={proofNote}
+                onChange={(e) => setProofNote(e.target.value)}
+                placeholder="e.g. Wise transfer ref #ABC123, paid on 12 Jun"
+                className="text-sm min-h-[70px]"
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submitProof} disabled={submitting || uploading || !proofUrl.trim()}>
+              {submitting ? 'Submitting…' : 'Submit for review'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
