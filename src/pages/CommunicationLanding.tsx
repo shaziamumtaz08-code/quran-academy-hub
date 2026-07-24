@@ -10,14 +10,12 @@ import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, use
 const GroupChat = lazy(() => import('./GroupChat'));
 const WhatsAppInbox = lazy(() => import('./WhatsAppInbox'));
 const NotificationCenter = lazy(() => import('./NotificationCenter'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 const views = [
   { label: 'Academy Chat', value: 'academy-chat' },
   { label: 'WhatsApp', value: 'whatsapp' },
   { label: 'Notifications', value: 'notifications' },
-  { label: 'Zoom Control Room', value: 'zoom' },
 ] as const;
 
 function RecentActivityStrip() {
@@ -113,7 +111,6 @@ function CommunicationLandingInner() {
     'academy-chat': <div className="space-y-4"><RecentActivityStrip /><Suspense fallback={<Loading />}><GroupChat /></Suspense></div>,
     whatsapp: <Suspense fallback={<Loading />}><WhatsAppInbox /></Suspense>,
     notifications: <Suspense fallback={<Loading />}><NotificationCenter /></Suspense>,
-    zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
@@ -129,15 +126,9 @@ function CommunicationLandingInner() {
 
 export default function CommunicationLanding() {
   const [searchParams] = useSearchParams();
-  // Zoom view uses the standard (teaching-style) light background — skip the dark comm theme.
+  // Legacy redirect: Zoom Control Room moved to Teaching
   if (searchParams.get('view') === 'zoom') {
-    return (
-      <PageShell title="Communication" description="Chat, WhatsApp, notifications, and Zoom operations.">
-        <div className="min-h-[420px] animate-fade-in">
-          <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>
-        </div>
-      </PageShell>
-    );
+    return <Navigate to="/teaching?view=zoom" replace />;
   }
   return <CommThemeProvider><CommunicationLandingInner /></CommThemeProvider>;
 }
