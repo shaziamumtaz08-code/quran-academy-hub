@@ -141,6 +141,21 @@ function isHostParticipant(participantName: string, participantEmail: string, ho
   return currentName.includes("al-quran time class") || currentName.includes("al quran time class");
 }
 
+function participantMatchesProfile(
+  participantName: string,
+  participantEmail: string,
+  profile?: { full_name?: string | null; email?: string | null } | null,
+): boolean {
+  if (!profile) return false;
+  const currentEmail = normalizeParticipantValue(participantEmail);
+  const profileEmail = normalizeParticipantValue(profile.email);
+  if (currentEmail && profileEmail && currentEmail === profileEmail) return true;
+
+  const currentName = normalizeParticipantValue(participantName);
+  const profileName = normalizeParticipantValue(profile.full_name);
+  return Boolean(currentName && profileName && currentName === profileName);
+}
+
 async function resolveParticipantIdentity(
   supabase: any,
   session: any,
@@ -155,7 +170,7 @@ async function resolveParticipantIdentity(
   if (participantEmail) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, full_name, email")
       .ilike("email", participantEmail)
       .maybeSingle();
 
@@ -174,13 +189,37 @@ async function resolveParticipantIdentity(
     }
   }
 
-  if (session.student_id) {
-    return { matchedUserId: session.student_id, matchedRole: "student" };
+  const candidateIds = [session.teacher_id, session.student_id].filter(Boolean);
+  if (candidateIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", candidateIds);
+
+    const studentProfile = (profiles || []).find((profile: any) => profile.id === session.student_id);
+    if (participantMatchesProfile(participantName, participantEmail, studentProfile)) {
+      return { matchedUserId: session.student_id, matchedRole: "student" };
+    }
+
+    const teacherProfile = (profiles || []).find((profile: any) => profile.id === session.teacher_id);
+    if (participantMatchesProfile(participantName, participantEmail, teacherProfile)) {
+      return { matchedUserId: session.teacher_id, matchedRole: "teacher" };
+    }
   }
 
   if (session.assignment_id || session.schedule_id) {
     const scheduledStudentId = await findScheduledStudent(supabase, session.teacher_id);
     if (scheduledStudentId) {
+      const { data: scheduledProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", scheduledStudentId)
+        .maybeSingle();
+
+      if (!participantMatchesProfile(participantName, participantEmail, scheduledProfile)) {
+        return { matchedUserId: null, matchedRole: "unknown" };
+      }
+
       await supabase.from("live_sessions")
         .update({ student_id: scheduledStudentId })
         .eq("id", session.id);
@@ -259,9 +298,9 @@ async function findOrCreateZoomSession(
   if (meetingUuid) {
     const { data: sessionByMeeting } = await supabase
       .from("live_sessions")
-        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
       .eq("zoom_meeting_uuid", meetingUuid)
-        .in("status", ["live", "scheduled"])
+        .in("status", ["live", "scheduled", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -306,9 +345,9 @@ async function findOrCreateZoomSession(
       actual_start: startTime,
       status: "live",
       zoom_meeting_uuid: meetingUuid,
-      recording_status: "pending",
+      recording_status: "not_recorded",
     })
-    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
     .single();
 
   if (error || !createdSession) {
@@ -495,7 +534,7 @@ Deno.serve(async (req) => {
           await supabase.from("zoom_licenses").update({ status: "available" }).eq("id", license.id);
           await supabase
             .from("live_sessions")
-            .update({ status: "completed", actual_end: endedAt, recording_status: "pending" })
+            .update({ status: "completed", actual_end: endedAt, recording_status: "not_recorded" })
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled"]);
           console.log("License released, sessions completed:", license.id);
@@ -562,6 +601,11 @@ Deno.serve(async (req) => {
           break;
         }
 
+        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
+          console.log("Host/room self-join ignored for attendance log:", pName, pEmail);
+          break;
+        }
+
         // Step 2: Find the active live OR scheduled session for this license
         const joinTime = new Date(participant?.join_time || eventTime(event));
         const session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, joinTime.toISOString());
@@ -586,7 +630,9 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // If session is still 'scheduled', activate it now (first person joined)
+        // If session is still 'scheduled', activate it now (first person joined).
+        // If Zoom delivered an old join after meeting.ended, keep it attached to
+        // the completed session but never reopen the room.
         if (session.status === "scheduled") {
           await supabase.from("live_sessions").update({
             status: "live",
@@ -692,6 +738,11 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!license) { console.log("No license for host:", hostId); break; }
+
+        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
+          console.log("Host/room self-leave ignored for attendance log:", pName, pEmail);
+          break;
+        }
 
         const leaveTime = new Date(participant?.leave_time || eventTime(event));
 
@@ -808,7 +859,6 @@ Deno.serve(async (req) => {
           zoom_host_id: hostId,
           zoom_meeting_uuid: meetingUuidTop,
           zoom_meeting_id: meetingIdTop,
-          zoom_event_type: event.event,
           zoom_license_id: license.id,
         }).eq("id", matchedLog.id);
 
