@@ -92,6 +92,15 @@ export function StudentFeePortal({
   invoices, isLoading, ledgerPaidMap, getRate, isParentView,
 }: Props) {
   const { activeKidId } = useKidContext();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [proofUrl, setProofUrl] = useState('');
+  const [proofNote, setProofNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
 
   // Parents always view a single child at a time — the child is chosen via
   // the top ActingAsBanner switcher (or by entering through "Login to Child's
