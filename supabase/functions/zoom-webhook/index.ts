@@ -208,6 +208,7 @@ Deno.serve(async (req) => {
             await supabase.from("live_sessions").update({
               status: "live",
               actual_start: new Date().toISOString(),
+              zoom_meeting_uuid: meetingUuidTop,
             }).eq("id", pendingSession.id);
             console.log("Activated pending session:", pendingSession.id);
           } else {
