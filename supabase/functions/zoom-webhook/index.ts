@@ -114,15 +114,77 @@ function eventTime(event: ZoomEvent, fallback = new Date()): string {
   return fallback.toISOString();
 }
 
+function normalizeParticipantValue(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function sameParticipant(log: any, participantName: string, participantEmail: string): boolean {
+  const logEmail = normalizeParticipantValue(log.participant_email);
+  const currentEmail = normalizeParticipantValue(participantEmail);
+  if (logEmail && currentEmail && logEmail === currentEmail) return true;
+
+  const logName = normalizeParticipantValue(log.participant_name);
+  const currentName = normalizeParticipantValue(participantName);
+  return Boolean(logName && currentName && logName === currentName);
+}
+
+async function findExistingLeaveLog(
+  supabase: any,
+  params: {
+    sessionId: string | null;
+    licenseId: string;
+    meetingUuid: string | null;
+    participantName: string;
+    participantEmail: string;
+    leaveTime: Date;
+  },
+): Promise<any | null> {
+  const windowStart = new Date(params.leaveTime.getTime() - 2 * 60 * 1000).toISOString();
+  const windowEnd = new Date(params.leaveTime.getTime() + 2 * 60 * 1000).toISOString();
+  let query = supabase
+    .from("zoom_attendance_logs")
+    .select("id, participant_name, participant_email")
+    .eq("action", "leave")
+    .gte("timestamp", windowStart)
+    .lte("timestamp", windowEnd)
+    .order("timestamp", { ascending: false })
+    .limit(20);
+
+  if (params.sessionId) {
+    query = query.eq("session_id", params.sessionId);
+  } else {
+    query = query.eq("zoom_license_id", params.licenseId);
+    if (params.meetingUuid) query = query.eq("zoom_meeting_uuid", params.meetingUuid);
+  }
+
+  const { data } = await query;
+  return (data || []).find((entry: any) => sameParticipant(entry, params.participantName, params.participantEmail)) || null;
+}
+
 async function getMonitorTeacherId(supabase: any, licenseId: string): Promise<string | null> {
   const { data, error } = await supabase.rpc("zoom_monitor_teacher_for_license", {
     _license_id: licenseId,
   });
+  if (!error && data) return data;
+
   if (error) {
-    console.error("Could not resolve monitor teacher for license:", licenseId, error);
+    console.error("Could not resolve monitor teacher by helper, using fallback:", licenseId, error);
+  }
+
+  const { data: roleRow, error: roleErr } = await supabase
+    .from("user_roles")
+    .select("user_id, role")
+    .in("role", ["teacher", "super_admin", "admin_division"])
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (roleErr) {
+    console.error("Could not resolve fallback monitor user for license:", licenseId, roleErr);
     return null;
   }
-  return data || null;
+
+  return roleRow?.user_id || null;
 }
 
 async function findOrCreateZoomSession(
@@ -131,16 +193,40 @@ async function findOrCreateZoomSession(
   meetingUuid: string | null,
   startTime: string,
 ): Promise<any | null> {
+  if (meetingUuid) {
+    const { data: sessionByMeeting } = await supabase
+      .from("live_sessions")
+      .select("id, teacher_id, actual_start, student_id, status")
+      .eq("zoom_meeting_uuid", meetingUuid)
+      .in("status", ["live", "scheduled"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sessionByMeeting) return sessionByMeeting;
+  }
+
+  const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
   const query = supabase
     .from("live_sessions")
     .select("id, teacher_id, actual_start, student_id, status")
     .eq("license_id", licenseId)
     .in("status", ["live", "scheduled"])
+    .gte("created_at", recentCutoff)
     .order("created_at", { ascending: false })
     .limit(1);
 
   const { data: activeSession } = await query.maybeSingle();
-  if (activeSession) return activeSession;
+  if (activeSession) {
+    if (meetingUuid) {
+      await supabase
+        .from("live_sessions")
+        .update({ zoom_meeting_uuid: meetingUuid })
+        .eq("id", activeSession.id)
+        .is("zoom_meeting_uuid", null);
+    }
+    return activeSession;
+  }
 
   const teacherId = await getMonitorTeacherId(supabase, licenseId);
   if (!teacherId) {
@@ -273,6 +359,7 @@ Deno.serve(async (req) => {
             .select("id, license_id")
             .eq("license_id", license.id)
             .eq("status", "scheduled")
+            .gte("created_at", new Date(new Date(startedAt).getTime() - 2 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -291,6 +378,7 @@ Deno.serve(async (req) => {
               .select("id")
               .is("license_id", null)
               .eq("status", "scheduled")
+              .gte("created_at", new Date(new Date(startedAt).getTime() - 2 * 60 * 60 * 1000).toISOString())
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -434,13 +522,29 @@ Deno.serve(async (req) => {
         }
 
         // Step 3: Determine if this is the teacher or student
-        // Check existing join logs for this session to see who already joined
+        // Check existing open join logs first. Zoom may send duplicate webhook
+        // deliveries for the same participant; keep one open join per person.
         const { data: existingLogs } = await supabase
           .from("zoom_attendance_logs")
-          .select("id, user_id, role")
+          .select("id, user_id, role, participant_name, participant_email")
           .eq("session_id", session.id)
           .eq("action", "join_intent")
           .is("leave_time", null);
+
+        const duplicateOpenJoin = (existingLogs || []).find((entry: any) => sameParticipant(entry, pName, pEmail));
+        if (duplicateOpenJoin) {
+          await supabase.from("zoom_attendance_logs").update({
+            participant_name: pName,
+            participant_email: pEmail,
+            zoom_host_id: hostId,
+            zoom_meeting_uuid: meetingUuidTop,
+            zoom_meeting_id: meetingIdTop,
+            zoom_event_type: event.event,
+            zoom_license_id: license.id,
+          }).eq("id", duplicateOpenJoin.id);
+          console.log("Duplicate join webhook ignored for participant:", pName, "session:", session.id);
+          break;
+        }
 
         const teacherAlreadyJoined = (existingLogs || []).some((l: any) => l.role === "teacher");
 
@@ -529,40 +633,67 @@ Deno.serve(async (req) => {
 
         if (!license) { console.log("No license for host:", hostId); break; }
 
-        // Find session (could be live, scheduled, or recently completed)
-        const { data: session } = await supabase
-          .from("live_sessions")
-          .select("id, teacher_id")
-          .eq("license_id", license.id)
-          .in("status", ["live", "scheduled", "completed"])
-          .order("actual_start", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
         const leaveTime = new Date(participant?.leave_time || eventTime(event));
+
+        // Find session by meeting UUID first, then by recent active room.
+        let session: any = null;
+        if (meetingUuidTop) {
+          const { data } = await supabase
+            .from("live_sessions")
+            .select("id, teacher_id")
+            .eq("zoom_meeting_uuid", meetingUuidTop)
+            .in("status", ["live", "scheduled", "completed"])
+            .order("actual_start", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          session = data;
+        }
+
+        if (!session) {
+          const { data } = await supabase
+            .from("live_sessions")
+            .select("id, teacher_id")
+            .eq("license_id", license.id)
+            .in("status", ["live", "scheduled", "completed"])
+            .gte("created_at", new Date(leaveTime.getTime() - 2 * 60 * 60 * 1000).toISOString())
+            .order("actual_start", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          session = data;
+        }
+
+        if (!session) {
+          session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, leaveTime.toISOString());
+        }
 
         if (!session) {
           console.log("No session found for license:", license.id, "— matching raw join log");
         }
 
-        // Find the most recent unresolved join log for this session
-        // Match by participant_name since we may not have user_id
-        let joinQuery = supabase
-          .from("zoom_attendance_logs")
-          .select("id, user_id, join_time, total_duration_minutes, role, participant_name, participant_email")
-          .eq("action", "join_intent")
-          .is("leave_time", null)
-          .order("timestamp", { ascending: false })
-          .limit(5);
+        const queryOpenJoins = async (scope: "session" | "raw") => {
+          let query = supabase
+            .from("zoom_attendance_logs")
+            .select("id, user_id, join_time, total_duration_minutes, role, participant_name, participant_email")
+            .eq("action", "join_intent")
+            .is("leave_time", null)
+            .order("timestamp", { ascending: false })
+            .limit(20);
 
-        if (session) {
-          joinQuery = joinQuery.eq("session_id", session.id);
-        } else {
-          joinQuery = joinQuery.eq("zoom_license_id", license.id);
-          if (meetingUuidTop) joinQuery = joinQuery.eq("zoom_meeting_uuid", meetingUuidTop);
+          if (scope === "session" && session) {
+            query = query.eq("session_id", session.id);
+          } else {
+            query = query.eq("zoom_license_id", license.id);
+            if (meetingUuidTop) query = query.eq("zoom_meeting_uuid", meetingUuidTop);
+          }
+
+          const { data } = await query;
+          return data || [];
+        };
+
+        let joinLog = session ? await queryOpenJoins("session") : [];
+        if (joinLog.length === 0) {
+          joinLog = await queryOpenJoins("raw");
         }
-
-        const { data: joinLog } = await joinQuery;
 
         // Try to match by participant name/email
         let matchedLog = null;
@@ -581,6 +712,20 @@ Deno.serve(async (req) => {
 
         if (!matchedLog) {
           console.log("No matching join record for leave event, session:", session?.id || "raw");
+          const existingLeave = await findExistingLeaveLog(supabase, {
+            sessionId: session?.id || null,
+            licenseId: license.id,
+            meetingUuid: meetingUuidTop,
+            participantName: pName,
+            participantEmail: pEmail,
+            leaveTime,
+          });
+
+          if (existingLeave) {
+            console.log("Duplicate unmatched leave webhook ignored for participant:", pName);
+            break;
+          }
+
           await insertZoomLog(supabase, {
             session_id: session?.id || null,
             user_id: null,
@@ -605,7 +750,6 @@ Deno.serve(async (req) => {
         const newTotal = previousTotal + sessionMinutes;
 
         await supabase.from("zoom_attendance_logs").update({
-          action: "leave",
           leave_time: leaveTime.toISOString(),
           total_duration_minutes: newTotal,
           participant_name: pName,
@@ -616,6 +760,36 @@ Deno.serve(async (req) => {
           zoom_event_type: event.event,
           zoom_license_id: license.id,
         }).eq("id", matchedLog.id);
+
+        const existingLeave = await findExistingLeaveLog(supabase, {
+          sessionId: session?.id || null,
+          licenseId: license.id,
+          meetingUuid: meetingUuidTop,
+          participantName: pName,
+          participantEmail: pEmail,
+          leaveTime,
+        });
+
+        if (!existingLeave) {
+          await insertZoomLog(supabase, {
+            session_id: session?.id || null,
+            user_id: matchedLog.user_id,
+            action: "leave",
+            join_time: matchedLog.join_time,
+            leave_time: leaveTime.toISOString(),
+            timestamp: leaveTime.toISOString(),
+            total_duration_minutes: newTotal,
+            participant_name: pName,
+            participant_email: pEmail,
+            role: matchedLog.role,
+            zoom_host_id: hostId,
+            zoom_meeting_uuid: meetingUuidTop,
+            zoom_meeting_id: meetingIdTop,
+            zoom_event_type: event.event,
+            zoom_license_id: license.id,
+          });
+        }
+
         console.log(`Leave logged: role=${matchedLog.role}, user=${matchedLog.user_id}, duration=${sessionMinutes}m, total=${newTotal}m`);
 
         // Short session notification for students
