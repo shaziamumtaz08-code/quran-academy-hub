@@ -135,10 +135,21 @@ export default function ZoomManagement() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const uniqueSessions = data.filter((session: any, index: number, rows: any[]) => {
-        if (!session.zoom_meeting_uuid) return true;
-        return rows.findIndex((candidate: any) => candidate.zoom_meeting_uuid === session.zoom_meeting_uuid) === index;
-      });
+      const uniqueSessions = Array.from(
+        data.reduce((map: Map<string, any>, session: any) => {
+          const key = session.zoom_meeting_uuid || session.id;
+          const existing = map.get(key);
+          if (!existing) {
+            map.set(key, session);
+            return map;
+          }
+
+          const existingCreated = existing.created_at ? new Date(existing.created_at).getTime() : Number.MAX_SAFE_INTEGER;
+          const sessionCreated = session.created_at ? new Date(session.created_at).getTime() : Number.MAX_SAFE_INTEGER;
+          if (sessionCreated < existingCreated) map.set(key, session);
+          return map;
+        }, new Map<string, any>()).values()
+      );
 
       const profileIds = [...new Set(uniqueSessions.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', profileIds);
