@@ -526,7 +526,7 @@ Deno.serve(async (req) => {
           // Find both live AND scheduled sessions for this license
           const { data: liveSessions } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, assignment_id, schedule_id, actual_start")
+            .select("id, teacher_id, assignment_id, schedule_id, actual_start, scheduled_start")
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled"]);
 
@@ -539,49 +539,131 @@ Deno.serve(async (req) => {
             .in("status", ["live", "scheduled"]);
           console.log("License released, sessions completed:", license.id);
 
-          // Auto-mark absent students
+          // Auto-mark attendance for each ended session
           for (const session of (liveSessions || [])) {
-            if (!session.assignment_id && !session.schedule_id) continue;
             if (!session.teacher_id) continue;
+
+            // Resolve scheduled duration from linked schedule/assignment
+            let scheduledDurationMin = 30;
+            if (session.schedule_id) {
+              const { data: sch } = await supabase
+                .from("schedules")
+                .select("duration_minutes")
+                .eq("id", session.schedule_id)
+                .maybeSingle();
+              if (sch?.duration_minutes) scheduledDurationMin = sch.duration_minutes;
+            } else if (session.assignment_id) {
+              const { data: asg } = await supabase
+                .from("student_teacher_assignments")
+                .select("duration_minutes")
+                .eq("id", session.assignment_id)
+                .maybeSingle();
+              if (asg?.duration_minutes) scheduledDurationMin = asg.duration_minutes;
+            }
+
+            const scheduledStart = session.scheduled_start
+              ? new Date(session.scheduled_start)
+              : session.actual_start
+              ? new Date(session.actual_start)
+              : new Date(endedAt);
+            const scheduledEnd = new Date(scheduledStart.getTime() + scheduledDurationMin * 60_000);
+            const classDate = scheduledStart.toISOString().split("T")[0];
+            const classTime = scheduledStart.toTimeString().slice(0, 5);
+
+            // Only auto-mark for 1:1 sessions (skip multi-student group monitor rows we don't
+            // have per-student roster confidence for; those keep their existing manual flow).
+            if (!session.assignment_id) continue;
+
+            // Get expected students for this teacher (1:1 assignment)
             const { data: assignments } = await supabase
               .from("student_teacher_assignments")
               .select("student_id")
-              .eq("teacher_id", session.teacher_id)
+              .eq("id", session.assignment_id)
               .eq("status", "active");
             if (!assignments || assignments.length === 0) continue;
 
-            const { data: joinLogs } = await supabase
+            // Collect matched participant totals for this session
+            const { data: logs } = await supabase
               .from("zoom_attendance_logs")
-              .select("user_id")
-              .eq("session_id", session.id);
-            const joinedUserIds = new Set((joinLogs || []).filter((l: any) => l.user_id).map((l: any) => l.user_id));
-            const absentStudents = assignments.filter(a => !joinedUserIds.has(a.student_id));
+              .select("user_id, role, join_time, leave_time, total_duration_minutes")
+              .eq("session_id", session.id)
+              .not("user_id", "is", null);
 
-            if (absentStudents.length > 0) {
-              const today = new Date().toISOString().split("T")[0];
-              const classTime = session.actual_start
-                ? new Date(session.actual_start).toTimeString().slice(0, 5)
-                : "00:00";
-              const absentRecords = absentStudents.map(a => ({
+            // Aggregate minutes per student user_id
+            const totals = new Map<string, { minutes: number; firstJoin: Date | null; lastLeave: Date | null }>();
+            for (const l of (logs || [])) {
+              if (l.role !== "student") continue;
+              const acc = totals.get(l.user_id) || { minutes: 0, firstJoin: null, lastLeave: null };
+              if (typeof l.total_duration_minutes === "number") {
+                acc.minutes = Math.max(acc.minutes, l.total_duration_minutes);
+              } else if (l.join_time && l.leave_time) {
+                acc.minutes += Math.max(1, Math.ceil(
+                  (new Date(l.leave_time).getTime() - new Date(l.join_time).getTime()) / 60_000
+                ));
+              }
+              const jt = l.join_time ? new Date(l.join_time) : null;
+              const lt = l.leave_time ? new Date(l.leave_time) : null;
+              if (jt && (!acc.firstJoin || jt < acc.firstJoin)) acc.firstJoin = jt;
+              if (lt && (!acc.lastLeave || lt > acc.lastLeave)) acc.lastLeave = lt;
+              totals.set(l.user_id, acc);
+            }
+
+            const halfDuration = scheduledDurationMin / 2;
+
+            for (const a of assignments) {
+              const t = totals.get(a.student_id);
+              const notes: string[] = [];
+              let status: string;
+
+              if (!t || t.minutes === 0) {
+                status = "student_absent";
+                notes.push(`Auto-marked: no Zoom join detected for session ${session.id}`);
+              } else {
+                // Present if >= 50% of scheduled duration; otherwise short attendance still logged as present with note
+                if (t.minutes >= halfDuration) {
+                  status = "present";
+                } else {
+                  status = "present";
+                  notes.push(`Short attendance: only ${t.minutes} of ${scheduledDurationMin} min`);
+                }
+                if (t.firstJoin) {
+                  const lateMin = Math.floor((t.firstJoin.getTime() - scheduledStart.getTime()) / 60_000);
+                  if (lateMin > 5) notes.push(`Late ${lateMin}m`);
+                }
+                if (t.lastLeave) {
+                  const earlyMin = Math.floor((scheduledEnd.getTime() - t.lastLeave.getTime()) / 60_000);
+                  if (earlyMin > 5) notes.push(`Left early ${earlyMin}m`);
+                }
+                notes.push(`Attended ${t.minutes}/${scheduledDurationMin} min via Zoom`);
+              }
+
+              // The attendance_block_duplicate trigger enforces (student_id, teacher_id,
+              // class_date, class_time) uniqueness. Insert here — if a teacher already
+              // manually marked this slot, the insert fails with unique_violation and we
+              // swallow it, preserving the manual record.
+              const { error: insErr } = await supabase.from("attendance").insert({
                 student_id: a.student_id,
                 teacher_id: session.teacher_id,
-                class_date: today,
+                class_date: classDate,
                 class_time: classTime,
-                status: "student_absent",
-                duration_minutes: 30,
-                lesson_notes: `Auto-marked absent — did not join Zoom session ${session.id}`,
-              }));
-              const { error: insertErr } = await supabase.from("attendance").insert(absentRecords);
-              if (insertErr) {
-                console.error("Error auto-marking absents:", insertErr);
+                duration_minutes: scheduledDurationMin,
+                status,
+                lesson_notes: notes.join(" · "),
+                student_join_time: t?.firstJoin?.toISOString() || null,
+              });
+              if (insErr && (insErr as any).code !== "23505" && !/already exists/i.test(insErr.message || "")) {
+                console.error("Auto-attendance insert failed:", insErr, { student: a.student_id, session: session.id });
+              } else if (!insErr) {
+                console.log(`Auto-attendance ${status} for student ${a.student_id} in session ${session.id}`);
               } else {
-                console.log(`Auto-marked ${absentStudents.length} students absent for session ${session.id}`);
+                console.log(`Manual attendance already present, skipped auto-mark for ${a.student_id}`);
               }
             }
           }
         }
         break;
       }
+
 
       case "meeting.participant_joined": {
         const participant = event.payload.object?.participant;
