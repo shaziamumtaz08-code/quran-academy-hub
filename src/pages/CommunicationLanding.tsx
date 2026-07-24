@@ -126,15 +126,9 @@ function CommunicationLandingInner() {
 
 export default function CommunicationLanding() {
   const [searchParams] = useSearchParams();
-  // Zoom view uses the standard (teaching-style) light background — skip the dark comm theme.
+  // Legacy redirect: Zoom Control Room moved to Teaching
   if (searchParams.get('view') === 'zoom') {
-    return (
-      <PageShell title="Communication" description="Chat, WhatsApp, notifications, and Zoom operations.">
-        <div className="min-h-[420px] animate-fade-in">
-          <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>
-        </div>
-      </PageShell>
-    );
+    return <Navigate to="/teaching?view=zoom" replace />;
   }
   return <CommThemeProvider><CommunicationLandingInner /></CommThemeProvider>;
 }
