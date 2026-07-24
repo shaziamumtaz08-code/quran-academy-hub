@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, Users, Video, TrendingUp, TrendingDown } from "lucide-react";
+import RecordingStorageAdmin from "./RecordingStorageAdmin";
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInMinutes } from "date-fns";
 import { cn } from "@/lib/utils";
 
