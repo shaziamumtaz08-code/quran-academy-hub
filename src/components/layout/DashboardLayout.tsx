@@ -193,7 +193,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Payouts Config", href: "/settings?view=payouts-config" },
               { label: "Classroom", href: "/settings?view=classroom" },
               { label: "Finance Setup", href: "/settings?view=finance-setup" },
-              { label: "Teaching Config", href: "/settings?view=teaching-config" },
               { label: "Integrity Audit", href: "/settings?view=integrity" },
               { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
             ],
