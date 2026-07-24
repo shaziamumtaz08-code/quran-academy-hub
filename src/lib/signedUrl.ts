@@ -16,6 +16,7 @@ const PRIVATE_BUCKETS = new Set([
   'chat-attachments',
   'ticket-attachments',
   'receipts',
+  'session-recordings',
 ]);
 
 const DEFAULT_EXPIRES_IN = 60 * 60; // 1 hour
