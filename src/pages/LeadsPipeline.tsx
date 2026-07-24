@@ -155,6 +155,8 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         guardian_name: form.guardian_name || null,
         guardian_relationship: form.guardian_relationship || null,
         status: 'new',
+        division_id: activeDivision?.id ?? null,
+        branch_id: activeBranch?.id ?? null,
       } as any);
       if (error) throw error;
     },
