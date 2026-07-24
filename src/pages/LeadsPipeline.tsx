@@ -107,6 +107,7 @@ const LEAD_TIMEZONES = [
 
 // ── Create Lead Dialog ──
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
