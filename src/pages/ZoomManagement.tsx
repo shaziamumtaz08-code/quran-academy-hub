@@ -129,7 +129,7 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, assignment_id, zoom_meeting_uuid')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, assignment_id, zoom_meeting_uuid, session_source')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -895,7 +895,11 @@ export default function ZoomManagement() {
                               </div>
                               <div>
                                 <span className="font-medium text-sm">{getSessionPrimaryLabel(session)}</span>
-                                <p className="text-xs text-muted-foreground">Room owner: {session.teacherName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {session.session_source === 'zoom_monitor'
+                                    ? 'Auto-created from Zoom (no LMS schedule matched)'
+                                    : `Room owner: ${session.teacherName}`}
+                                </p>
                               </div>
                             </div>
                           </TableCell>
@@ -969,6 +973,9 @@ export default function ZoomManagement() {
                   {visibleAttendanceLogs.map((log: any) => {
                     const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
                     const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
+                    const durationMin = (log.join_time && log.leave_time)
+                      ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
+                      : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : null);
                     return (
                       <div key={log.id} className={cn(
                         "flex items-center gap-3 p-3 rounded-xl border transition-colors",
@@ -990,6 +997,10 @@ export default function ZoomManagement() {
                             {log.role ? ` • ${log.role}` : ''}
                             {log.participant_email ? ` • ${log.participant_email}` : ''}
                           </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {log.join_time ? `Joined ${format(new Date(log.join_time), 'HH:mm:ss')}` : ''}
+                            {log.leave_time ? ` → Left ${format(new Date(log.leave_time), 'HH:mm:ss')}` : ''}
+                          </p>
                         </div>
                         <div className="text-right shrink-0">
                           <Badge variant="outline" className={cn(
@@ -998,8 +1009,8 @@ export default function ZoomManagement() {
                           )}>
                             {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
                           </Badge>
-                          {log.total_duration_minutes && log.total_duration_minutes > 0 && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(log.total_duration_minutes)} min session</p>
+                          {durationMin !== null && durationMin > 0 && (
+                            <p className="text-[11px] font-medium text-foreground mt-1">{durationMin} min</p>
                           )}
                         </div>
                       </div>

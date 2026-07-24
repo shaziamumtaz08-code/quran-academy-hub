@@ -129,16 +129,14 @@ function sameParticipant(log: any, participantName: string, participantEmail: st
 }
 
 function isHostParticipant(participantName: string, participantEmail: string, hostEmail?: string | null): boolean {
+  // Only treat a participant as the "room bot" when their email exactly matches the pooled
+  // Zoom account's email. Previously we also dropped anyone whose display name looked like
+  // the room label — that silently threw away legitimate teachers who signed in on the pooled
+  // account, so the 3rd participant never made it into Join Logs.
   const currentEmail = normalizeParticipantValue(participantEmail);
-  const currentName = normalizeParticipantValue(participantName);
   const normalizedHostEmail = normalizeParticipantValue(hostEmail);
-
-  if (currentEmail && normalizedHostEmail && currentEmail === normalizedHostEmail) return true;
-
-  const hostLocalPart = normalizedHostEmail.split("@")[0];
-  if (hostLocalPart && currentName && currentName === hostLocalPart) return true;
-
-  return currentName.includes("al-quran time class") || currentName.includes("al quran time class");
+  if (!currentEmail || !normalizedHostEmail) return false;
+  return currentEmail === normalizedHostEmail;
 }
 
 function participantMatchesProfile(
@@ -346,6 +344,7 @@ async function findOrCreateZoomSession(
       status: "live",
       zoom_meeting_uuid: meetingUuid,
       recording_status: "not_recorded",
+      session_source: "zoom_monitor",
     })
     .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
     .single();
@@ -375,6 +374,11 @@ async function findOrCreateZoomSession(
 async function insertZoomLog(supabase: any, payload: Record<string, unknown>) {
   const { error } = await supabase.from("zoom_attendance_logs").insert(payload);
   if (error) {
+    // 23505 = unique_violation — expected when Zoom re-delivers the same event; safe to ignore.
+    if ((error as any).code === "23505" || /duplicate key|already exists/i.test(error.message || "")) {
+      console.log("Duplicate Zoom log ignored (unique index):", payload.action, payload.participant_name);
+      return;
+    }
     console.error("Error inserting Zoom attendance log:", error, payload);
   }
 }
@@ -437,6 +441,26 @@ Deno.serve(async (req) => {
 
     const event: ZoomEvent = JSON.parse(body);
     console.log("=== ZOOM WEBHOOK ===", event.event, new Date().toISOString());
+
+    // Persist raw payload BEFORE any processing so admins can audit what Zoom actually sent
+    // (including duplicate deliveries) vs what ended up in Join Logs. Never let this fail the request.
+    if (event.event !== "endpoint.url_validation") {
+      try {
+        const p = event.payload?.object || ({} as any);
+        await supabase.from("zoom_webhook_events").insert({
+          event_type: event.event,
+          event_ts: event.event_ts ? new Date(event.event_ts).toISOString() : null,
+          zoom_meeting_uuid: p.uuid || null,
+          zoom_meeting_id: p.id?.toString() || null,
+          zoom_host_id: p.host_id || null,
+          participant_name: p.participant?.user_name || null,
+          participant_email: p.participant?.email || null,
+          raw_payload: event as unknown as Record<string, unknown>,
+        });
+      } catch (e) {
+        console.error("Failed to log raw zoom webhook event:", e);
+      }
+    }
 
     // Handle URL validation challenge
     if (event.event === "endpoint.url_validation") {
