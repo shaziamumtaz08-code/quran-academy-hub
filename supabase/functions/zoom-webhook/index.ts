@@ -226,6 +226,7 @@ Deno.serve(async (req) => {
                 status: "live",
                 actual_start: new Date().toISOString(),
                 license_id: license.id,
+                zoom_meeting_uuid: meetingUuidTop,
               }).eq("id", unlinkedSession.id);
               console.log("Linked and activated unlinked session:", unlinkedSession.id);
             }
