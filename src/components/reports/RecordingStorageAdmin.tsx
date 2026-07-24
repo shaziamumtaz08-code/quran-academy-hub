@@ -60,12 +60,13 @@ export default function RecordingStorageAdmin() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <StatCard icon={<HardDrive className="h-4 w-4" />} label="Storage used" value={`${(data.totalMb / 1024).toFixed(2)} GB`} />
         <StatCard label="Ready" value={data.ready} />
         <StatCard label="Pending" value={data.pending} tone={data.pending > 0 ? 'warn' : undefined} />
         <StatCard label="Failed" value={data.failed} tone={data.failed > 0 ? 'error' : undefined} />
-        <StatCard label="Awaiting Zoom cleanup" value={data.awaitingCleanup} />
+        <StatCard label="Expired" value={data.expired} />
+        <StatCard icon={<Clock className="h-4 w-4" />} label="Expiring in 7 days" value={data.expiringSoonCount} tone={data.expiringSoonCount > 0 ? 'warn' : undefined} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -77,7 +78,31 @@ export default function RecordingStorageAdmin() {
           {busy === 'zoom-cleanup-recordings' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
           Run Zoom cleanup now
         </Button>
+        <Button size="sm" variant="outline" onClick={() => runFn('zoom-expire-recordings')} disabled={!!busy}>
+          {busy === 'zoom-expire-recordings' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+          Run retention expiry now
+        </Button>
       </div>
+
+      {data.expiringSoon.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-600" /> Expiring in next 7 days ({data.expiringSoonCount})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-xs">
+            {data.expiringSoon.map((f: any) => (
+              <div key={f.id} className="p-2 rounded bg-muted/50 flex justify-between gap-2">
+                <span className="font-mono truncate">{f.id}</span>
+                <span className="text-muted-foreground shrink-0">
+                  expires {new Date(f.retention_expires_at).toLocaleDateString()} · {f.stored_file_size_mb || 0} MB
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {data.failures.length > 0 && (
         <Card>
