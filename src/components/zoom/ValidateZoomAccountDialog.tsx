@@ -87,10 +87,27 @@ export function ValidateZoomAccountDialog() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle className="text-sm">Before running this test</AlertTitle>
-              <AlertDescription className="text-xs">
-                In the account's Zoom Marketplace, create a <b>Server-to-Server OAuth</b> app with scopes:
-                {' '}<code>user:read:admin</code>, <code>meeting:read:admin</code>, <code>meeting:write:admin</code>.
-                Activate it, then paste the credentials below.
+              <AlertDescription className="text-xs space-y-1">
+                <p>
+                  In the account's Zoom Marketplace, create a <b>Server-to-Server OAuth</b> app. New apps use <b>Granular Scopes</b>; older apps may still show Classic scopes. Add whichever version you see:
+                </p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>
+                    <b>User lookup:</b>{' '}
+                    <code>user:read:user:admin</code> (Granular) or <code>user:read:admin</code> (Classic)
+                  </li>
+                  <li>
+                    <b>Create / update / delete meetings:</b>{' '}
+                    <code>meeting:write:meeting:admin</code>, <code>meeting:update:meeting:admin</code>, <code>meeting:delete:meeting:admin</code> (Granular) or{' '}
+                    <code>meeting:write:admin</code> (Classic)
+                  </li>
+                  <li>
+                    <b>Read meetings & participants:</b>{' '}
+                    <code>meeting:read:meeting:admin</code>, <code>meeting:read:list_past_participants:admin</code>, <code>meeting:read:list_meetings:admin</code> (Granular) or{' '}
+                    <code>meeting:read:admin</code>, <code>report:read:admin</code> (Classic)
+                  </li>
+                </ul>
+                <p>Activate it, then paste the credentials below.</p>
               </AlertDescription>
             </Alert>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
