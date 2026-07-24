@@ -17,7 +17,7 @@ const views = [
   { label: 'Academy Chat', value: 'academy-chat' },
   { label: 'WhatsApp', value: 'whatsapp' },
   { label: 'Notifications', value: 'notifications' },
-  { label: 'Zoom', value: 'zoom' },
+  { label: 'Zoom Control Room', value: 'zoom' },
 ] as const;
 
 function RecentActivityStrip() {
