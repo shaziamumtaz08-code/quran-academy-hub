@@ -472,25 +472,51 @@ export function StudentFeePortal({
                       )} />
                       <div className="bg-card rounded-lg border border-border px-3.5 py-2.5 hover:shadow-sm transition-shadow">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                              <span className="font-medium tabular-nums text-foreground/80">
-                                Fee {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                              {earliestDue && (
-                                <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
-                              )}
-                              {totalPaid > 0 && (
-                                <span className="text-emerald-700">
-                                  <span className="text-muted-foreground/40">·</span> Paid {currency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                  {lastPaidDate && <> on {format(parseISO(lastPaidDate), 'dd MMM yyyy')}</>}
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            {primaryInvoice && effectiveStatus !== 'paid' && !primaryInvoice.payment_proof_url && (
+                              <Checkbox
+                                className="mt-1"
+                                checked={selectedIds.has(primaryInvoice.id)}
+                                onCheckedChange={() => {
+                                  setSelectedIds(prev => {
+                                    const n = new Set(prev);
+                                    n.has(primaryInvoice.id) ? n.delete(primaryInvoice.id) : n.add(primaryInvoice.id);
+                                    return n;
+                                  });
+                                }}
+                                aria-label={`Select ${formatBM(bm)}`}
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                                <span className="font-medium tabular-nums text-foreground/80">
+                                  Fee {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
+                                {earliestDue && (
+                                  <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
+                                )}
+                                {totalPaid > 0 && (
+                                  <span className="text-emerald-700">
+                                    <span className="text-muted-foreground/40">·</span> Paid {currency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {lastPaidDate && <> on {format(parseISO(lastPaidDate), 'dd MMM yyyy')}</>}
+                                  </span>
+                                )}
+                                {remaining > 0.01 && effectiveStatus !== 'paid' && (
+                                  <span className="text-rose-700">
+                                    <span className="text-muted-foreground/40">·</span> Balance {currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </span>
+                                )}
+                              </div>
+                              {primaryInvoice?.payment_proof_url && effectiveStatus !== 'paid' && !primaryInvoice.payment_proof_rejection_reason && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-medium">
+                                  <Paperclip className="h-3 w-3" /> Proof submitted — awaiting admin review
+                                </div>
                               )}
-                              {remaining > 0.01 && effectiveStatus !== 'paid' && (
-                                <span className="text-rose-700">
-                                  <span className="text-muted-foreground/40">·</span> Balance {currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </span>
+                              {primaryInvoice?.payment_proof_rejection_reason && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 text-rose-800 px-2 py-0.5 text-[10px] font-medium">
+                                  <X className="h-3 w-3" /> Proof rejected: {primaryInvoice.payment_proof_rejection_reason}
+                                </div>
                               )}
                             </div>
                           </div>
