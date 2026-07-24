@@ -312,14 +312,17 @@ async function findOrCreateZoomSession(
     .single();
 
   if (error || !createdSession) {
-    if (meetingUuid && error?.code === "23505") {
-      const { data: existingSession } = await supabase
+    if (error?.code === "23505") {
+      let query = supabase
         .from("live_sessions")
         .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
-        .eq("zoom_meeting_uuid", meetingUuid)
+        .in("status", ["live", "scheduled"])
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      query = meetingUuid ? query.eq("zoom_meeting_uuid", meetingUuid) : query.eq("license_id", licenseId);
+
+      const { data: existingSession } = await query.maybeSingle();
       if (existingSession) return existingSession;
     }
     console.error("Could not create monitor session for Zoom webhook:", error);

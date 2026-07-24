@@ -121,11 +121,16 @@ export default function ZoomManagement() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const profileIds = [...new Set(data.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
+      const uniqueSessions = data.filter((session: any, index: number, rows: any[]) => {
+        if (!session.zoom_meeting_uuid) return true;
+        return rows.findIndex((candidate: any) => candidate.zoom_meeting_uuid === session.zoom_meeting_uuid) === index;
+      });
+
+      const profileIds = [...new Set(uniqueSessions.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', profileIds);
       const profileMap = new Map(profiles?.map(t => [t.id, t.full_name]) || []);
 
-      return data.map((session: any) => ({
+      return uniqueSessions.map((session: any) => ({
         ...session,
         teacherName: profileMap.get(session.teacher_id) || 'Unknown',
         studentName: session.student_id ? (profileMap.get(session.student_id) || 'Student') : null,
