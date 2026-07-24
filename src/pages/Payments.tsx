@@ -323,6 +323,8 @@ export default function Payments() {
           id, assignment_id, plan_id, student_id, amount, currency, billing_month,
           due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
           is_archived, is_revised, superseded_by_invoice_id, archive_reason,
+          payment_proof_url, payment_proof_note, payment_proof_submitted_at, payment_proof_submitted_by,
+          payment_proof_rejected_at, payment_proof_rejection_reason,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             fee_packages!student_teacher_assignments_fee_package_id_fkey(name)
@@ -332,6 +334,7 @@ export default function Payments() {
             session_duration
           )
         `)
+
         .is('voided_at', null)
         .order('created_at', { ascending: false });
 
