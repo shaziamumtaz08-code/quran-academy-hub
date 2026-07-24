@@ -344,6 +344,7 @@ async function findOrCreateZoomSession(
       status: "live",
       zoom_meeting_uuid: meetingUuid,
       recording_status: "not_recorded",
+      session_source: "zoom_monitor",
     })
     .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
     .single();
