@@ -129,7 +129,7 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, zoom_meeting_uuid')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, assignment_id, zoom_meeting_uuid')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -219,6 +219,29 @@ export default function ZoomManagement() {
     });
     return map;
   }, [attendanceLogs, roomEmailByLicense]);
+
+  const participantNamesBySession = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (attendanceLogs || []).forEach((log: any) => {
+      if (!log.session_id) return;
+      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
+      if (isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail)) return;
+      const label = log.participant_name || log.userName;
+      if (!label) return;
+      const existing = map.get(log.session_id) || new Set<string>();
+      existing.add(label);
+      map.set(log.session_id, existing);
+    });
+    return map;
+  }, [attendanceLogs, roomEmailByLicense]);
+
+  const getSessionPrimaryLabel = React.useCallback((session: any) => {
+    const participantNames = Array.from(participantNamesBySession.get(session.id) || []);
+    if (participantNames.length > 0) return participantNames.join(', ');
+    if (session.studentName) return session.studentName;
+    if (session.assignment_id || session.schedule_id) return session.teacherName;
+    return 'Monitor session';
+  }, [participantNamesBySession]);
 
   // Count distinct participants per live session — used to surface the
   // free-tier 40-min cap warning when a group class hits 3+ attendees.
@@ -458,10 +481,10 @@ export default function ZoomManagement() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-destructive">{session.teacherName?.charAt(0)}</span>
+                          <span className="text-xs font-bold text-destructive">{getSessionPrimaryLabel(session).charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold truncate max-w-[140px]">{session.teacherName}</p>
+                          <p className="text-sm font-semibold truncate max-w-[140px]">{getSessionPrimaryLabel(session)}</p>
                         </div>
                       </div>
                       <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
@@ -831,7 +854,7 @@ export default function ZoomManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Teacher</TableHead>
+                      <TableHead>Session</TableHead>
                       <TableHead>Started</TableHead>
                       <TableHead>Ended</TableHead>
                       <TableHead>Duration</TableHead>
@@ -854,12 +877,12 @@ export default function ZoomManagement() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-xs font-bold text-primary">{session.teacherName?.charAt(0)}</span>
+                                <span className="text-xs font-bold text-primary">{getSessionPrimaryLabel(session).charAt(0)}</span>
                               </div>
-                              <span className="font-medium text-sm">{session.teacherName}</span>
-                              {session.studentName && (
-                                <p className="text-xs text-muted-foreground">Student: {session.studentName}</p>
-                              )}
+                              <div>
+                                <span className="font-medium text-sm">{getSessionPrimaryLabel(session)}</span>
+                                <p className="text-xs text-muted-foreground">Room owner: {session.teacherName}</p>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '-'}</TableCell>
