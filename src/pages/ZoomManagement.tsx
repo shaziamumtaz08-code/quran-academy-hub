@@ -150,13 +150,26 @@ export default function ZoomManagement() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map((l: any) => l.user_id).filter(Boolean))] as string[];
+      const uniqueLogs = data.filter((log: any, index: number, rows: any[]) => {
+        const eventMinute = log.timestamp ? new Date(log.timestamp).toISOString().slice(0, 16) : '';
+        const participantKey = (log.participant_email || log.participant_name || log.user_id || '').toLowerCase();
+        const meetingKey = log.zoom_meeting_uuid || log.session_id || log.zoom_license_id || '';
+        const key = `${meetingKey}:${participantKey}:${log.action}:${eventMinute}`;
+        return rows.findIndex((candidate: any) => {
+          const candidateMinute = candidate.timestamp ? new Date(candidate.timestamp).toISOString().slice(0, 16) : '';
+          const candidateParticipant = (candidate.participant_email || candidate.participant_name || candidate.user_id || '').toLowerCase();
+          const candidateMeeting = candidate.zoom_meeting_uuid || candidate.session_id || candidate.zoom_license_id || '';
+          return `${candidateMeeting}:${candidateParticipant}:${candidate.action}:${candidateMinute}` === key;
+        }) === index;
+      });
+
+      const userIds = [...new Set(uniqueLogs.map((l: any) => l.user_id).filter(Boolean))] as string[];
       const { data: users } = userIds.length
         ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
         : { data: [] } as { data: Array<{ id: string; full_name: string | null }> };
       const userMap = new Map(users?.map(u => [u.id, u.full_name]) || []);
 
-      return data.map((log: any) => ({
+      return uniqueLogs.map((log: any) => ({
         ...log,
         userName: log.participant_name || userMap.get(log.user_id) || 'Zoom participant',
         matchedProfileName: log.user_id ? userMap.get(log.user_id) : null,
