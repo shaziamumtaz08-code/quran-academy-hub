@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
           // Find both live AND scheduled sessions for this license
           const { data: liveSessions } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, assignment_id, actual_start")
+            .select("id, teacher_id, assignment_id, schedule_id, actual_start")
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled"]);
 
@@ -338,6 +338,7 @@ Deno.serve(async (req) => {
 
           // Auto-mark absent students
           for (const session of (liveSessions || [])) {
+            if (!session.assignment_id && !session.schedule_id) continue;
             if (!session.teacher_id) continue;
             const { data: assignments } = await supabase
               .from("student_teacher_assignments")
