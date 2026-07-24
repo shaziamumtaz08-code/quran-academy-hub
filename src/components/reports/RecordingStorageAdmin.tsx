@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { HardDrive, Loader2, AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
+import { HardDrive, Loader2, AlertTriangle, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 
