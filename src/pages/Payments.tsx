@@ -34,6 +34,8 @@ import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel'
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { PaymentProofDialog } from '@/components/finance/PaymentProofDialog';
+
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards';
