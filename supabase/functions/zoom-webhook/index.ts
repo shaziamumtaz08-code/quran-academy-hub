@@ -259,9 +259,9 @@ async function findOrCreateZoomSession(
   if (meetingUuid) {
     const { data: sessionByMeeting } = await supabase
       .from("live_sessions")
-        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
       .eq("zoom_meeting_uuid", meetingUuid)
-        .in("status", ["live", "scheduled"])
+        .in("status", ["live", "scheduled", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -306,9 +306,9 @@ async function findOrCreateZoomSession(
       actual_start: startTime,
       status: "live",
       zoom_meeting_uuid: meetingUuid,
-      recording_status: "pending",
+      recording_status: "not_recorded",
     })
-    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
     .single();
 
   if (error || !createdSession) {
@@ -495,7 +495,7 @@ Deno.serve(async (req) => {
           await supabase.from("zoom_licenses").update({ status: "available" }).eq("id", license.id);
           await supabase
             .from("live_sessions")
-            .update({ status: "completed", actual_end: endedAt, recording_status: "pending" })
+            .update({ status: "completed", actual_end: endedAt, recording_status: "not_recorded" })
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled"]);
           console.log("License released, sessions completed:", license.id);
@@ -562,6 +562,11 @@ Deno.serve(async (req) => {
           break;
         }
 
+        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
+          console.log("Host/room self-join ignored for attendance log:", pName, pEmail);
+          break;
+        }
+
         // Step 2: Find the active live OR scheduled session for this license
         const joinTime = new Date(participant?.join_time || eventTime(event));
         const session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, joinTime.toISOString());
@@ -586,7 +591,9 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // If session is still 'scheduled', activate it now (first person joined)
+        // If session is still 'scheduled', activate it now (first person joined).
+        // If Zoom delivered an old join after meeting.ended, keep it attached to
+        // the completed session but never reopen the room.
         if (session.status === "scheduled") {
           await supabase.from("live_sessions").update({
             status: "live",
@@ -692,6 +699,11 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!license) { console.log("No license for host:", hostId); break; }
+
+        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
+          console.log("Host/room self-leave ignored for attendance log:", pName, pEmail);
+          break;
+        }
 
         const leaveTime = new Date(participant?.leave_time || eventTime(event));
 
@@ -808,7 +820,6 @@ Deno.serve(async (req) => {
           zoom_host_id: hostId,
           zoom_meeting_uuid: meetingUuidTop,
           zoom_meeting_id: meetingIdTop,
-          zoom_event_type: event.event,
           zoom_license_id: license.id,
         }).eq("id", matchedLog.id);
 
