@@ -1530,11 +1530,15 @@ export default function Payments() {
     setSelectedIds(new Set([invoiceId]));
     const due = Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
     const fallback = getDefaultPeriodDates(inv.billing_month);
+    const proofNote = inv.payment_proof_url && inv.payment_proof_note
+      ? `Proof note: ${inv.payment_proof_note}`
+      : '';
     setPayForm({
-      amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
+      amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: proofNote,
       payment_date: new Date().toISOString().split('T')[0],
       period_from: inv.period_from || fallback.from, period_to: inv.period_to || fallback.to, payment_method: '',
     });
+
     setReceiptFile(null);
     setBulkPayOpen(true);
   };
