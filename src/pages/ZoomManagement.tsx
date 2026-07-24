@@ -21,6 +21,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { AlertTriangle } from 'lucide-react';
 
+const isRoomSelfParticipant = (name?: string | null, email?: string | null, roomEmail?: string | null) => {
+  const normalizedName = (name || '').trim().toLowerCase();
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const normalizedRoomEmail = (roomEmail || '').trim().toLowerCase();
+  const roomLocalPart = normalizedRoomEmail.split('@')[0];
+
+  return Boolean(
+    (normalizedEmail && normalizedRoomEmail && normalizedEmail === normalizedRoomEmail) ||
+    (roomLocalPart && normalizedName === roomLocalPart) ||
+    normalizedName.includes('al-quran time class') ||
+    normalizedName.includes('al quran time class')
+  );
+};
+
 function LiveTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = React.useState(0);
   React.useEffect(() => {
@@ -115,7 +129,7 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id, zoom_meeting_uuid')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, zoom_meeting_uuid')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -187,10 +201,16 @@ export default function ZoomManagement() {
     return map;
   }, [liveSessions]);
 
+  const roomEmailByLicense = React.useMemo(() => {
+    return new Map((licenses || []).map((license: any) => [license.id, license.zoom_email]));
+  }, [licenses]);
+
   const activeParticipantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
     (attendanceLogs || []).forEach((log: any) => {
       if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
+      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
+      if (isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail)) return;
       const label = log.participant_name || log.userName;
       if (!label) return;
       const existing = map.get(log.session_id) || new Set<string>();
@@ -198,7 +218,7 @@ export default function ZoomManagement() {
       map.set(log.session_id, existing);
     });
     return map;
-  }, [attendanceLogs]);
+  }, [attendanceLogs, roomEmailByLicense]);
 
   // Count distinct participants per live session — used to surface the
   // free-tier 40-min cap warning when a group class hits 3+ attendees.
@@ -374,7 +394,7 @@ export default function ZoomManagement() {
                     {session ? (
                       <div className="space-y-1.5">
                         <p className="text-xs font-medium text-foreground truncate">
-                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || session.teacherName}
+                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || 'Waiting for participant'}
                         </p>
                         <div className="flex items-center gap-1 text-destructive">
                           <Timer className="h-3 w-3" />
@@ -853,14 +873,20 @@ export default function ZoomManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {session.recording_link ? (
+                          {session.recording_link ? (
                               <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
                                 <Play className="h-3 w-3" /> Watch
                               </Button>
-                            ) : session.status === 'completed' ? (
+                            ) : session.status === 'completed' && session.recording_status === 'pending' ? (
                               <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
                                 ⏳ Processing
                               </Badge>
+                            ) : session.status === 'completed' && session.recording_status === 'failed' ? (
+                              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20">
+                                Recording failed
+                              </Badge>
+                            ) : session.status === 'completed' ? (
+                              <span className="text-muted-foreground text-sm">No recording</span>
                             ) : session.status === 'live' ? (
                               <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
                                 Recording...
@@ -904,7 +930,7 @@ export default function ZoomManagement() {
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
                   {attendanceLogs?.map((log: any) => {
-                    const isLeave = log.action === 'leave' || Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left';
+                    const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
                     const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
                     return (
                       <div key={log.id} className={cn(
