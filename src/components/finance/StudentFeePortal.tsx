@@ -38,8 +38,13 @@ interface InvoiceLite {
   is_archived?: boolean | null;
   superseded_by_invoice_id?: string | null;
   archive_reason?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_note?: string | null;
+  payment_proof_submitted_at?: string | null;
+  payment_proof_rejection_reason?: string | null;
   profiles: { full_name: string } | null;
 }
+
 
 const currentBillingMonth = () => {
   const n = new Date();
