@@ -32,7 +32,7 @@ export default function GroupAcademyFinance() {
         return { courses: [], perCourse: [], totals: { due: 0, paid: 0, pending: 0, students: 0 } };
       }
 
-      const [feesRes, plansRes, classesRes, paymentsRes] = await Promise.all([
+      const [feesRes, plansRes, classesRes] = await Promise.all([
         supabase.from('course_student_fees')
           .select('id, course_id, student_id, total_due, total_paid, status, is_scholarship, plan:plan_id(currency)')
           .in('course_id', courseIds),
@@ -42,15 +42,11 @@ export default function GroupAcademyFinance() {
         supabase.from('course_classes')
           .select('id, course_id, name, fee_amount, fee_currency')
           .in('course_id', courseIds),
-        supabase.from('course_fee_payments')
-          .select('amount, payment_date, student_fee_id, course_student_fees!inner(course_id)')
-          .in('course_student_fees.course_id' as any, courseIds),
       ]);
 
       const fees = feesRes.data || [];
       const plans = plansRes.data || [];
       const classes = classesRes.data || [];
-      const payments = (paymentsRes.data || []) as any[];
 
       const perCourse = (courses || []).map((c: any) => {
         const cFees = fees.filter((f: any) => f.course_id === c.id);
