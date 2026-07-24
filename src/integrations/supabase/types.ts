@@ -11329,6 +11329,10 @@ export type Database = {
         Args: { _invoice_ids: string[]; _note: string; _proof_url: string }
         Returns: number
       }
+      user_created_chat_group: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_in_chat_group: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
