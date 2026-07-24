@@ -153,11 +153,48 @@ export default function ExecutiveDashboard() {
     },
   });
 
-  // Fee collection trend (last 6 months)
+  // Fee collection trend (last 6 months) — 1:1 by billing_month ledger; Group by course_fee_payments date
   const { data: feeTrend } = useQuery({
-    queryKey: ["exec-fee-trend", divisionId],
+    queryKey: ["exec-fee-trend", divisionId, isGroup],
     queryFn: async () => {
       const months: { month: string; collected: number; expected: number }[] = [];
+
+      if (isGroup && divisionId) {
+        const { data: courses } = await supabase.from("courses").select("id").eq("division_id", divisionId);
+        const courseIds = (courses || []).map((c: any) => c.id);
+        const windowStart = format(startOfMonth(subMonths(new Date(), 5)), "yyyy-MM-dd");
+
+        // Fetch student fee IDs for this division, then payments in the 6-month window
+        let feeIds: string[] = [];
+        if (courseIds.length > 0) {
+          const { data: fees } = await supabase
+            .from("course_student_fees")
+            .select("id")
+            .in("course_id", courseIds);
+          feeIds = (fees || []).map((f: any) => f.id);
+        }
+
+        let payments: any[] = [];
+        if (feeIds.length > 0) {
+          const { data: pays } = await supabase
+            .from("course_fee_payments")
+            .select("amount, payment_date")
+            .in("student_fee_id", feeIds)
+            .gte("payment_date", windowStart);
+          payments = pays || [];
+        }
+
+        for (let i = 5; i >= 0; i--) {
+          const d = subMonths(new Date(), i);
+          const key = format(d, "yyyy-MM");
+          const collected = payments
+            .filter((p: any) => (p.payment_date || "").startsWith(key))
+            .reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+          months.push({ month: format(d, "MMM"), collected: Math.round(collected), expected: 0 });
+        }
+        return months;
+      }
+
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         const bm = format(d, "yyyy-MM");
