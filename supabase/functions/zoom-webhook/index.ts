@@ -261,7 +261,7 @@ async function findOrCreateZoomSession(
       .from("live_sessions")
         .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
       .eq("zoom_meeting_uuid", meetingUuid)
-        .in("status", ["live", "scheduled", "completed"])
+        .in("status", ["live", "scheduled"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
