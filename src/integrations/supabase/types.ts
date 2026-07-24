@@ -5133,6 +5133,7 @@ export type Database = {
           retention_expires_at: string | null
           schedule_id: string | null
           scheduled_start: string | null
+          session_source: string
           status: Database["public"]["Enums"]["session_status"]
           stored_file_size_mb: number | null
           stream_url: string | null
@@ -5161,6 +5162,7 @@ export type Database = {
           retention_expires_at?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
+          session_source?: string
           status?: Database["public"]["Enums"]["session_status"]
           stored_file_size_mb?: number | null
           stream_url?: string | null
@@ -5189,6 +5191,7 @@ export type Database = {
           retention_expires_at?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
+          session_source?: string
           status?: Database["public"]["Enums"]["session_status"]
           stored_file_size_mb?: number | null
           stream_url?: string | null
@@ -10957,6 +10960,51 @@ export type Database = {
           status?: Database["public"]["Enums"]["zoom_license_status"]
           updated_at?: string
           zoom_email?: string
+        }
+        Relationships: []
+      }
+      zoom_webhook_events: {
+        Row: {
+          event_ts: string | null
+          event_type: string
+          id: string
+          participant_email: string | null
+          participant_name: string | null
+          processed_session_id: string | null
+          processing_note: string | null
+          raw_payload: Json
+          received_at: string
+          zoom_host_id: string | null
+          zoom_meeting_id: string | null
+          zoom_meeting_uuid: string | null
+        }
+        Insert: {
+          event_ts?: string | null
+          event_type: string
+          id?: string
+          participant_email?: string | null
+          participant_name?: string | null
+          processed_session_id?: string | null
+          processing_note?: string | null
+          raw_payload: Json
+          received_at?: string
+          zoom_host_id?: string | null
+          zoom_meeting_id?: string | null
+          zoom_meeting_uuid?: string | null
+        }
+        Update: {
+          event_ts?: string | null
+          event_type?: string
+          id?: string
+          participant_email?: string | null
+          participant_name?: string | null
+          processed_session_id?: string | null
+          processing_note?: string | null
+          raw_payload?: Json
+          received_at?: string
+          zoom_host_id?: string | null
+          zoom_meeting_id?: string | null
+          zoom_meeting_uuid?: string | null
         }
         Relationships: []
       }
