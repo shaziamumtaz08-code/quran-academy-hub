@@ -1,19 +1,26 @@
 import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, Clock, AlertTriangle, Download, Receipt, Calendar, User, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { FileUploadField } from '@/components/shared/FileUploadField';
+import { CheckCircle2, Clock, AlertTriangle, Download, Receipt, Calendar, User, ArrowRight, Upload, Paperclip, X } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useKidContext } from '@/contexts/KidContext';
+import { useToast } from '@/hooks/use-toast';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const formatBM = (bm: string) => { const [y,m] = bm.split('-'); return `${MONTHS[parseInt(m,10)-1] || m} ${y}`; };
 const shortBM = (bm: string) => { const [y,m] = bm.split('-'); return `${MONTHS[parseInt(m,10)-1]?.slice(0,3) || m} ${y.slice(2)}`; };
+
 
 interface InvoiceLite {
   id: string;
