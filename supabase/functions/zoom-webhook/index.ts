@@ -634,6 +634,7 @@ Deno.serve(async (req) => {
               actual_start: startedAt,
               zoom_meeting_uuid: meetingUuidTop,
             }).eq("id", pendingSession.id);
+            await applyScheduledOwnerToSession(supabase, { ...pendingSession, actual_start: startedAt }, startedAt);
             console.log("Activated pending session:", pendingSession.id);
           } else {
             // Also check sessions without license_id (teacher may have created session before license assignment)
@@ -653,6 +654,7 @@ Deno.serve(async (req) => {
                 license_id: license.id,
                 zoom_meeting_uuid: meetingUuidTop,
               }).eq("id", unlinkedSession.id);
+              await applyScheduledOwnerToSession(supabase, { ...unlinkedSession, license_id: license.id, actual_start: startedAt }, startedAt);
               console.log("Linked and activated unlinked session:", unlinkedSession.id);
             } else {
               await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, startedAt);
@@ -832,11 +834,6 @@ Deno.serve(async (req) => {
           break;
         }
 
-        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
-          console.log("Host/room self-join ignored for attendance log:", pName, pEmail);
-          break;
-        }
-
         // Step 2: Find the active live OR scheduled session for this license
         const joinTime = new Date(participant?.join_time || eventTime(event));
         const session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, joinTime.toISOString());
@@ -970,11 +967,6 @@ Deno.serve(async (req) => {
 
         if (!license) { console.log("No license for host:", hostId); break; }
 
-        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
-          console.log("Host/room self-leave ignored for attendance log:", pName, pEmail);
-          break;
-        }
-
         const leaveTime = new Date(participant?.leave_time || eventTime(event));
 
         // Find session by meeting UUID first, then by recent active room.
@@ -982,7 +974,7 @@ Deno.serve(async (req) => {
         if (meetingUuidTop) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
             .eq("zoom_meeting_uuid", meetingUuidTop)
             .in("status", ["live", "scheduled", "completed"])
             .order("actual_start", { ascending: false })
@@ -994,7 +986,7 @@ Deno.serve(async (req) => {
         if (!session) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled", "completed"])
             .gte("created_at", new Date(leaveTime.getTime() - 2 * 60 * 60 * 1000).toISOString())
@@ -1006,6 +998,10 @@ Deno.serve(async (req) => {
 
         if (!session) {
           session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, leaveTime.toISOString());
+        }
+
+        if (session) {
+          session = await applyScheduledOwnerToSession(supabase, session, leaveTime.toISOString());
         }
 
         if (!session) {
