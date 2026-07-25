@@ -42,11 +42,11 @@ async function mergeProfileSensitiveRows(profiles: any[]) {
     .from('profile_sensitive_data')
     .select('user_id, whatsapp_number, bank_name, bank_account_title, bank_account_number, bank_iban')
     .in('user_id', profileIds);
-  const sensitiveByUser = new Map((sensitiveRows || []).map((row: any) => [row.user_id, row]));
+  const sensitiveByUser = new Map<string, any>((sensitiveRows || []).map((row: any) => [row.user_id, row] as [string, any]));
 
   return profiles.map((profile: any) => ({
     ...profile,
-    ...(sensitiveByUser.get(profile.id) || {}),
+    ...(sensitiveByUser.get(profile.id) ?? {}),
   }));
 }
 

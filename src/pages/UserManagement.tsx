@@ -538,7 +538,7 @@ export default function UserManagement() {
             .select('user_id, whatsapp_number')
             .in('user_id', profileIds)
         : { data: [] };
-      const sensitiveByUser = new Map((sensitiveRows || []).map((row: any) => [row.user_id, row]));
+      const sensitiveByUser = new Map<string, any>((sensitiveRows || []).map((row: any) => [row.user_id, row] as [string, any]));
 
       // Get ALL roles for each user
       const usersWithRoles: UserWithRoles[] = await Promise.all(
