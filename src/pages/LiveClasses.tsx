@@ -99,7 +99,7 @@ export default function LiveClasses() {
     const { data: liveSessions } = primary === "teacher"
       ? await lsBase.eq("teacher_id", user.id)
       : primary === "student"
-      ? await lsBase.eq("student_id", user.id)
+      ? await lsBase
       : await lsBase.limit(0);
 
     // 2. Today's recurring schedules
