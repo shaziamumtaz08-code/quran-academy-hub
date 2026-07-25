@@ -31,6 +31,10 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
           id,
           status,
           actual_start,
+          student_id,
+          assignment_id,
+          schedule_id,
+          scheduled_start,
           license:zoom_licenses(meeting_link, zoom_email)
         `)
         .eq('teacher_id', user.id)
@@ -130,10 +134,15 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         }
       }
 
-      // Reserve Zoom license
-      const { data, error } = await supabase.rpc('get_and_reserve_license', {
-        _teacher_id: user.id,
-        _session_id: sessionToUse,
+      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
+        body: {
+          teacherId: user.id,
+          studentId: null,
+          assignmentId: null,
+          scheduleId: null,
+          scheduledStart: new Date().toISOString(),
+          liveSessionId: sessionToUse,
+        },
       });
 
       if (error) {
@@ -143,14 +152,14 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         throw error;
       }
 
-      if (!data || data.length === 0) {
-        throw new Error('No license data returned');
+      if (!data?.joinUrl) {
+        throw new Error(data?.message || 'No Zoom room link returned');
       }
 
       return { 
         sessionId: sessionToUse, 
-        meetingLink: data[0].meeting_link,
-        licenseId: data[0].license_id 
+        meetingLink: data.joinUrl,
+        licenseId: data.licenseId || null,
       };
     },
     onSuccess: (result) => {
@@ -222,8 +231,26 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
           variant="outline"
           className={cn("gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50", className)}
           onClick={() => {
-            const link = (activeSession.license as any)?.meeting_link;
-            if (link) window.open(link, '_blank');
+            supabase.functions.invoke('zoom-join-class', {
+              body: {
+                teacherId: user?.id,
+                studentId: (activeSession as any).student_id || null,
+                assignmentId: (activeSession as any).assignment_id || null,
+                scheduleId: (activeSession as any).schedule_id || null,
+                scheduledStart: (activeSession as any).scheduled_start || new Date().toISOString(),
+                liveSessionId: activeSession.id,
+              },
+            }).then(({ data, error }) => {
+              if (error) throw error;
+              const link = (data as any)?.joinUrl || (activeSession.license as any)?.meeting_link;
+              if (link) window.open(link, '_blank');
+            }).catch((error: Error) => {
+              toast({
+                title: 'Failed to Rejoin Class',
+                description: error.message,
+                variant: 'destructive',
+              });
+            });
           }}
         >
           <Video className="h-4 w-4" />
