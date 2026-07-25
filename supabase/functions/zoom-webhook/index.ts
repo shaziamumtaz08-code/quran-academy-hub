@@ -128,15 +128,30 @@ function sameParticipant(log: any, participantName: string, participantEmail: st
   return Boolean(logName && currentName && logName === currentName);
 }
 
-function isHostParticipant(participantName: string, participantEmail: string, hostEmail?: string | null): boolean {
-  // Only treat a participant as the "room bot" when their email exactly matches the pooled
-  // Zoom account's email. Previously we also dropped anyone whose display name looked like
-  // the room label — that silently threw away legitimate teachers who signed in on the pooled
-  // account, so the 3rd participant never made it into Join Logs.
+function isAccountEmail(participantEmail: string, hostEmail?: string | null): boolean {
   const currentEmail = normalizeParticipantValue(participantEmail);
   const normalizedHostEmail = normalizeParticipantValue(hostEmail);
-  if (!currentEmail || !normalizedHostEmail) return false;
-  return currentEmail === normalizedHostEmail;
+  return Boolean(currentEmail && normalizedHostEmail && currentEmail === normalizedHostEmail);
+}
+
+function isHostParticipant(
+  participantName: string,
+  participantEmail: string,
+  hostEmail?: string | null,
+  hostName?: string | null,
+): boolean {
+  // Zoom reports the *account owner's* email for every guest who joins without
+  // signing in, so "email == account email" alone is NOT proof of being the host.
+  // Treat the participant as the host only when the display name also matches the
+  // Zoom account / host name — otherwise real students were being logged as "host"
+  // with no profile match at all.
+  if (!isAccountEmail(participantEmail, hostEmail)) return false;
+  const currentName = normalizeParticipantValue(participantName);
+  if (!currentName) return true;
+  const normalizedHostName = normalizeParticipantValue(hostName);
+  if (normalizedHostName && currentName === normalizedHostName) return true;
+  const accountLocalPart = normalizeParticipantValue((hostEmail || "").split("@")[0]);
+  return Boolean(accountLocalPart && currentName === accountLocalPart);
 }
 
 function participantMatchesProfile(
@@ -160,16 +175,20 @@ async function resolveParticipantIdentity(
   participantName: string,
   participantEmail: string,
   hostEmail?: string | null,
+  hostName?: string | null,
 ): Promise<{ matchedUserId: string | null; matchedRole: string }> {
-  if (isHostParticipant(participantName, participantEmail, hostEmail)) {
+  if (isHostParticipant(participantName, participantEmail, hostEmail, hostName)) {
     return { matchedUserId: null, matchedRole: "host" };
   }
 
-  if (participantEmail) {
+  // The account email is a Zoom artefact for guests — never use it for identity.
+  const usableEmail = isAccountEmail(participantEmail, hostEmail) ? "" : participantEmail;
+
+  if (usableEmail) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, full_name, email")
-      .ilike("email", participantEmail)
+      .ilike("email", usableEmail)
       .maybeSingle();
 
     if (profile?.id) {
@@ -183,6 +202,30 @@ async function resolveParticipantIdentity(
       const roles = (roleRows || []).map((row: any) => row.role);
       if (roles.includes("teacher")) return { matchedUserId: profile.id, matchedRole: "teacher" };
       if (roles.includes("student")) return { matchedUserId: profile.id, matchedRole: "student" };
+      return { matchedUserId: profile.id, matchedRole: roles[0] || "unknown" };
+    }
+  }
+
+  // Exact display-name match — this is how unauthenticated students (who join with
+  // their LMS name appended to the link) get attributed to their profile.
+  if (participantName && participantName.toLowerCase() !== "unknown") {
+    const { data: nameMatches } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .ilike("full_name", participantName)
+      .limit(2);
+
+    if (nameMatches?.length === 1) {
+      const profile = nameMatches[0];
+      if (profile.id === session.teacher_id) return { matchedUserId: profile.id, matchedRole: "teacher" };
+      if (profile.id === session.student_id) return { matchedUserId: profile.id, matchedRole: "student" };
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.id);
+      const roles = (roleRows || []).map((row: any) => row.role);
+      if (roles.includes("student")) return { matchedUserId: profile.id, matchedRole: "student" };
+      if (roles.includes("teacher")) return { matchedUserId: profile.id, matchedRole: "teacher" };
       return { matchedUserId: profile.id, matchedRole: roles[0] || "unknown" };
     }
   }
