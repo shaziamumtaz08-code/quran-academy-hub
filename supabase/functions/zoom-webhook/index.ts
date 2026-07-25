@@ -238,12 +238,12 @@ async function resolveParticipantIdentity(
       .in("id", candidateIds);
 
     const studentProfile = (profiles || []).find((profile: any) => profile.id === session.student_id);
-    if (participantMatchesProfile(participantName, participantEmail, studentProfile)) {
+    if (participantMatchesProfile(participantName, usableEmail, studentProfile)) {
       return { matchedUserId: session.student_id, matchedRole: "student" };
     }
 
     const teacherProfile = (profiles || []).find((profile: any) => profile.id === session.teacher_id);
-    if (participantMatchesProfile(participantName, participantEmail, teacherProfile)) {
+    if (participantMatchesProfile(participantName, usableEmail, teacherProfile)) {
       return { matchedUserId: session.teacher_id, matchedRole: "teacher" };
     }
   }
@@ -257,7 +257,7 @@ async function resolveParticipantIdentity(
         .eq("id", scheduledStudentId)
         .maybeSingle();
 
-      if (!participantMatchesProfile(participantName, participantEmail, scheduledProfile)) {
+      if (!participantMatchesProfile(participantName, usableEmail, scheduledProfile)) {
         return { matchedUserId: null, matchedRole: "unknown" };
       }
 
