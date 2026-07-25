@@ -6394,7 +6394,9 @@ export type Database = {
       profile_sensitive_data: {
         Row: {
           bank_account_number: string | null
+          bank_account_title: string | null
           bank_iban: string | null
+          bank_name: string | null
           created_at: string
           date_of_birth: string | null
           emergency_contact_phone: string | null
@@ -6406,7 +6408,9 @@ export type Database = {
         }
         Insert: {
           bank_account_number?: string | null
+          bank_account_title?: string | null
           bank_iban?: string | null
+          bank_name?: string | null
           created_at?: string
           date_of_birth?: string | null
           emergency_contact_phone?: string | null
@@ -6418,7 +6422,9 @@ export type Database = {
         }
         Update: {
           bank_account_number?: string | null
+          bank_account_title?: string | null
           bank_iban?: string | null
+          bank_name?: string | null
           created_at?: string
           date_of_birth?: string | null
           emergency_contact_phone?: string | null
