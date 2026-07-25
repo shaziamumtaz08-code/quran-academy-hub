@@ -177,9 +177,18 @@ export default function OrganizationSettings() {
   const { data: org, isLoading: orgLoading } = useQuery({
     queryKey: ['organization'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('organizations').select('*').limit(1).single();
+      // `settings` is column-restricted; fetch base fields directly, settings via admin RPC.
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, logo_url, created_at, updated_at')
+        .limit(1)
+        .single();
       if (error) throw error;
-      return data;
+      const { data: settings, error: sErr } = await supabase.rpc('admin_get_organization_settings', {
+        _org_id: data.id,
+      });
+      if (sErr) throw sErr;
+      return { ...data, settings: settings ?? {} } as any;
     },
   });
 
@@ -201,9 +210,13 @@ export default function OrganizationSettings() {
       const { error } = await supabase.from('organizations').update({
         name: orgForm.name,
         logo_url: orgForm.logo_url || null,
-        settings: orgForm.settings,
       }).eq('id', org.id);
       if (error) throw error;
+      const { error: sErr } = await supabase.rpc('admin_update_organization_settings', {
+        _org_id: org.id,
+        _settings: orgForm.settings ?? {},
+      });
+      if (sErr) throw sErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization'] });
