@@ -11272,6 +11272,10 @@ export type Database = {
         Args: { _course_id: string }
         Returns: boolean
       }
+      can_view_exam_template: {
+        Args: { _template_id: string }
+        Returns: boolean
+      }
       can_view_resource_visibility:
         | {
             Args: { _visibility: string; _visible_to_roles: string[] }
