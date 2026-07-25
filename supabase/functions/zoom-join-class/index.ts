@@ -137,13 +137,36 @@ Deno.serve(async (req) => {
       }
     }
 
+    // NEW: prefer the teacher's dedicated Zoom account. Pick tier based on
+    // divisional model when available (Group Academy → licensed, else free).
+    let preferredTier: "free" | "licensed" = "free";
+    if (p.assignmentId) {
+      const { data: asg } = await service
+        .from("student_teacher_assignments")
+        .select("division_id, divisions:division_id(model)")
+        .eq("id", p.assignmentId)
+        .maybeSingle();
+      const model = (asg as any)?.divisions?.model;
+      if (model === "group") preferredTier = "licensed";
+    }
+    const { data: dedicatedAccountRows } = await service
+      .from("zoom_accounts")
+      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active")
+      .eq("teacher_id", p.teacherId)
+      .eq("is_active", true);
+    const activeAccounts = (dedicatedAccountRows || []) as any[];
+    const dedicatedAccount =
+      activeAccounts.find((a) => a.tier === preferredTier) ||
+      activeAccounts[0] ||
+      null;
+
     // Locate or create the live_sessions row.
     let session: any = null;
 
     if (p.liveSessionId) {
       const { data } = await service
         .from("live_sessions")
-        .select("id, status, license_id, teacher_id, student_id, assignment_id, scheduled_start")
+        .select("id, status, license_id, zoom_account_id, teacher_id, student_id, assignment_id, scheduled_start")
         .eq("id", p.liveSessionId)
         .maybeSingle();
       session = data;
@@ -152,7 +175,7 @@ Deno.serve(async (req) => {
     if (!session && p.assignmentId) {
       const { data } = await service
         .from("live_sessions")
-        .select("id, status, license_id, teacher_id, student_id, assignment_id, scheduled_start")
+        .select("id, status, license_id, zoom_account_id, teacher_id, student_id, assignment_id, scheduled_start")
         .eq("assignment_id", p.assignmentId)
         .in("status", ["scheduled", "live"])
         .order("created_at", { ascending: false })
@@ -171,8 +194,9 @@ Deno.serve(async (req) => {
           schedule_id: p.scheduleId || null,
           scheduled_start: p.scheduledStart || new Date().toISOString(),
           status: "scheduled",
+          zoom_account_id: dedicatedAccount?.id || null,
         })
-        .select("id, status, license_id, teacher_id, student_id, assignment_id, scheduled_start")
+        .select("id, status, license_id, zoom_account_id, teacher_id, student_id, assignment_id, scheduled_start")
         .single();
       if (createErr || !created) {
         return jsonResp({ error: createErr?.message || "Could not create session" }, 500);
@@ -186,7 +210,33 @@ Deno.serve(async (req) => {
       session.student_id = userId;
     }
 
-    // If no license yet: teacher/admin allocates from pool; student waits.
+    // DEDICATED ACCOUNT PATH — skip the shared pool entirely.
+    if (dedicatedAccount && dedicatedAccount.meeting_link) {
+      if (!session.zoom_account_id) {
+        await service
+          .from("live_sessions")
+          .update({ zoom_account_id: dedicatedAccount.id })
+          .eq("id", session.id);
+      }
+      if (isTeacher) {
+        await recordHostJoinIntent(service, {
+          sessionId: session.id,
+          userId,
+          licenseId: null,
+          displayName,
+          email: displayEmail,
+        });
+      }
+      return jsonResp({
+        ready: true,
+        sessionId: session.id,
+        licenseId: null,
+        zoomAccountId: dedicatedAccount.id,
+        joinUrl: appendUname(dedicatedAccount.meeting_link),
+      });
+    }
+
+    // POOLED FALLBACK — legacy path: allocate from Room 1/Room 2 pool.
     if (!session.license_id) {
       if (!(isTeacher || isAdmin)) {
         return jsonResp({
@@ -196,7 +246,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Allocate + reserve a license via existing DB helper
       const { data: reserved, error: rpcErr } = await service.rpc("get_and_reserve_license", {
         _teacher_id: p.teacherId,
         _session_id: session.id,
@@ -205,7 +254,7 @@ Deno.serve(async (req) => {
         return jsonResp({
           ready: false,
           sessionId: session.id,
-          message: rpcErr?.message || "All Zoom rooms are currently occupied. Try again shortly.",
+          message: rpcErr?.message || "No Zoom room available. Ask an admin to link a dedicated Zoom account for this teacher in Zoom Control Room.",
         });
       }
       const row = Array.isArray(reserved) ? reserved[0] : reserved;
@@ -226,7 +275,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // License already assigned — fetch its link
     const { data: license } = await service
       .from("zoom_licenses")
       .select("meeting_link")
