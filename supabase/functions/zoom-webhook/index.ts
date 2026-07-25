@@ -444,7 +444,7 @@ async function findOrCreateZoomSession(
         .eq("id", activeSession.id)
         .is("zoom_meeting_uuid", null);
     }
-    return applyScheduledOwnerToSession(supabase, { ...activeSession, zoom_meeting_uuid: meetingUuid || activeSession.zoom_meeting_uuid }, startTime);
+    return { ...activeSession, zoom_meeting_uuid: meetingUuid || activeSession.zoom_meeting_uuid };
   }
 
   const scheduledMatch = await findScheduledClassForTime(supabase, startTime);
