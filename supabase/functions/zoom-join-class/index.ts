@@ -73,19 +73,31 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return jsonResp({ error: "Unauthorized" }, 401);
+    const token = authHeader.slice(7).trim();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
+      "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: authHeader } },
     });
     const service = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return jsonResp({ error: "Unauthorized" }, 401);
+    // Verify the bearer token explicitly — getUser() without an argument can
+    // fall back to (absent) stored session state and 401 a valid caller.
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      console.error("auth.getUser failed", userErr?.message);
+      return jsonResp({ error: "Unauthorized", detail: userErr?.message || "No user for token" }, 401);
+    }
     const userId = userData.user.id;
+
 
     const p = (await req.json()) as Payload;
     if (!p.teacherId) return jsonResp({ error: "teacherId required" }, 400);
@@ -119,11 +131,13 @@ Deno.serve(async (req) => {
     const roles = (roleRows || []).map((r: any) => r.role);
     const isTeacher = userId === p.teacherId && roles.includes("teacher");
     const isStudent = roles.includes("student");
+    const isParent = roles.includes("parent");
     const isAdmin = roles.includes("admin") || roles.includes("super_admin") || roles.includes("admin_academic") || roles.includes("admin_division");
 
-    if (!isTeacher && !isStudent && !isAdmin) {
+    if (!isTeacher && !isStudent && !isParent && !isAdmin) {
       return jsonResp({ error: "Not permitted" }, 403);
     }
+
 
     // Guard: student must own the assignment
     if (isStudent && !isAdmin && p.assignmentId) {

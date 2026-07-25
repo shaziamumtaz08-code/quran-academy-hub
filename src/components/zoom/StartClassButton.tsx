@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
+import { ensureFreshSession } from '@/lib/ensureSession';
 
 interface StartClassButtonProps {
   sessionId?: string;
@@ -138,6 +139,7 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         }
       }
 
+      await ensureFreshSession();
       const { data, error } = await supabase.functions.invoke('zoom-join-class', {
         body: {
           teacherId: user.id,
@@ -244,7 +246,8 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
             const tab = reserveTab();
             setRejoining(true);
             try {
-              const { data, error } = await supabase.functions.invoke('zoom-join-class', {
+              await ensureFreshSession();
+      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
                 body: {
                   teacherId: user?.id,
                   studentId: (activeSession as any).student_id || null,

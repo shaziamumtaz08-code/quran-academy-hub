@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Video, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { ensureFreshSession } from '@/lib/ensureSession';
 
 type Row = {
   key: string;
@@ -211,6 +212,7 @@ export default function LiveClasses() {
     if (!user?.id) return;
     setJoiningKey(row.key);
     try {
+      await ensureFreshSession();
       const { data, error } = await supabase.functions.invoke("zoom-join-class", {
         body: {
           teacherId: row.teacherId,

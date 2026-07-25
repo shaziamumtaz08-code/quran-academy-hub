@@ -29,7 +29,7 @@ export default function PublicCoursePage() {
     queryKey: ['public-course', slug],
     queryFn: async () => {
       let q = supabase.from('courses')
-        .select('*, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
+        .select('id, name, description, level, hero_image_url, thumbnail_url, outcomes, faqs, syllabus_text, pricing, tags, seo_slug, start_date, end_date, max_students, is_group_class, enrollment_type, contact_info, whatsapp_channel_link, support_messages, ad_creative, status, website_enabled, teacher_id, subject_id, division_id, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
         .eq('website_enabled', true)
         .eq('status', 'active');
 
@@ -37,7 +37,7 @@ export default function PublicCoursePage() {
       if (bySlug) return bySlug;
 
       const { data: byId } = await supabase.from('courses')
-        .select('*, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
+        .select('id, name, description, level, hero_image_url, thumbnail_url, outcomes, faqs, syllabus_text, pricing, tags, seo_slug, start_date, end_date, max_students, is_group_class, enrollment_type, contact_info, whatsapp_channel_link, support_messages, ad_creative, status, website_enabled, teacher_id, subject_id, division_id, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
         .eq('id', slug!)
         .eq('website_enabled', true)
         .eq('status', 'active')
