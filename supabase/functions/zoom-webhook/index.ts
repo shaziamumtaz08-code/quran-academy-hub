@@ -535,7 +535,7 @@ async function recordHostJoin(
 
   const { data: existing } = await supabase
     .from("zoom_attendance_logs")
-    .select("id, user_id, participant_name, participant_email, zoom_event_type")
+    .select("id, user_id, join_time, timestamp, participant_name, participant_email, zoom_event_type")
     .eq("session_id", session.id)
     .eq("action", "join_intent")
     .is("leave_time", null)
@@ -573,7 +573,7 @@ async function recordHostJoin(
     join_time: joinedAt,
     timestamp: joinedAt,
     participant_name: hostName,
-    participant_email: hostEmail,
+    participant_email: resolvedHostEmail,
     role: "host",
     zoom_host_id: hostId,
     zoom_meeting_uuid: meetingUuid,
@@ -662,8 +662,8 @@ async function recordHostLeave(
     leave_time: leftAt,
     timestamp: leftAt,
     total_duration_minutes: totalDuration,
-    participant_name: hostName,
-    participant_email: resolvedHostEmail,
+    participant_name: matchedLog?.participant_name || hostName,
+    participant_email: matchedLog?.participant_email || resolvedHostEmail,
     role: "host",
     zoom_host_id: hostId,
     zoom_meeting_uuid: meetingUuid,
