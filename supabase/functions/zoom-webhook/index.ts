@@ -640,6 +640,7 @@ async function handleDedicatedAccountEvent(
         zoom_event_type: event.event,
         zoom_account_id: account.id,
       });
+      await closeSessionIfEmpty(supabase, session.id, leaveTime.toISOString());
       return;
     }
     case "recording.completed": {
