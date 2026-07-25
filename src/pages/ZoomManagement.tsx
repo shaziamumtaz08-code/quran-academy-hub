@@ -575,7 +575,10 @@ export default function ZoomManagement() {
           ))}
         </div>
 
-        {/* Rooms Section */}
+        {/* Teacher Zoom Accounts (dedicated) */}
+        {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
+
+        {/* Rooms Section (legacy shared pool) */}
         {activeSection === 'rooms' && (<>
           {/* Allocation Mode Settings */}
           <Card className="border-dashed">
