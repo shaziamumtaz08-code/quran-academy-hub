@@ -11289,6 +11289,7 @@ export type Database = {
         Args: { _cover_assignment_id: string; _manual?: boolean }
         Returns: Json
       }
+      close_stale_live_sessions: { Args: never; Returns: number }
       create_paid_leave_cover: {
         Args: {
           _original_assignment_id: string

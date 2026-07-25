@@ -304,6 +304,33 @@ async function findExistingLeaveLog(
   return (data || []).find((entry: any) => sameParticipant(entry, params.participantName, params.participantEmail)) || null;
 }
 
+/**
+ * Zoom does not always deliver meeting.ended (free rooms, host closing the app,
+ * network drops). Without it a session stays "live" forever and the Control Room
+ * shows an empty room as active. After every leave event we check whether anyone
+ * is still inside; if the room is empty we close the session ourselves.
+ */
+async function closeSessionIfEmpty(supabase: any, sessionId: string, atIso: string) {
+  const { data: stillInside } = await supabase
+    .from("zoom_attendance_logs")
+    .select("id")
+    .eq("session_id", sessionId)
+    .eq("action", "join_intent")
+    .is("leave_time", null)
+    .limit(1);
+
+  if (stillInside && stillInside.length > 0) return;
+
+  await supabase
+    .from("live_sessions")
+    .update({ status: "completed", actual_end: atIso })
+    .eq("id", sessionId)
+    .in("status", ["live", "scheduled"]);
+  console.log("Room empty — session auto-closed:", sessionId);
+}
+
+
+
 async function getMonitorTeacherId(supabase: any, licenseId: string): Promise<string | null> {
   const { data, error } = await supabase.rpc("zoom_monitor_teacher_for_license", {
     _license_id: licenseId,
@@ -613,6 +640,7 @@ async function handleDedicatedAccountEvent(
         zoom_event_type: event.event,
         zoom_account_id: account.id,
       });
+      await closeSessionIfEmpty(supabase, session.id, leaveTime.toISOString());
       return;
     }
     case "recording.completed": {
@@ -1592,6 +1620,10 @@ Deno.serve(async (req) => {
                 metadata: { user_id: matchedLog.user_id, session_minutes: sessionMinutes, total_minutes: newTotal, session_id: session?.id || null },
             });
           }
+        }
+
+        if (session?.id) {
+          await closeSessionIfEmpty(supabase, session.id, leaveTime.toISOString());
         }
         break;
       }
