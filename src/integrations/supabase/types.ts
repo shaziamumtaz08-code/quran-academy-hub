@@ -11057,6 +11057,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_get_organization_settings: {
+        Args: { _org_id: string }
+        Returns: Json
+      }
       admin_get_sensitive_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -11070,6 +11074,10 @@ export type Database = {
           gov_id_number: string
           gov_id_type: string
         }[]
+      }
+      admin_update_organization_settings: {
+        Args: { _org_id: string; _settings: Json }
+        Returns: undefined
       }
       auto_close_expired_covers: { Args: never; Returns: number }
       auto_generate_plan_invoices: {
