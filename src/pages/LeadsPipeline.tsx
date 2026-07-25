@@ -1363,8 +1363,9 @@ export default function LeadsPipeline() {
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
-      if (divisionId) q = q.eq('division_id', divisionId);
-      if (branchId) q = q.eq('branch_id', branchId);
+      // Include legacy rows with NULL division/branch so pre-scoping leads remain visible.
+      if (divisionId) q = q.or(`division_id.eq.${divisionId},division_id.is.null`);
+      if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`);
       const { data, error } = await q;
       if (error) throw error;
       return data as Lead[];
