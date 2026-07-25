@@ -362,11 +362,6 @@ export function StudentFeePortal({
                 </Badge>
               )}
             </div>
-            {(teacherInfo?.teacherName || teacherInfo?.subjectName) && (
-              <p className="mt-2.5 text-[11px] md:text-xs text-white/70 truncate">
-                {teacherInfo.subjectName}{teacherInfo.subjectName && teacherInfo.teacherName ? ' · ' : ''}{teacherInfo.teacherName}
-              </p>
-            )}
           </div>
 
           {/* RIGHT — next due + current month */}
