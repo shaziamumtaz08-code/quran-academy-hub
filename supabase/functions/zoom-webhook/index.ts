@@ -287,6 +287,81 @@ async function getMonitorTeacherId(supabase: any, licenseId: string): Promise<st
   return roleRow?.user_id || null;
 }
 
+// NEW — dedicated-account resolver. Returns non-null when this hostId maps to
+// a teacher's own Zoom account (not the shared Room 1/Room 2 pool).
+async function resolveDedicatedAccount(
+  supabase: any,
+  hostId: string | undefined,
+): Promise<{ id: string; teacher_id: string; zoom_account_email: string; tier: string } | null> {
+  if (!hostId) return null;
+  const { data } = await supabase
+    .from("zoom_accounts")
+    .select("id, teacher_id, zoom_account_email, tier, is_active")
+    .eq("zoom_user_id", hostId)
+    .eq("is_active", true)
+    .maybeSingle();
+  return data || null;
+}
+
+// NEW — find or create a live_sessions row for a dedicated account.
+async function findOrCreateDedicatedSession(
+  supabase: any,
+  account: { id: string; teacher_id: string },
+  meetingUuid: string | null,
+  startTime: string,
+): Promise<any | null> {
+  if (meetingUuid) {
+    const { data: byUuid } = await supabase
+      .from("live_sessions")
+      .select("id, teacher_id, student_id, status, assignment_id, schedule_id, license_id, zoom_account_id, scheduled_start, actual_start, session_source")
+      .eq("zoom_meeting_uuid", meetingUuid)
+      .maybeSingle();
+    if (byUuid) return byUuid;
+  }
+  const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const { data: active } = await supabase
+    .from("live_sessions")
+    .select("id, teacher_id, student_id, status, assignment_id, schedule_id, license_id, zoom_account_id, scheduled_start, actual_start, session_source")
+    .eq("zoom_account_id", account.id)
+    .in("status", ["live", "scheduled"])
+    .gte("created_at", recentCutoff)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (active) {
+    if (meetingUuid) {
+      await supabase
+        .from("live_sessions")
+        .update({ zoom_meeting_uuid: meetingUuid })
+        .eq("id", active.id)
+        .is("zoom_meeting_uuid", null);
+    }
+    return { ...active, zoom_meeting_uuid: meetingUuid || (active as any).zoom_meeting_uuid };
+  }
+  const { data: created, error } = await supabase
+    .from("live_sessions")
+    .insert({
+      teacher_id: account.teacher_id,
+      student_id: null,
+      assignment_id: null,
+      schedule_id: null,
+      zoom_account_id: account.id,
+      scheduled_start: startTime,
+      actual_start: startTime,
+      status: "live",
+      zoom_meeting_uuid: meetingUuid,
+      recording_status: "not_recorded",
+      session_source: "zoom_dedicated",
+    })
+    .select("id, teacher_id, student_id, status, assignment_id, schedule_id, license_id, zoom_account_id, scheduled_start, actual_start, session_source")
+    .single();
+  if (error) {
+    console.error("Could not create dedicated-account session:", error);
+    return null;
+  }
+  return created;
+}
+
 async function findOrCreateZoomSession(
   supabase: any,
   licenseId: string,
