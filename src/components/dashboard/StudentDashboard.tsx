@@ -150,16 +150,61 @@ export function StudentDashboard() {
     })();
   const activePrayer = islamic?.prayers ? getActivePrayer(islamic.prayers, tz) : null;
 
-  // Next class assignment + schedules
-  const { data: assignment } = useQuery({
-    queryKey: ['sd-assignment', activeStudentId],
+  // All active assignments (a student may have multiple: Nazra + Tarbiyah, etc.)
+  const { data: assignments = [] } = useQuery({
+    queryKey: ['sd-assignments', activeStudentId],
     enabled: !!activeStudentId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(day_of_week, student_local_time, is_active)')
+        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(id, day_of_week, student_local_time, duration_minutes, is_active)')
         .eq('student_id', activeStudentId!)
-        .eq('status', 'active')
+        .eq('status', 'active');
+      return (data || []) as any[];
+    },
+  });
+
+  // Pick the assignment whose next active schedule occurrence is soonest.
+  const nextSlot = useMemo(() => {
+    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const now = new Date();
+    let best: { assignment: any; schedule: any; when: Date; minsUntil: number } | null = null;
+    for (const a of (assignments as any[])) {
+      for (const s of (a?.schedules || [])) {
+        if (!s?.is_active || !s?.day_of_week || !s?.student_local_time) continue;
+        const dow = DAYS.indexOf(String(s.day_of_week).toLowerCase());
+        if (dow < 0) continue;
+        const [hh, mm] = String(s.student_local_time).split(':').map(Number);
+        const target = new Date(now);
+        const diff = (dow - now.getDay() + 7) % 7;
+        target.setDate(now.getDate() + diff);
+        target.setHours(hh, mm || 0, 0, 0);
+        if (target.getTime() <= now.getTime() - 60 * 60 * 1000) target.setDate(target.getDate() + 7);
+        const mins = Math.round((target.getTime() - now.getTime()) / 60000);
+        if (!best || mins < best.minsUntil) best = { assignment: a, schedule: s, when: target, minsUntil: mins };
+      }
+    }
+    return best;
+  }, [assignments]);
+
+  const assignment = nextSlot?.assignment || (assignments as any[])[0] || null;
+
+  // Live session for any of the student's active teachers.
+  const teacherIds = useMemo(
+    () => Array.from(new Set((assignments as any[]).map((a: any) => a.teacher_id).filter(Boolean))),
+    [assignments]
+  );
+  const { data: liveSession } = useQuery({
+    queryKey: ['sd-live', teacherIds.join(',')],
+    enabled: teacherIds.length > 0,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('id, status, teacher_id, assignment_id, license:license_id(meeting_link), zoom_account:zoom_account_id(meeting_link)')
+        .in('teacher_id', teacherIds as string[])
+        .eq('status', 'live')
+        .order('actual_start', { ascending: false })
         .limit(1)
         .maybeSingle();
       return data as any;
@@ -176,24 +221,6 @@ export function StudentDashboard() {
     },
   });
 
-
-  // Live session for the assigned teacher
-  const { data: liveSession } = useQuery({
-    queryKey: ['sd-live', assignment?.teacher_id],
-    enabled: !!assignment?.teacher_id,
-    refetchInterval: 30000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('live_sessions')
-        .select('id, status, license:license_id(meeting_link)')
-        .eq('teacher_id', assignment.teacher_id)
-        .eq('status', 'live')
-        .order('actual_start', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data as any;
-    },
-  });
 
   // Attendance (recent + stats)
   const { data: attendance = [] } = useQuery({
@@ -368,15 +395,62 @@ export function StudentDashboard() {
     />
   );
 
-  const sched = (assignment?.schedules || []).find((s: any) => s.is_active);
+  const sched = nextSlot?.schedule || (assignment?.schedules || []).find((s: any) => s.is_active);
   const ctxTeacher = (dashCtx?.teachers || [])[0] || null;
   const teacherName = assignment?.teacher?.full_name || ctxTeacher?.teacher_name || '—';
   const subjectName = assignment?.subject?.name || ctxTeacher?.subject_name || 'No subject assigned';
   const teacherInitial = (teacherName && teacherName !== '—' ? teacherName.charAt(0).toUpperCase() : 'T');
 
-  const meetingLink = (liveSession as any)?.license?.meeting_link;
+  const meetingLink =
+    (liveSession as any)?.zoom_account?.meeting_link ||
+    (liveSession as any)?.license?.meeting_link;
 
   const isLive = !!(liveSession && meetingLink);
+
+  // Join window: allow click 15 min before → 60 min after class start.
+  const minsUntil = nextSlot?.minsUntil ?? null;
+  const withinJoinWindow = minsUntil !== null && minsUntil <= 15 && minsUntil >= -60;
+  const canClickJoin = isLive || withinJoinWindow;
+  const [joining, setJoining] = useState(false);
+
+  const handleJoinClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isLive && meetingLink) {
+      window.open(meetingLink, '_blank', 'noreferrer');
+      return;
+    }
+    if (!assignment?.teacher_id) {
+      toast.error('No assigned teacher yet.');
+      return;
+    }
+    if (!withinJoinWindow) {
+      toast.info('Join opens 15 minutes before class.');
+      return;
+    }
+    try {
+      setJoining(true);
+      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
+        body: {
+          teacherId: assignment.teacher_id,
+          studentId: activeStudentId,
+          assignmentId: assignment.id,
+          scheduleId: sched?.id || null,
+          scheduledStart: nextSlot?.when?.toISOString() || new Date().toISOString(),
+        },
+      });
+      if (error) throw error;
+      if (data?.ready && data?.joinUrl) {
+        window.open(data.joinUrl, '_blank', 'noreferrer');
+      } else {
+        toast.info(data?.message || 'Waiting for teacher to open the class.');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not join class');
+    } finally {
+      setJoining(false);
+    }
+  };
+
 
   // Time until next class
   const timeUntil = useMemo(() => {
@@ -456,26 +530,23 @@ export function StudentDashboard() {
       {/* Right */}
       {hasUpcoming && (
         <div className="flex flex-col items-stretch md:items-end gap-1.5 shrink-0 w-full md:w-auto">
-          <a
-            href={isLive ? meetingLink : '#'}
-            target={isLive ? '_blank' : undefined}
-            rel="noreferrer"
-            onClick={(e) => { if (!isLive) e.preventDefault(); }}
+          <button
+            type="button"
+            disabled={!canClickJoin || joining}
+            onClick={handleJoinClick}
             className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2.5 text-[13px] font-medium text-white transition-colors w-full md:w-auto ${
               isLive ? 'animate-pulse' : ''
-            }`}
-            style={{
-              background: isLive ? '#1d9e75' : '#1d9e75',
-              opacity: isLive ? 1 : 0.95,
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#0f6e56'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#1d9e75'; }}
+            } ${!canClickJoin || joining ? 'opacity-60 cursor-not-allowed' : ''}`}
+            style={{ background: '#1d9e75' }}
+            onMouseEnter={(e) => { if (canClickJoin && !joining) (e.currentTarget as HTMLButtonElement).style.background = '#0f6e56'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1d9e75'; }}
           >
-            {isLive ? 'Join Now' : 'Join Class'} <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+            {joining ? 'Opening…' : isLive ? 'Join Now' : 'Join Class'} <ExternalLink className="h-3.5 w-3.5" />
+          </button>
           <div className="text-[11px] text-right" style={{ color: '#a8d8e0' }}>
-            {isLive ? 'Class in progress' : 'Link goes live 5 min before'}
+            {isLive ? 'Class in progress' : 'Link goes live 15 min before'}
           </div>
+
         </div>
       )}
     </div>
