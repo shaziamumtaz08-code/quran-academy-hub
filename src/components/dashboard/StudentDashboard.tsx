@@ -395,15 +395,62 @@ export function StudentDashboard() {
     />
   );
 
-  const sched = (assignment?.schedules || []).find((s: any) => s.is_active);
+  const sched = nextSlot?.schedule || (assignment?.schedules || []).find((s: any) => s.is_active);
   const ctxTeacher = (dashCtx?.teachers || [])[0] || null;
   const teacherName = assignment?.teacher?.full_name || ctxTeacher?.teacher_name || '—';
   const subjectName = assignment?.subject?.name || ctxTeacher?.subject_name || 'No subject assigned';
   const teacherInitial = (teacherName && teacherName !== '—' ? teacherName.charAt(0).toUpperCase() : 'T');
 
-  const meetingLink = (liveSession as any)?.license?.meeting_link;
+  const meetingLink =
+    (liveSession as any)?.zoom_account?.meeting_link ||
+    (liveSession as any)?.license?.meeting_link;
 
   const isLive = !!(liveSession && meetingLink);
+
+  // Join window: allow click 15 min before → 60 min after class start.
+  const minsUntil = nextSlot?.minsUntil ?? null;
+  const withinJoinWindow = minsUntil !== null && minsUntil <= 15 && minsUntil >= -60;
+  const canClickJoin = isLive || withinJoinWindow;
+  const [joining, setJoining] = useState(false);
+
+  const handleJoinClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isLive && meetingLink) {
+      window.open(meetingLink, '_blank', 'noreferrer');
+      return;
+    }
+    if (!assignment?.teacher_id) {
+      toast.error('No assigned teacher yet.');
+      return;
+    }
+    if (!withinJoinWindow) {
+      toast.info('Join opens 15 minutes before class.');
+      return;
+    }
+    try {
+      setJoining(true);
+      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
+        body: {
+          teacherId: assignment.teacher_id,
+          studentId: activeStudentId,
+          assignmentId: assignment.id,
+          scheduleId: sched?.id || null,
+          scheduledStart: nextSlot?.when?.toISOString() || new Date().toISOString(),
+        },
+      });
+      if (error) throw error;
+      if (data?.ready && data?.joinUrl) {
+        window.open(data.joinUrl, '_blank', 'noreferrer');
+      } else {
+        toast.info(data?.message || 'Waiting for teacher to open the class.');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not join class');
+    } finally {
+      setJoining(false);
+    }
+  };
+
 
   // Time until next class
   const timeUntil = useMemo(() => {
