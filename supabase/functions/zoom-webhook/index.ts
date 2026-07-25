@@ -139,6 +139,125 @@ function isHostParticipant(participantName: string, participantEmail: string, ho
   return currentEmail === normalizedHostEmail;
 }
 
+function normalizeDay(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function minutesFromTime(value?: string | null): number | null {
+  if (!value) return null;
+  const [rawHours, rawMinutes] = value.split(":");
+  const hours = Number(rawHours);
+  const minutes = Number(rawMinutes || "0");
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function localDayAndMinutes(date: Date, timeZone: string): { day: string; minutes: number } {
+  const day = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date).toLowerCase();
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone,
+  }).formatToParts(date);
+  const hours = Number(parts.find((part) => part.type === "hour")?.value || "0");
+  const minutes = Number(parts.find((part) => part.type === "minute")?.value || "0");
+  return { day, minutes: hours * 60 + minutes };
+}
+
+function circularMinuteDiff(a: number, b: number): number {
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 1440 - diff);
+}
+
+async function findScheduledClassForTime(supabase: any, startTime: string): Promise<any | null> {
+  const startedAt = new Date(startTime);
+  const { data: schedules, error } = await supabase
+    .from("schedules")
+    .select(`
+      id,
+      assignment_id,
+      day_of_week,
+      teacher_local_time,
+      duration_minutes,
+      division_id,
+      branch_id,
+      assignment:student_teacher_assignments!inner(
+        id,
+        teacher_id,
+        student_id,
+        status,
+        teacher_timezone,
+        duration_minutes,
+        division_id,
+        branch_id
+      )
+    `)
+    .eq("is_active", true)
+    .eq("student_teacher_assignments.status", "active");
+
+  if (error) {
+    console.error("Could not resolve scheduled class for Zoom session:", error);
+    return null;
+  }
+
+  let best: any | null = null;
+  let bestDiff = Number.POSITIVE_INFINITY;
+
+  for (const schedule of schedules || []) {
+    const assignment = schedule.assignment;
+    if (!assignment?.teacher_id) continue;
+
+    const timeZone = assignment.teacher_timezone || "Asia/Karachi";
+    const local = localDayAndMinutes(startedAt, timeZone);
+    if (normalizeDay(schedule.day_of_week) !== local.day) continue;
+
+    const scheduleMinutes = minutesFromTime(schedule.teacher_local_time);
+    if (scheduleMinutes === null) continue;
+
+    const diff = circularMinuteDiff(local.minutes, scheduleMinutes);
+    const duration = schedule.duration_minutes || assignment.duration_minutes || 30;
+    const matchWindow = Math.max(45, duration + 30);
+    if (diff <= matchWindow && diff < bestDiff) {
+      best = { schedule, assignment, diff };
+      bestDiff = diff;
+    }
+  }
+
+  return best;
+}
+
+async function applyScheduledOwnerToSession(supabase: any, session: any, startTime: string): Promise<any> {
+  if (!session || session.assignment_id || session.schedule_id) return session;
+
+  const match = await findScheduledClassForTime(supabase, startTime);
+  if (!match?.assignment?.teacher_id) return session;
+
+  const patch = {
+    teacher_id: match.assignment.teacher_id,
+    student_id: match.assignment.student_id || session.student_id || null,
+    assignment_id: match.assignment.id,
+    schedule_id: match.schedule.id,
+    scheduled_start: session.scheduled_start || startTime,
+    session_source: "schedule_match",
+  };
+
+  const { data: updated, error } = await supabase
+    .from("live_sessions")
+    .update(patch)
+    .eq("id", session.id)
+    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Could not apply scheduled owner to Zoom session:", error, { session: session.id, match });
+    return session;
+  }
+
+  console.log("Resolved Zoom session owner from schedule:", session.id, patch.teacher_id, patch.schedule_id);
+  return updated || { ...session, ...patch };
+}
+
 function participantMatchesProfile(
   participantName: string,
   participantEmail: string,
@@ -162,7 +281,7 @@ async function resolveParticipantIdentity(
   hostEmail?: string | null,
 ): Promise<{ matchedUserId: string | null; matchedRole: string }> {
   if (isHostParticipant(participantName, participantEmail, hostEmail)) {
-    return { matchedUserId: session.teacher_id || null, matchedRole: "teacher" };
+    return { matchedUserId: null, matchedRole: "host" };
   }
 
   if (participantEmail) {
@@ -296,20 +415,20 @@ async function findOrCreateZoomSession(
   if (meetingUuid) {
     const { data: sessionByMeeting } = await supabase
       .from("live_sessions")
-        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
       .eq("zoom_meeting_uuid", meetingUuid)
         .in("status", ["live", "scheduled", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (sessionByMeeting) return sessionByMeeting;
+    if (sessionByMeeting) return applyScheduledOwnerToSession(supabase, sessionByMeeting, startTime);
   }
 
   const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
   const query = supabase
     .from("live_sessions")
-    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
     .eq("license_id", licenseId)
     .in("status", ["live", "scheduled"])
     .gte("created_at", recentCutoff)
@@ -325,35 +444,41 @@ async function findOrCreateZoomSession(
         .eq("id", activeSession.id)
         .is("zoom_meeting_uuid", null);
     }
-    return activeSession;
+    return applyScheduledOwnerToSession(supabase, { ...activeSession, zoom_meeting_uuid: meetingUuid || activeSession.zoom_meeting_uuid }, startTime);
   }
 
-  const teacherId = await getMonitorTeacherId(supabase, licenseId);
+  const scheduledMatch = await findScheduledClassForTime(supabase, startTime);
+  const teacherId = scheduledMatch?.assignment?.teacher_id || await getMonitorTeacherId(supabase, licenseId);
   if (!teacherId) {
     console.log("No teacher/admin available to create monitor session for license:", licenseId);
     return null;
   }
 
+  const sessionSource = scheduledMatch?.assignment?.teacher_id ? "schedule_match" : "zoom_monitor";
+
   const { data: createdSession, error } = await supabase
     .from("live_sessions")
     .insert({
       teacher_id: teacherId,
+      student_id: scheduledMatch?.assignment?.student_id || null,
+      assignment_id: scheduledMatch?.assignment?.id || null,
+      schedule_id: scheduledMatch?.schedule?.id || null,
       license_id: licenseId,
       scheduled_start: startTime,
       actual_start: startTime,
       status: "live",
       zoom_meeting_uuid: meetingUuid,
       recording_status: "not_recorded",
-      session_source: "zoom_monitor",
+      session_source: sessionSource,
     })
-    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
     .single();
 
   if (error || !createdSession) {
     if (error?.code === "23505") {
       let query = supabase
         .from("live_sessions")
-        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
         .in("status", ["live", "scheduled"])
         .order("created_at", { ascending: false })
         .limit(1);
@@ -361,7 +486,7 @@ async function findOrCreateZoomSession(
       query = meetingUuid ? query.eq("zoom_meeting_uuid", meetingUuid) : query.eq("license_id", licenseId);
 
       const { data: existingSession } = await query.maybeSingle();
-      if (existingSession) return existingSession;
+      if (existingSession) return applyScheduledOwnerToSession(supabase, existingSession, startTime);
     }
     console.error("Could not create monitor session for Zoom webhook:", error);
     return null;
@@ -381,6 +506,120 @@ async function insertZoomLog(supabase: any, payload: Record<string, unknown>) {
     }
     console.error("Error inserting Zoom attendance log:", error, payload);
   }
+}
+
+async function recordHostJoin(
+  supabase: any,
+  session: any,
+  license: { id: string; zoom_email?: string | null },
+  hostId: string | undefined,
+  meetingUuid: string | null,
+  meetingId: string | number | null,
+  joinedAt: string,
+  eventName: string,
+) {
+  if (!session?.id) return;
+  const hostEmail = license.zoom_email || "";
+  const hostName = hostEmail || "Meeting host";
+
+  const { data: existing } = await supabase
+    .from("zoom_attendance_logs")
+    .select("id, participant_name, participant_email")
+    .eq("session_id", session.id)
+    .eq("action", "join_intent")
+    .is("leave_time", null)
+    .eq("role", "host")
+    .limit(10);
+
+  if ((existing || []).some((entry: any) => sameParticipant(entry, hostName, hostEmail))) return;
+
+  await insertZoomLog(supabase, {
+    session_id: session.id,
+    user_id: null,
+    action: "join_intent",
+    join_time: joinedAt,
+    timestamp: joinedAt,
+    participant_name: hostName,
+    participant_email: hostEmail,
+    role: "host",
+    zoom_host_id: hostId,
+    zoom_meeting_uuid: meetingUuid,
+    zoom_meeting_id: meetingId,
+    zoom_event_type: eventName,
+    zoom_license_id: license.id,
+  });
+}
+
+async function recordHostLeave(
+  supabase: any,
+  session: any,
+  license: { id: string; zoom_email?: string | null },
+  hostId: string | undefined,
+  meetingUuid: string | null,
+  meetingId: string | number | null,
+  leftAt: string,
+  eventName: string,
+) {
+  if (!session?.id) return;
+  const hostEmail = license.zoom_email || "";
+  const hostName = hostEmail || "Meeting host";
+  const leaveTime = new Date(leftAt);
+
+  const { data: openJoins } = await supabase
+    .from("zoom_attendance_logs")
+    .select("id, user_id, join_time, total_duration_minutes, participant_name, participant_email")
+    .eq("session_id", session.id)
+    .eq("action", "join_intent")
+    .eq("role", "host")
+    .is("leave_time", null)
+    .order("timestamp", { ascending: false })
+    .limit(10);
+
+  const matchedLog = (openJoins || []).find((entry: any) => sameParticipant(entry, hostName, hostEmail));
+  const existingLeave = await findExistingLeaveLog(supabase, {
+    sessionId: session.id,
+    licenseId: license.id,
+    meetingUuid,
+    participantName: hostName,
+    participantEmail: hostEmail,
+    leaveTime,
+  });
+  if (existingLeave) return;
+
+  let joinTime: string | null = matchedLog?.join_time || session.actual_start || null;
+  let totalDuration: number | null = null;
+  if (joinTime) {
+    totalDuration = Math.max(1, Math.ceil((leaveTime.getTime() - new Date(joinTime).getTime()) / 60_000));
+  }
+
+  if (matchedLog) {
+    await supabase.from("zoom_attendance_logs").update({
+      leave_time: leftAt,
+      total_duration_minutes: totalDuration,
+      zoom_host_id: hostId,
+      zoom_meeting_uuid: meetingUuid,
+      zoom_meeting_id: meetingId,
+      zoom_license_id: license.id,
+    }).eq("id", matchedLog.id);
+  }
+
+  await insertZoomLog(supabase, {
+    session_id: session.id,
+    user_id: null,
+    action: "leave",
+    join_time: joinTime,
+    leave_time: leftAt,
+    timestamp: leftAt,
+    total_duration_minutes: totalDuration,
+    participant_name: hostName,
+    participant_email: hostEmail,
+    role: "host",
+    zoom_host_id: hostId,
+    zoom_meeting_uuid: meetingUuid,
+    zoom_meeting_id: meetingId,
+    zoom_event_type: eventName,
+    zoom_license_id: license.id,
+  });
 }
 
 Deno.serve(async (req) => {
@@ -491,6 +730,7 @@ Deno.serve(async (req) => {
         if (license) {
           await supabase.from("zoom_licenses").update({ status: "busy", last_used_at: startedAt }).eq("id", license.id);
           console.log("License marked busy:", license.id);
+          let sessionForHostLog: any = null;
 
           // Activate any scheduled session that was pre-created (e.g. by student early join)
           const { data: pendingSession } = await supabase
@@ -509,6 +749,7 @@ Deno.serve(async (req) => {
               actual_start: startedAt,
               zoom_meeting_uuid: meetingUuidTop,
             }).eq("id", pendingSession.id);
+            sessionForHostLog = await applyScheduledOwnerToSession(supabase, { ...pendingSession, actual_start: startedAt }, startedAt);
             console.log("Activated pending session:", pendingSession.id);
           } else {
             // Also check sessions without license_id (teacher may have created session before license assignment)
@@ -528,11 +769,14 @@ Deno.serve(async (req) => {
                 license_id: license.id,
                 zoom_meeting_uuid: meetingUuidTop,
               }).eq("id", unlinkedSession.id);
+              sessionForHostLog = await applyScheduledOwnerToSession(supabase, { ...unlinkedSession, license_id: license.id, actual_start: startedAt }, startedAt);
               console.log("Linked and activated unlinked session:", unlinkedSession.id);
             } else {
-              await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, startedAt);
+              sessionForHostLog = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, startedAt);
             }
           }
+
+          await recordHostJoin(supabase, sessionForHostLog, license, hostId, meetingUuidTop, meetingIdTop, startedAt, event.event);
         } else {
           console.log("No license found for host_id:", hostId);
         }
@@ -565,6 +809,7 @@ Deno.serve(async (req) => {
 
           // Auto-mark attendance for each ended session
           for (const session of (liveSessions || [])) {
+            await recordHostLeave(supabase, session, license, hostId, meetingUuidTop, meetingIdTop, endedAt, event.event);
             if (!session.teacher_id) continue;
 
             // Resolve scheduled duration from linked schedule/assignment
@@ -707,11 +952,6 @@ Deno.serve(async (req) => {
           break;
         }
 
-        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
-          console.log("Host/room self-join ignored for attendance log:", pName, pEmail);
-          break;
-        }
-
         // Step 2: Find the active live OR scheduled session for this license
         const joinTime = new Date(participant?.join_time || eventTime(event));
         const session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, joinTime.toISOString());
@@ -845,11 +1085,6 @@ Deno.serve(async (req) => {
 
         if (!license) { console.log("No license for host:", hostId); break; }
 
-        if (isHostParticipant(pName, pEmail, license.zoom_email)) {
-          console.log("Host/room self-leave ignored for attendance log:", pName, pEmail);
-          break;
-        }
-
         const leaveTime = new Date(participant?.leave_time || eventTime(event));
 
         // Find session by meeting UUID first, then by recent active room.
@@ -857,7 +1092,7 @@ Deno.serve(async (req) => {
         if (meetingUuidTop) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
             .eq("zoom_meeting_uuid", meetingUuidTop)
             .in("status", ["live", "scheduled", "completed"])
             .order("actual_start", { ascending: false })
@@ -869,7 +1104,7 @@ Deno.serve(async (req) => {
         if (!session) {
           const { data } = await supabase
             .from("live_sessions")
-            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+            .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
             .eq("license_id", license.id)
             .in("status", ["live", "scheduled", "completed"])
             .gte("created_at", new Date(leaveTime.getTime() - 2 * 60 * 60 * 1000).toISOString())
@@ -881,6 +1116,10 @@ Deno.serve(async (req) => {
 
         if (!session) {
           session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, leaveTime.toISOString());
+        }
+
+        if (session) {
+          session = await applyScheduledOwnerToSession(supabase, session, leaveTime.toISOString());
         }
 
         if (!session) {
@@ -1040,7 +1279,7 @@ Deno.serve(async (req) => {
         if (!session) {
           const { data: license } = await supabase
             .from("zoom_licenses")
-            .select("id")
+            .select("id, zoom_email")
             .eq("host_id", hostId)
             .maybeSingle();
           if (license) {

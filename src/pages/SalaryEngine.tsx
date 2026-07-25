@@ -34,6 +34,22 @@ const MONTHS = [
   { value: '11', label: 'November' }, { value: '12', label: 'December' },
 ];
 
+async function mergeProfileSensitiveRows(profiles: any[]) {
+  const profileIds = profiles.map((profile: any) => profile.id).filter(Boolean);
+  if (profileIds.length === 0) return profiles;
+
+  const { data: sensitiveRows } = await (supabase as any)
+    .from('profile_sensitive_data')
+    .select('user_id, whatsapp_number, bank_name, bank_account_title, bank_account_number, bank_iban')
+    .in('user_id', profileIds);
+  const sensitiveByUser = new Map<string, any>((sensitiveRows || []).map((row: any) => [row.user_id, row] as [string, any]));
+
+  return profiles.map((profile: any) => ({
+    ...profile,
+    ...(sensitiveByUser.get(profile.id) ?? {}),
+  }));
+}
+
 const now = new Date();
 const currentSalaryMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -148,8 +164,8 @@ export default function SalaryEngine() {
     queryFn: async () => {
       const { data: roleRows } = await supabase.from('user_roles').select('user_id').eq('role', 'teacher');
       if (!roleRows?.length) return [];
-      const { data } = await supabase.from('profiles').select('id, full_name, email, whatsapp_number, country, city, bank_name, bank_account_title, bank_account_number, bank_iban').in('id', roleRows.map(r => r.user_id)).is('archived_at', null).order('full_name');
-      return data || [];
+      const { data } = await supabase.from('profiles').select('id, full_name, email, country, city').in('id', roleRows.map(r => r.user_id)).is('archived_at', null).order('full_name');
+      return mergeProfileSensitiveRows(data || []);
     },
   });
 
@@ -177,11 +193,11 @@ export default function SalaryEngine() {
     queryFn: async () => {
       if (!staffUserIds.length) return [];
       const { data } = await supabase.from('profiles')
-        .select('id, full_name, email, whatsapp_number, country, city, bank_name, bank_account_title, bank_account_number, bank_iban')
+        .select('id, full_name, email, country, city')
         .in('id', staffUserIds)
         .is('archived_at', null)
         .order('full_name');
-      return data || [];
+      return mergeProfileSensitiveRows(data || []);
     },
     enabled: staffUserIds.length > 0,
   });

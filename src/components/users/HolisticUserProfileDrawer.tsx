@@ -84,9 +84,18 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     queryKey: ['holistic-profile', userId],
     queryFn: async () => {
       if (!userId) return null;
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, default_payout_rate, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
+        .eq('id', userId)
+        .maybeSingle();
       if (error) throw error;
-      return data as any;
+      const { data: sensitive } = await (supabase as any)
+        .from('profile_sensitive_data')
+        .select('bank_account_number, bank_iban, bank_name, bank_account_title, gov_id_number, gov_id_doc_url, emergency_contact_phone, whatsapp_number, date_of_birth')
+        .eq('user_id', userId)
+        .maybeSingle();
+      return { ...(data as any), ...(sensitive || {}) };
     },
     enabled: !!userId && open,
   });
@@ -215,7 +224,6 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
       const payload = {
         full_name: form.full_name,
         display_name: form.display_name,
-        date_of_birth: form.date_of_birth,
         gender: form.gender,
         avatar_url: form.avatar_url,
         nationality: form.nationality,
@@ -225,7 +233,6 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         special_needs: form.special_needs,
         learning_goals: form.learning_goals,
         email: form.email,
-        whatsapp_number: form.whatsapp_number,
         phone: form.phone,
         country: form.country,
         city: form.city,
@@ -233,13 +240,10 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         preferred_contact_method: form.preferred_contact_method,
         preferred_language: form.preferred_language,
         gov_id_type: form.gov_id_type,
-        gov_id_number: form.gov_id_number,
-        gov_id_doc: form.gov_id_doc,
         gov_id_verified: form.gov_id_verified,
         account_status: form.account_status,
         guardian_type: form.guardian_type,
         emergency_contact_name: form.emergency_contact_name,
-        emergency_contact_phone: form.emergency_contact_phone,
         force_password_reset: form.force_password_reset,
         age: computedAge,
         ...(form.gov_id_verified && !profile?.gov_id_verified ? {
@@ -247,8 +251,20 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
           gov_id_verified_at: new Date().toISOString(),
         } : {}),
       };
-      const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
+      const sensitivePayload = {
+        user_id: userId,
+        date_of_birth: form.date_of_birth || null,
+        whatsapp_number: form.whatsapp_number || null,
+        gov_id_number: form.gov_id_number || null,
+        gov_id_doc_url: form.gov_id_doc_url || form.gov_id_doc || null,
+        emergency_contact_phone: form.emergency_contact_phone || null,
+      };
+      const [{ error }, { error: sensitiveError }] = await Promise.all([
+        supabase.from('profiles').update(payload).eq('id', userId),
+        (supabase as any).from('profile_sensitive_data').upsert(sensitivePayload, { onConflict: 'user_id' }),
+      ]);
       if (error) throw error;
+      if (sensitiveError) throw sensitiveError;
     },
     onSuccess: () => {
       toast({ title: 'Profile saved' });
