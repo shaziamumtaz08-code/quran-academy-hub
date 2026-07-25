@@ -101,17 +101,21 @@ export default function ZoomManagement() {
     },
   });
 
+  // Shares the query key with TeacherZoomAccountsPanel so linking/deleting an
+  // account (which invalidates 'zoom-accounts-list') also refreshes this badge.
   const { data: zoomAccounts } = useQuery({
-    queryKey: ['zoom-accounts-count'],
+    queryKey: ['zoom-accounts-list'],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, is_active, zoom_account_email');
+        .select('id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, created_at, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name, email)')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
     refetchInterval: 30000,
   });
+
 
   const { data: licenses, isLoading: licensesLoading } = useQuery({
     queryKey: ['zoom-licenses-management'],
