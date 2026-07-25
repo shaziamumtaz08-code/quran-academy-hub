@@ -21,6 +21,7 @@ import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
+import { ensureFreshSession } from '@/lib/ensureSession';
 
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
@@ -435,6 +436,7 @@ export function StudentDashboard() {
     const tab = reserveTab();
     try {
       setJoining(true);
+      await ensureFreshSession();
       const { data, error } = await supabase.functions.invoke('zoom-join-class', {
         body: {
           teacherId: assignment.teacher_id,
