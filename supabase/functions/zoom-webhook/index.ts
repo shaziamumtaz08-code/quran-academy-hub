@@ -534,7 +534,7 @@ async function handleDedicatedAccountEvent(
       if (dup) return;
       // Identity resolution — same routine as pooled path
       const { matchedUserId, matchedRole } = await resolveParticipantIdentity(
-        supabase, session, pName, pEmail, account.zoom_account_email,
+        supabase, session, pName, pEmail, account.zoom_account_email, hostName,
       );
       await insertZoomLog(supabase, {
         session_id: session.id,
