@@ -1621,6 +1621,10 @@ Deno.serve(async (req) => {
             });
           }
         }
+
+        if (session?.id) {
+          await closeSessionIfEmpty(supabase, session.id, leaveTime.toISOString());
+        }
         break;
       }
 
