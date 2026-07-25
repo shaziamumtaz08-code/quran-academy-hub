@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     return jsonResp({
       ready: true,
       sessionId: session.id,
-      joinUrl: license.meeting_link,
+      joinUrl: appendUname(license.meeting_link),
     });
   } catch (e) {
     return jsonResp({ error: e instanceof Error ? e.message : String(e) }, 500);
