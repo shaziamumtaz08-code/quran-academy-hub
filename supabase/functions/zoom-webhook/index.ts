@@ -485,7 +485,7 @@ async function findOrCreateZoomSession(
       query = meetingUuid ? query.eq("zoom_meeting_uuid", meetingUuid) : query.eq("license_id", licenseId);
 
       const { data: existingSession } = await query.maybeSingle();
-      if (existingSession) return applyScheduledOwnerToSession(supabase, existingSession, startTime);
+      if (existingSession) return existingSession;
     }
     console.error("Could not create monitor session for Zoom webhook:", error);
     return null;
