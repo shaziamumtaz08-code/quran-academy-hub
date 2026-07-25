@@ -187,6 +187,26 @@ export default function LiveClasses() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`live-classes-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "live_sessions" },
+        () => { load(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "zoom_licenses" },
+        () => { load(); },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const handleJoin = async (row: Row) => {
     if (!user?.id) return;
     setJoiningKey(row.key);
@@ -243,9 +263,8 @@ export default function LiveClasses() {
           const endsAt = startedAt + r.durationMin * 60_000 + JOIN_TAIL_MS;
           const opensAt = startedAt - JOIN_LEAD_MS;
           const withinWindow = now >= opensAt && now <= endsAt;
-          const hasLink = !!r.meetingLink;
           const isCompleted = r.status === "completed";
-          const canJoin = withinWindow && !isCompleted && (hasLink || role === "teacher");
+          const canJoin = withinWindow && !isCompleted;
 
           const other = role === "teacher"
             ? (r.studentName || "Group class")
