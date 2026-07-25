@@ -101,6 +101,18 @@ export default function ZoomManagement() {
     },
   });
 
+  const { data: zoomAccounts } = useQuery({
+    queryKey: ['zoom-accounts-count'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('zoom_accounts')
+        .select('id, is_active, zoom_account_email');
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
   const { data: licenses, isLoading: licensesLoading } = useQuery({
     queryKey: ['zoom-licenses-management'],
     queryFn: async () => {
