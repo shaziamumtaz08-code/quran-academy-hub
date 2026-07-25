@@ -1,7 +1,6 @@
-// Validates a single Zoom account's S2S OAuth setup end-to-end BEFORE
-// adding it to the license pool. Used as "step zero" per the 10-account
-// rollout plan — surfaces token minting, account tier, host_id lookup,
-// and the exact webhook URL the admin must paste into the Marketplace app.
+// Validates a single Zoom account's S2S OAuth setup end-to-end and, when
+// teacher_id + tier are provided, saves the validated account to zoom_accounts
+// as the teacher's dedicated Zoom account (replacing shared-pool assignment).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
@@ -15,6 +14,10 @@ interface Body {
   client_id: string;
   client_secret: string;
   zoom_email: string;
+  teacher_id?: string;
+  tier?: "free" | "licensed";
+  save?: boolean;
+  personal_meeting_link?: string;
 }
 
 Deno.serve(async (req) => {
@@ -22,9 +25,7 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
-    }
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -36,7 +37,6 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
 
-    // Admin gate — super_admin OR admin OR admin_division
     const adminClient = createClient(supabaseUrl, serviceKey);
     const { data: roles } = await adminClient
       .from("user_roles")
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (!allowed) return json({ error: "Admin access required" }, 403);
 
     const body: Body = await req.json().catch(() => ({} as Body));
-    const { account_id, client_id, client_secret, zoom_email } = body;
+    const { account_id, client_id, client_secret, zoom_email, teacher_id, tier, save, personal_meeting_link } = body;
     if (!account_id || !client_id || !client_secret || !zoom_email) {
       return json({
         step: "input",
@@ -99,31 +99,67 @@ Deno.serve(async (req) => {
     const hostId = userBody.id;
     const planType = userBody.type; // 1=Basic (free), 2=Licensed, 3=On-prem
     const planLabel = planType === 1 ? "Basic (free)" : planType === 2 ? "Licensed (paid)" : `Type ${planType}`;
+    const resolvedTier: "free" | "licensed" = planType === 2 ? "licensed" : "free";
+    const personalMeetingUrl = userBody.personal_meeting_url || null;
     checks.push({
       step: "user_lookup",
       ok: true,
       detail: `host_id=${hostId} plan=${planLabel} tz=${userBody.timezone || "?"}`,
-      data: { host_id: hostId, plan_type: planType, plan_label: planLabel, timezone: userBody.timezone, first_name: userBody.first_name, last_name: userBody.last_name },
+      data: { host_id: hostId, plan_type: planType, plan_label: planLabel, timezone: userBody.timezone, first_name: userBody.first_name, last_name: userBody.last_name, personal_meeting_url: personalMeetingUrl },
     });
 
-    // STEP 3: Check webhook subscription capability (best-effort — S2S app inspection isn't exposed via API,
-    // so we surface the webhook URL the admin must configure and let them send a test event).
     const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || "";
     const webhookUrl = `${supabaseUrl}/functions/v1/zoom-webhook`;
     checks.push({
       step: "webhook_setup",
       ok: true,
-      detail: "Manual step: paste this URL as the Event Notification Endpoint in your Marketplace app and subscribe to meeting.participant_joined / meeting.participant_left / meeting.ended events. Then click 'Send test event' in Zoom.",
+      detail: "Manual step: paste this URL as the Event Notification Endpoint in your Marketplace app and subscribe to meeting.started/ended, participant_joined/left, recording.completed. Then click 'Send test event' in Zoom.",
       data: { webhook_url: webhookUrl, project_ref: projectRef },
     });
 
+    // STEP 4 (optional): Save as a teacher's dedicated zoom account
+    let saved: any = null;
+    if (save && teacher_id) {
+      const finalTier: "free" | "licensed" = tier || resolvedTier;
+      const meetingLink = personal_meeting_link || personalMeetingUrl;
+      const upsertPayload = {
+        teacher_id,
+        zoom_account_email: zoom_email,
+        zoom_user_id: hostId,
+        tier: finalTier,
+        meeting_link: meetingLink,
+        is_active: true,
+        last_validated_at: new Date().toISOString(),
+        zoom_account_id_cred: account_id,
+        zoom_client_id: client_id,
+        zoom_client_secret: client_secret,
+      };
+      const { data: upserted, error: upErr } = await adminClient
+        .from("zoom_accounts")
+        .upsert(upsertPayload, { onConflict: "teacher_id,tier" })
+        .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at")
+        .maybeSingle();
+      if (upErr) {
+        checks.push({ step: "save_account", ok: false, detail: upErr.message });
+      } else {
+        saved = upserted;
+        checks.push({ step: "save_account", ok: true, detail: `Saved as dedicated ${finalTier} account for teacher.` });
+      }
+    }
+
     return json({
       ok: true,
-      verdict: `PASS. ${planLabel} account. Ready to add to license pool once you confirm the webhook test event arrives (check Join Logs tab).`,
+      verdict: saved
+        ? `PASS. ${planLabel} account saved as teacher's dedicated Zoom account.`
+        : `PASS. ${planLabel} account. Ready to save as a teacher's dedicated Zoom account.`,
       checks,
+      saved,
       resolved: {
         host_id: hostId,
         plan_label: planLabel,
+        plan_type: planType,
+        resolved_tier: resolvedTier,
+        personal_meeting_url: personalMeetingUrl,
         webhook_url: webhookUrl,
       },
     });

@@ -5140,6 +5140,7 @@ export type Database = {
           student_id: string | null
           teacher_id: string
           updated_at: string
+          zoom_account_id: string | null
           zoom_deleted_at: string | null
           zoom_meeting_uuid: string | null
         }
@@ -5169,6 +5170,7 @@ export type Database = {
           student_id?: string | null
           teacher_id: string
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_deleted_at?: string | null
           zoom_meeting_uuid?: string | null
         }
@@ -5198,6 +5200,7 @@ export type Database = {
           student_id?: string | null
           teacher_id?: string
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_deleted_at?: string | null
           zoom_meeting_uuid?: string | null
         }
@@ -5235,6 +5238,20 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -10858,6 +10875,72 @@ export type Database = {
           },
         ]
       }
+      zoom_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_validated_at: string | null
+          meeting_link: string | null
+          notes: string | null
+          teacher_id: string
+          tier: Database["public"]["Enums"]["zoom_account_tier"]
+          updated_at: string
+          zoom_account_email: string
+          zoom_account_id_cred: string | null
+          zoom_client_id: string | null
+          zoom_client_secret: string | null
+          zoom_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_validated_at?: string | null
+          meeting_link?: string | null
+          notes?: string | null
+          teacher_id: string
+          tier?: Database["public"]["Enums"]["zoom_account_tier"]
+          updated_at?: string
+          zoom_account_email: string
+          zoom_account_id_cred?: string | null
+          zoom_client_id?: string | null
+          zoom_client_secret?: string | null
+          zoom_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_validated_at?: string | null
+          meeting_link?: string | null
+          notes?: string | null
+          teacher_id?: string
+          tier?: Database["public"]["Enums"]["zoom_account_tier"]
+          updated_at?: string
+          zoom_account_email?: string
+          zoom_account_id_cred?: string | null
+          zoom_client_id?: string | null
+          zoom_client_secret?: string | null
+          zoom_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_accounts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_accounts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zoom_attendance_logs: {
         Row: {
           action: Database["public"]["Enums"]["attendance_action"]
@@ -10871,6 +10954,7 @@ export type Database = {
           timestamp: string
           total_duration_minutes: number | null
           user_id: string | null
+          zoom_account_id: string | null
           zoom_event_type: string | null
           zoom_host_id: string | null
           zoom_license_id: string | null
@@ -10889,6 +10973,7 @@ export type Database = {
           timestamp?: string
           total_duration_minutes?: number | null
           user_id?: string | null
+          zoom_account_id?: string | null
           zoom_event_type?: string | null
           zoom_host_id?: string | null
           zoom_license_id?: string | null
@@ -10907,6 +10992,7 @@ export type Database = {
           timestamp?: string
           total_duration_minutes?: number | null
           user_id?: string | null
+          zoom_account_id?: string | null
           zoom_event_type?: string | null
           zoom_host_id?: string | null
           zoom_license_id?: string | null
@@ -10919,6 +11005,20 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_attendance_logs_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_attendance_logs_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts_safe"
             referencedColumns: ["id"]
           },
           {
@@ -11054,6 +11154,63 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Relationships: []
+      }
+      zoom_accounts_safe: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          last_validated_at: string | null
+          meeting_link: string | null
+          notes: string | null
+          teacher_id: string | null
+          tier: Database["public"]["Enums"]["zoom_account_tier"] | null
+          updated_at: string | null
+          zoom_account_email: string | null
+          zoom_user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_validated_at?: string | null
+          meeting_link?: string | null
+          notes?: string | null
+          teacher_id?: string | null
+          tier?: Database["public"]["Enums"]["zoom_account_tier"] | null
+          updated_at?: string | null
+          zoom_account_email?: string | null
+          zoom_user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_validated_at?: string | null
+          meeting_link?: string | null
+          notes?: string | null
+          teacher_id?: string | null
+          tier?: Database["public"]["Enums"]["zoom_account_tier"] | null
+          updated_at?: string | null
+          zoom_account_email?: string | null
+          zoom_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_accounts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_accounts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -11520,6 +11677,7 @@ export type Database = {
         | "clarification_required"
       primary_marker: "rukus" | "pages" | "lines"
       session_status: "scheduled" | "live" | "frozen" | "completed"
+      zoom_account_tier: "free" | "licensed"
       zoom_license_status: "available" | "busy"
     }
     CompositeTypes: {
@@ -11748,6 +11906,7 @@ export const Constants = {
       ],
       primary_marker: ["rukus", "pages", "lines"],
       session_status: ["scheduled", "live", "frozen", "completed"],
+      zoom_account_tier: ["free", "licensed"],
       zoom_license_status: ["available", "busy"],
     },
   },

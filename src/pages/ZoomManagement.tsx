@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, Pencil, Shield, ShieldOff } from 'lucide-react';
+import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, Pencil, Shield, ShieldOff, ShieldCheck } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
+import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { AlertTriangle } from 'lucide-react';
 
 function LiveTimer({ startTime }: { startTime: string }) {
@@ -40,7 +41,7 @@ export default function ZoomManagement() {
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
-  const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
+  const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
   const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
   const [hostIdResults, setHostIdResults] = React.useState<Array<{ email: string; host_id: string | null; status: string; error?: string }> | null>(null);
@@ -357,7 +358,8 @@ export default function ZoomManagement() {
   const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
 
   const sectionButtons = [
-    { id: 'rooms' as const, label: 'Rooms', icon: Settings, count: totalCount },
+    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: 0 },
+    { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: totalCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
@@ -574,7 +576,10 @@ export default function ZoomManagement() {
           ))}
         </div>
 
-        {/* Rooms Section */}
+        {/* Teacher Zoom Accounts (dedicated) */}
+        {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
+
+        {/* Rooms Section (legacy shared pool) */}
         {activeSection === 'rooms' && (<>
           {/* Allocation Mode Settings */}
           <Card className="border-dashed">
