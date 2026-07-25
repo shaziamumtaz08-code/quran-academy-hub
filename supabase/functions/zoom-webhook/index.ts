@@ -725,6 +725,23 @@ Deno.serve(async (req) => {
     const meetingUuidTop = event.payload.object?.uuid || null;
     const meetingIdTop = event.payload.object?.id || null;
 
+    // DEDICATED-ACCOUNT FAST PATH — bypass shared-pool logic entirely when the
+    // host_id belongs to a teacher's dedicated zoom_accounts row.
+    const dedicatedAccount = await resolveDedicatedAccount(supabase, hostId);
+    if (dedicatedAccount) {
+      await handleDedicatedAccountEvent(supabase, event, dedicatedAccount, {
+        hostId,
+        meetingUuid: meetingUuidTop,
+        meetingId: meetingIdTop,
+        supabaseUrl,
+        supabaseServiceKey,
+      });
+      return new Response(JSON.stringify({ success: true, path: "dedicated_account" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     switch (event.event) {
       case "meeting.started": {
         console.log("Meeting started, host:", hostId);
