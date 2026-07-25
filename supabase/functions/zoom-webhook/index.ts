@@ -415,20 +415,20 @@ async function findOrCreateZoomSession(
   if (meetingUuid) {
     const { data: sessionByMeeting } = await supabase
       .from("live_sessions")
-        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
       .eq("zoom_meeting_uuid", meetingUuid)
         .in("status", ["live", "scheduled", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (sessionByMeeting) return sessionByMeeting;
+    if (sessionByMeeting) return applyScheduledOwnerToSession(supabase, sessionByMeeting, startTime);
   }
 
   const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
   const query = supabase
     .from("live_sessions")
-    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
     .eq("license_id", licenseId)
     .in("status", ["live", "scheduled"])
     .gte("created_at", recentCutoff)
@@ -444,35 +444,41 @@ async function findOrCreateZoomSession(
         .eq("id", activeSession.id)
         .is("zoom_meeting_uuid", null);
     }
-    return activeSession;
+    return applyScheduledOwnerToSession(supabase, { ...activeSession, zoom_meeting_uuid: meetingUuid || activeSession.zoom_meeting_uuid }, startTime);
   }
 
-  const teacherId = await getMonitorTeacherId(supabase, licenseId);
+  const scheduledMatch = await findScheduledClassForTime(supabase, startTime);
+  const teacherId = scheduledMatch?.assignment?.teacher_id || await getMonitorTeacherId(supabase, licenseId);
   if (!teacherId) {
     console.log("No teacher/admin available to create monitor session for license:", licenseId);
     return null;
   }
 
+  const sessionSource = scheduledMatch?.assignment?.teacher_id ? "schedule_match" : "zoom_monitor";
+
   const { data: createdSession, error } = await supabase
     .from("live_sessions")
     .insert({
       teacher_id: teacherId,
+      student_id: scheduledMatch?.assignment?.student_id || null,
+      assignment_id: scheduledMatch?.assignment?.id || null,
+      schedule_id: scheduledMatch?.schedule?.id || null,
       license_id: licenseId,
       scheduled_start: startTime,
       actual_start: startTime,
       status: "live",
       zoom_meeting_uuid: meetingUuid,
       recording_status: "not_recorded",
-      session_source: "zoom_monitor",
+      session_source: sessionSource,
     })
-    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id")
+    .select("id, teacher_id, actual_start, actual_end, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
     .single();
 
   if (error || !createdSession) {
     if (error?.code === "23505") {
       let query = supabase
         .from("live_sessions")
-        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id")
+        .select("id, teacher_id, actual_start, student_id, status, assignment_id, schedule_id, license_id, scheduled_start, session_source")
         .in("status", ["live", "scheduled"])
         .order("created_at", { ascending: false })
         .limit(1);
@@ -480,7 +486,7 @@ async function findOrCreateZoomSession(
       query = meetingUuid ? query.eq("zoom_meeting_uuid", meetingUuid) : query.eq("license_id", licenseId);
 
       const { data: existingSession } = await query.maybeSingle();
-      if (existingSession) return existingSession;
+      if (existingSession) return applyScheduledOwnerToSession(supabase, existingSession, startTime);
     }
     console.error("Could not create monitor session for Zoom webhook:", error);
     return null;
