@@ -22,6 +22,51 @@ function jsonResp(body: unknown, status = 200) {
   });
 }
 
+async function recordHostJoinIntent(
+  service: any,
+  params: {
+    sessionId: string;
+    userId: string;
+    licenseId: string | null;
+    displayName: string;
+    email: string | null;
+  },
+) {
+  const { data: existing } = await service
+    .from("zoom_attendance_logs")
+    .select("id")
+    .eq("session_id", params.sessionId)
+    .eq("user_id", params.userId)
+    .eq("role", "host")
+    .eq("action", "join_intent")
+    .is("leave_time", null)
+    .order("timestamp", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  const payload = {
+    session_id: params.sessionId,
+    user_id: params.userId,
+    action: "join_intent",
+    join_time: now,
+    timestamp: now,
+    participant_name: params.displayName,
+    participant_email: params.email,
+    role: "host",
+    zoom_license_id: params.licenseId,
+    zoom_event_type: "app.host_join_intent",
+  };
+
+  if (existing?.id) {
+    await service.from("zoom_attendance_logs").update(payload).eq("id", existing.id);
+    return;
+  }
+
+  const { error } = await service.from("zoom_attendance_logs").insert(payload);
+  if (error) console.error("Could not record host join intent", error);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -56,6 +101,7 @@ Deno.serve(async (req) => {
       (joinerProfile?.full_name && String(joinerProfile.full_name).trim()) ||
       (joinerProfile?.email && String(joinerProfile.email).split("@")[0]) ||
       "AQTA User";
+    const displayEmail = joinerProfile?.email ? String(joinerProfile.email).trim() : null;
 
     const appendUname = (url: string): string => {
       try {
@@ -163,6 +209,15 @@ Deno.serve(async (req) => {
         });
       }
       const row = Array.isArray(reserved) ? reserved[0] : reserved;
+      if (isTeacher) {
+        await recordHostJoinIntent(service, {
+          sessionId: session.id,
+          userId,
+          licenseId: row.license_id || null,
+          displayName,
+          email: displayEmail,
+        });
+      }
       return jsonResp({
         ready: true,
         sessionId: session.id,
@@ -181,6 +236,15 @@ Deno.serve(async (req) => {
         ready: false,
         sessionId: session.id,
         message: "Meeting link not available yet.",
+      });
+    }
+    if (isTeacher) {
+      await recordHostJoinIntent(service, {
+        sessionId: session.id,
+        userId,
+        licenseId: session.license_id || null,
+        displayName,
+        email: displayEmail,
       });
     }
     return jsonResp({
