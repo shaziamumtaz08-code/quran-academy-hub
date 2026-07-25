@@ -395,9 +395,8 @@ export function StudentDashboard() {
   const subjectName = assignment?.subject?.name || ctxTeacher?.subject_name || 'No subject assigned';
   const teacherInitial = (teacherName && teacherName !== '—' ? teacherName.charAt(0).toUpperCase() : 'T');
 
-  const meetingLink =
-    (liveSession as any)?.zoom_account?.meeting_link ||
-    (liveSession as any)?.license?.meeting_link;
+  const meetingLink = (liveSession as any)?.meeting_link;
+
 
   const isLive = !!(liveSession && meetingLink);
 
