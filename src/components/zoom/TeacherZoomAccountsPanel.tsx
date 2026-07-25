@@ -224,6 +224,8 @@ export function TeacherZoomAccountsPanel() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
+
       </CardHeader>
       <CardContent>
         {isLoading ? (
