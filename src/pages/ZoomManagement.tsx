@@ -357,7 +357,8 @@ export default function ZoomManagement() {
   const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
 
   const sectionButtons = [
-    { id: 'rooms' as const, label: 'Rooms', icon: Settings, count: totalCount },
+    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: 0 },
+    { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: totalCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
