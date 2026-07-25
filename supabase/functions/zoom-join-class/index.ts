@@ -131,11 +131,13 @@ Deno.serve(async (req) => {
     const roles = (roleRows || []).map((r: any) => r.role);
     const isTeacher = userId === p.teacherId && roles.includes("teacher");
     const isStudent = roles.includes("student");
+    const isParent = roles.includes("parent");
     const isAdmin = roles.includes("admin") || roles.includes("super_admin") || roles.includes("admin_academic") || roles.includes("admin_division");
 
-    if (!isTeacher && !isStudent && !isAdmin) {
+    if (!isTeacher && !isStudent && !isParent && !isAdmin) {
       return jsonResp({ error: "Not permitted" }, 403);
     }
+
 
     // Guard: student must own the assignment
     if (isStudent && !isAdmin && p.assignmentId) {
