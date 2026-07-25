@@ -11398,6 +11398,17 @@ export type Database = {
         Returns: string
       }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
+      get_safe_profiles: {
+        Args: { p_ids: string[] }
+        Returns: {
+          city: string
+          country: string
+          email: string
+          full_name: string
+          id: string
+          timezone: string
+        }[]
+      }
       get_schema_overview: { Args: never; Returns: Json }
       get_student_active_assignment_ids: {
         Args: { _student_id: string }

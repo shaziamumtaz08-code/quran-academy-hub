@@ -157,12 +157,21 @@ export function StudentDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(id, day_of_week, student_local_time, duration_minutes, is_active)')
+        .select('id, teacher_id, subject:subject_id(name), schedules(id, day_of_week, student_local_time, duration_minutes, is_active)')
         .eq('student_id', activeStudentId!)
         .eq('status', 'active');
-      return (data || []) as any[];
+      const rows = (data || []) as any[];
+      const ids = Array.from(new Set(rows.map((r) => r.teacher_id).filter(Boolean)));
+      if (ids.length) {
+        // Safe-column peer lookup (profiles peer reads go through this RPC).
+        const { data: safe } = await supabase.rpc('get_safe_profiles', { p_ids: ids as string[] });
+        const byId = new Map((safe as any[] | null || []).map((p: any) => [p.id, p]));
+        rows.forEach((r) => { r.teacher = byId.get(r.teacher_id) || null; });
+      }
+      return rows;
     },
   });
+
 
   // Pick the assignment whose next active schedule occurrence is soonest.
   const nextSlot = useMemo(() => {
