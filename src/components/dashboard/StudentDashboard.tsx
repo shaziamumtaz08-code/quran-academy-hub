@@ -189,27 +189,21 @@ export function StudentDashboard() {
 
   const assignment = nextSlot?.assignment || (assignments as any[])[0] || null;
 
-  // Live session for any of the student's active teachers.
-  const teacherIds = useMemo(
-    () => Array.from(new Set((assignments as any[]).map((a: any) => a.teacher_id).filter(Boolean))),
-    [assignments]
-  );
+  // Live session for any of the student's active teachers (RPC bypasses RLS gaps
+  // on live_sessions / zoom_accounts for students and parents).
   const { data: liveSession } = useQuery({
-    queryKey: ['sd-live', teacherIds.join(',')],
-    enabled: teacherIds.length > 0,
-    refetchInterval: 30000,
+    queryKey: ['sd-live', activeStudentId],
+    enabled: !!activeStudentId,
+    refetchInterval: 20000,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('live_sessions')
-        .select('id, status, teacher_id, assignment_id, license:license_id(meeting_link), zoom_account:zoom_account_id(meeting_link)')
-        .in('teacher_id', teacherIds as string[])
-        .eq('status', 'live')
-        .order('actual_start', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data as any;
+      const { data } = await supabase.rpc('get_student_live_class', {
+        p_student_id: activeStudentId!,
+      });
+      const row = (data as any[])?.[0];
+      return row ? { ...row, id: row.session_id } : null;
     },
   });
+
 
   // Fallback teacher/subject via SECURITY DEFINER RPC (covers parent-role RLS gaps).
   const { data: dashCtx } = useQuery({
