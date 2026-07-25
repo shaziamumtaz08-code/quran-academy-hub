@@ -422,7 +422,7 @@ async function findOrCreateZoomSession(
       .limit(1)
       .maybeSingle();
 
-    if (sessionByMeeting) return applyScheduledOwnerToSession(supabase, sessionByMeeting, startTime);
+    if (sessionByMeeting) return sessionByMeeting;
   }
 
   const recentCutoff = new Date(new Date(startTime).getTime() - 2 * 60 * 60 * 1000).toISOString();
@@ -519,22 +519,56 @@ async function recordHostJoin(
 ) {
   if (!session?.id) return;
   const hostEmail = license.zoom_email || "";
-  const hostName = hostEmail || "Meeting host";
+  let hostName = hostEmail || "Meeting host";
+  let resolvedHostEmail = hostEmail;
+
+  const { data: teacherProfile } = session.teacher_id
+    ? await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", session.teacher_id)
+      .maybeSingle()
+    : { data: null } as any;
+
+  if (teacherProfile?.full_name) hostName = teacherProfile.full_name;
+  if (teacherProfile?.email) resolvedHostEmail = teacherProfile.email;
 
   const { data: existing } = await supabase
     .from("zoom_attendance_logs")
-    .select("id, participant_name, participant_email")
+    .select("id, user_id, participant_name, participant_email, zoom_event_type")
     .eq("session_id", session.id)
     .eq("action", "join_intent")
     .is("leave_time", null)
     .eq("role", "host")
     .limit(10);
 
-  if ((existing || []).some((entry: any) => sameParticipant(entry, hostName, hostEmail))) return;
+  const existingHost = (existing || []).find((entry: any) =>
+    (session.teacher_id && entry.user_id === session.teacher_id) ||
+    entry.zoom_event_type === "app.host_join_intent" ||
+    sameParticipant(entry, hostName, resolvedHostEmail) ||
+    sameParticipant(entry, license.zoom_email || "Meeting host", license.zoom_email || "")
+  );
+
+  if (existingHost) {
+    await supabase.from("zoom_attendance_logs").update({
+      user_id: existingHost.user_id || session.teacher_id || null,
+      join_time: existingHost.join_time || joinedAt,
+      timestamp: existingHost.timestamp || joinedAt,
+      participant_name: existingHost.participant_name || hostName,
+      participant_email: existingHost.participant_email || resolvedHostEmail,
+      role: "host",
+      zoom_host_id: hostId,
+      zoom_meeting_uuid: meetingUuid,
+      zoom_meeting_id: meetingId,
+      zoom_event_type: eventName,
+      zoom_license_id: license.id,
+    }).eq("id", existingHost.id);
+    return;
+  }
 
   await insertZoomLog(supabase, {
     session_id: session.id,
-    user_id: null,
+    user_id: session.teacher_id || null,
     action: "join_intent",
     join_time: joinedAt,
     timestamp: joinedAt,
@@ -561,12 +595,22 @@ async function recordHostLeave(
 ) {
   if (!session?.id) return;
   const hostEmail = license.zoom_email || "";
-  const hostName = hostEmail || "Meeting host";
+  let hostName = hostEmail || "Meeting host";
+  let resolvedHostEmail = hostEmail;
+  const { data: teacherProfile } = session.teacher_id
+    ? await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", session.teacher_id)
+      .maybeSingle()
+    : { data: null } as any;
+  if (teacherProfile?.full_name) hostName = teacherProfile.full_name;
+  if (teacherProfile?.email) resolvedHostEmail = teacherProfile.email;
   const leaveTime = new Date(leftAt);
 
   const { data: openJoins } = await supabase
     .from("zoom_attendance_logs")
-    .select("id, user_id, join_time, total_duration_minutes, participant_name, participant_email")
+    .select("id, user_id, join_time, total_duration_minutes, participant_name, participant_email, zoom_event_type")
     .eq("session_id", session.id)
     .eq("action", "join_intent")
     .eq("role", "host")
@@ -574,13 +618,18 @@ async function recordHostLeave(
     .order("timestamp", { ascending: false })
     .limit(10);
 
-  const matchedLog = (openJoins || []).find((entry: any) => sameParticipant(entry, hostName, hostEmail));
+  const matchedLog = (openJoins || []).find((entry: any) =>
+    (session.teacher_id && entry.user_id === session.teacher_id) ||
+    entry.zoom_event_type === "app.host_join_intent" ||
+    sameParticipant(entry, hostName, resolvedHostEmail) ||
+    sameParticipant(entry, license.zoom_email || "Meeting host", license.zoom_email || "")
+  );
   const existingLeave = await findExistingLeaveLog(supabase, {
     sessionId: session.id,
     licenseId: license.id,
     meetingUuid,
     participantName: hostName,
-    participantEmail: hostEmail,
+    participantEmail: resolvedHostEmail,
     leaveTime,
   });
   if (existingLeave) return;
@@ -595,6 +644,9 @@ async function recordHostLeave(
     await supabase.from("zoom_attendance_logs").update({
       leave_time: leftAt,
       total_duration_minutes: totalDuration,
+      user_id: matchedLog.user_id || session.teacher_id || null,
+      participant_name: matchedLog.participant_name || hostName,
+      participant_email: matchedLog.participant_email || resolvedHostEmail,
       zoom_host_id: hostId,
       zoom_meeting_uuid: meetingUuid,
       zoom_meeting_id: meetingId,
@@ -604,14 +656,14 @@ async function recordHostLeave(
 
   await insertZoomLog(supabase, {
     session_id: session.id,
-    user_id: null,
+    user_id: matchedLog?.user_id || session.teacher_id || null,
     action: "leave",
     join_time: joinTime,
     leave_time: leftAt,
     timestamp: leftAt,
     total_duration_minutes: totalDuration,
     participant_name: hostName,
-    participant_email: hostEmail,
+    participant_email: resolvedHostEmail,
     role: "host",
     zoom_host_id: hostId,
     zoom_meeting_uuid: meetingUuid,
