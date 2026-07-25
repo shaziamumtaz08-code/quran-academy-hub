@@ -45,6 +45,29 @@ Deno.serve(async (req) => {
     const p = (await req.json()) as Payload;
     if (!p.teacherId) return jsonResp({ error: "teacherId required" }, 400);
 
+    // Fetch the joining user's registered LMS display name so Zoom shows the
+    // correct participant name natively (fixes host/owner + SHAZIA vs Shazia Mumtaz).
+    const { data: joinerProfile } = await service
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", userId)
+      .maybeSingle();
+    const displayName =
+      (joinerProfile?.full_name && String(joinerProfile.full_name).trim()) ||
+      (joinerProfile?.email && String(joinerProfile.email).split("@")[0]) ||
+      "AQTA User";
+
+    const appendUname = (url: string): string => {
+      try {
+        const u = new URL(url);
+        u.searchParams.set("uname", displayName);
+        return u.toString();
+      } catch {
+        const sep = url.includes("?") ? "&" : "?";
+        return `${url}${sep}uname=${encodeURIComponent(displayName)}`;
+      }
+    };
+
     // Determine role
     const { data: roleRows } = await service.from("user_roles").select("role").eq("user_id", userId);
     const roles = (roleRows || []).map((r: any) => r.role);
