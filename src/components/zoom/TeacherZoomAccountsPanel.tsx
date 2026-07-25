@@ -145,10 +145,16 @@ export function TeacherZoomAccountsPanel() {
             Each teacher can have one Free (1:1) and one Licensed (Group) account.
           </CardDescription>
         </div>
+        <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
+          <Upload className="h-4 w-4" /> Bulk Link
+        </Button>
+        <BulkLinkZoomAccountsDialog open={bulkOpen} onOpenChange={setBulkOpen} teachers={(teachers || []) as any} />
         <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Link Account</Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Link Dedicated Zoom Account</DialogTitle>
