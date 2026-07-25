@@ -11419,6 +11419,17 @@ export type Database = {
         Args: { _student_id: string }
         Returns: string[]
       }
+      get_student_live_class: {
+        Args: { p_student_id: string }
+        Returns: {
+          actual_start: string
+          assignment_id: string
+          meeting_link: string
+          session_id: string
+          teacher_id: string
+          teacher_name: string
+        }[]
+      }
       get_student_profile_for_teacher: {
         Args: { _student_id: string }
         Returns: {
