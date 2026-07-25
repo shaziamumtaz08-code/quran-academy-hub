@@ -73,12 +73,11 @@ export default function TasksAndPolls() {
         const { data: responses } = await supabase.from('poll_responses').select('poll_id, option_id').eq('user_id', user.id).in('poll_id', pollIds);
         userVotes = Object.fromEntries((responses || []).map(r => [r.poll_id, r.option_id]));
       }
-      // Get vote counts
-      const optionIds = (pollsData || []).flatMap(p => (p.poll_options || []).map((o: any) => o.id));
+      // Get aggregate vote counts (individual votes stay private)
       let voteCounts: Record<string, number> = {};
-      if (optionIds.length) {
-        const { data: counts } = await supabase.from('poll_responses').select('option_id').in('option_id', optionIds);
-        (counts || []).forEach(c => { voteCounts[c.option_id] = (voteCounts[c.option_id] || 0) + 1; });
+      if (pollIds.length) {
+        const { data: counts } = await supabase.rpc('get_poll_option_counts', { _poll_ids: pollIds });
+        (counts || []).forEach((c: any) => { voteCounts[c.option_id] = Number(c.votes) || 0; });
       }
       return (pollsData || []).map(p => ({
         ...p,
