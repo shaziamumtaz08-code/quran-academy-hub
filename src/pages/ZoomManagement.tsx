@@ -351,14 +351,20 @@ export default function ZoomManagement() {
     },
   });
 
-  const availableCount = licenses?.filter(l => l.status === 'available').length || 0;
-  const busyCount = licenses?.filter(l => l.status === 'busy').length || 0;
-  const totalCount = licenses?.length || 0;
   const liveSessionsList = liveSessions?.filter((s: any) => s.status === 'live') || [];
   const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
 
+  // Rooms = dedicated teacher accounts + any remaining legacy pool licenses.
+  // "Live" is driven by actual live sessions, not by the legacy license.status
+  // flag (dedicated accounts never flip that flag, which is why the header used
+  // to read "0 Live" while a class was clearly running).
+  const totalCount = licenses?.length || 0;
+  const accountsCount = zoomAccounts?.length || 0;
+  const busyCount = liveSessionsList.length;
+  const availableCount = Math.max(0, totalCount + accountsCount - busyCount);
+
   const sectionButtons = [
-    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: 0 },
+    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
     { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: totalCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
