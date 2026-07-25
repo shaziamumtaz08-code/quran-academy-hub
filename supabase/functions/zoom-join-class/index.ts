@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       return jsonResp({
         ready: true,
         sessionId: session.id,
-        joinUrl: row.meeting_link,
+        joinUrl: appendUname(row.meeting_link),
       });
     }
 
