@@ -221,6 +221,7 @@ Deno.serve(async (req) => {
       return jsonResp({
         ready: true,
         sessionId: session.id,
+        licenseId: row.license_id || null,
         joinUrl: appendUname(row.meeting_link),
       });
     }
@@ -250,6 +251,7 @@ Deno.serve(async (req) => {
     return jsonResp({
       ready: true,
       sessionId: session.id,
+      licenseId: session.license_id || null,
       joinUrl: appendUname(license.meeting_link),
     });
   } catch (e) {
