@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Video, VideoOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
 
 interface StartClassButtonProps {
   sessionId?: string;
@@ -18,6 +19,8 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null);
+  const startTabRef = useRef<Window | null>(null);
+  const [rejoining, setRejoining] = useState(false);
 
   // Check if teacher has an active live session
   const { data: activeSession, isLoading: checkingSession } = useQuery({
@@ -39,10 +42,11 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         `)
         .eq('teacher_id', user.id)
         .eq('status', 'live')
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user?.id,
     refetchInterval: 30000,
@@ -167,15 +171,18 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         title: '✅ Class Started',
         description: 'Opening Zoom meeting...',
       });
-      
-      window.open(result.meetingLink, '_blank');
-      
+
+      navigateTab(startTabRef.current, result.meetingLink);
+      startTabRef.current = null;
+
       queryClient.invalidateQueries({ queryKey: ['active-session'] });
       queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
-      
+
       onSessionCreated?.(result.sessionId, result.meetingLink);
     },
     onError: (error: Error) => {
+      closeTab(startTabRef.current);
+      startTabRef.current = null;
       toast({
         title: 'Failed to Start Class',
         description: error.message,
@@ -230,30 +237,40 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         <Button
           variant="outline"
           className={cn("gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50", className)}
-          onClick={() => {
-            supabase.functions.invoke('zoom-join-class', {
-              body: {
-                teacherId: user?.id,
-                studentId: (activeSession as any).student_id || null,
-                assignmentId: (activeSession as any).assignment_id || null,
-                scheduleId: (activeSession as any).schedule_id || null,
-                scheduledStart: (activeSession as any).scheduled_start || new Date().toISOString(),
-                liveSessionId: activeSession.id,
-              },
-            }).then(({ data, error }) => {
+          disabled={rejoining}
+          onClick={async () => {
+            // Reserve the tab inside the click gesture so the popup blocker
+            // does not kill it after the edge-function round trip.
+            const tab = reserveTab();
+            setRejoining(true);
+            try {
+              const { data, error } = await supabase.functions.invoke('zoom-join-class', {
+                body: {
+                  teacherId: user?.id,
+                  studentId: (activeSession as any).student_id || null,
+                  assignmentId: (activeSession as any).assignment_id || null,
+                  scheduleId: (activeSession as any).schedule_id || null,
+                  scheduledStart: (activeSession as any).scheduled_start || new Date().toISOString(),
+                  liveSessionId: activeSession.id,
+                },
+              });
               if (error) throw error;
               const link = (data as any)?.joinUrl || (activeSession.license as any)?.meeting_link;
-              if (link) window.open(link, '_blank');
-            }).catch((error: Error) => {
+              if (!link) throw new Error((data as any)?.message || 'No Zoom room link available for your account.');
+              navigateTab(tab, link);
+            } catch (error: any) {
+              closeTab(tab);
               toast({
                 title: 'Failed to Rejoin Class',
-                description: error.message,
+                description: error?.message || 'Could not open the Zoom room.',
                 variant: 'destructive',
               });
-            });
+            } finally {
+              setRejoining(false);
+            }
           }}
         >
-          <Video className="h-4 w-4" />
+          {rejoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
           Rejoin Class
         </Button>
         <Button
@@ -277,7 +294,10 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
     <Button
       variant="default"
       className={cn("gap-2 bg-emerald-600 hover:bg-emerald-700", className)}
-      onClick={() => startClassMutation.mutate()}
+      onClick={() => {
+        startTabRef.current = reserveTab();
+        startClassMutation.mutate();
+      }}
       disabled={startClassMutation.isPending}
     >
       {startClassMutation.isPending ? (
