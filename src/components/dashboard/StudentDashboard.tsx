@@ -150,43 +150,59 @@ export function StudentDashboard() {
     })();
   const activePrayer = islamic?.prayers ? getActivePrayer(islamic.prayers, tz) : null;
 
-  // Next class assignment + schedules
-  const { data: assignment } = useQuery({
-    queryKey: ['sd-assignment', activeStudentId],
+  // All active assignments (a student may have multiple: Nazra + Tarbiyah, etc.)
+  const { data: assignments = [] } = useQuery({
+    queryKey: ['sd-assignments', activeStudentId],
     enabled: !!activeStudentId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(day_of_week, student_local_time, is_active)')
+        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(id, day_of_week, student_local_time, duration_minutes, is_active)')
         .eq('student_id', activeStudentId!)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
-      return data as any;
+        .eq('status', 'active');
+      return (data || []) as any[];
     },
   });
 
-  // Fallback teacher/subject via SECURITY DEFINER RPC (covers parent-role RLS gaps).
-  const { data: dashCtx } = useQuery({
-    queryKey: ['sd-ctx', activeStudentId],
-    enabled: !!activeStudentId,
-    queryFn: async () => {
-      const { data } = await (supabase as any).rpc('get_student_dashboard_context', { _student_id: activeStudentId });
-      return (data as any) || null;
-    },
-  });
+  // Pick the assignment whose next active schedule occurrence is soonest.
+  const nextSlot = useMemo(() => {
+    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const now = new Date();
+    let best: { assignment: any; schedule: any; when: Date; minsUntil: number } | null = null;
+    for (const a of (assignments as any[])) {
+      for (const s of (a?.schedules || [])) {
+        if (!s?.is_active || !s?.day_of_week || !s?.student_local_time) continue;
+        const dow = DAYS.indexOf(String(s.day_of_week).toLowerCase());
+        if (dow < 0) continue;
+        const [hh, mm] = String(s.student_local_time).split(':').map(Number);
+        const target = new Date(now);
+        const diff = (dow - now.getDay() + 7) % 7;
+        target.setDate(now.getDate() + diff);
+        target.setHours(hh, mm || 0, 0, 0);
+        if (target.getTime() <= now.getTime() - 60 * 60 * 1000) target.setDate(target.getDate() + 7);
+        const mins = Math.round((target.getTime() - now.getTime()) / 60000);
+        if (!best || mins < best.minsUntil) best = { assignment: a, schedule: s, when: target, minsUntil: mins };
+      }
+    }
+    return best;
+  }, [assignments]);
 
+  const assignment = nextSlot?.assignment || (assignments as any[])[0] || null;
 
-  // Live session for the assigned teacher
+  // Live session for any of the student's active teachers.
+  const teacherIds = useMemo(
+    () => Array.from(new Set((assignments as any[]).map((a: any) => a.teacher_id).filter(Boolean))),
+    [assignments]
+  );
   const { data: liveSession } = useQuery({
-    queryKey: ['sd-live', assignment?.teacher_id],
-    enabled: !!assignment?.teacher_id,
+    queryKey: ['sd-live', teacherIds.join(',')],
+    enabled: teacherIds.length > 0,
     refetchInterval: 30000,
     queryFn: async () => {
       const { data } = await supabase
         .from('live_sessions')
-        .select('id, status, license:license_id(meeting_link)')
-        .eq('teacher_id', assignment.teacher_id)
+        .select('id, status, teacher_id, assignment_id, license:license_id(meeting_link), zoom_account:zoom_account_id(meeting_link)')
+        .in('teacher_id', teacherIds as string[])
         .eq('status', 'live')
         .order('actual_start', { ascending: false })
         .limit(1)
@@ -194,6 +210,7 @@ export function StudentDashboard() {
       return data as any;
     },
   });
+
 
   // Attendance (recent + stats)
   const { data: attendance = [] } = useQuery({
