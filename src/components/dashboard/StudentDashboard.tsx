@@ -10,6 +10,7 @@ import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchIslamicDate } from '@/lib/islamicDate';
