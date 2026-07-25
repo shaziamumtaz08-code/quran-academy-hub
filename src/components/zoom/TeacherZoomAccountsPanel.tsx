@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload } from 'lucide-react';
 import { format } from 'date-fns';
+import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
+
 
 /**
  * Dedicated Zoom Accounts (per-teacher).
@@ -24,6 +26,8 @@ export function TeacherZoomAccountsPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = React.useState(false);
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+
   const [form, setForm] = React.useState({
     teacher_id: '',
     tier: 'free' as 'free' | 'licensed',
@@ -145,10 +149,16 @@ export function TeacherZoomAccountsPanel() {
             Each teacher can have one Free (1:1) and one Licensed (Group) account.
           </CardDescription>
         </div>
+        <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
+          <Upload className="h-4 w-4" /> Bulk Link
+        </Button>
+        <BulkLinkZoomAccountsDialog open={bulkOpen} onOpenChange={setBulkOpen} teachers={(teachers || []) as any} />
         <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Link Account</Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Link Dedicated Zoom Account</DialogTitle>
@@ -218,6 +228,8 @@ export function TeacherZoomAccountsPanel() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
+
       </CardHeader>
       <CardContent>
         {isLoading ? (
