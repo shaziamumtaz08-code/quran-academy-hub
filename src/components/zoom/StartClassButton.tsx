@@ -19,6 +19,8 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null);
+  const startTabRef = useRef<Window | null>(null);
+  const [rejoining, setRejoining] = useState(false);
 
   // Check if teacher has an active live session
   const { data: activeSession, isLoading: checkingSession } = useQuery({
