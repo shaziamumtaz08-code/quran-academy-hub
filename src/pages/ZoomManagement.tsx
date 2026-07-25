@@ -412,7 +412,9 @@ export default function ZoomManagement() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {licenses?.map((license, idx) => {
               const session = activeSessionsByLicense.get(license.id);
-              const isBusy = license.status === 'busy';
+              // A room is live if a session claims it, even when the legacy
+              // status flag was never flipped (dedicated-account flow).
+              const isBusy = license.status === 'busy' || Boolean(session);
               const statusColor = isBusy ? 'border-destructive/40 bg-destructive/5' : 'border-emerald-500/30 bg-emerald-500/5';
               return (
                 <Card key={license.id} className={cn("relative overflow-hidden transition-all hover:shadow-md", statusColor)}>
