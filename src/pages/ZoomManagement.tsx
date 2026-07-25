@@ -21,20 +21,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { AlertTriangle } from 'lucide-react';
 
-const isRoomSelfParticipant = (name?: string | null, email?: string | null, roomEmail?: string | null) => {
-  const normalizedName = (name || '').trim().toLowerCase();
-  const normalizedEmail = (email || '').trim().toLowerCase();
-  const normalizedRoomEmail = (roomEmail || '').trim().toLowerCase();
-  const roomLocalPart = normalizedRoomEmail.split('@')[0];
-
-  return Boolean(
-    (normalizedEmail && normalizedRoomEmail && normalizedEmail === normalizedRoomEmail) ||
-    (roomLocalPart && normalizedName === roomLocalPart) ||
-    normalizedName.includes('al-quran time class') ||
-    normalizedName.includes('al quran time class')
-  );
-};
-
 function LiveTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = React.useState(0);
   React.useEffect(() => {
@@ -144,9 +130,16 @@ export default function ZoomManagement() {
             return map;
           }
 
+          const existingHasSchedule = Boolean(existing.assignment_id || existing.schedule_id);
+          const sessionHasSchedule = Boolean(session.assignment_id || session.schedule_id);
+          if (sessionHasSchedule && !existingHasSchedule) {
+            map.set(key, session);
+            return map;
+          }
+
           const existingCreated = existing.created_at ? new Date(existing.created_at).getTime() : Number.MAX_SAFE_INTEGER;
           const sessionCreated = session.created_at ? new Date(session.created_at).getTime() : Number.MAX_SAFE_INTEGER;
-          if (sessionCreated < existingCreated) map.set(key, session);
+          if (sessionCreated < existingCreated && sessionHasSchedule === existingHasSchedule) map.set(key, session);
           return map;
         }, new Map<string, any>()).values()
       );
@@ -212,16 +205,9 @@ export default function ZoomManagement() {
     return map;
   }, [liveSessions]);
 
-  const roomEmailByLicense = React.useMemo(() => {
-    return new Map((licenses || []).map((license: any) => [license.id, license.zoom_email]));
-  }, [licenses]);
-
   const visibleAttendanceLogs = React.useMemo(() => {
-    return (attendanceLogs || []).filter((log: any) => {
-      const roomEmail = roomEmailByLicense.get(log.zoom_license_id);
-      return !isRoomSelfParticipant(log.participant_name, log.participant_email, roomEmail);
-    });
-  }, [attendanceLogs, roomEmailByLicense]);
+    return attendanceLogs || [];
+  }, [attendanceLogs]);
 
   const activeParticipantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
