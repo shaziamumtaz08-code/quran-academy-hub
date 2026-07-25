@@ -294,7 +294,10 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
     <Button
       variant="default"
       className={cn("gap-2 bg-emerald-600 hover:bg-emerald-700", className)}
-      onClick={() => startClassMutation.mutate()}
+      onClick={() => {
+        startTabRef.current = reserveTab();
+        startClassMutation.mutate();
+      }}
       disabled={startClassMutation.isPending}
     >
       {startClassMutation.isPending ? (
