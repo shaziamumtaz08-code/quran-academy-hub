@@ -11398,6 +11398,13 @@ export type Database = {
         Args: { _billing_month: string; _student_id: string }
         Returns: string
       }
+      get_poll_option_counts: {
+        Args: { _poll_ids: string[] }
+        Returns: {
+          option_id: string
+          votes: number
+        }[]
+      }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_safe_profiles: {
         Args: { p_ids: string[] }
@@ -11505,6 +11512,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_teaching_staff: { Args: { _uid: string }; Returns: boolean }
       is_ticket_participant: {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
