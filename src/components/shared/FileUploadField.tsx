@@ -16,6 +16,8 @@ interface FileUploadFieldProps {
   disabled?: boolean;
   hint?: string;
   onUploadStateChange?: (uploading: boolean) => void;
+  /** Optional folder prefix. If omitted, buckets with per-user RLS auto-derive `proofs/<uid>/`. */
+  pathPrefix?: string;
 }
 
 export function FileUploadField({
@@ -27,6 +29,7 @@ export function FileUploadField({
   disabled = false,
   hint = 'JPEG, PNG or PDF',
   onUploadStateChange,
+  pathPrefix,
 }: FileUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [linkInput, setLinkInput] = useState('');
@@ -47,7 +50,16 @@ export function FileUploadField({
     onUploadStateChange?.(true);
     try {
       const ext = file.name.split('.').pop();
-      const path = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      // Derive a folder prefix that satisfies per-user RLS policies.
+      // `payment-receipts` requires `proofs/<uid>/…`; other buckets can pass an explicit prefix.
+      let prefix = pathPrefix?.replace(/^\/+|\/+$/g, '') ?? '';
+      if (!prefix && bucket === 'payment-receipts') {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData?.user?.id;
+        if (uid) prefix = `proofs/${uid}`;
+      }
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const path = prefix ? `${prefix}/${filename}` : filename;
       const { error } = await supabase.storage.from(bucket).upload(path, file);
       if (error) throw error;
 
