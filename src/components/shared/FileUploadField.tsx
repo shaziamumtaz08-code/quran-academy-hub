@@ -29,6 +29,7 @@ export function FileUploadField({
   disabled = false,
   hint = 'JPEG, PNG or PDF',
   onUploadStateChange,
+  pathPrefix,
 }: FileUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [linkInput, setLinkInput] = useState('');
