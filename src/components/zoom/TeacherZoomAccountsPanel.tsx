@@ -26,6 +26,8 @@ export function TeacherZoomAccountsPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = React.useState(false);
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+
   const [form, setForm] = React.useState({
     teacher_id: '',
     tier: 'free' as 'free' | 'licensed',
