@@ -39,10 +39,11 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         `)
         .eq('teacher_id', user.id)
         .eq('status', 'live')
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user?.id,
     refetchInterval: 30000,
