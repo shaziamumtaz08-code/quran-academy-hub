@@ -447,22 +447,21 @@ async function findOrCreateZoomSession(
     return { ...activeSession, zoom_meeting_uuid: meetingUuid || activeSession.zoom_meeting_uuid };
   }
 
-  const scheduledMatch = await findScheduledClassForTime(supabase, startTime);
-  const teacherId = scheduledMatch?.assignment?.teacher_id || await getMonitorTeacherId(supabase, licenseId);
+  const teacherId = await getMonitorTeacherId(supabase, licenseId);
   if (!teacherId) {
     console.log("No teacher/admin available to create monitor session for license:", licenseId);
     return null;
   }
 
-  const sessionSource = scheduledMatch?.assignment?.teacher_id ? "schedule_match" : "zoom_monitor";
+  const sessionSource = "zoom_monitor";
 
   const { data: createdSession, error } = await supabase
     .from("live_sessions")
     .insert({
       teacher_id: teacherId,
-      student_id: scheduledMatch?.assignment?.student_id || null,
-      assignment_id: scheduledMatch?.assignment?.id || null,
-      schedule_id: scheduledMatch?.schedule?.id || null,
+      student_id: null,
+      assignment_id: null,
+      schedule_id: null,
       license_id: licenseId,
       scheduled_start: startTime,
       actual_start: startTime,
