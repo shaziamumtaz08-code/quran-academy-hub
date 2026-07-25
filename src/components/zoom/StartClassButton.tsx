@@ -168,15 +168,18 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         title: '✅ Class Started',
         description: 'Opening Zoom meeting...',
       });
-      
-      window.open(result.meetingLink, '_blank');
-      
+
+      navigateTab(startTabRef.current, result.meetingLink);
+      startTabRef.current = null;
+
       queryClient.invalidateQueries({ queryKey: ['active-session'] });
       queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
-      
+
       onSessionCreated?.(result.sessionId, result.meetingLink);
     },
     onError: (error: Error) => {
+      closeTab(startTabRef.current);
+      startTabRef.current = null;
       toast({
         title: 'Failed to Start Class',
         description: error.message,
