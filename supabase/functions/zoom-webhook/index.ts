@@ -800,7 +800,7 @@ Deno.serve(async (req) => {
               actual_start: startedAt,
               zoom_meeting_uuid: meetingUuidTop,
             }).eq("id", pendingSession.id);
-            sessionForHostLog = await applyScheduledOwnerToSession(supabase, { ...pendingSession, actual_start: startedAt }, startedAt);
+            sessionForHostLog = { ...pendingSession, actual_start: startedAt };
             console.log("Activated pending session:", pendingSession.id);
           } else {
             // Also check sessions without license_id (teacher may have created session before license assignment)
@@ -820,7 +820,7 @@ Deno.serve(async (req) => {
                 license_id: license.id,
                 zoom_meeting_uuid: meetingUuidTop,
               }).eq("id", unlinkedSession.id);
-              sessionForHostLog = await applyScheduledOwnerToSession(supabase, { ...unlinkedSession, license_id: license.id, actual_start: startedAt }, startedAt);
+              sessionForHostLog = { ...unlinkedSession, license_id: license.id, actual_start: startedAt };
               console.log("Linked and activated unlinked session:", unlinkedSession.id);
             } else {
               sessionForHostLog = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, startedAt);
@@ -1167,10 +1167,6 @@ Deno.serve(async (req) => {
 
         if (!session) {
           session = await findOrCreateZoomSession(supabase, license.id, meetingUuidTop, leaveTime.toISOString());
-        }
-
-        if (session) {
-          session = await applyScheduledOwnerToSession(supabase, session, leaveTime.toISOString());
         }
 
         if (!session) {
