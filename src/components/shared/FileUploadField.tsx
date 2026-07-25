@@ -16,6 +16,8 @@ interface FileUploadFieldProps {
   disabled?: boolean;
   hint?: string;
   onUploadStateChange?: (uploading: boolean) => void;
+  /** Optional folder prefix. If omitted, buckets with per-user RLS auto-derive `proofs/<uid>/`. */
+  pathPrefix?: string;
 }
 
 export function FileUploadField({
