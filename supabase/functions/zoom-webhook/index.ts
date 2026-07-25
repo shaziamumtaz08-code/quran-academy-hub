@@ -362,6 +362,280 @@ async function findOrCreateDedicatedSession(
   return created;
 }
 
+// ---------- Dedicated-account event handler ----------
+// One function handles meeting.started/ended, participant_joined/left,
+// recording.completed for a teacher's own Zoom account. Session identity is
+// the account owner (teacher_id) — no scheduled-owner heuristics required.
+async function handleDedicatedAccountEvent(
+  supabase: any,
+  event: ZoomEvent,
+  account: { id: string; teacher_id: string; zoom_account_email: string; tier: string },
+  ctx: {
+    hostId: string | undefined;
+    meetingUuid: string | null;
+    meetingId: string | number | null;
+    supabaseUrl: string;
+    supabaseServiceKey: string;
+  },
+) {
+  const { hostId, meetingUuid, meetingId } = ctx;
+  const { data: teacherProfile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", account.teacher_id)
+    .maybeSingle();
+  const hostName = teacherProfile?.full_name || account.zoom_account_email || "Meeting host";
+  const hostEmail = teacherProfile?.email || account.zoom_account_email || "";
+
+  switch (event.event) {
+    case "meeting.started": {
+      const startedAt = event.payload.object?.start_time || eventTime(event);
+      const session = await findOrCreateDedicatedSession(supabase, account, meetingUuid, startedAt);
+      if (!session) return;
+      await supabase.from("live_sessions").update({
+        status: "live",
+        actual_start: startedAt,
+        zoom_meeting_uuid: meetingUuid,
+        zoom_account_id: account.id,
+      }).eq("id", session.id);
+      await insertZoomLog(supabase, {
+        session_id: session.id,
+        user_id: account.teacher_id,
+        action: "join_intent",
+        join_time: startedAt,
+        timestamp: startedAt,
+        participant_name: hostName,
+        participant_email: hostEmail,
+        role: "host",
+        zoom_host_id: hostId,
+        zoom_meeting_uuid: meetingUuid,
+        zoom_meeting_id: meetingId,
+        zoom_event_type: event.event,
+        zoom_account_id: account.id,
+      });
+      return;
+    }
+    case "meeting.ended": {
+      const endedAt = event.payload.object?.end_time || eventTime(event);
+      const { data: sessions } = await supabase
+        .from("live_sessions")
+        .select("id, teacher_id, assignment_id, schedule_id, actual_start, scheduled_start")
+        .eq("zoom_account_id", account.id)
+        .in("status", ["live", "scheduled"]);
+      for (const s of (sessions || [])) {
+        await supabase
+          .from("live_sessions")
+          .update({ status: "completed", actual_end: endedAt, recording_status: "not_recorded" })
+          .eq("id", s.id);
+        // Close any open host join log
+        const { data: openHost } = await supabase
+          .from("zoom_attendance_logs")
+          .select("id, join_time")
+          .eq("session_id", s.id)
+          .eq("role", "host")
+          .eq("action", "join_intent")
+          .is("leave_time", null)
+          .maybeSingle();
+        if (openHost?.id) {
+          const join = openHost.join_time ? new Date(openHost.join_time) : new Date(endedAt);
+          const totalMin = Math.max(1, Math.ceil((new Date(endedAt).getTime() - join.getTime()) / 60_000));
+          await supabase.from("zoom_attendance_logs").update({
+            leave_time: endedAt,
+            total_duration_minutes: totalMin,
+          }).eq("id", openHost.id);
+          await insertZoomLog(supabase, {
+            session_id: s.id,
+            user_id: account.teacher_id,
+            action: "leave",
+            join_time: openHost.join_time,
+            leave_time: endedAt,
+            timestamp: endedAt,
+            total_duration_minutes: totalMin,
+            participant_name: hostName,
+            participant_email: hostEmail,
+            role: "host",
+            zoom_host_id: hostId,
+            zoom_meeting_uuid: meetingUuid,
+            zoom_meeting_id: meetingId,
+            zoom_event_type: event.event,
+            zoom_account_id: account.id,
+          });
+        }
+      }
+      return;
+    }
+    case "meeting.participant_joined": {
+      const participant = event.payload.object?.participant;
+      const pName = participant?.user_name || "Unknown";
+      const pEmail = participant?.email || "";
+      const joinTime = new Date(participant?.join_time || eventTime(event));
+      const session = await findOrCreateDedicatedSession(supabase, account, meetingUuid, joinTime.toISOString());
+      if (!session) return;
+      if (session.status === "scheduled") {
+        await supabase.from("live_sessions").update({
+          status: "live",
+          actual_start: joinTime.toISOString(),
+          zoom_meeting_uuid: meetingUuid,
+          zoom_account_id: account.id,
+        }).eq("id", session.id);
+        session.actual_start = joinTime.toISOString();
+      }
+      // Duplicate guard
+      const { data: existingLogs } = await supabase
+        .from("zoom_attendance_logs")
+        .select("id, participant_name, participant_email")
+        .eq("session_id", session.id)
+        .eq("action", "join_intent")
+        .is("leave_time", null);
+      const dup = (existingLogs || []).find((e: any) => sameParticipant(e, pName, pEmail));
+      if (dup) return;
+      // Identity resolution — same routine as pooled path
+      const { matchedUserId, matchedRole } = await resolveParticipantIdentity(
+        supabase, session, pName, pEmail, account.zoom_account_email,
+      );
+      await insertZoomLog(supabase, {
+        session_id: session.id,
+        user_id: matchedUserId,
+        action: "join_intent",
+        join_time: joinTime.toISOString(),
+        timestamp: joinTime.toISOString(),
+        participant_name: pName,
+        participant_email: pEmail,
+        role: matchedRole,
+        zoom_host_id: hostId,
+        zoom_meeting_uuid: meetingUuid,
+        zoom_meeting_id: meetingId,
+        zoom_event_type: event.event,
+        zoom_account_id: account.id,
+      });
+      return;
+    }
+    case "meeting.participant_left": {
+      const participant = event.payload.object?.participant;
+      const pName = participant?.user_name || "Unknown";
+      const pEmail = participant?.email || "";
+      const leaveTime = new Date(participant?.leave_time || eventTime(event));
+      let session: any = null;
+      if (meetingUuid) {
+        const { data } = await supabase
+          .from("live_sessions")
+          .select("id, teacher_id, student_id, status, assignment_id, schedule_id, zoom_account_id, scheduled_start, actual_start")
+          .eq("zoom_meeting_uuid", meetingUuid)
+          .maybeSingle();
+        session = data;
+      }
+      if (!session) {
+        const { data } = await supabase
+          .from("live_sessions")
+          .select("id, teacher_id, student_id, status, assignment_id, schedule_id, zoom_account_id, scheduled_start, actual_start")
+          .eq("zoom_account_id", account.id)
+          .in("status", ["live", "scheduled", "completed"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        session = data;
+      }
+      if (!session) return;
+      const { data: openJoins } = await supabase
+        .from("zoom_attendance_logs")
+        .select("id, user_id, join_time, role, participant_name, participant_email, total_duration_minutes")
+        .eq("session_id", session.id)
+        .eq("action", "join_intent")
+        .is("leave_time", null)
+        .order("timestamp", { ascending: false })
+        .limit(20);
+      const matched = (openJoins || []).find((e: any) => sameParticipant(e, pName, pEmail));
+      if (!matched) return;
+      const joinT = new Date(matched.join_time);
+      const durMin = Math.max(1, Math.ceil((leaveTime.getTime() - joinT.getTime()) / 60_000));
+      const total = (matched.total_duration_minutes || 0) + durMin;
+      await supabase.from("zoom_attendance_logs").update({
+        leave_time: leaveTime.toISOString(),
+        total_duration_minutes: total,
+      }).eq("id", matched.id);
+      await insertZoomLog(supabase, {
+        session_id: session.id,
+        user_id: matched.user_id,
+        action: "leave",
+        join_time: matched.join_time,
+        leave_time: leaveTime.toISOString(),
+        timestamp: leaveTime.toISOString(),
+        total_duration_minutes: total,
+        participant_name: pName,
+        participant_email: pEmail,
+        role: matched.role,
+        zoom_host_id: hostId,
+        zoom_meeting_uuid: meetingUuid,
+        zoom_meeting_id: meetingId,
+        zoom_event_type: event.event,
+        zoom_account_id: account.id,
+      });
+      return;
+    }
+    case "recording.completed": {
+      const recordingFiles = event.payload.object?.recording_files || [];
+      const recordingPassword = event.payload.object?.password || null;
+      let session: any = null;
+      if (meetingUuid) {
+        const { data } = await supabase
+          .from("live_sessions")
+          .select("id, teacher_id")
+          .eq("zoom_meeting_uuid", meetingUuid)
+          .maybeSingle();
+        session = data;
+      }
+      if (!session) {
+        const { data } = await supabase
+          .from("live_sessions")
+          .select("id, teacher_id")
+          .eq("zoom_account_id", account.id)
+          .eq("status", "completed")
+          .order("actual_end", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        session = data;
+      }
+      if (!session) return;
+      const inserts = recordingFiles.map((f: any) => ({
+        session_id: session.id,
+        recording_type: f.recording_type || "unknown",
+        play_url: f.play_url || null,
+        download_url: f.download_url || null,
+        password: recordingPassword,
+        file_size_mb: f.file_size ? Math.round((f.file_size / 1048576) * 100) / 100 : null,
+        file_type: f.file_type || "MP4",
+        recording_start: f.recording_start || null,
+        recording_end: f.recording_end || null,
+        status: "pending",
+      }));
+      if (inserts.length > 0) {
+        await supabase.from("session_recordings").insert(inserts);
+      }
+      await supabase.from("live_sessions").update({
+        recording_status: "pending",
+        zoom_meeting_uuid: meetingUuid,
+        recording_password: recordingPassword,
+        recording_fetched_at: null,
+        download_attempts: 0,
+        download_last_error: null,
+      }).eq("id", session.id);
+      try {
+        fetch(`${ctx.supabaseUrl}/functions/v1/zoom-download-recording`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ctx.supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ session_id: session.id }),
+        }).catch((e) => console.error("Invoke downloader failed:", e));
+      } catch (_) { /* ignore */ }
+      return;
+    }
+    default:
+      return;
+  }
+}
+
 async function findOrCreateZoomSession(
   supabase: any,
   licenseId: string,
