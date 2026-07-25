@@ -526,10 +526,19 @@ export default function UserManagement() {
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, gender, age, country, city, created_at, archived_at, registration_id')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
+
+      const profileIds = (profiles || []).map((profile) => profile.id);
+      const { data: sensitiveRows } = profileIds.length
+        ? await (supabase as any)
+            .from('profile_sensitive_data')
+            .select('user_id, whatsapp_number')
+            .in('user_id', profileIds)
+        : { data: [] };
+      const sensitiveByUser = new Map((sensitiveRows || []).map((row: any) => [row.user_id, row]));
 
       // Get ALL roles for each user
       const usersWithRoles: UserWithRoles[] = await Promise.all(
@@ -553,7 +562,7 @@ export default function UserManagement() {
             id: profile.id,
             full_name: profile.full_name,
             email: profile.email,
-            whatsapp_number: profile.whatsapp_number,
+            whatsapp_number: sensitiveByUser.get(profile.id)?.whatsapp_number || null,
             gender: profile.gender,
             age: profile.age,
             country: profile.country,

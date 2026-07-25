@@ -882,9 +882,9 @@ export default function ZoomManagement() {
                               <div>
                                 <span className="font-medium text-sm">{getSessionPrimaryLabel(session)}</span>
                                 <p className="text-xs text-muted-foreground">
-                                  {session.session_source === 'zoom_monitor'
-                                    ? 'Auto-created from Zoom (no LMS schedule matched)'
-                                    : `Room owner: ${session.teacherName}`}
+                                  {session.assignment_id || session.schedule_id
+                                    ? `Room owner: ${session.teacherName}`
+                                    : 'Auto-created from Zoom (no LMS schedule matched)'}
                                 </p>
                               </div>
                             </div>
