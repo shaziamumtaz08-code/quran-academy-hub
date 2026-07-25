@@ -211,6 +211,16 @@ export function StudentDashboard() {
     },
   });
 
+  // Fallback teacher/subject via SECURITY DEFINER RPC (covers parent-role RLS gaps).
+  const { data: dashCtx } = useQuery({
+    queryKey: ['sd-ctx', activeStudentId],
+    enabled: !!activeStudentId,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc('get_student_dashboard_context', { _student_id: activeStudentId });
+      return (data as any) || null;
+    },
+  });
+
 
   // Attendance (recent + stats)
   const { data: attendance = [] } = useQuery({
