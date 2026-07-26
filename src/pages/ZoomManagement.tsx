@@ -1052,7 +1052,9 @@ export default function ZoomManagement() {
             </CardContent>
           </Card>
         )}
+        </>)}
       </div>
+
     </DashboardLayout>
   );
 }
