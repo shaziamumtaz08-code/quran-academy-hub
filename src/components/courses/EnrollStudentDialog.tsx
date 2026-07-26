@@ -90,7 +90,7 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
       if (term.length < 2) return [];
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, registration_id, country, city')
+        .select('id, full_name, email, registration_id, country, city')
         .or(`full_name.ilike.%${term}%,email.ilike.%${term}%,registration_id.ilike.%${term}%`)
         .is('archived_at', null)
         .limit(15);
@@ -154,7 +154,7 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
     const email = newUser.email.toLowerCase().trim();
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, email, whatsapp_number, registration_id, country, city')
+      .select('id, full_name, email, registration_id, country, city')
       .eq('email', email)
       .limit(1);
 

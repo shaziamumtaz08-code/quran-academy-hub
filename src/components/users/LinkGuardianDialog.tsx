@@ -68,8 +68,8 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
       const like = `%${term}%`;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number')
-        .or(`full_name.ilike.${like},email.ilike.${like},whatsapp_number.ilike.${like}`)
+        .select('id, full_name, email')
+        .or(`full_name.ilike.${like},email.ilike.${like}`)
         .neq('id', studentId)
         .limit(8);
       if (error) throw error;

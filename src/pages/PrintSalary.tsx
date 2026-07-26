@@ -30,7 +30,7 @@ export default function PrintSalary() {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, country, city, bank_name, bank_account_title, bank_account_number, bank_iban')
+        .select('id, full_name, email, country, city')
         .eq('id', payout!.teacher_id)
         .single();
       return data;

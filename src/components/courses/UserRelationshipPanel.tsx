@@ -77,7 +77,7 @@ export function UserRelationshipPanel({
       if (matchedProfileId) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id')
+          .select('id, full_name, email, city, country, gender, created_at, registration_id')
           .eq('id', matchedProfileId)
           .maybeSingle();
         if (data) return data;
@@ -86,7 +86,7 @@ export function UserRelationshipPanel({
       if (normalizedEmail) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id')
+          .select('id, full_name, email, city, country, gender, created_at, registration_id')
           .ilike('email', normalizedEmail)
           .limit(1);
         if (data?.length) return data[0];
@@ -94,7 +94,7 @@ export function UserRelationshipPanel({
 
       const { data: phoneCandidates } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id');
+        .select('id, full_name, email, city, country, gender, created_at, registration_id');
 
       if (phoneCandidates?.length && normalizedPhone) {
         const matched = phoneCandidates.find((candidate: any) => {

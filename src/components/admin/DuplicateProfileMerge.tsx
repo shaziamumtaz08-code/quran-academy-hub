@@ -64,7 +64,7 @@ export function DuplicateProfileMerge() {
     queryFn: async () => {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, created_at, registration_id')
+        .select('id, full_name, email, created_at, registration_id')
         .not('email', 'is', null)
         .neq('email', '')
         .order('email');

@@ -92,7 +92,7 @@ export default function TeacherNazraDashboard() {
       // Fetch profiles for those students
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, gender, age, email, whatsapp_number')
+        .select('id, full_name, gender, age, email')
         .in('id', studentIds);
 
       if (profilesError) throw profilesError;
