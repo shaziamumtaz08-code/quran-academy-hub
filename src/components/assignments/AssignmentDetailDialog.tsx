@@ -358,8 +358,8 @@ function PersonCard({
       {person.email && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Mail className="h-3 w-3" />{person.email}</p>
       )}
-      {person.whatsapp_number && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" />{person.whatsapp_number}</p>
+      {(person as any).whatsapp_number && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" />{(person as any).whatsapp_number}</p>
       )}
       {person.timezone && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Globe className="h-3 w-3" />{person.timezone}</p>

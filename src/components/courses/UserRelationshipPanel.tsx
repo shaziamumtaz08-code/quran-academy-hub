@@ -365,7 +365,7 @@ export function UserRelationshipPanel({
                 </Avatar>
                 <div>
                   <p className="font-semibold text-base">{profile.full_name}</p>
-                  <p className="text-sm text-muted-foreground">{profile.email} {profile.whatsapp_number ? `· ${profile.whatsapp_number}` : ''}</p>
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
                   <p className="text-xs text-muted-foreground">
                     {profile.registration_id ? `URN ${profile.registration_id}` : 'URN pending'}
                   </p>

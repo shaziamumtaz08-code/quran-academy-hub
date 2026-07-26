@@ -23,7 +23,6 @@ interface MatchedProfile {
   id: string;
   full_name: string | null;
   email: string | null;
-  whatsapp_number: string | null;
 }
 
 interface SuccessInfo {
@@ -303,7 +302,7 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{m.full_name || '(No name)'}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {m.email || '—'} · {m.whatsapp_number || '—'}
+                            {m.email || '—'}
                           </p>
                         </div>
                         <Button

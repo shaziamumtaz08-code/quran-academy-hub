@@ -314,7 +314,7 @@ async function fetchParentsOfStudent(studentId: string) {
   return (links || [])
     .map((l: any) => l.parent)
     .filter((p: any) => p && !isTestProfile(p))
-    .map((p: any) => ({ id: p.id, name: p.full_name, phone: p.whatsapp_number }));
+    .map((p: any) => ({ id: p.id, name: p.full_name, phone: null as string | null }));
 }
 
 async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType) {
