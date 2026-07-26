@@ -402,6 +402,31 @@ export default function ZoomManagement() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* Top-level tabs */}
+        <div className="flex items-center gap-2">
+          {([
+            { id: 'live' as const, label: 'Live operations' },
+            { id: 'accounts' as const, label: 'Accounts' },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMainTab(tab.id)}
+              className={cn(
+                'h-10 rounded-full px-4 text-sm font-medium transition-colors',
+                mainTab === tab.id
+                  ? 'bg-[hsl(var(--navy))] text-white dark:bg-primary dark:text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-muted',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {mainTab === 'live' && <ZoomLiveOperations />}
+
+        {mainTab === 'accounts' && (<>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -422,6 +447,7 @@ export default function ZoomManagement() {
 
         {/* Room Cards Grid */}
         <div>
+
           <div className="flex items-center gap-2 mb-3">
             <Radio className="h-4 w-4 text-primary" />
             <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Room Status</h2>
