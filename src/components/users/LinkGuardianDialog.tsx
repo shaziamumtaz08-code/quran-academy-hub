@@ -23,7 +23,6 @@ interface MatchedProfile {
   id: string;
   full_name: string | null;
   email: string | null;
-  whatsapp_number: string | null;
 }
 
 interface SuccessInfo {
@@ -68,8 +67,8 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
       const like = `%${term}%`;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number')
-        .or(`full_name.ilike.${like},email.ilike.${like},whatsapp_number.ilike.${like}`)
+        .select('id, full_name, email')
+        .or(`full_name.ilike.${like},email.ilike.${like}`)
         .neq('id', studentId)
         .limit(8);
       if (error) throw error;
@@ -144,12 +143,12 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
         if (data) parentId = data.id;
       }
       if (!parentId && cleanPhone) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id')
+        const { data } = await (supabase as any)
+          .from('profile_sensitive_data')
+          .select('user_id')
           .eq('whatsapp_number', cleanPhone)
           .maybeSingle();
-        if (data) parentId = data.id;
+        if (data) parentId = data.user_id;
       }
 
       // Create plain profile (no auth) if no match
@@ -303,7 +302,7 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{m.full_name || '(No name)'}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {m.email || '—'} · {m.whatsapp_number || '—'}
+                            {m.email || '—'}
                           </p>
                         </div>
                         <Button

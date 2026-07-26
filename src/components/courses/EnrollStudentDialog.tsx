@@ -90,7 +90,7 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
       if (term.length < 2) return [];
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, registration_id, country, city')
+        .select('id, full_name, email, registration_id, country, city')
         .or(`full_name.ilike.%${term}%,email.ilike.%${term}%,registration_id.ilike.%${term}%`)
         .is('archived_at', null)
         .limit(15);
@@ -154,7 +154,7 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
     const email = newUser.email.toLowerCase().trim();
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, email, whatsapp_number, registration_id, country, city')
+      .select('id, full_name, email, registration_id, country, city')
       .eq('email', email)
       .limit(1);
 
@@ -181,7 +181,7 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
         ? {
             full_name: selectedProfile!.full_name || '',
             email: (selectedProfile!.email || '').toLowerCase().trim(),
-            phone: selectedProfile!.whatsapp_number || '',
+            phone: (selectedProfile as any)!.whatsapp_number || '',
             country: selectedProfile!.country || '',
             city: selectedProfile!.city || '',
           }
@@ -501,9 +501,9 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Mail className="h-3.5 w-3.5" /> {selectedProfile?.email || newUser.email}
                     </div>
-                    {(selectedProfile?.whatsapp_number || newUser.whatsapp_number) && (
+                    {((selectedProfile as any)?.whatsapp_number || newUser.whatsapp_number) && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5" /> {selectedProfile?.whatsapp_number || newUser.whatsapp_number}
+                        <Phone className="h-3.5 w-3.5" /> {(selectedProfile as any)?.whatsapp_number || newUser.whatsapp_number}
                       </div>
                     )}
                   </div>

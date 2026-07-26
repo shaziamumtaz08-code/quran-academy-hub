@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AlertTriangle, ArrowRight, Loader2, CheckCircle2, Merge } from 'lucide-react';
 import { format } from 'date-fns';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
 interface DuplicatePair {
   profile_a: string;
@@ -64,12 +65,14 @@ export function DuplicateProfileMerge() {
     queryFn: async () => {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, created_at, registration_id')
+        .select('id, full_name, email, created_at, registration_id')
         .not('email', 'is', null)
         .neq('email', '')
         .order('email');
 
       if (!profiles?.length) return [];
+
+      const phoneByUser = await fetchWhatsappMap(profiles.map((p) => p.id));
 
       // Group by lowercase email
       const groups = new Map<string, typeof profiles>();
@@ -96,8 +99,8 @@ export function DuplicateProfileMerge() {
               email,
               name_a: profs[i].full_name || 'Unknown',
               name_b: profs[j].full_name || 'Unknown',
-              phone_a: profs[i].whatsapp_number,
-              phone_b: profs[j].whatsapp_number,
+              phone_a: phoneByUser.get(profs[i].id) ?? null,
+              phone_b: phoneByUser.get(profs[j].id) ?? null,
               roles_a: [],
               roles_b: [],
               created_a: profs[i].created_at,
@@ -153,17 +156,25 @@ export function DuplicateProfileMerge() {
       }
 
       // Copy non-null fields from secondary to primary
-      const { data: secProfile } = await supabase
+      const mergePhones = await fetchWhatsappMap([secondary, primary]);
+      const { data: secReg } = await supabase
         .from('profiles')
-        .select('whatsapp_number, registration_id')
+        .select('registration_id')
         .eq('id', secondary)
         .single();
 
-      const { data: priProfile } = await supabase
+      const { data: priReg } = await supabase
         .from('profiles')
-        .select('whatsapp_number, registration_id')
+        .select('registration_id')
         .eq('id', primary)
         .single();
+
+      const secProfile = secReg
+        ? { registration_id: secReg.registration_id, whatsapp_number: mergePhones.get(secondary) ?? null }
+        : null;
+      const priProfile = priReg
+        ? { registration_id: priReg.registration_id, whatsapp_number: mergePhones.get(primary) ?? null }
+        : null;
 
       if (secProfile && priProfile) {
         const updates: Record<string, any> = {};

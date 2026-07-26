@@ -40,10 +40,10 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
       const [studentRes, teacherRes, subjectRes, divisionRes, historyRes, schedulesRes, auditRes] =
         await Promise.all([
           a.student_id
-            ? supabase.from('profiles').select('id, full_name, email, whatsapp_number, timezone, country, city').eq('id', a.student_id).maybeSingle()
+            ? supabase.from('profiles').select('id, full_name, email, timezone, country, city').eq('id', a.student_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
           a.teacher_id
-            ? supabase.from('profiles').select('id, full_name, email, whatsapp_number, timezone').eq('id', a.teacher_id).maybeSingle()
+            ? supabase.from('profiles').select('id, full_name, email, timezone').eq('id', a.teacher_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
           a.subject_id
             ? supabase.from('subjects').select('id, name').eq('id', a.subject_id).maybeSingle()
@@ -358,8 +358,8 @@ function PersonCard({
       {person.email && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Mail className="h-3 w-3" />{person.email}</p>
       )}
-      {person.whatsapp_number && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" />{person.whatsapp_number}</p>
+      {(person as any).whatsapp_number && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" />{(person as any).whatsapp_number}</p>
       )}
       {person.timezone && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Globe className="h-3 w-3" />{person.timezone}</p>

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
+
 
 type GuardianTypeFilter = 'all' | 'parent' | 'guardian' | 'emergency_contact' | 'no_guardian';
 
@@ -61,9 +63,12 @@ export default function Parents() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, created_at, guardian_type')
+        .select('id, full_name, email, created_at, guardian_type')
         .in('id', parentIds)
         .is('archived_at', null);
+
+      const phoneByUser = await fetchWhatsappMap(parentIds);
+
 
       const { data: links } = await supabase
         .from('student_parent_links').select('parent_id, student_id').in('parent_id', parentIds);
@@ -93,7 +98,7 @@ export default function Parents() {
         id: p.id,
         full_name: p.full_name,
         email: p.email,
-        whatsapp_number: p.whatsapp_number,
+        whatsapp_number: phoneByUser.get(p.id) ?? null,
         created_at: p.created_at,
         hasAuth: authStatus[p.id]?.hasAuth ?? false,
         childrenCount: childCount.get(p.id) || 0,

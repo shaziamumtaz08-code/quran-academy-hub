@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import logoDark from '@/assets/logo-dark.jpg';
+import { fetchSensitiveByUserIds } from '@/lib/sensitiveProfile';
 
 export default function PrintSalary() {
   const { payoutId } = useParams<{ payoutId: string }>();
@@ -30,10 +31,23 @@ export default function PrintSalary() {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, country, city, bank_name, bank_account_title, bank_account_number, bank_iban')
+        .select('id, full_name, email, country, city')
         .eq('id', payout!.teacher_id)
         .single();
-      return data;
+      if (!data) return null;
+      const sensitive = await fetchSensitiveByUserIds(
+        [payout!.teacher_id],
+        'user_id, whatsapp_number, bank_name, bank_account_title, bank_account_number, bank_iban',
+      );
+      const extra = sensitive.get(payout!.teacher_id);
+      return {
+        ...(data as any),
+        whatsapp_number: extra?.whatsapp_number ?? null,
+        bank_name: extra?.bank_name ?? null,
+        bank_account_title: extra?.bank_account_title ?? null,
+        bank_account_number: extra?.bank_account_number ?? null,
+        bank_iban: extra?.bank_iban ?? null,
+      };
     },
     enabled: !!payout?.teacher_id,
   });

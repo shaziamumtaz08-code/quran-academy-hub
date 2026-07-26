@@ -309,12 +309,12 @@ async function fetchSiblings(studentId: string) {
 async function fetchParentsOfStudent(studentId: string) {
   const { data: links } = await supabase
     .from('student_parent_links')
-    .select('parent:profiles!student_parent_links_parent_id_fkey(id, full_name, whatsapp_number)')
+    .select('parent:profiles!student_parent_links_parent_id_fkey(id, full_name)')
     .eq('student_id', studentId);
   return (links || [])
     .map((l: any) => l.parent)
     .filter((p: any) => p && !isTestProfile(p))
-    .map((p: any) => ({ id: p.id, name: p.full_name, phone: p.whatsapp_number }));
+    .map((p: any) => ({ id: p.id, name: p.full_name, phone: null as string | null }));
 }
 
 async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType) {

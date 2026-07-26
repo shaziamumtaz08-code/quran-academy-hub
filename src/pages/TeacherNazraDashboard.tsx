@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
 interface StudentWithDetails {
   id: string;
@@ -92,10 +93,14 @@ export default function TeacherNazraDashboard() {
       // Fetch profiles for those students
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, gender, age, email, whatsapp_number')
+        .select('id, full_name, gender, age, email')
         .in('id', studentIds);
 
       if (profilesError) throw profilesError;
+
+      // Contact numbers live in profile_sensitive_data (restricted on profiles)
+      const phoneByUser = await fetchWhatsappMap(studentIds);
+
 
       // Get last lesson for each student + count total lessons
       const studentsWithDetails: (StudentWithDetails & { 
@@ -130,7 +135,7 @@ export default function TeacherNazraDashboard() {
             gender: student.gender,
             age: student.age,
             email: student.email,
-            whatsapp_number: student.whatsapp_number,
+            whatsapp_number: phoneByUser.get(student.id) ?? null,
             last_lesson: lastLesson || undefined,
             total_lessons: total,
             attendance_rate: total > 0 ? Math.round((present / total) * 100) : 0,

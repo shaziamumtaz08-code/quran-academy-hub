@@ -20,6 +20,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
 interface UserRelationshipPanelProps {
   open: boolean;
@@ -77,7 +78,7 @@ export function UserRelationshipPanel({
       if (matchedProfileId) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id')
+          .select('id, full_name, email, city, country, gender, created_at, registration_id')
           .eq('id', matchedProfileId)
           .maybeSingle();
         if (data) return data;
@@ -86,15 +87,22 @@ export function UserRelationshipPanel({
       if (normalizedEmail) {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id')
+          .select('id, full_name, email, city, country, gender, created_at, registration_id')
           .ilike('email', normalizedEmail)
           .limit(1);
         if (data?.length) return data[0];
       }
 
-      const { data: phoneCandidates } = await supabase
+      const { data: phoneCandidatesRaw } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, city, country, gender, created_at, registration_id');
+        .select('id, full_name, email, city, country, gender, created_at, registration_id');
+
+      // Phone numbers live in profile_sensitive_data, not on profiles
+      const candidatePhones = await fetchWhatsappMap((phoneCandidatesRaw || []).map((c: any) => c.id));
+      const phoneCandidates = (phoneCandidatesRaw || []).map((c: any) => ({
+        ...c,
+        whatsapp_number: candidatePhones.get(c.id) ?? null,
+      }));
 
       if (phoneCandidates?.length && normalizedPhone) {
         const matched = phoneCandidates.find((candidate: any) => {
@@ -364,7 +372,7 @@ export function UserRelationshipPanel({
                 </Avatar>
                 <div>
                   <p className="font-semibold text-base">{profile.full_name}</p>
-                  <p className="text-sm text-muted-foreground">{profile.email} {profile.whatsapp_number ? `· ${profile.whatsapp_number}` : ''}</p>
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
                   <p className="text-xs text-muted-foreground">
                     {profile.registration_id ? `URN ${profile.registration_id}` : 'URN pending'}
                   </p>
