@@ -87,67 +87,15 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
   }, []);
 
   // Realtime subscription for instant session/license updates (e.g. webhook releases)
-  React.useEffect(() => {
-    const channel = supabase
-      .channel('admin-live-monitor')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_sessions' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'zoom_licenses' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
-        queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  useZoomLiveRealtime('admin-live-monitor');
 
   // End session mutation - releases the license and optionally saves recording link
-  const endSessionMutation = useMutation({
-    mutationFn: async ({
-      sessionId,
-      licenseId,
-      recordingLink,
-    }: {
-      sessionId: string;
-      licenseId: string;
-      recordingLink?: string;
-    }) => {
-      // Update session to completed with optional recording link
-      const updateData: Record<string, any> = {
-        status: "completed",
-        actual_end: new Date().toISOString(),
-      };
-
-      if (recordingLink && recordingLink.trim()) {
-        updateData.recording_link = recordingLink.trim();
-      }
-
-      const { error: sessionError } = await supabase.from("live_sessions").update(updateData).eq("id", sessionId);
-
-      if (sessionError) throw sessionError;
-
-      // Release the license
-      const { error: licenseError } = await supabase
-        .from("zoom_licenses")
-        .update({ status: "available" })
-        .eq("id", licenseId);
-
-      if (licenseError) throw licenseError;
-    },
-    onSuccess: (_, variables) => {
-      toast.success("Session ended and license released");
-      // Clear the recording link input
-      setRecordingLinks((prev) => {
-        const updated = { ...prev };
-        delete updated[variables.sessionId];
-        return updated;
-      });
-      queryClient.invalidateQueries({ queryKey: ["active-live-sessions-monitor"] });
-      queryClient.invalidateQueries({ queryKey: ["zoom-licenses-monitor"] });
-    },
-    onError: (error) => {
-      toast.error("Failed to end session: " + (error as Error).message);
-    },
+  const endSessionMutation = useEndSessionMutation((sessionId) => {
+    setRecordingLinks((prev) => {
+      const updated = { ...prev };
+      delete updated[sessionId];
+      return updated;
+    });
   });
 
   // Handle join as admin
@@ -156,141 +104,10 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     toast.info("Opening Zoom meeting in new tab");
   };
 
-  // Fetch all zoom licenses and their status
-  const { data: licenses, isLoading: licensesLoading } = useQuery({
-    queryKey: ["zoom-licenses-monitor"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("zoom_licenses")
-        .select("id, zoom_email, status, last_used_at, meeting_link");
+  const { data: licenses, isLoading: licensesLoading } = useZoomLicenses();
+  const { data: liveSessions, isLoading: sessionsLoading } = useLiveSessionsMonitor();
+  const { data: recentJoins, isLoading: joinsLoading } = useRecentJoinLogs();
 
-      if (error) throw error;
-      return data || [];
-    },
-    refetchInterval: 10000,
-  });
-
-  // Fetch active live sessions with participants (simple headcount)
-  const { data: liveSessions, isLoading: sessionsLoading } = useQuery({
-    queryKey: ["active-live-sessions-monitor"],
-    queryFn: async () => {
-      const { data: sessions, error } = await supabase
-        .from("live_sessions")
-        .select(
-          `
-          id,
-          teacher_id,
-          student_id,
-          actual_start,
-          scheduled_start,
-          status,
-          group_id,
-          license:zoom_licenses(id, zoom_email, meeting_link)
-        `,
-        )
-        .in("status", ["live"])
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      if (!sessions || sessions.length === 0) return [];
-
-      // Get teacher + student names
-      const teacherIds = sessions.map((s) => s.teacher_id);
-      const studentIds = sessions.map((s) => (s as any).student_id).filter(Boolean);
-      const allProfileIds = [...new Set([...teacherIds, ...studentIds])];
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", allProfileIds);
-      const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
-
-      // Get all participants who joined each session and haven't left
-      const sessionIds = sessions.map((s) => s.id);
-      const { data: attendanceLogs } = await supabase
-        .from("zoom_attendance_logs")
-        .select("session_id, user_id, action, leave_time, participant_name, role")
-        .in("session_id", sessionIds);
-
-      // Filter to get only users who are currently in session (joined but no leave_time)
-      const activeParticipants = attendanceLogs?.filter((log) => log.action === "join_intent" && !log.leave_time) || [];
-
-      // Build participants list per session
-      const participantsMap = new Map<string, SessionParticipant[]>();
-
-      sessions.forEach((session) => {
-        const participants: SessionParticipant[] = [];
-
-        // Add teacher as first participant
-        participants.push({
-          userId: session.teacher_id,
-          userName: profileMap.get(session.teacher_id) || "Teacher",
-          isTeacher: true,
-        });
-
-        // Add student from live_session.student_id if set
-        const studentId = (session as any).student_id;
-        if (studentId) {
-          participants.push({
-            userId: studentId,
-            userName: profileMap.get(studentId) || "Student",
-            isTeacher: false,
-          });
-        }
-
-        // Also add any from attendance logs not already listed
-        activeParticipants
-          .filter((log) => log.session_id === session.id)
-          .forEach((log) => {
-            const uid = log.user_id;
-            if (uid && uid !== session.teacher_id && uid !== studentId && !participants.some((p) => p.userId === uid)) {
-              participants.push({
-                userId: uid,
-                userName: profileMap.get(uid) || (log as any).participant_name || "Participant",
-                isTeacher: false,
-              });
-            }
-          });
-
-        participantsMap.set(session.id, participants);
-      });
-
-      return sessions.map((session) => ({
-        ...session,
-        teacherName: profileMap.get(session.teacher_id) || "Unknown",
-        studentName: (session as any).student_id ? (profileMap.get((session as any).student_id) || "Student") : null,
-        participants: participantsMap.get(session.id) || [],
-        activeCount: participantsMap.get(session.id)?.length || 1,
-      }));
-    },
-    refetchInterval: 5000,
-  });
-
-  // Fetch recent join logs with live updates
-  const { data: recentJoins, isLoading: joinsLoading } = useQuery({
-    queryKey: ["recent-join-logs-monitor"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("zoom_attendance_logs")
-        .select("id, user_id, action, timestamp, session_id, participant_name, participant_email, role")
-        .eq("action", "join_intent")
-        .order("timestamp", { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      if (!data || data.length === 0) return [];
-
-      const userIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
-      const { data: users } = userIds.length > 0
-        ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
-        : { data: [] };
-
-      const userMap = new Map((users || []).map((u: any) => [u.id, u.full_name] as [string, string]));
-
-      return data.map((log) => ({
-        ...log,
-        userName: log.user_id ? (userMap.get(log.user_id) || (log as any).participant_name || "Unknown") : ((log as any).participant_name || "Unknown"),
-        timeAgo: getTimeAgo(new Date(log.timestamp)),
-      }));
-    },
-    refetchInterval: 5000,
-  });
 
   const isLoading = licensesLoading || sessionsLoading || joinsLoading;
   const availableLicenses = licenses?.filter((l) => l.status === "available").length || 0;
