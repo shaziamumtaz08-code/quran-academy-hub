@@ -41,6 +41,9 @@ export default function TeachingLanding() {
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
+  // Zoom is now a standalone top-level tool, not a Teaching tab.
+  if (requested === 'zoom') return <Navigate to="/zoom-management" replace />;
+
 
   const teacherContentMap: Record<string, React.ReactNode> = {
     attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
