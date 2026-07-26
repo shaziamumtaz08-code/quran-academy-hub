@@ -20,6 +20,8 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
+import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
+
 import { AlertTriangle } from 'lucide-react';
 
 function LiveTimer({ startTime }: { startTime: string }) {
