@@ -168,7 +168,7 @@ function getCommunicationSidebar(role?: string | null): { title: string; subtitl
       ...(isStudentOrTeacher ? [{ label: 'Direct Messages', href: '/chat?filter=dm' }] : []),
       ...(can(r, 'whatsapp', 'view') ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       ...(can(r, 'notifications', 'view') ? [{ label: 'Notifications', href: '/notifications' }] : []),
-      ...(can(r, 'zoom_management', 'view') ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
+      
       ...(can(r, 'work_hub', 'view') ? [{ label: 'Work Hub', href: '/hub' }] : []),
     ],
   };
