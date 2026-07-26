@@ -20,7 +20,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fetchWhatsapp, fetchWhatsappMap } from '@/lib/sensitiveProfile';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
 interface UserRelationshipPanelProps {
   open: boolean;
