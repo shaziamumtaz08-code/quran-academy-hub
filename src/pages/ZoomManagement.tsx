@@ -20,6 +20,8 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
+import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
+
 import { AlertTriangle } from 'lucide-react';
 
 function LiveTimer({ startTime }: { startTime: string }) {
@@ -41,7 +43,9 @@ export default function ZoomManagement() {
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
+  const [mainTab, setMainTab] = React.useState<'live' | 'accounts'>('live');
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
+
   const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
   const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
   const [hostIdResults, setHostIdResults] = React.useState<Array<{ email: string; host_id: string | null; status: string; error?: string }> | null>(null);
@@ -402,6 +406,31 @@ export default function ZoomManagement() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* Top-level tabs */}
+        <div className="flex items-center gap-2">
+          {([
+            { id: 'live' as const, label: 'Live operations' },
+            { id: 'accounts' as const, label: 'Accounts' },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMainTab(tab.id)}
+              className={cn(
+                'h-10 rounded-full px-4 text-sm font-medium transition-colors',
+                mainTab === tab.id
+                  ? 'bg-[hsl(var(--navy))] text-white dark:bg-primary dark:text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-muted',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {mainTab === 'live' && <ZoomLiveOperations />}
+
+        {mainTab === 'accounts' && (<>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -422,6 +451,7 @@ export default function ZoomManagement() {
 
         {/* Room Cards Grid */}
         <div>
+
           <div className="flex items-center gap-2 mb-3">
             <Radio className="h-4 w-4 text-primary" />
             <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Room Status</h2>
@@ -1052,7 +1082,9 @@ export default function ZoomManagement() {
             </CardContent>
           </Card>
         )}
+        </>)}
       </div>
+
     </DashboardLayout>
   );
 }
