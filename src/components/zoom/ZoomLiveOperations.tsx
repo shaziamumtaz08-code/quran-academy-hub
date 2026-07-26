@@ -28,6 +28,13 @@ import {
   type TodayClass,
 } from '@/hooks/useZoomLiveOps';
 import { useZoomRealtimeEvents } from '@/hooks/useZoomRealtimeEvents';
+import {
+  useAcademyTimezone,
+  zonedParts,
+  zonedClockLabel,
+  zonedDateLabel,
+} from '@/hooks/useAcademyTimezone';
+import { getTimezoneAbbr } from '@/lib/timezones';
 
 type SlotState = 'live' | 'completed' | 'overdue' | 'upcoming';
 type TileFilter = 'all' | 'live' | 'upcoming' | 'completed' | 'overdue';
@@ -71,8 +78,9 @@ export function ZoomLiveOperations() {
 
   const { data: licenses } = useZoomLicenses();
   const { data: liveSessions, isLoading: liveLoading } = useLiveSessionsMonitor();
-  const { data: todayClasses, isLoading: classesLoading } = useTodayScheduledClasses();
-  const { data: todaySessions } = useTodaySessions();
+  const timeZone = useAcademyTimezone();
+  const { data: todayClasses, isLoading: classesLoading } = useTodayScheduledClasses(undefined, timeZone);
+  const { data: todaySessions } = useTodaySessions(timeZone);
 
   const endSession = useEndSessionMutation((sessionId) =>
     setRecordingLinks((prev) => {
@@ -82,7 +90,9 @@ export function ZoomLiveOperations() {
     }),
   );
 
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  // Scheduled slot times are stored as wall-clock times in the academy timezone,
+  // so "now" must be resolved in that same timezone (never the browser's local clock).
+  const nowMinutes = zonedParts(now, timeZone).minutesOfDay;
 
   const slots: DerivedSlot[] = React.useMemo(() => {
     const sessions = todaySessions || [];
@@ -160,10 +170,14 @@ export function ZoomLiveOperations() {
           <div>
             <h2 className="font-serif text-xl font-bold text-foreground sm:text-2xl">Live operations</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {format(now, 'EEEE, dd MMM yyyy')} · {slots.length} {slots.length === 1 ? 'class' : 'classes'} scheduled today
+              {zonedDateLabel(timeZone, now)} · {slots.length} {slots.length === 1 ? 'class' : 'classes'} scheduled today
             </p>
           </div>
-          <div className="flex items-center gap-2 self-start rounded-full border border-destructive/20 bg-destructive/10 px-3 py-1.5">
+          <div className="flex flex-wrap items-center gap-2 self-start">
+          <span className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Now {zonedClockLabel(timeZone, now)} · {getTimezoneAbbr(timeZone)} ({timeZone})
+          </span>
+          <div className="flex items-center gap-2 rounded-full border border-destructive/20 bg-destructive/10 px-3 py-1.5">
             <span className="relative flex h-2 w-2">
               {liveNow > 0 && (
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
@@ -171,6 +185,7 @@ export function ZoomLiveOperations() {
               <span className={cn('relative inline-flex h-2 w-2 rounded-full', liveNow > 0 ? 'bg-destructive' : 'bg-muted-foreground')} />
             </span>
             <span className="text-sm font-semibold text-destructive">{liveNow} live now</span>
+          </div>
           </div>
         </div>
 
@@ -238,7 +253,7 @@ export function ZoomLiveOperations() {
                 style={{ left: `${((nowMinutes - DAY_START) / (DAY_END - DAY_START)) * 100}%` }}
               >
                 <span className="absolute -top-0.5 left-1 whitespace-nowrap rounded bg-foreground px-1 text-[9px] font-medium text-background">
-                  {format(now, 'h:mm a')}
+                  {zonedClockLabel(timeZone, now)}
                 </span>
               </div>
             )}
