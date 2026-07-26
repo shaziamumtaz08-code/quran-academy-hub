@@ -93,9 +93,16 @@ export function UserRelationshipPanel({
         if (data?.length) return data[0];
       }
 
-      const { data: phoneCandidates } = await supabase
+      const { data: phoneCandidatesRaw } = await supabase
         .from('profiles')
         .select('id, full_name, email, city, country, gender, created_at, registration_id');
+
+      // Phone numbers live in profile_sensitive_data, not on profiles
+      const candidatePhones = await fetchWhatsappMap((phoneCandidatesRaw || []).map((c: any) => c.id));
+      const phoneCandidates = (phoneCandidatesRaw || []).map((c: any) => ({
+        ...c,
+        whatsapp_number: candidatePhones.get(c.id) ?? null,
+      }));
 
       if (phoneCandidates?.length && normalizedPhone) {
         const matched = phoneCandidates.find((candidate: any) => {

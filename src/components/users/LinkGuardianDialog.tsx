@@ -143,12 +143,12 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
         if (data) parentId = data.id;
       }
       if (!parentId && cleanPhone) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id')
+        const { data } = await (supabase as any)
+          .from('profile_sensitive_data')
+          .select('user_id')
           .eq('whatsapp_number', cleanPhone)
           .maybeSingle();
-        if (data) parentId = data.id;
+        if (data) parentId = data.user_id;
       }
 
       // Create plain profile (no auth) if no match
