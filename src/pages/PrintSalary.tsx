@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import logoDark from '@/assets/logo-dark.jpg';
+import { fetchSensitiveByUserIds } from '@/lib/sensitiveProfile';
 
 export default function PrintSalary() {
   const { payoutId } = useParams<{ payoutId: string }>();

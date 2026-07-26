@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
 interface StudentWithDetails {
   id: string;
