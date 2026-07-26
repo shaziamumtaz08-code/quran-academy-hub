@@ -102,7 +102,7 @@ export default function TeachingLanding() {
     'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
     'teaching-os': <Suspense fallback={<Loading />}><TeachingOS /></Suspense>,
     'quiz-engine': <Suspense fallback={<Loading />}><QuizEngine /></Suspense>,
-    zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
+    
   }), []);
 
   if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
