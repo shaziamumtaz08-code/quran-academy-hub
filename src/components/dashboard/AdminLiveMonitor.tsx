@@ -38,6 +38,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useZoomRealtimeEvents } from "@/hooks/useZoomRealtimeEvents";
+import {
+  useZoomLicenses,
+  useLiveSessionsMonitor,
+  useRecentJoinLogs,
+  useEndSessionMutation,
+  useZoomLiveRealtime,
+} from "@/hooks/useZoomLiveOps";
+
 
 interface AdminLiveMonitorProps {
   className?: string;
