@@ -7,8 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
-  Award, FileText, FolderOpen, LogOut, Activity, Megaphone,
+  Award, FileText, FolderOpen, LogOut, Activity, Megaphone, Video,
 } from 'lucide-react';
+
 import logoDark from '@/assets/logo-dark.jpg';
 
 export interface RailItem {
