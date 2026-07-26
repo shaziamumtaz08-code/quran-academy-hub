@@ -128,7 +128,7 @@ export default function CommunicationLanding() {
   const [searchParams] = useSearchParams();
   // Legacy redirect: Zoom Control Room moved to Teaching
   if (searchParams.get('view') === 'zoom') {
-    return <Navigate to="/teaching?view=zoom" replace />;
+    return <Navigate to="/zoom-management" replace />;
   }
   return <CommThemeProvider><CommunicationLandingInner /></CommThemeProvider>;
 }
