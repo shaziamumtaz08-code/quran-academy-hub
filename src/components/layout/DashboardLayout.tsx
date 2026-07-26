@@ -21,7 +21,9 @@ import {
   MessageSquare,
   UserCog,
   Users,
+  Video,
   Wallet,
+
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -170,6 +172,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       {
         label: "OTHERS",
         items: [
+          { label: "Zoom", href: "/zoom-management", icon: Video },
           {
             label: "Communication",
             icon: MessageSquare,
@@ -177,10 +180,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp Inbox", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
-              { label: "Zoom", href: "/communication?view=zoom" },
             ],
           },
           { label: "Library", href: "/library", icon: FolderOpen },
+
           { label: "Work Hub", href: "/work-hub", icon: Briefcase },
           {
             label: "Settings",

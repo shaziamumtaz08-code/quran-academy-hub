@@ -7,8 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
-  Award, FileText, FolderOpen, LogOut, Activity, Megaphone,
+  Award, FileText, FolderOpen, LogOut, Activity, Megaphone, Video,
 } from 'lucide-react';
+
 import logoDark from '@/assets/logo-dark.jpg';
 
 export interface RailItem {
@@ -28,7 +29,8 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'People', href: '/people', icon: Users },
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Reports', href: '/reports', icon: BarChart3 },
-      { label: 'Communication', href: '/communication', icon: MessageSquare, divider: true },
+      { label: 'Zoom', href: '/zoom-management', icon: Video, divider: true },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
   }
@@ -41,9 +43,11 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Performance', href: '/performance', icon: Activity },
       { label: 'Salary', href: '/salary', icon: DollarSign },
       { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Zoom', href: '/live-classes', icon: Video, divider: true },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
+
   // Student & parent share the same menu. Difference: parent sees a kid toggle (rendered
   // inside dashboards) and an extra Family link for managing children.
   if (role === 'student' || role === 'parent') {
@@ -83,7 +87,10 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
     '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
     '/reports': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
-    '/settings': ['/settings', '/organization-settings', '/zoom-management', '/report-card-templates'],
+    '/zoom-management': ['/zoom-management', '/live-classes'],
+    '/live-classes': ['/live-classes', '/zoom-management'],
+    '/settings': ['/settings', '/organization-settings', '/report-card-templates'],
+
     '/resources': ['/resources', '/my-resources'],
   };
 

@@ -18,7 +18,7 @@ const Subjects = lazy(() => import('./Subjects'));
 const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
 const TeachingOS = lazy(() => import('./TeachingOS'));
 const QuizEngine = lazy(() => import('./QuizEngine'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
+
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -31,7 +31,7 @@ const views = [
   { label: '1-to-1', value: 'one-to-one' },
   { label: 'AI Teaching OS', value: 'teaching-os' },
   { label: 'Quiz Engine', value: 'quiz-engine' },
-  { label: 'Zoom Control Room', value: 'zoom' },
+  
 ] as const;
 
 export default function TeachingLanding() {
@@ -41,6 +41,9 @@ export default function TeachingLanding() {
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
+  // Zoom is now a standalone top-level tool, not a Teaching tab.
+  if (requested === 'zoom') return <Navigate to="/zoom-management" replace />;
+
 
   const teacherContentMap: Record<string, React.ReactNode> = {
     attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
@@ -102,7 +105,7 @@ export default function TeachingLanding() {
     'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
     'teaching-os': <Suspense fallback={<Loading />}><TeachingOS /></Suspense>,
     'quiz-engine': <Suspense fallback={<Loading />}><QuizEngine /></Suspense>,
-    zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
+    
   }), []);
 
   if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
