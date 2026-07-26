@@ -98,7 +98,7 @@ export default function Parents() {
         id: p.id,
         full_name: p.full_name,
         email: p.email,
-        whatsapp_number: p.whatsapp_number,
+        whatsapp_number: phoneByUser.get(p.id) ?? null,
         created_at: p.created_at,
         hasAuth: authStatus[p.id]?.hasAuth ?? false,
         childrenCount: childCount.get(p.id) || 0,
