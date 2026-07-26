@@ -247,8 +247,9 @@ function minutesToLabel(minutes: number): string {
 }
 
 /** Today's active scheduled slots (teacher-local times, same convention as DailySlotCalendar). */
-export function useTodayScheduledClasses(divisionId?: string | null) {
-  const dayName = format(new Date(), 'EEEE').toLowerCase();
+export function useTodayScheduledClasses(divisionId?: string | null, timeZone?: string) {
+  const tz = timeZone || DEFAULT_ACADEMY_TZ;
+  const dayName = zonedDayName(tz);
 
   return useQuery({
     queryKey: ['zoom-today-classes', dayName, divisionId || 'all'],
