@@ -97,6 +97,10 @@ export default function TeacherNazraDashboard() {
 
       if (profilesError) throw profilesError;
 
+      // Contact numbers live in profile_sensitive_data (restricted on profiles)
+      const phoneByUser = await fetchWhatsappMap(studentIds);
+
+
       // Get last lesson for each student + count total lessons
       const studentsWithDetails: (StudentWithDetails & { 
         email?: string | null; 
