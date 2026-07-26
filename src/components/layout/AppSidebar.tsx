@@ -247,12 +247,16 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
     return getFinanceSidebar(isOneToOne, role);
   }
+  if (!isStudentOrParent && (pathname.startsWith('/zoom') || pathname.startsWith('/live-classes'))) {
+    return getZoomSidebar(role);
+  }
   if (isStudentOrParent && pathname.startsWith('/hub')) {
     return getCommunicationSidebar(role);
   }
-  if (!isStudentOrParent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
+  if (!isStudentOrParent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/hub'))) {
     return getCommunicationSidebar(role);
   }
+
 
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity') || pathname.startsWith('/activity-log')) {
     return getSettingsSidebar(role);
