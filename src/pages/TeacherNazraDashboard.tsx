@@ -134,7 +134,7 @@ export default function TeacherNazraDashboard() {
             gender: student.gender,
             age: student.age,
             email: student.email,
-            whatsapp_number: student.whatsapp_number,
+            whatsapp_number: phoneByUser.get(student.id) ?? null,
             last_lesson: lastLesson || undefined,
             total_lessons: total,
             attendance_rate: total > 0 ? Math.round((present / total) * 100) : 0,
