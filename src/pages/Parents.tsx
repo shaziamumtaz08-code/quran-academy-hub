@@ -61,9 +61,12 @@ export default function Parents() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, whatsapp_number, created_at, guardian_type')
+        .select('id, full_name, email, created_at, guardian_type')
         .in('id', parentIds)
         .is('archived_at', null);
+
+      const phoneByUser = await fetchWhatsappMap(parentIds);
+
 
       const { data: links } = await supabase
         .from('student_parent_links').select('parent_id, student_id').in('parent_id', parentIds);
