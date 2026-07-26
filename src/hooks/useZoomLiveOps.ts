@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { DEFAULT_ACADEMY_TZ, zonedDayName, zonedStartOfDay } from '@/hooks/useAcademyTimezone';
 
 /**
  * Shared Zoom live-operations data layer.
@@ -307,12 +308,12 @@ export function useTodayScheduledClasses(divisionId?: string | null, timeZone?: 
 }
 
 /** All of today's sessions (any status) so we can resolve slot state. */
-export function useTodaySessions() {
+export function useTodaySessions(timeZone?: string) {
+  const tz = timeZone || DEFAULT_ACADEMY_TZ;
   return useQuery({
-    queryKey: ['zoom-today-sessions'],
+    queryKey: ['zoom-today-sessions', tz],
     queryFn: async () => {
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
+      const start = zonedStartOfDay(tz);
       const { data, error } = await (supabase as any)
         .from('live_sessions')
         .select('id, teacher_id, student_id, status, schedule_id, assignment_id, actual_start, actual_end, scheduled_start, created_at')
