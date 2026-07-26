@@ -87,7 +87,10 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
     '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
     '/reports': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
-    '/settings': ['/settings', '/organization-settings', '/zoom-management', '/report-card-templates'],
+    '/zoom-management': ['/zoom-management', '/live-classes'],
+    '/live-classes': ['/live-classes', '/zoom-management'],
+    '/settings': ['/settings', '/organization-settings', '/report-card-templates'],
+
     '/resources': ['/resources', '/my-resources'],
   };
 
