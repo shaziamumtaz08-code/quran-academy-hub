@@ -31,7 +31,7 @@ const views = [
   { label: '1-to-1', value: 'one-to-one' },
   { label: 'AI Teaching OS', value: 'teaching-os' },
   { label: 'Quiz Engine', value: 'quiz-engine' },
-  { label: 'Zoom Control Room', value: 'zoom' },
+  
 ] as const;
 
 export default function TeachingLanding() {
