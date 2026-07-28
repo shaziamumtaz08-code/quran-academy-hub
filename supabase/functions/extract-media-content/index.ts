@@ -1,14 +1,44 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "npm:@supabase/supabase-js@2.49.4";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod";
 
 type MediaPart =
   | { kind: "image"; data_url: string }
   | { kind: "audio"; data: string; format: string }
   | { kind: "file"; filename: string; data_url: string };
+
+const MediaPartSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("image"), data_url: z.string().startsWith("data:image/") }),
+  z.object({
+    kind: z.literal("audio"),
+    data: z.string().min(1),
+    format: z.enum(["wav", "mp3", "webm", "m4a", "ogg", "aac", "flac"]),
+  }),
+  z.object({
+    kind: z.literal("file"),
+    filename: z.string().min(1).max(255),
+    data_url: z.string().startsWith("data:"),
+  }),
+]);
+
+const BodySchema = z.object({
+  filename: z.string().max(255).optional(),
+  media: z.array(MediaPartSchema).min(1).max(10),
+  instruction: z.string().max(2000).optional(),
+});
+
+function extractModelText(content: unknown): string {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (part && typeof part === "object" && "text" in part) return String((part as { text?: unknown }).text ?? "");
+      return "";
+    })
+    .join("\n")
+    .trim();
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -28,15 +58,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { filename, media, instruction } = await req.json() as {
+    const parsed = BodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid media payload", details: parsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { filename, media, instruction } = parsed.data as {
       filename?: string;
-      media?: MediaPart[];
+      media: MediaPart[];
       instruction?: string;
     };
 
-    if (!media?.length) {
-      return new Response(JSON.stringify({ error: "media required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const key = Deno.env.get("LOVABLE_API_KEY");
+    if (!key) {
+      return new Response(JSON.stringify({ error: "AI extraction is not configured" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -61,7 +99,7 @@ Rules:
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+        "Lovable-API-Key": key,
       },
       body: JSON.stringify({
         model: "google/gemini-3.6-flash",
@@ -72,13 +110,13 @@ Rules:
     if (!res.ok) {
       const errText = await res.text();
       const status = res.status === 429 || res.status === 402 ? res.status : 500;
-      return new Response(JSON.stringify({ error: `Extraction failed: ${errText.slice(0, 300)}` }), {
+      return new Response(JSON.stringify({ error: `Extraction failed: ${errText.slice(0, 500)}` }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const json = await res.json();
-    const text = json?.choices?.[0]?.message?.content ?? "";
+    const text = extractModelText(json?.choices?.[0]?.message?.content);
 
     return new Response(JSON.stringify({ filename: filename || "media", text }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
