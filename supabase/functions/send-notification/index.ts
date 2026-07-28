@@ -1,5 +1,5 @@
 import { requireRole } from "../_shared/auth.ts";
-import { getServiceAccount, getAccessToken, sendToToken } from "./fcm.ts";
+import { getServiceAccount, getAccessToken, sendToToken } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
