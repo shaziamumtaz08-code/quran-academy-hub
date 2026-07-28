@@ -1,11 +1,32 @@
+// Service workers we must never unregister. The Firebase messaging worker
+// owns web-push delivery; unregistering it on every load would silently
+// invalidate push subscriptions with no visible error.
+const PROTECTED_SW_SCRIPTS = ['firebase-messaging-sw.js'];
+
+function isProtectedRegistration(reg: ServiceWorkerRegistration): boolean {
+  const scriptURL =
+    reg.active?.scriptURL ||
+    reg.waiting?.scriptURL ||
+    reg.installing?.scriptURL ||
+    '';
+  const candidates = [reg.scope, scriptURL];
+  return PROTECTED_SW_SCRIPTS.some((name) =>
+    candidates.some((value) => value.includes(name)),
+  );
+}
+
 export function registerPWA() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations()
-      .then(regs => regs.forEach(r => r.unregister()));
+      .then(regs => regs.forEach(r => {
+        if (isProtectedRegistration(r)) return;
+        r.unregister();
+      }));
 
     caches.keys().then(keys =>
       keys.forEach(key => caches.delete(key)));
   }
+
 
   // Auto-recover from stale dynamic chunks after a new deploy.
   // When index.html points to hashes that no longer exist on the CDN,
