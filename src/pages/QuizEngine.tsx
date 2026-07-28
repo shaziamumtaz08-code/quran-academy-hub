@@ -501,16 +501,38 @@ export default function QuizEngine() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Quiz Engine</h1>
-            <p className="text-sm text-muted-foreground">AI-powered quiz banks for pre-screening & assessments</p>
+      <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 p-5 md:p-6 shadow-[var(--shadow-card)]"
+          style={{ background: 'var(--gradient-header)' }}>
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent/20 blur-2xl" />
+          <div className="pointer-events-none absolute -left-10 -bottom-16 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-xl bg-accent/20 flex items-center justify-center ring-1 ring-accent/30 shrink-0">
+                <ClipboardCheck className="h-5.5 w-5.5 h-6 w-6 text-accent" />
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-primary-foreground tracking-tight">Quiz Engine</h1>
+                <p className="text-sm text-primary-foreground/70">AI-powered quiz banks for pre-screening &amp; assessments</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {banks.length} bank{banks.length === 1 ? '' : 's'}
+                  </span>
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {sessions.filter((s: any) => s.status === 'live').length} live session{sessions.filter((s: any) => s.status === 'live').length === 1 ? '' : 's'}
+                  </span>
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {attempts.length} submission{attempts.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Button onClick={() => setCreateOpen(true)} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90 shadow-[var(--shadow-glow)] shrink-0">
+              <Plus className="h-4 w-4" /> New Quiz Bank
+            </Button>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> New Quiz Bank
-          </Button>
         </div>
+
 
         {(() => {
           // ====== Sessions: filter + group ======
