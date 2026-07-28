@@ -235,24 +235,12 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [classInfo.timezone, panelState],
   );
+  // NOTE: Ping is only available when the parent explicitly passes `scheduleId`.
+  // This component powers the group-class flow (TeacherCourseView / StudentCourseView),
+  // which does not use the `schedules` table at all — so no ping UI renders here today.
+  // Group-class ping support is a possible future addition (out of scope).
+  const activeScheduleId = scheduleId || null;
 
-  // Resolve schedule id for this course/day when not supplied by the parent
-  const { data: resolvedScheduleId } = useQuery({
-    queryKey: ['ping-schedule', courseId, occurrenceDate],
-    enabled: !scheduleId && !!courseId && pingActive,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('course_id', courseId!)
-        .eq('day_of_week', zonedDayName(classInfo.timezone))
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      return data?.id ?? null;
-    },
-  });
-  const activeScheduleId = scheduleId || resolvedScheduleId || null;
 
   // Cooldown ticker
   useEffect(() => {
