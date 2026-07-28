@@ -346,6 +346,21 @@ export default function QuizEngine() {
     },
   });
 
+  const deleteSession = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('quiz_sessions') as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-attempts'] });
+      toast({ title: 'Session deleted' });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Could not delete session', description: e.message, variant: 'destructive' });
+    },
+  });
+
   const deleteBank = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase.from('quiz_banks') as any).delete().eq('id', id);
@@ -836,7 +851,22 @@ export default function QuizEngine() {
                                             <Play className="h-3 w-3 mr-1" /> Reopen
                                           </Button>
                                         )}
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                          disabled={deleteSession.isPending}
+                                          onClick={() => {
+                                            const msg = sessionAttempts.length > 0
+                                              ? `Delete this session and its ${sessionAttempts.length} submission(s)? This cannot be undone.`
+                                              : 'Delete this session? This cannot be undone.';
+                                            if (window.confirm(msg)) deleteSession.mutate(s.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                        </Button>
                                       </div>
+
                                     </div>
                                   </CardContent>
                                 </Card>
