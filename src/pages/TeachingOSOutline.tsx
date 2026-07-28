@@ -7,13 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdfWorker';
 import {
   Sparkles, FileText, Upload, X, Check, Loader2, ChevronDown, Search,
   Download, ArrowRight, Calendar, Clock, Plus, ChevronRight, RotateCcw
 } from 'lucide-react';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
+
 
 // ─── Types ───
 interface SourceFile {
