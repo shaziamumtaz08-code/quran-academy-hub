@@ -27,7 +27,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   attempts: any[];
   attemptId: string | null;
-  setAttemptId: (id: string | null) => void;
   sessionNumberMap: Map<string, number>;
   attemptNumberMap: Map<string, number>;
 }
@@ -125,13 +124,11 @@ export default function AttemptDetailDialog({
   onOpenChange,
   attempts,
   attemptId,
-  setAttemptId,
   sessionNumberMap,
   attemptNumberMap,
 }: Props) {
   // Always resolve by unique attempt id — never by array position.
   const attempt = useMemo(() => attempts.find((a) => a.id === attemptId) || null, [attempts, attemptId]);
-  const idx = useMemo(() => attempts.findIndex((a) => a.id === attemptId), [attempts, attemptId]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const firedConfetti = useRef<string | null>(null);
