@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Bell, MessageSquare, Mail, Send, Plus, Clock, CheckCircle, XCircle, AlertCircle, Check } from "lucide-react";
+import { Bell, MessageSquare, Mail, Send, Plus, Clock, CheckCircle, XCircle, AlertCircle, Check, Smartphone, CalendarClock } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
 const channelIcons: Record<string, React.ReactNode> = {
@@ -22,6 +22,7 @@ const channelIcons: Record<string, React.ReactNode> = {
   sms: <MessageSquare className="h-4 w-4 text-blue-500" />,
   email: <Mail className="h-4 w-4 text-amber-500" />,
   in_app: <Bell className="h-4 w-4 text-violet-500" />,
+  push: <Smartphone className="h-4 w-4 text-sky-500" />,
   lms: <Bell className="h-4 w-4 text-primary" />,
 };
 
@@ -148,6 +149,59 @@ export default function NotificationCenter() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification-templates"] }),
   });
 
+  // Registered push devices
+  const { data: deviceCount = 0 } = useQuery({
+    queryKey: ["push-token-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("push_tokens")
+        .select("id", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: isAdmin,
+  });
+
+  const [testing, setTesting] = useState(false);
+  const sendTestPush = async () => {
+    if (!user?.id) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          event_trigger: "test_push",
+          channel: "push",
+          recipients: [{ profile_id: user.id }],
+          payload: { message: "Test push from AQTA Notification Center" },
+        },
+      });
+      const errText = (error as any)?.message || (data as any)?.error;
+      if (errText) {
+        toast({
+          title: "Test push not sent",
+          description: String(errText).includes("No active template")
+            ? "No active push template for trigger 'test_push'. Create one above first."
+            : String(errText),
+          variant: "destructive",
+        });
+      } else {
+        const result = (data as any)?.results?.[0];
+        toast({
+          title: result?.status === "sent" ? "Test push sent" : "Test push queued",
+          description: result?.status === "failed"
+            ? "Delivery failed — check Send History for details."
+            : "Check your registered devices.",
+          variant: result?.status === "failed" ? "destructive" : "default",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["notification-events"] });
+    } catch (e: any) {
+      toast({ title: "Test push failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const unreadCount = myNotifications.filter((n: any) => n.status === 'pending').length;
   const totalSent = events.filter((e: any) => e.status === "sent" || e.status === "delivered").length;
   const totalFailed = events.filter((e: any) => e.status === "failed").length;
@@ -176,6 +230,7 @@ export default function NotificationCenter() {
             </TabsTrigger>
             {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
             {isAdmin && <TabsTrigger value="history">Send History</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="push">Push Notifications</TabsTrigger>}
           </TabsList>
 
           {/* My Notifications */}
@@ -239,6 +294,7 @@ export default function NotificationCenter() {
                           <SelectItem value="whatsapp">WhatsApp</SelectItem>
                           <SelectItem value="sms">SMS</SelectItem>
                           <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="push">Push Notification</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -314,6 +370,59 @@ export default function NotificationCenter() {
               {templates.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">No templates yet. Create one to get started.</p>
               )}
+            </div>
+          </TabsContent>
+
+          {/* Push Notifications (admin) */}
+          <TabsContent value="push" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-sky-500" /> Registered devices
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-3xl font-bold">{deviceCount}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Devices with an active push token. A device registers after the user allows
+                    notifications in their browser.
+                  </p>
+                  <Button size="sm" onClick={sendTestPush} disabled={testing}>
+                    <Send className="h-4 w-4 mr-2" />
+                    {testing ? "Sending…" : "Send test push to my devices"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CalendarClock className="h-4 w-4 text-primary" /> Scheduled reminders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">Class reminders</p>
+                      <p className="text-xs text-muted-foreground">Students, teachers and linked parents</p>
+                    </div>
+                    <Badge variant="outline" className="whitespace-nowrap">Daily · 07:00 PKT</Badge>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">Fee reminders</p>
+                      <p className="text-xs text-muted-foreground">Parents with outstanding invoices</p>
+                    </div>
+                    <Badge variant="outline" className="whitespace-nowrap">1st, 10th, 20th · 10:00 PKT</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-start gap-1.5 pt-1">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    Reminders only send once an active push template exists for
+                    <code className="mx-1">class_reminder</code> / <code className="mx-1">fee_reminder</code>.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
