@@ -501,16 +501,38 @@ export default function QuizEngine() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Quiz Engine</h1>
-            <p className="text-sm text-muted-foreground">AI-powered quiz banks for pre-screening & assessments</p>
+      <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 p-5 md:p-6 shadow-[var(--shadow-card)]"
+          style={{ background: 'var(--gradient-header)' }}>
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent/20 blur-2xl" />
+          <div className="pointer-events-none absolute -left-10 -bottom-16 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-xl bg-accent/20 flex items-center justify-center ring-1 ring-accent/30 shrink-0">
+                <ClipboardCheck className="h-6 w-6 text-accent" />
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-primary-foreground tracking-tight">Quiz Engine</h1>
+                <p className="text-sm text-primary-foreground/70">AI-powered quiz banks for pre-screening &amp; assessments</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {banks.length} bank{banks.length === 1 ? '' : 's'}
+                  </span>
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {sessions.filter((s: any) => s.status === 'live').length} live session{sessions.filter((s: any) => s.status === 'live').length === 1 ? '' : 's'}
+                  </span>
+                  <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-medium text-primary-foreground/90 ring-1 ring-primary-foreground/15">
+                    {attempts.length} submission{attempts.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Button onClick={() => setCreateOpen(true)} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90 shadow-[var(--shadow-glow)] shrink-0">
+              <Plus className="h-4 w-4" /> New Quiz Bank
+            </Button>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> New Quiz Bank
-          </Button>
         </div>
+
 
         {(() => {
           // ====== Sessions: filter + group ======
@@ -622,26 +644,30 @@ export default function QuizEngine() {
 
           return (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-3 w-full max-w-md">
-                <TabsTrigger value="banks" className="gap-1 text-xs">
+              <TabsList className="grid grid-cols-3 w-full max-w-md h-10 p-1 rounded-xl bg-muted/60">
+                <TabsTrigger value="banks" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <FileText className="h-3.5 w-3.5" /> Banks ({banks.length})
                 </TabsTrigger>
-                <TabsTrigger value="sessions" className="gap-1 text-xs">
+                <TabsTrigger value="sessions" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <LinkIcon className="h-3.5 w-3.5" /> Sessions ({sessions.length})
                 </TabsTrigger>
-                <TabsTrigger value="results" className="gap-1 text-xs">
+                <TabsTrigger value="results" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <Trophy className="h-3.5 w-3.5" /> Results ({attempts.length})
                 </TabsTrigger>
               </TabsList>
+
 
               {/* ===== Banks Tab ===== */}
               <TabsContent value="banks" className="mt-4 space-y-3">
                 {banksLoading ? (
                   <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                 ) : banks.length === 0 ? (
-                  <Card><CardContent className="p-8 text-center">
-                    <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No quiz banks yet. Create one to get started.</p>
+                  <Card className="border-dashed"><CardContent className="p-10 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-accent/10 mx-auto mb-4 flex items-center justify-center">
+                      <ClipboardCheck className="h-7 w-7 text-accent" />
+                    </div>
+                    <p className="font-medium">No quiz banks yet</p>
+                    <p className="text-sm text-muted-foreground">Create one to get started.</p>
                   </CardContent></Card>
                 ) : (
                   <div className="grid gap-3">
@@ -650,41 +676,46 @@ export default function QuizEngine() {
                       const hasLive = stats.live > 0;
                       const bankAttempts = attempts.filter((a: any) => a.quiz_bank_id === bank.id).length;
                       return (
-                        <Card key={bank.id} className="border-border">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1 flex-1">
+                        <Card
+                          key={bank.id}
+                          className={`group relative overflow-hidden border-border/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] ${hasLive ? 'ring-1 ring-success/30' : ''}`}
+                        >
+                          <span className={`absolute inset-y-0 left-0 w-1 ${hasLive ? 'bg-success' : 'bg-accent/50'}`} />
+                          <CardContent className="p-4 pl-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1.5 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-sm font-medium">{bank.name}</h4>
+                                  <h4 className="text-sm font-semibold truncate">{bank.name}</h4>
                                   {hasLive ? (
-                                    <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                    <Badge className="text-[10px] gap-1 bg-success hover:bg-success text-success-foreground border-transparent">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                                       Live
                                     </Badge>
                                   ) : (
-                                    <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-xs">{bank.status}</Badge>
+                                    <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-[10px] capitalize">{bank.status}</Badge>
                                   )}
-                                  <Badge variant="outline" className="text-xs gap-1">
+                                  <Badge variant="outline" className="text-[10px] gap-1 capitalize">
                                     {bank.mode === 'public' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                                     {bank.mode}
                                   </Badge>
-                                  {bank.course?.name && <Badge variant="outline" className="text-xs">{bank.course.name}</Badge>}
+                                  {bank.course?.name && <Badge variant="outline" className="text-[10px]">{bank.course.name}</Badge>}
                                 </div>
-                                {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
-                                <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
-                                  <span>{getQuestionCount(bank)} Qs</span>
-                                  <span>{bank.language?.toUpperCase()}</span>
-                                  {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
-                                  <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
-                                  <span>Pass: {bank.passing_percentage}%</span>
-                                  <span>{bankAttempts} submission{bankAttempts === 1 ? '' : 's'}</span>
+                                {bank.description && <p className="text-xs text-muted-foreground line-clamp-2">{bank.description}</p>}
+                                <div className="flex gap-1.5 text-[11px] flex-wrap pt-0.5">
+                                  <span className="rounded-md bg-accent/10 text-accent px-2 py-0.5 font-medium">{getQuestionCount(bank)} Qs</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.language?.toUpperCase()}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.time_limit_minutes ? `⏱ ${bank.time_limit_minutes} min` : 'No timer'}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">Pass {bank.passing_percentage}%</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bankAttempts} submission{bankAttempts === 1 ? '' : 's'}</span>
                                   <button
-                                    className="underline hover:text-foreground"
+                                    className="rounded-md bg-primary/5 px-2 py-0.5 text-foreground/80 hover:bg-primary/10 transition-colors"
                                     onClick={() => { setSessFilterBank(bank.id); setActiveTab('sessions'); }}
                                   >
                                     {stats.live} active / {stats.total} session{stats.total === 1 ? '' : 's'}
                                   </button>
                                 </div>
+
                               </div>
                               <div className="flex gap-1">
                                 <Button
@@ -723,10 +754,14 @@ export default function QuizEngine() {
               {/* ===== Sessions Tab ===== */}
               <TabsContent value="sessions" className="mt-4 space-y-3">
                 {sessions.length === 0 ? (
-                  <Card><CardContent className="p-8 text-center">
-                    <LinkIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No active sessions. Go Live on a quiz bank to create one.</p>
+                  <Card className="border-dashed"><CardContent className="p-10 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-accent/10 mx-auto mb-4 flex items-center justify-center">
+                      <LinkIcon className="h-7 w-7 text-accent" />
+                    </div>
+                    <p className="font-medium">No active sessions</p>
+                    <p className="text-sm text-muted-foreground">Go Live on a quiz bank to create one.</p>
                   </CardContent></Card>
+
                 ) : (
                   <>
                     {/* Filter bar */}
@@ -796,12 +831,14 @@ export default function QuizEngine() {
                               const ageHours = (Date.now() - new Date(s.created_at).getTime()) / 3600000;
                               const showStale = sessionAttempts.length === 0 && ageHours > 24 && s.status === 'live';
                               return (
-                                <Card key={s.id} className="border-border">
-                                  <CardContent className="p-4">
+                                <Card key={s.id} className={`group relative overflow-hidden rounded-xl border-border/70 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] ${s.status === 'live' ? 'ring-1 ring-success/30' : ''}`}>
+                                  <span className={`absolute inset-y-0 left-0 w-1 ${s.status === 'live' ? 'bg-success' : 'bg-muted-foreground/25'}`} />
+                                  <CardContent className="p-4 pl-5">
                                     <div className="flex items-start justify-between gap-3">
-                                      <div className="space-y-1 flex-1">
+                                      <div className="space-y-1.5 flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <Badge variant="outline" className="text-xs">Session #{sessNum}</Badge>
+                                          <Badge variant="outline" className="text-[10px] font-mono">Session #{sessNum}</Badge>
+
                                           <h4 className="text-sm font-medium">{s.title || s.quiz_bank?.name}</h4>
                                           {s.status === 'live' ? (
                                             <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
@@ -950,22 +987,30 @@ export default function QuizEngine() {
                 </Card>
 
                 {quizSummary && quizSummary.bank && (
-                  <Card>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div><p className="text-xs text-muted-foreground">Total attempts</p><p className="text-lg font-semibold">{quizSummary.total}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Unique students</p><p className="text-lg font-semibold">{quizSummary.unique}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Avg score</p><p className="text-lg font-semibold">{quizSummary.avg}%</p></div>
-                        <div><p className="text-xs text-muted-foreground">Pass rate</p><p className="text-lg font-semibold">{quizSummary.passRate}%</p></div>
+                  <Card className="rounded-xl border-border/70 shadow-[var(--shadow-card)]">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: 'Total attempts', value: quizSummary.total, tone: 'bg-primary/5 text-primary' },
+                          { label: 'Unique students', value: quizSummary.unique, tone: 'bg-accent/10 text-accent' },
+                          { label: 'Avg score', value: `${quizSummary.avg}%`, tone: 'bg-warning/10 text-warning' },
+                          { label: 'Pass rate', value: `${quizSummary.passRate}%`, tone: 'bg-success/10 text-success' },
+                        ].map((s) => (
+                          <div key={s.label} className={`rounded-lg p-3 ${s.tone.split(' ')[0]}`}>
+                            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                            <p className={`text-2xl font-bold tracking-tight ${s.tone.split(' ')[1]}`}>{s.value}</p>
+                          </div>
+                        ))}
                       </div>
-                      <div className="h-2 w-full rounded-full overflow-hidden bg-destructive/30 flex">
-                        <div className="bg-green-600 h-full" style={{ width: `${quizSummary.passRate}%` }} />
-                        <div className="bg-destructive h-full" style={{ width: `${100 - quizSummary.passRate}%` }} />
+                      <div className="h-2.5 w-full rounded-full overflow-hidden bg-destructive/20 flex">
+                        <div className="bg-success h-full transition-all" style={{ width: `${quizSummary.passRate}%` }} />
+                        <div className="bg-destructive h-full transition-all" style={{ width: `${100 - quizSummary.passRate}%` }} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{quizSummary.passed} pass / {quizSummary.total - quizSummary.passed} fail</p>
+                      <p className="text-[11px] text-muted-foreground">{quizSummary.passed} pass / {quizSummary.total - quizSummary.passed} fail</p>
                     </CardContent>
                   </Card>
                 )}
+
 
                 <Card>
                   <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
@@ -986,7 +1031,7 @@ export default function QuizEngine() {
                       <div className="overflow-x-auto rounded-md border">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableRow className="bg-muted/60 hover:bg-muted/60 [&>th]:h-9 [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-[10px] [&>th]:text-muted-foreground">
                               <TableHead className="text-xs">#</TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('sessionNum')}>Session<SortIcon k="sessionNum" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('attempt')}>Attempt<SortIcon k="attempt" /></TableHead>
@@ -1009,7 +1054,7 @@ export default function QuizEngine() {
                               return (
                                 <TableRow
                                   key={a.id}
-                                  className="cursor-pointer transition-colors hover:bg-primary/5"
+                                  className="cursor-pointer transition-colors even:bg-muted/20 hover:bg-accent/10"
                                   onClick={() => { setDetailList([a]); setDetailAttemptId(a.id); }}
                                 >
                                   <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
