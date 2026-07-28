@@ -291,12 +291,13 @@ export default function QuizEngine() {
   });
 
   const createSession = useMutation({
-    mutationFn: async (bankId: string) => {
+    mutationFn: async ({ bankId, identityMode }: { bankId: string; identityMode: 'email' | 'name' }) => {
       const bank = banks.find((b: any) => b.id === bankId);
       const { error } = await (supabase.from('quiz_sessions') as any).insert({
         quiz_bank_id: bankId,
         title: bank?.name || 'Quiz Session',
         status: 'live',
+        identity_mode: identityMode,
         created_by: user?.id,
       });
       if (error) throw error;
