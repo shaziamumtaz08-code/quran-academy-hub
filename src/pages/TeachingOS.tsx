@@ -2,10 +2,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { LanguageSelector } from '@/components/teaching/LanguageSelector';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdfWorker';
 
-// Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';

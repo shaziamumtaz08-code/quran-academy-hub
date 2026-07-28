@@ -1,7 +1,6 @@
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdfWorker';
 import { supabase } from '@/integrations/supabase/client';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 export const QUIZ_SOURCE_ACCEPT =
   '.pdf,.txt,.md,.csv,.doc,.docx,image/*,audio/*,video/*';
