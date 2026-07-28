@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { KidContextProvider } from "@/contexts/KidContext";
@@ -498,6 +499,7 @@ const App = () => (
       <Sonner />
       <InstallBanner />
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <DivisionProvider>
             <KidContextProvider>
