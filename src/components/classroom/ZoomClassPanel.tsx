@@ -425,25 +425,32 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                   Class starts in {minutesUntil} minute{minutesUntil !== 1 ? 's' : ''}
                 </p>
               </div>
-              <Button
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={() => { setShowIframe(true); setIframeError(false); }}
-              >
-                <Video className="h-4 w-4 mr-2" /> Prepare to Join
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+                >
+                  <Video className="h-4 w-4 mr-2" /> Prepare to Join
+                </Button>
+                {pingButton}
+              </div>
             </>
           )}
 
           {/* STATE: Live — action buttons */}
           {panelState === 'live' && !showIframe && (
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => { setShowIframe(true); setIframeError(false); }}
-            >
-              <Video className="h-4 w-4 mr-2" />
-              {userRole === 'teacher' ? 'Launch Class' : 'Join Live Class'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+              >
+                <Video className="h-4 w-4 mr-2" />
+                {userRole === 'teacher' ? 'Launch Class' : 'Join Live Class'}
+              </Button>
+              {pingButton}
+            </div>
           )}
+
 
           {/* Live + iframe open: End/Open buttons */}
           {(panelState === 'live' || panelState === 'starting-soon') && showIframe && (
