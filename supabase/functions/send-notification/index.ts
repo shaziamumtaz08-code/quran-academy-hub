@@ -139,6 +139,87 @@ Deno.serve(async (req) => {
         }
       }
 
+      // For Push — deliver via FCM HTTP v1
+      if (template.channel === "push") {
+        const title = template.subject || template.event_trigger || "Notification";
+
+        if (!recipient.profile_id) {
+          await supabase
+            .from("notification_events")
+            .update({ status: "failed", error_message: "no push tokens registered" })
+            .eq("id", event.id);
+          results.push({ id: event.id, status: "failed", rendered_text: rendered });
+          continue;
+        }
+
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("id, token")
+          .eq("user_id", recipient.profile_id);
+
+        if (!tokens?.length) {
+          await supabase
+            .from("notification_events")
+            .update({ status: "failed", error_message: "no push tokens registered" })
+            .eq("id", event.id);
+          results.push({ id: event.id, status: "failed", rendered_text: rendered });
+          continue;
+        }
+
+        const sa = getServiceAccount();
+        if (!sa) {
+          const msg = "FCM_SERVICE_ACCOUNT_JSON secret is not set or invalid";
+          await supabase
+            .from("notification_events")
+            .update({ status: "failed", error_message: msg })
+            .eq("id", event.id);
+          results.push({ id: event.id, status: "failed", rendered_text: rendered });
+          continue;
+        }
+
+        try {
+          const accessToken = await getAccessToken(sa);
+          let anySent = false;
+          const errors: string[] = [];
+
+          for (const t of tokens) {
+            const res = await sendToToken(sa, accessToken, t.token, title, rendered, {
+              event_trigger: String(template.event_trigger || ""),
+            });
+            if (res.ok) {
+              anySent = true;
+            } else {
+              errors.push(res.error || "unknown FCM error");
+              if (res.stale) {
+                await supabase.from("push_tokens").delete().eq("id", t.id);
+              }
+            }
+          }
+
+          if (anySent) {
+            await supabase
+              .from("notification_events")
+              .update({ status: "sent", sent_at: new Date().toISOString() })
+              .eq("id", event.id);
+            results.push({ id: event.id, status: "sent", rendered_text: rendered });
+          } else {
+            await supabase
+              .from("notification_events")
+              .update({ status: "failed", error_message: errors.join(" | ").slice(0, 1000) })
+              .eq("id", event.id);
+            results.push({ id: event.id, status: "failed", rendered_text: rendered });
+          }
+        } catch (pushErr: unknown) {
+          const msg = pushErr instanceof Error ? pushErr.message : "Unknown push error";
+          await supabase
+            .from("notification_events")
+            .update({ status: "failed", error_message: msg })
+            .eq("id", event.id);
+          results.push({ id: event.id, status: "failed", rendered_text: rendered });
+        }
+        continue;
+      }
+
       results.push({
         id: event.id,
         status: event.status,
