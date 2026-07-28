@@ -24,9 +24,8 @@ import {
 } from 'lucide-react';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
-import * as pdfjsLib from 'pdfjs-dist';
+import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 import { format, formatDistanceStrict, differenceInMilliseconds } from 'date-fns';
 
 function formatDuration(start: string, end?: string | null): string {
