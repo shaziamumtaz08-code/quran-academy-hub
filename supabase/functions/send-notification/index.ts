@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
 
       // For Push — deliver via FCM HTTP v1
       if (template.channel === "push") {
-        const title = template.subject || template.event_trigger || "Notification";
+        const title = template.name || "Notification";
 
         if (!recipient.profile_id) {
           await supabase
