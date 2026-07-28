@@ -1011,6 +1011,8 @@ export default function QuizEngine() {
                   </Card>
                 )}
 
+                <QuizQuestionAnalysis attempts={filteredResults} />
+
 
                 <Card>
                   <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
