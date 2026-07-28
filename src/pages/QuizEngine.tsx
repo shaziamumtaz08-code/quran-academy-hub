@@ -346,6 +346,21 @@ export default function QuizEngine() {
     },
   });
 
+  const deleteSession = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('quiz_sessions') as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-attempts'] });
+      toast({ title: 'Session deleted' });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Could not delete session', description: e.message, variant: 'destructive' });
+    },
+  });
+
   const deleteBank = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase.from('quiz_banks') as any).delete().eq('id', id);
