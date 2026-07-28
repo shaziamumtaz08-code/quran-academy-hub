@@ -1054,7 +1054,7 @@ export default function QuizEngine() {
                               return (
                                 <TableRow
                                   key={a.id}
-                                  className="cursor-pointer transition-colors hover:bg-primary/5"
+                                  className="cursor-pointer transition-colors even:bg-muted/20 hover:bg-accent/10"
                                   onClick={() => { setDetailList([a]); setDetailAttemptId(a.id); }}
                                 >
                                   <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
