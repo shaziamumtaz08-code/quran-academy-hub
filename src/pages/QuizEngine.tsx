@@ -20,10 +20,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
   ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download,
-  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
+  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search, FileBarChart,
 } from 'lucide-react';
-import { ExportDialog } from '@/components/export/ExportDialog';
 import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
+import QuizResultsExportDialog from '@/components/quiz/QuizResultsExportDialog';
+import QuizFullReportDialog from '@/components/quiz/QuizFullReportDialog';
 import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
 import QuizCollaboratorsDialog from '@/components/quiz/QuizCollaboratorsDialog';
 import { useDraftPersistence, loadDraft, clearDraft } from '@/hooks/useDraftPersistence';
@@ -88,6 +89,10 @@ export default function QuizEngine() {
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
+  // Frozen snapshot of the ordered list at click time so Next/Prev can't drift
+  // when filters/sorting/refetches change the underlying array.
+  const [detailList, setDetailList] = useState<any[]>([]);
+  const [fullReportOpen, setFullReportOpen] = useState(false);
   const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
 
   const DRAFT_KEY = 'quiz-engine:create-draft';
@@ -931,9 +936,14 @@ export default function QuizEngine() {
                 <Card>
                   <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm">Showing {filteredResults.length} of {attempts.length} results</CardTitle>
-                    <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={filteredResults.length === 0}>
-                      <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setFullReportOpen(true)} disabled={filteredResults.length === 0}>
+                        <FileBarChart className="h-3.5 w-3.5 mr-1" /> Full Report
+                      </Button>
+                      <Button size="sm" onClick={() => setExportOpen(true)} disabled={filteredResults.length === 0}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Export
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-3">
                     {filteredResults.length === 0 ? (
@@ -966,7 +976,7 @@ export default function QuizEngine() {
                                 <TableRow
                                   key={a.id}
                                   className="cursor-pointer transition-colors hover:bg-primary/5"
-                                  onClick={() => setDetailAttemptId(a.id)}
+                                  onClick={() => { setDetailList([...filteredResults]); setDetailAttemptId(a.id); }}
                                 >
                                   <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                                   <TableCell className="text-xs font-mono">#{sessionNumberMap.get(a.session_id) || '—'}</TableCell>
@@ -996,7 +1006,7 @@ export default function QuizEngine() {
                                       size="sm"
                                       variant="ghost"
                                       className="h-7 w-7 p-0"
-                                      onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}
+                                      onClick={(e) => { e.stopPropagation(); setDetailList([...filteredResults]); setDetailAttemptId(a.id); }}
                                       title="View full quiz review"
                                     >
                                       <Eye className="h-3.5 w-3.5" />
@@ -1014,26 +1024,11 @@ export default function QuizEngine() {
 
 
                 {/* Export uses filtered set */}
-                <ExportDialog
+                <QuizResultsExportDialog
                   open={exportOpen}
                   onOpenChange={setExportOpen}
-                  title="Quiz Results"
                   filename="quiz-results"
-                  fields={[
-                    { key: 'row', label: '#' },
-                    { key: 'session_num', label: 'Session #' },
-                    { key: 'attempt_num', label: 'Attempt No.' },
-                    { key: 'name', label: 'Name' },
-                    { key: 'email', label: 'Email' },
-                    { key: 'quiz', label: 'Quiz' },
-                    { key: 'score', label: 'Score' },
-                    { key: 'max_score', label: 'Max Score' },
-                    { key: 'percentage', label: 'Percentage' },
-                    { key: 'pass_fail', label: 'Pass/Fail' },
-                    { key: 'time_taken', label: 'Time Taken' },
-                    { key: 'submitted_at', label: 'Date & Time' },
-                  ]}
-                  data={filteredResults.map((a: any, idx: number) => {
+                  rows={filteredResults.map((a: any, idx: number) => {
                     const isPass = (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50);
                     return {
                       row: idx + 1,
@@ -1042,26 +1037,39 @@ export default function QuizEngine() {
                       name: a.guest_name || '',
                       email: a.guest_email || '',
                       quiz: a.quiz_bank?.name || a.session?.title || '',
-                      score: a.score,
-                      max_score: a.max_score,
-                      percentage: `${a.percentage}%`,
-                      pass_fail: isPass ? 'Pass' : 'Fail',
-                      time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
-                      submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
+                      score: `${a.score}/${a.max_score}`,
+                      percentage: Number(a.percentage) || 0,
+                      result: isPass ? 'Pass' : 'Fail',
+                      time: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
+                      date: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
                     };
                   })}
                 />
 
-                <AttemptDetailDialog
+                <QuizFullReportDialog
+                  open={fullReportOpen}
+                  onOpenChange={setFullReportOpen}
+                  quizName={quizSummary?.bank?.name || 'All Quizzes'}
+                  subtitle={`Quiz Participation & Performance Report · ${filteredResults.length} attempts`}
+                  rows={filteredResults.map((a: any) => ({
+                    name: a.guest_name || 'Anonymous',
+                    email: a.guest_email || '',
+                    percentage: Number(a.percentage) || 0,
+                    score: `${a.score}/${a.max_score}`,
+                    pass: (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50),
+                  }))}
+                />
 
+                <AttemptDetailDialog
                   open={!!detailAttemptId}
-                  onOpenChange={(o) => !o && setDetailAttemptId(null)}
-                  attempts={filteredResults}
+                  onOpenChange={(o) => { if (!o) { setDetailAttemptId(null); setDetailList([]); } }}
+                  attempts={detailList}
                   attemptId={detailAttemptId}
                   setAttemptId={setDetailAttemptId}
                   sessionNumberMap={sessionNumberMap}
                   attemptNumberMap={attemptNumberMap}
                 />
+
               </TabsContent>
             </Tabs>
           );
