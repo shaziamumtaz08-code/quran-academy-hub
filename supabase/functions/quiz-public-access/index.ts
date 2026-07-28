@@ -145,18 +145,20 @@ Deno.serve(async (req) => {
         passing_percentage: bank?.passing_percentage,
         total_questions: totalQuestions,
         mode: bank?.mode,
+        identity_mode: session.identity_mode || 'email',
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (req.method === "POST" && action === "start") {
       const { token, guest_email, guest_name } = await req.json();
-      if (!token || !guest_email) {
-        return new Response(JSON.stringify({ error: "token and guest_email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const cleanName = typeof guest_name === "string" ? guest_name.trim() : "";
+      if (!token || cleanName.length < 2) {
+        return new Response(JSON.stringify({ error: "token and full name (min 2 characters) required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const { data: session } = await supabase
         .from("quiz_sessions")
-        .select("id, quiz_bank_id, quiz_bank:quiz_banks!quiz_sessions_quiz_bank_id_fkey(question_bank, questions_per_attempt, max_attempts, language)")
+        .select("id, quiz_bank_id, identity_mode, quiz_bank:quiz_banks!quiz_sessions_quiz_bank_id_fkey(question_bank, questions_per_attempt, max_attempts, language)")
         .eq("access_token", token)
         .eq("status", "live")
         .single();
@@ -166,12 +168,19 @@ Deno.serve(async (req) => {
       }
 
       const bank = session.quiz_bank as any;
+      const identityMode = (session as any).identity_mode || "email";
+      const cleanEmail = typeof guest_email === "string" ? guest_email.toLowerCase().trim() : "";
+      if (identityMode === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+        return new Response(JSON.stringify({ error: "A valid email is required for this quiz" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
-      const { count } = await supabase
+      const attemptQuery = supabase
         .from("quiz_attempts")
         .select("id", { count: "exact", head: true })
-        .eq("session_id", session.id)
-        .eq("guest_email", guest_email.toLowerCase().trim());
+        .eq("session_id", session.id);
+      const { count } = identityMode === "email"
+        ? await attemptQuery.eq("guest_email", cleanEmail)
+        : await attemptQuery.ilike("guest_name", cleanName);
 
       if (bank.max_attempts && (count || 0) >= bank.max_attempts) {
         return new Response(JSON.stringify({ error: "Maximum attempts reached" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -202,8 +211,8 @@ Deno.serve(async (req) => {
         .insert({
           session_id: session.id,
           quiz_bank_id: session.quiz_bank_id,
-          guest_email: guest_email.toLowerCase().trim(),
-          guest_name: guest_name || null,
+          guest_email: cleanEmail || null,
+          guest_name: cleanName,
           questions: shuffledWithOptions,
           max_score: numQ,
           status: "in_progress",

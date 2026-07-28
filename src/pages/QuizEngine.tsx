@@ -93,6 +93,8 @@ export default function QuizEngine() {
   const [detailList, setDetailList] = useState<any[]>([]);
   const [fullReportOpen, setFullReportOpen] = useState(false);
   const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
+  const [sessionSetup, setSessionSetup] = useState<{ id: string; name: string } | null>(null);
+  const [sessionIdentityMode, setSessionIdentityMode] = useState<'email' | 'name'>('email');
 
   const DRAFT_KEY = 'quiz-engine:create-draft';
   const emptyForm = {
@@ -291,12 +293,13 @@ export default function QuizEngine() {
   });
 
   const createSession = useMutation({
-    mutationFn: async (bankId: string) => {
+    mutationFn: async ({ bankId, identityMode }: { bankId: string; identityMode: 'email' | 'name' }) => {
       const bank = banks.find((b: any) => b.id === bankId);
       const { error } = await (supabase.from('quiz_sessions') as any).insert({
         quiz_bank_id: bankId,
         title: bank?.name || 'Quiz Session',
         status: 'live',
+        identity_mode: identityMode,
         created_by: user?.id,
       });
       if (error) throw error;
@@ -306,9 +309,11 @@ export default function QuizEngine() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setSessionSetup(null);
       toast({ title: 'Session created & live!' });
     },
   });
+
 
   const toggleSession = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -686,7 +691,7 @@ export default function QuizEngine() {
                                   size="sm"
                                   variant={hasLive ? 'secondary' : 'outline'}
                                   className="text-xs h-7"
-                                  onClick={() => createSession.mutate(bank.id)}
+                                  onClick={() => { setSessionIdentityMode('email'); setSessionSetup({ id: bank.id, name: bank.name }); }}
                                   disabled={getQuestionCount(bank) === 0}
                                 >
                                   <Play className="h-3 w-3 mr-1" /> {hasLive ? 'New Session' : 'Go Live'}
@@ -1109,6 +1114,44 @@ export default function QuizEngine() {
           open={!!shareBank}
           onOpenChange={(o) => !o && setShareBank(null)}
         />
+
+        {/* Session access mode dialog */}
+        <Dialog open={!!sessionSetup} onOpenChange={(o) => !o && setSessionSetup(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Go Live — {sessionSetup?.name}</DialogTitle>
+              <DialogDescription>Choose how participants identify themselves. Full name is always required.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs">Access by</Label>
+              <div className="grid gap-2">
+                {([
+                  { v: 'email', t: 'Email + Name', d: 'Participant must enter a valid email and their full name. Enforces attempt limits per email.' },
+                  { v: 'name', t: 'Name only', d: 'Participant only enters their full name — no email needed.' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setSessionIdentityMode(opt.v)}
+                    className={`text-left rounded-md border p-3 transition-colors ${sessionIdentityMode === opt.v ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                  >
+                    <div className="text-sm font-medium">{opt.t}</div>
+                    <div className="text-xs text-muted-foreground">{opt.d}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSessionSetup(null)}>Cancel</Button>
+              <Button
+                disabled={createSession.isPending}
+                onClick={() => sessionSetup && createSession.mutate({ bankId: sessionSetup.id, identityMode: sessionIdentityMode })}
+              >
+                <Play className="h-3.5 w-3.5 mr-1" /> Start Session
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Create Quiz Bank Dialog */}
         <Dialog open={createOpen} onOpenChange={c => { if (!generating) { setCreateOpen(c); if (!c) resetForm(); } }}>
