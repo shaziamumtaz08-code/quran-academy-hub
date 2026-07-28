@@ -1112,10 +1112,10 @@ export default function QuizEngine() {
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-border rounded-md cursor-pointer hover:bg-muted/50 transition-colors text-xs text-muted-foreground">
                     {extractingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    Upload PDF / Text
-                    <input type="file" multiple accept=".pdf,.txt,.md,.doc,.docx" className="hidden" onChange={handleFileUpload} disabled={extractingPdf} />
+                    Upload PDF / Image / Audio / Video / Text
+                    <input type="file" multiple accept={QUIZ_SOURCE_ACCEPT} className="hidden" onChange={handleFileUpload} disabled={extractingPdf} />
                   </label>
-                  <span className="text-[10px] text-muted-foreground">Max 5 files, 50 pages each</span>
+                  <span className="text-[10px] text-muted-foreground">Max 5 files · PDFs up to 50 pages · media is transcribed by AI</span>
                 </div>
                 {uploadedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
@@ -1128,7 +1128,8 @@ export default function QuizEngine() {
                   </div>
                 )}
                 <Textarea value={form.source_content} onChange={e => setForm({ ...form, source_content: e.target.value })}
-                  placeholder="Upload PDFs above or paste text directly..."
+                  placeholder="Upload files above (PDF, image, audio, video, text) or paste text directly..."
+
                   className="min-h-[100px] text-xs" />
               </div>
               <div>
