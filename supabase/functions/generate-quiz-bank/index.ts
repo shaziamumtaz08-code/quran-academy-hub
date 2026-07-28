@@ -36,6 +36,9 @@ ARABIC/URDU LANGUAGE HANDLING (CRITICAL):
 - For TF: use localized options like ["صحیح","غلط"] for Urdu or ["صح","خطأ"] for Arabic.
 - NEVER mark an answer wrong just because it lacks diacritics — the base letters are what matter.
 - Questions should test understanding of CONCEPTS, not ability to reproduce exact diacritical marks.
+- Urdu must be written in clean Urdu Nastaleeq-friendly script: use Urdu letter forms such as ک, ی, گ, چ, پ, ٹ, ڈ, ڑ, ھ, ے where appropriate.
+- Arabic must be written in clean Arabic/Naskh-friendly script: use Arabic letter forms such as ك and ي where appropriate, with moderate tashkeel only when meaning requires it.
+- Do NOT mix Urdu and Arabic orthography accidentally. If the selected language is Urdu, keep explanations and options in Urdu; if Arabic, keep them in Arabic.
 - Urdu script only for Urdu. NO Hindi script. NO Devanagari. Clarity must be student-friendly.
 ` : '';
 

@@ -1,15 +1,31 @@
 import type jsPDF from 'jspdf';
 import { ArabicShaper } from 'arabic-persian-reshaper';
 import notoNaskhUrl from '@/assets/fonts/NotoNaskhArabic-Regular.ttf?url';
+import jameelNooriAssetRaw from '@/assets/fonts/Jameel-Noori-Nastaleeq-Regular.ttf.asset.json?raw';
 
 export const ARABIC_FONT = 'NotoNaskhArabic';
+export const URDU_FONT = 'JameelNooriNastaleeq';
 
 /** Arabic / Urdu / Persian blocks (incl. presentation forms). */
 const RTL_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const URDU_RE = /[\u0679\u067E\u0686\u0688\u0691\u0698\u06A9\u06AF\u06CC\u06BE\u06C1\u06D2]/;
 
 export const hasArabic = (s: string | null | undefined) => !!s && RTL_RE.test(s);
+export const hasUrdu = (s: string | null | undefined) => !!s && URDU_RE.test(s);
 
-let fontBase64: string | null = null;
+let naskhBase64: string | null = null;
+let nastaleeqBase64: string | null = null;
+let naskhReady = false;
+let nastaleeqReady = false;
+
+const jameelNooriUrl = (() => {
+  try {
+    const manifest = JSON.parse(jameelNooriAssetRaw) as { url?: string };
+    return manifest.url || '';
+  } catch {
+    return '';
+  }
+})();
 
 function toBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -22,24 +38,46 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 /**
- * Registers Noto Naskh Arabic into the jsPDF instance so Arabic/Urdu glyphs
- * render for real (jsPDF's built-in fonts have no Arabic coverage).
+ * Registers Noto Naskh Arabic and Jameel Noori Nastaleeq into the jsPDF instance
+ * so Arabic/Urdu glyphs render for real (jsPDF's built-in fonts have no RTL coverage).
  */
 export async function ensureArabicFont(doc: jsPDF): Promise<boolean> {
+  let loadedAny = false;
+
   try {
-    if (!fontBase64) {
+    if (!naskhBase64) {
       const res = await fetch(notoNaskhUrl);
       if (!res.ok) throw new Error(`font fetch ${res.status}`);
-      fontBase64 = toBase64(await res.arrayBuffer());
+      naskhBase64 = toBase64(await res.arrayBuffer());
     }
-    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', fontBase64);
+    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', naskhBase64);
     doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT, 'normal');
     // No separate bold file — alias bold to the same face so style switches don't break.
     doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT, 'bold');
-    return true;
+    naskhReady = true;
+    loadedAny = true;
   } catch {
-    return false;
+    naskhReady = false;
   }
+
+  try {
+    if (jameelNooriUrl) {
+      if (!nastaleeqBase64) {
+        const res = await fetch(jameelNooriUrl);
+        if (!res.ok) throw new Error(`font fetch ${res.status}`);
+        nastaleeqBase64 = toBase64(await res.arrayBuffer());
+      }
+      doc.addFileToVFS('Jameel-Noori-Nastaleeq-Regular.ttf', nastaleeqBase64);
+      doc.addFont('Jameel-Noori-Nastaleeq-Regular.ttf', URDU_FONT, 'normal');
+      doc.addFont('Jameel-Noori-Nastaleeq-Regular.ttf', URDU_FONT, 'bold');
+      nastaleeqReady = true;
+      loadedAny = true;
+    }
+  } catch {
+    nastaleeqReady = false;
+  }
+
+  return loadedAny;
 }
 
 /**
@@ -63,11 +101,17 @@ export function shapeRtl(input: string): string {
 }
 
 /** Picks the Arabic-capable font when the text needs it, else the Latin font. */
+export function pdfFontFor(text: string | null | undefined, latin = 'helvetica') {
+  if (!hasArabic(text)) return latin;
+  if (hasUrdu(text) && nastaleeqReady) return URDU_FONT;
+  return naskhReady ? ARABIC_FONT : latin;
+}
+
 export function setFontFor(
   doc: jsPDF,
   text: string,
   style: 'normal' | 'bold' = 'normal',
   latin = 'helvetica',
 ) {
-  doc.setFont(hasArabic(text) ? ARABIC_FONT : latin, style);
+  doc.setFont(pdfFontFor(text, latin), style);
 }
