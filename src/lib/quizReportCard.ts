@@ -139,12 +139,28 @@ export async function generateReportCardPdf(d: ReportCardData) {
   doc.text(`Passing mark: ${d.passThreshold}%`, 40, y + 24);
 
   // ---- Question table
+  const QCOL_W = 341; // 515 usable - (26 + 84 + 64)
+  const anyArabic = d.questions.some((q) => hasArabic(q.text));
+
+  /**
+   * Wrap first (with the Arabic metrics), then shape each visual line, so bidi
+   * reordering stays correct after wrapping.
+   */
+  const questionCell = (text: string) => {
+    const clean = (text || '').replace(/\s+/g, ' ').trim() || '—';
+    if (!(arabicReady && hasArabic(clean))) return clean;
+    doc.setFont(ARABIC_FONT, 'normal');
+    doc.setFontSize(8.5);
+    const lines: string[] = doc.splitTextToSize(clean, QCOL_W - 12);
+    return lines.slice(0, 6).map(shapeRtl).join('\n');
+  };
+
   autoTable(doc, {
     startY: y + 36,
     head: [['#', 'Question', 'Type', 'Result']],
     body: d.questions.map((q) => [
       String(q.index),
-      isLatin(q.text) ? (q.text.length > 88 ? q.text.slice(0, 85) + '…' : q.text) : `Question ${q.index}`,
+      questionCell(q.text),
       q.type,
       q.status === 'correct' ? 'Correct' : q.status === 'wrong' ? 'Incorrect' : 'Skipped',
     ]),
@@ -153,9 +169,11 @@ export async function generateReportCardPdf(d: ReportCardData) {
     headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: 'bold' },
     columnStyles: {
       0: { cellWidth: 26, halign: 'center' },
+      1: { cellWidth: QCOL_W },
       2: { cellWidth: 84 },
       3: { cellWidth: 64, halign: 'center', fontStyle: 'bold' },
     },
+
     didParseCell: (data: any) => {
       if (data.section !== 'body') return;
       const status = d.questions[data.row.index]?.status;
