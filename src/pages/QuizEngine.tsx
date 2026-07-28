@@ -25,6 +25,10 @@ import {
 import { ExportDialog } from '@/components/export/ExportDialog';
 import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
+import QuizCollaboratorsDialog from '@/components/quiz/QuizCollaboratorsDialog';
+import { useDraftPersistence, loadDraft, clearDraft } from '@/hooks/useDraftPersistence';
+
+
 
 import { format, formatDistanceStrict, differenceInMilliseconds } from 'date-fns';
 
@@ -84,9 +88,10 @@ export default function QuizEngine() {
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
+  const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
 
-  // Form state
-  const [form, setForm] = useState({
+  const DRAFT_KEY = 'quiz-engine:create-draft';
+  const emptyForm = {
     name: '', description: '', language: 'en',
     course_id: '', mode: 'public' as 'authenticated' | 'public',
     mcq: 5, tf: 3, fib: 2,
@@ -94,7 +99,13 @@ export default function QuizEngine() {
     questions_per_attempt: 10, time_limit_minutes: 0,
     max_attempts: 1, passing_percentage: 50,
     source_content: '', custom_instructions: '',
-  });
+  };
+
+  // Form state — restored from an unsaved draft when the page was left mid-way
+  const [form, setForm] = useState(() => loadDraft<typeof emptyForm>(DRAFT_KEY) || emptyForm);
+  useDraftPersistence(DRAFT_KEY, form, { enabled: !!form.name || !!form.source_content });
+
+
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -417,13 +428,42 @@ export default function QuizEngine() {
   };
 
   const resetForm = () => {
-    setForm({
-      name: '', description: '', language: 'en', course_id: '', mode: 'public',
-      mcq: 5, tf: 3, fib: 2, difficulty_level: 'mixed', questions_per_attempt: 10,
-      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '', custom_instructions: '',
-    });
+    setForm(emptyForm);
     setUploadedFiles([]);
+    clearDraft(DRAFT_KEY);
   };
+
+  // Save the half-finished quiz as a draft without running AI generation
+  const saveDraft = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.from('quiz_banks') as any).insert({
+        name: form.name || 'Untitled quiz',
+        description: form.description || null,
+        language: form.language,
+        course_id: form.course_id || null,
+        mode: form.mode,
+        question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
+        difficulty_level: form.difficulty_level,
+        questions_per_attempt: form.mcq + form.tf + form.fib,
+        time_limit_minutes: form.time_limit_minutes || null,
+        max_attempts: form.max_attempts || 1,
+        passing_percentage: form.passing_percentage,
+        source_content: form.source_content,
+        question_bank: [],
+        created_by: user?.id,
+        status: 'draft',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setCreateOpen(false);
+      resetForm();
+      toast({ title: 'Saved as draft', description: 'You can generate questions later from Edit.' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/quiz/${token}`;
@@ -633,9 +673,15 @@ export default function QuizEngine() {
                                   <Play className="h-3 w-3 mr-1" /> {hasLive ? 'New Session' : 'Go Live'}
                                 </Button>
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                                  title="Share with collaborators"
+                                  onClick={() => setShareBank({ id: bank.id, name: bank.name })}>
+                                  <Share2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
                                   onClick={() => openEdit(bank)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
+
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
                                   onClick={() => deleteBank.mutate(bank.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -1007,6 +1053,7 @@ export default function QuizEngine() {
                 />
 
                 <AttemptDetailDialog
+
                   open={!!detailAttemptId}
                   onOpenChange={(o) => !o && setDetailAttemptId(null)}
                   attempts={filteredResults}
@@ -1020,8 +1067,16 @@ export default function QuizEngine() {
           );
         })()}
 
+        <QuizCollaboratorsDialog
+          quizBankId={shareBank?.id ?? null}
+          quizName={shareBank?.name}
+          open={!!shareBank}
+          onOpenChange={(o) => !o && setShareBank(null)}
+        />
+
         {/* Create Quiz Bank Dialog */}
         <Dialog open={createOpen} onOpenChange={c => { if (!generating) { setCreateOpen(c); if (!c) resetForm(); } }}>
+
           <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Quiz Bank</DialogTitle>
@@ -1142,7 +1197,11 @@ export default function QuizEngine() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setCreateOpen(false); resetForm(); }} disabled={generating}>Cancel</Button>
+              <Button variant="secondary" onClick={() => saveDraft.mutate()} disabled={!form.name.trim() || generating || saveDraft.isPending}>
+                {saveDraft.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save as Draft'}
+              </Button>
               <Button onClick={() => createBank.mutate()}
+
                 disabled={!form.name.trim() || !form.source_content.trim() || generating}
                 className="gap-1.5">
                 {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : 'Create & Generate'}
