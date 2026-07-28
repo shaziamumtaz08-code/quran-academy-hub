@@ -428,13 +428,42 @@ export default function QuizEngine() {
   };
 
   const resetForm = () => {
-    setForm({
-      name: '', description: '', language: 'en', course_id: '', mode: 'public',
-      mcq: 5, tf: 3, fib: 2, difficulty_level: 'mixed', questions_per_attempt: 10,
-      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '', custom_instructions: '',
-    });
+    setForm(emptyForm);
     setUploadedFiles([]);
+    clearDraft(DRAFT_KEY);
   };
+
+  // Save the half-finished quiz as a draft without running AI generation
+  const saveDraft = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.from('quiz_banks') as any).insert({
+        name: form.name || 'Untitled quiz',
+        description: form.description || null,
+        language: form.language,
+        course_id: form.course_id || null,
+        mode: form.mode,
+        question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
+        difficulty_level: form.difficulty_level,
+        questions_per_attempt: form.mcq + form.tf + form.fib,
+        time_limit_minutes: form.time_limit_minutes || null,
+        max_attempts: form.max_attempts || 1,
+        passing_percentage: form.passing_percentage,
+        source_content: form.source_content,
+        question_bank: [],
+        created_by: user?.id,
+        status: 'draft',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setCreateOpen(false);
+      resetForm();
+      toast({ title: 'Saved as draft', description: 'You can generate questions later from Edit.' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/quiz/${token}`;
