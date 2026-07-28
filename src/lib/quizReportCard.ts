@@ -73,18 +73,18 @@ export async function generateReportCardPdf(d: ReportCardData) {
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(40, y, W - 80, 74, 8, 8, 'FD');
   doc.setTextColor(...NAVY);
-  doc.setFont('helvetica', 'bold');
+  font(d.studentName || '', 'bold');
   doc.setFontSize(16);
-  doc.text(d.studentName || 'Anonymous', 58, y + 28);
+  doc.text(rtl(d.studentName || 'Anonymous'), 58, y + 28);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE);
   doc.text(d.studentEmail || '—', 58, y + 44);
-  doc.text(
-    `${d.quizName}   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`,
-    58,
-    y + 60,
-  );
+  const metaLine = `${d.quizName}   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`;
+  font(metaLine, 'normal');
+  doc.text(rtl(metaLine), 58, y + 60);
+  doc.setFont('helvetica', 'normal');
+
 
   // ---- Score circle
   const cx = W - 108;
