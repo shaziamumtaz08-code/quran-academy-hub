@@ -851,7 +851,22 @@ export default function QuizEngine() {
                                             <Play className="h-3 w-3 mr-1" /> Reopen
                                           </Button>
                                         )}
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                          disabled={deleteSession.isPending}
+                                          onClick={() => {
+                                            const msg = sessionAttempts.length > 0
+                                              ? `Delete this session and its ${sessionAttempts.length} submission(s)? This cannot be undone.`
+                                              : 'Delete this session? This cannot be undone.';
+                                            if (window.confirm(msg)) deleteSession.mutate(s.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                        </Button>
                                       </div>
+
                                     </div>
                                   </CardContent>
                                 </Card>
