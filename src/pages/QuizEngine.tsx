@@ -981,22 +981,30 @@ export default function QuizEngine() {
                 </Card>
 
                 {quizSummary && quizSummary.bank && (
-                  <Card>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div><p className="text-xs text-muted-foreground">Total attempts</p><p className="text-lg font-semibold">{quizSummary.total}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Unique students</p><p className="text-lg font-semibold">{quizSummary.unique}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Avg score</p><p className="text-lg font-semibold">{quizSummary.avg}%</p></div>
-                        <div><p className="text-xs text-muted-foreground">Pass rate</p><p className="text-lg font-semibold">{quizSummary.passRate}%</p></div>
+                  <Card className="rounded-xl border-border/70 shadow-[var(--shadow-card)]">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: 'Total attempts', value: quizSummary.total, tone: 'bg-primary/5 text-primary' },
+                          { label: 'Unique students', value: quizSummary.unique, tone: 'bg-accent/10 text-accent' },
+                          { label: 'Avg score', value: `${quizSummary.avg}%`, tone: 'bg-warning/10 text-warning' },
+                          { label: 'Pass rate', value: `${quizSummary.passRate}%`, tone: 'bg-success/10 text-success' },
+                        ].map((s) => (
+                          <div key={s.label} className={`rounded-lg p-3 ${s.tone.split(' ')[0]}`}>
+                            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                            <p className={`text-2xl font-bold tracking-tight ${s.tone.split(' ')[1]}`}>{s.value}</p>
+                          </div>
+                        ))}
                       </div>
-                      <div className="h-2 w-full rounded-full overflow-hidden bg-destructive/30 flex">
-                        <div className="bg-green-600 h-full" style={{ width: `${quizSummary.passRate}%` }} />
-                        <div className="bg-destructive h-full" style={{ width: `${100 - quizSummary.passRate}%` }} />
+                      <div className="h-2.5 w-full rounded-full overflow-hidden bg-destructive/20 flex">
+                        <div className="bg-success h-full transition-all" style={{ width: `${quizSummary.passRate}%` }} />
+                        <div className="bg-destructive h-full transition-all" style={{ width: `${100 - quizSummary.passRate}%` }} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{quizSummary.passed} pass / {quizSummary.total - quizSummary.passed} fail</p>
+                      <p className="text-[11px] text-muted-foreground">{quizSummary.passed} pass / {quizSummary.total - quizSummary.passed} fail</p>
                     </CardContent>
                   </Card>
                 )}
+
 
                 <Card>
                   <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
