@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.zoom-expire-recordings]
 verify_jwt = false
+
+[functions.push-class-reminders]
+verify_jwt = false
+
+[functions.push-fee-reminders]
+verify_jwt = false
