@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ARABIC_FONT, ensureArabicFont, hasArabic, shapeRtl } from './pdfArabicFont';
 
 const NAVY: [number, number, number] = [30, 58, 95];
 const GOLD: [number, number, number] = [201, 162, 39];
@@ -7,7 +8,6 @@ const GREEN: [number, number, number] = [27, 122, 61];
 const RED: [number, number, number] = [180, 35, 42];
 const SLATE: [number, number, number] = [100, 116, 139];
 
-const isLatin = (s: string) => /^[\x00-\x7F\s]*$/.test(s);
 
 export interface ReportCardData {
   studentName: string;
