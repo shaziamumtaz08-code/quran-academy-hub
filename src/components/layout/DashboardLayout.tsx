@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { preloadRouteModule, preloadRouteModules } from "@/lib/routePreload";
 import logoDark from "@/assets/logo-dark.jpg";
 import { ActingAsBanner } from "@/components/shared/ActingAsBanner";
+import { PushNotificationInitializer } from "@/components/pwa/PushNotificationInitializer";
 
 const DashboardLayoutContext = createContext(false);
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
@@ -710,7 +711,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </header>
 
           <main className="flex-1 overflow-auto bg-background">
+            <PushNotificationInitializer />
             <ActingAsBanner />
+
             {children}
           </main>
         </div>
