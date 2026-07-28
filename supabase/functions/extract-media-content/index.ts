@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod";
+import { corsHeaders } from "../_shared/cors.ts";
 
 type MediaPart =
   | { kind: "image"; data_url: string }
