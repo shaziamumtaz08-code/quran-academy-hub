@@ -133,7 +133,9 @@ export default function AttemptDetailDialog({
   const attempt = useMemo(() => attempts.find((a) => a.id === attemptId) || null, [attempts, attemptId]);
   const idx = useMemo(() => attempts.findIndex((a) => a.id === attemptId), [attempts, attemptId]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const firedConfetti = useRef<string | null>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 
   const pct = Number(attempt?.percentage) || 0;
   const passThreshold = attempt?.quiz_bank?.passing_percentage ?? 50;
@@ -194,11 +196,19 @@ export default function AttemptDetailDialog({
     else wrongCount++;
   });
 
+  useEffect(() => {
+    setActiveQuestionIndex(0);
+  }, [attempt.id]);
+
   const prev = () => {
-    if (idx > 0) setAttemptId(attempts[idx - 1].id);
+    const nextIndex = Math.max(0, activeQuestionIndex - 1);
+    setActiveQuestionIndex(nextIndex);
+    questionRefs.current[nextIndex]?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
   const next = () => {
-    if (idx >= 0 && idx < attempts.length - 1) setAttemptId(attempts[idx + 1].id);
+    const nextIndex = Math.min(items.length - 1, activeQuestionIndex + 1);
+    setActiveQuestionIndex(nextIndex);
+    questionRefs.current[nextIndex]?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
   const timeText = attempt.time_taken_seconds
@@ -342,6 +352,7 @@ export default function AttemptDetailDialog({
                   return (
                     <div
                       key={i}
+                      ref={(el) => { questionRefs.current[i] = el; }}
                       className={cn(
                         'border border-l-[5px] rounded-xl p-4 space-y-3 transition-all hover:shadow-sm',
                         shell,
@@ -493,13 +504,13 @@ export default function AttemptDetailDialog({
 
         <div className="border-t px-6 py-3 flex flex-wrap items-center justify-between gap-3 bg-card print:hidden">
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={prev} disabled={idx <= 0}>
+            <Button size="sm" variant="outline" onClick={prev} disabled={activeQuestionIndex <= 0 || items.length === 0}>
               <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Prev
             </Button>
             <span className="text-xs text-muted-foreground tabular-nums">
-              {idx >= 0 ? idx + 1 : '—'} / {attempts.length}
+              Q{items.length > 0 ? activeQuestionIndex + 1 : '—'} / {items.length}
             </span>
-            <Button size="sm" variant="outline" onClick={next} disabled={idx < 0 || idx >= attempts.length - 1}>
+            <Button size="sm" variant="outline" onClick={next} disabled={items.length === 0 || activeQuestionIndex >= items.length - 1}>
               Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           </div>
