@@ -93,6 +93,8 @@ export default function QuizEngine() {
   const [detailList, setDetailList] = useState<any[]>([]);
   const [fullReportOpen, setFullReportOpen] = useState(false);
   const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
+  const [sessionSetup, setSessionSetup] = useState<{ id: string; name: string } | null>(null);
+  const [sessionIdentityMode, setSessionIdentityMode] = useState<'email' | 'name'>('email');
 
   const DRAFT_KEY = 'quiz-engine:create-draft';
   const emptyForm = {
