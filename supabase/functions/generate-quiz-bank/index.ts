@@ -154,6 +154,13 @@ CONTENT FILTERING
 ═══════════════════════════════════════════
 CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, URLs, external links, or any text related to how the document was created/scanned/digitized.
 
+ALWAYS APPLY THESE DEFAULT FOCUS RULES (they apply even when no admin instructions are given):
+- Only create questions about the CORE TOPICS and concepts being taught in the material.
+- Ignore any website URLs, links, watermarks, page headers/footers, publisher branding and navigation text.
+- Do NOT ask questions about publication dates, edition numbers, author names, printers, or any bibliographic/administrative detail.
+- Do NOT test trivia about the document itself (page counts, section numbering, formatting).
+- Every question must assess understanding of the subject matter a student is meant to learn.
+
 ═══════════════════════════════════════════
 QUALITY CHECKLIST (VERIFY BEFORE OUTPUT)
 ═══════════════════════════════════════════
