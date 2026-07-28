@@ -80,10 +80,19 @@ export async function generateReportCardPdf(d: ReportCardData) {
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE);
   doc.text(d.studentEmail || '—', 58, y + 44);
-  const metaLine = `${d.quizName}   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`;
-  font(metaLine, 'normal');
-  doc.text(rtl(metaLine), 58, y + 60);
+  // Draw the quiz name in its own face (Arabic if needed), then the Latin meta
+  // in helvetica — mixing scripts in one run drops the Latin glyphs.
+  const quizName = d.quizName || 'Quiz';
+  font(quizName, 'normal');
+  doc.text(rtl(quizName), 58, y + 60);
+  const nameW = doc.getTextWidth(rtl(quizName));
   doc.setFont('helvetica', 'normal');
+  doc.text(
+    `   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`,
+    58 + nameW,
+    y + 60,
+  );
+
 
 
   // ---- Score circle
