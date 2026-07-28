@@ -174,11 +174,16 @@ function generateIcsUrl(classInfo: ClassInfo, nextDate: Date): string {
 type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 
 // ═══ COMPONENT ═══
-export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId }: ZoomClassPanelProps) {
+export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId }: ZoomClassPanelProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [pingCooldown, setPingCooldown] = useState(0);
+  const [pinging, setPinging] = useState(false);
+  const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
+
 
   // Check for virtual session (LiveKit)
   const { data: virtualSession } = useQuery({
