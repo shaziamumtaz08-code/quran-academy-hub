@@ -205,8 +205,8 @@ export default function AttemptDetailDialog({
     ? `${Math.floor(attempt.time_taken_seconds / 60)}m ${attempt.time_taken_seconds % 60}s`
     : '—';
 
-  const downloadReportCard = () => {
-    generateReportCardPdf({
+  const downloadReportCard = async () => {
+    await generateReportCardPdf({
       studentName: attempt.guest_name || 'Anonymous',
       studentEmail: attempt.guest_email || '—',
       quizName: attempt.quiz_bank?.name || attempt.session?.title || 'Quiz',
@@ -251,7 +251,7 @@ export default function AttemptDetailDialog({
             {/* ===== Gamified hero ===== */}
             <div className={cn('relative overflow-hidden px-6 pt-7 pb-6 text-white', heroGradient)}>
               <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
-              <div className="pointer-events-none absolute -left-10 bottom--10 h-40 w-40 rounded-full bg-black/10" />
+              <div className="pointer-events-none absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-black/10" />
               <div className="relative flex flex-col sm:flex-row items-center gap-6">
                 <ScoreRing pct={pct} isPass={isPass} />
                 <div className="flex-1 text-center sm:text-left space-y-2">

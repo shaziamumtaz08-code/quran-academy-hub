@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ARABIC_FONT, ensureArabicFont, hasArabic, shapeRtl } from './pdfArabicFont';
 
 const NAVY: [number, number, number] = [30, 58, 95];
 const GOLD: [number, number, number] = [201, 162, 39];
@@ -7,7 +8,6 @@ const GREEN: [number, number, number] = [27, 122, 61];
 const RED: [number, number, number] = [180, 35, 42];
 const SLATE: [number, number, number] = [100, 116, 139];
 
-const isLatin = (s: string) => /^[\x00-\x7F\s]*$/.test(s);
 
 export interface ReportCardData {
   studentName: string;
@@ -28,11 +28,18 @@ export interface ReportCardData {
   academyName?: string;
 }
 
-export function generateReportCardPdf(d: ReportCardData) {
+export async function generateReportCardPdf(d: ReportCardData) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const arabicReady = await ensureArabicFont(doc);
   const W = doc.internal.pageSize.getWidth();
   const isPass = d.percentage >= d.passThreshold;
   const accent = isPass ? GREEN : RED;
+
+  /** Prepare a string for drawing: shape RTL text and pick a capable font. */
+  const rtl = (s: string) => (arabicReady && hasArabic(s) ? shapeRtl(s) : s);
+  const font = (s: string, style: 'normal' | 'bold' = 'normal') =>
+    doc.setFont(arabicReady && hasArabic(s) ? ARABIC_FONT : 'helvetica', style);
+
 
   // ---- Header band
   doc.setFillColor(...NAVY);
@@ -50,7 +57,9 @@ export function generateReportCardPdf(d: ReportCardData) {
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(19);
-  doc.text(d.academyName || 'Al Quran Time Academy', 92, 46);
+  font(d.academyName || '', 'bold');
+  doc.text(rtl(d.academyName || 'Al Quran Time Academy'), 92, 46);
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(214, 224, 238);
@@ -64,18 +73,27 @@ export function generateReportCardPdf(d: ReportCardData) {
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(40, y, W - 80, 74, 8, 8, 'FD');
   doc.setTextColor(...NAVY);
-  doc.setFont('helvetica', 'bold');
+  font(d.studentName || '', 'bold');
   doc.setFontSize(16);
-  doc.text(d.studentName || 'Anonymous', 58, y + 28);
+  doc.text(rtl(d.studentName || 'Anonymous'), 58, y + 28);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE);
   doc.text(d.studentEmail || '—', 58, y + 44);
+  // Draw the quiz name in its own face (Arabic if needed), then the Latin meta
+  // in helvetica — mixing scripts in one run drops the Latin glyphs.
+  const quizName = d.quizName || 'Quiz';
+  font(quizName, 'normal');
+  doc.text(rtl(quizName), 58, y + 60);
+  const nameW = doc.getTextWidth(rtl(quizName));
+  doc.setFont('helvetica', 'normal');
   doc.text(
-    `${d.quizName}   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`,
-    58,
+    `   •   Session #${d.sessionNumber}   •   Attempt #${d.attemptNumber}`,
+    58 + nameW,
     y + 60,
   );
+
+
 
   // ---- Score circle
   const cx = W - 108;
@@ -130,12 +148,27 @@ export function generateReportCardPdf(d: ReportCardData) {
   doc.text(`Passing mark: ${d.passThreshold}%`, 40, y + 24);
 
   // ---- Question table
+  const QCOL_W = 341; // 515 usable - (26 + 84 + 64)
+
+  /**
+   * Wrap first (with the Arabic metrics), then shape each visual line, so bidi
+   * reordering stays correct after wrapping.
+   */
+  const questionCell = (text: string) => {
+    const clean = (text || '').replace(/\s+/g, ' ').trim() || '—';
+    if (!(arabicReady && hasArabic(clean))) return clean;
+    doc.setFont(ARABIC_FONT, 'normal');
+    doc.setFontSize(8.5);
+    const lines: string[] = doc.splitTextToSize(clean, QCOL_W - 12);
+    return lines.slice(0, 6).map(shapeRtl).join('\n');
+  };
+
   autoTable(doc, {
     startY: y + 36,
     head: [['#', 'Question', 'Type', 'Result']],
     body: d.questions.map((q) => [
       String(q.index),
-      isLatin(q.text) ? (q.text.length > 88 ? q.text.slice(0, 85) + '…' : q.text) : `Question ${q.index}`,
+      questionCell(q.text),
       q.type,
       q.status === 'correct' ? 'Correct' : q.status === 'wrong' ? 'Incorrect' : 'Skipped',
     ]),
@@ -144,10 +177,22 @@ export function generateReportCardPdf(d: ReportCardData) {
     headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: 'bold' },
     columnStyles: {
       0: { cellWidth: 26, halign: 'center' },
+      1: { cellWidth: QCOL_W },
       2: { cellWidth: 84 },
       3: { cellWidth: 64, halign: 'center', fontStyle: 'bold' },
     },
+
     didParseCell: (data: any) => {
+      // Apply the Arabic face only to cells that actually hold Arabic script —
+      // Latin text drawn with the Naskh face does not render in jsPDF.
+      if (data.column.index === 1 && data.section === 'body') {
+        const raw = d.questions[data.row.index]?.text || '';
+        if (arabicReady && hasArabic(raw)) {
+          data.cell.styles.font = ARABIC_FONT;
+          data.cell.styles.fontStyle = 'normal';
+          data.cell.styles.halign = 'right';
+        }
+      }
       if (data.section !== 'body') return;
       const status = d.questions[data.row.index]?.status;
       if (data.column.index === 3) {
