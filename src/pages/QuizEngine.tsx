@@ -691,7 +691,7 @@ export default function QuizEngine() {
                                   size="sm"
                                   variant={hasLive ? 'secondary' : 'outline'}
                                   className="text-xs h-7"
-                                  onClick={() => createSession.mutate(bank.id)}
+                                  onClick={() => { setSessionIdentityMode('email'); setSessionSetup({ id: bank.id, name: bank.name }); }}
                                   disabled={getQuestionCount(bank) === 0}
                                 >
                                   <Play className="h-3 w-3 mr-1" /> {hasLive ? 'New Session' : 'Go Live'}
