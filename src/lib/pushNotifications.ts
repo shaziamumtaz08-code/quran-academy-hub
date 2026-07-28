@@ -20,7 +20,7 @@ export const firebaseConfig = {
 // TODO: REPLACE WITH REAL VAPID PUBLIC KEY.
 // Firebase console -> Project settings -> Cloud Messaging -> Web Push certificates.
 // ============================================================================
-export const FIREBASE_VAPID_KEY = "REPLACE_WITH_FIREBASE_VAPID_PUBLIC_KEY";
+export const FIREBASE_VAPID_KEY = "BMw9UkOgJBnnBMB9iIF58uVowDxpnQKGQwqYtppZVYSYSEP3s--rHxgRebkruvBAwOcOgYu2E9brpzztsvLN36U";
 
 const CONFIG_IS_PLACEHOLDER = firebaseConfig.apiKey.startsWith("REPLACE_WITH_");
 
