@@ -175,10 +175,15 @@ export async function generateReportCardPdf(d: ReportCardData) {
     },
 
     didParseCell: (data: any) => {
-      if (data.column.index === 1 && arabicReady && anyArabic) {
-        data.cell.styles.font = ARABIC_FONT;
-        data.cell.styles.fontStyle = data.section === 'head' ? 'bold' : 'normal';
-        if (data.section === 'body') data.cell.styles.halign = 'right';
+      // Apply the Arabic face only to cells that actually hold Arabic script —
+      // Latin text drawn with the Naskh face does not render in jsPDF.
+      if (data.column.index === 1 && data.section === 'body') {
+        const raw = d.questions[data.row.index]?.text || '';
+        if (arabicReady && hasArabic(raw)) {
+          data.cell.styles.font = ARABIC_FONT;
+          data.cell.styles.fontStyle = 'normal';
+          data.cell.styles.halign = 'right';
+        }
       }
       if (data.section !== 'body') return;
       const status = d.questions[data.row.index]?.status;
