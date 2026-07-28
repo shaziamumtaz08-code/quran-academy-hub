@@ -28,11 +28,18 @@ export interface ReportCardData {
   academyName?: string;
 }
 
-export function generateReportCardPdf(d: ReportCardData) {
+export async function generateReportCardPdf(d: ReportCardData) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const arabicReady = await ensureArabicFont(doc);
   const W = doc.internal.pageSize.getWidth();
   const isPass = d.percentage >= d.passThreshold;
   const accent = isPass ? GREEN : RED;
+
+  /** Prepare a string for drawing: shape RTL text and pick a capable font. */
+  const rtl = (s: string) => (arabicReady && hasArabic(s) ? shapeRtl(s) : s);
+  const font = (s: string, style: 'normal' | 'bold' = 'normal') =>
+    doc.setFont(arabicReady && hasArabic(s) ? ARABIC_FONT : 'helvetica', style);
+
 
   // ---- Header band
   doc.setFillColor(...NAVY);
