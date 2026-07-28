@@ -827,12 +827,14 @@ export default function QuizEngine() {
                               const ageHours = (Date.now() - new Date(s.created_at).getTime()) / 3600000;
                               const showStale = sessionAttempts.length === 0 && ageHours > 24 && s.status === 'live';
                               return (
-                                <Card key={s.id} className="border-border">
-                                  <CardContent className="p-4">
+                                <Card key={s.id} className={`group relative overflow-hidden rounded-xl border-border/70 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] ${s.status === 'live' ? 'ring-1 ring-success/30' : ''}`}>
+                                  <span className={`absolute inset-y-0 left-0 w-1 ${s.status === 'live' ? 'bg-success' : 'bg-muted-foreground/25'}`} />
+                                  <CardContent className="p-4 pl-5">
                                     <div className="flex items-start justify-between gap-3">
-                                      <div className="space-y-1 flex-1">
+                                      <div className="space-y-1.5 flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <Badge variant="outline" className="text-xs">Session #{sessNum}</Badge>
+                                          <Badge variant="outline" className="text-[10px] font-mono">Session #{sessNum}</Badge>
+
                                           <h4 className="text-sm font-medium">{s.title || s.quiz_bank?.name}</h4>
                                           {s.status === 'live' ? (
                                             <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
