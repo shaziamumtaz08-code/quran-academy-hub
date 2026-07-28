@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { zonedParts, zonedDayName } from '@/hooks/useAcademyTimezone';
+import { playPingChime } from '@/lib/pingChime';
+
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,35 +32,10 @@ interface ZoomClassPanelProps {
   onSessionEnd?: () => void;
   courseId?: string;
   classId?: string;
-  /** Optional: schedule row id for the Ping feature. Resolved from courseId when omitted. */
+  /** Optional: schedule row id for the Ping feature. Ping only renders when provided. */
   scheduleId?: string;
 }
 
-/** Two-tone alert chime via Web Audio API (no bundled audio asset). */
-function playPingChime() {
-  try {
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const tone = (freq: number, startAt: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
-      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + startAt + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + 0.15);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + startAt);
-      osc.stop(ctx.currentTime + startAt + 0.16);
-    };
-    tone(880, 0);
-    tone(1174.66, 0.18);
-    setTimeout(() => ctx.close().catch(() => {}), 800);
-  } catch {
-    /* audio unavailable — banner still shows */
-  }
-}
 
 
 // ─── Time helpers ───
@@ -235,24 +212,12 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [classInfo.timezone, panelState],
   );
+  // NOTE: Ping is only available when the parent explicitly passes `scheduleId`.
+  // This component powers the group-class flow (TeacherCourseView / StudentCourseView),
+  // which does not use the `schedules` table at all — so no ping UI renders here today.
+  // Group-class ping support is a possible future addition (out of scope).
+  const activeScheduleId = scheduleId || null;
 
-  // Resolve schedule id for this course/day when not supplied by the parent
-  const { data: resolvedScheduleId } = useQuery({
-    queryKey: ['ping-schedule', courseId, occurrenceDate],
-    enabled: !scheduleId && !!courseId && pingActive,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('course_id', courseId!)
-        .eq('day_of_week', zonedDayName(classInfo.timezone))
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      return data?.id ?? null;
-    },
-  });
-  const activeScheduleId = scheduleId || resolvedScheduleId || null;
 
   // Cooldown ticker
   useEffect(() => {

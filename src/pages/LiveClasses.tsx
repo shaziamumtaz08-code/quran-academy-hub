@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Video, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { ensureFreshSession } from '@/lib/ensureSession';
+import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from '@/hooks/useAcademyTimezone';
+import { playPingChime } from '@/lib/pingChime';
+import { Bell, X } from 'lucide-react';
 
 type Row = {
   key: string;
@@ -24,19 +27,6 @@ type Row = {
   meetingLink?: string | null;
   status?: string;
 };
-
-const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-
-function todayKey(d = new Date()) {
-  return DAY_KEYS[d.getDay()];
-}
-
-function parseTimeToday(hhmm: string): number {
-  const [h, m] = (hhmm || "00:00").split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m || 0, 0, 0);
-  return d.getTime();
-}
 
 function fmtCountdown(ms: number) {
   const s = Math.round(ms / 1000);
@@ -66,6 +56,10 @@ export default function LiveClasses() {
   const [role, setRole] = useState<"teacher" | "student" | "other">("other");
   const [now, setNow] = useState(Date.now());
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
+  const tz = useAcademyTimezone();
+  const occurrenceDate = zonedDateKey(tz);
+  const [pingState, setPingState] = useState<Record<string, { cooldown: number; sending: boolean }>>({});
+  const [incomingPings, setIncomingPings] = useState<Record<string, "teacher" | "student">>({});
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15_000);
@@ -86,8 +80,9 @@ export default function LiveClasses() {
       : "other";
     setRole(primary);
 
-    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+    // Academy-timezone day boundaries (not the browser's local midnight)
+    const dayStart = new Date(zonedTimeToEpoch(tz, "00:00"));
+    const dayEnd = new Date(zonedTimeToEpoch(tz, "00:00") + 24 * 60 * 60 * 1000 - 1);
 
     // 1. Existing live_sessions for today
     const lsBase = supabase
@@ -104,7 +99,7 @@ export default function LiveClasses() {
       : await lsBase.limit(0);
 
     // 2. Today's recurring schedules
-    const today = todayKey();
+    const today = zonedDayName(tz);
     const schedBase = supabase
       .from("schedules")
       .select("id, assignment_id, student_local_time, teacher_local_time, duration_minutes, student_teacher_assignments!inner(id, teacher_id, student_id, status, duration_minutes)")
@@ -167,7 +162,7 @@ export default function LiveClasses() {
         return {
           key: `sc:${s.id}`,
           kind: "schedule",
-          scheduledStartMs: parseTimeToday(timeStr),
+          scheduledStartMs: zonedTimeToEpoch(tz, timeStr),
           durationMin: s.duration_minutes || a?.duration_minutes || 30,
           teacherId: a.teacher_id,
           teacherName: nameMap.get(a.teacher_id),
@@ -186,7 +181,81 @@ export default function LiveClasses() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id, tz]);
+
+  // ── Ping cooldown ticker ──
+  useEffect(() => {
+    const anyActive = Object.values(pingState).some((p) => p.cooldown > 0);
+    if (!anyActive) return;
+    const t = setInterval(() => {
+      setPingState((prev) => {
+        const next: typeof prev = {};
+        for (const [k, v] of Object.entries(prev)) next[k] = { ...v, cooldown: v.cooldown > 1 ? v.cooldown - 1 : 0 };
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [pingState]);
+
+  const handlePing = async (row: Row) => {
+    if (!row.scheduleId) return;
+    const id = row.scheduleId;
+    setPingState((p) => ({ ...p, [id]: { cooldown: p[id]?.cooldown ?? 0, sending: true } }));
+    try {
+      const { error } = await supabase.functions.invoke("send-class-ping", {
+        body: { schedule_id: id, occurrence_date: occurrenceDate },
+      });
+      if (error) {
+        let retryAfter = 0;
+        try {
+          const body = await (error as any)?.context?.json?.();
+          retryAfter = Number(body?.retryAfterSeconds) || 0;
+        } catch { /* ignore */ }
+        if (retryAfter > 0) {
+          setPingState((p) => ({ ...p, [id]: { cooldown: retryAfter, sending: false } }));
+        } else {
+          toast.error("Could not send ping. Please try again.");
+          setPingState((p) => ({ ...p, [id]: { cooldown: 0, sending: false } }));
+        }
+        return;
+      }
+      setPingState((p) => ({ ...p, [id]: { cooldown: 60, sending: false } }));
+      toast.success("Ping sent");
+    } catch {
+      toast.error("Could not send ping. Please try again.");
+      setPingState((p) => ({ ...p, [id]: { cooldown: 0, sending: false } }));
+    }
+  };
+
+  // ── Receive pings: one channel per eligible row ──
+  const eligibleScheduleIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .filter((r) => r.scheduleId && r.status !== "completed")
+            .map((r) => r.scheduleId as string),
+        ),
+      ).sort(),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!user?.id || eligibleScheduleIds.length === 0) return;
+    const channels = eligibleScheduleIds.map((sid) =>
+      supabase
+        .channel(`class-ping:${sid}:${occurrenceDate}`)
+        .on("broadcast", { event: "ping" }, ({ payload }: any) => {
+          if (payload?.recipientId !== user.id) return;
+          playPingChime();
+          setIncomingPings((p) => ({ ...p, [sid]: payload?.senderRole === "teacher" ? "teacher" : "student" }));
+          setTimeout(() => setIncomingPings((p) => { const n = { ...p }; delete n[sid]; return n; }), 15000);
+        })
+        .subscribe(),
+    );
+    return () => { channels.forEach((c) => supabase.removeChannel(c)); };
+  }, [eligibleScheduleIds.join(","), occurrenceDate, user?.id]);
+
 
   useEffect(() => {
     if (!user?.id) return;
@@ -208,8 +277,12 @@ export default function LiveClasses() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const dismissPing = (scheduleId: string) =>
+    setIncomingPings((p) => { const n = { ...p }; delete n[scheduleId]; return n; });
+
   const handleJoin = async (row: Row) => {
     if (!user?.id) return;
+    if (row.scheduleId) dismissPing(row.scheduleId);
     setJoiningKey(row.key);
     try {
       await ensureFreshSession();
@@ -272,6 +345,10 @@ export default function LiveClasses() {
             ? (r.studentName || "Group class")
             : (r.teacherName || "Teacher");
 
+          const ping = r.scheduleId ? pingState[r.scheduleId] : undefined;
+          const canPing = !!r.scheduleId && !isCompleted && now >= opensAt;
+          const incoming = r.scheduleId ? incomingPings[r.scheduleId] : undefined;
+
           return (
             <Card key={r.key} className={r.status === "live" ? "border-primary" : ""}>
               <CardContent className="p-4 flex flex-wrap items-center gap-4">
@@ -293,8 +370,37 @@ export default function LiveClasses() {
                       </span>
                     )}
                   </div>
+                  {incoming && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-emerald-50">
+                      <span className="flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        {incoming === "teacher"
+                          ? "Your teacher is ready — join now!"
+                          : "Your student is ready — join now!"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-50 hover:bg-emerald-700"
+                        onClick={() => dismissPing(r.scheduleId!)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {canPing && (
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      disabled={!!ping?.sending || (ping?.cooldown ?? 0) > 0}
+                      onClick={() => handlePing(r)}
+                    >
+                      <Bell className="h-4 w-4" />
+                      {(ping?.cooldown ?? 0) > 0 ? `Pinged · next ping in ${ping!.cooldown}s` : "Ping"}
+                    </Button>
+                  )}
                   {isCompleted ? (
                     <Badge variant="outline">Completed</Badge>
                   ) : canJoin ? (
@@ -321,10 +427,12 @@ export default function LiveClasses() {
               </CardContent>
             </Card>
           );
+
         })}
       </div>
     );
-  }, [rows, now, loading, joiningKey, role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, now, loading, joiningKey, role, pingState, incomingPings]);
 
   return (
     <DashboardLayout>
