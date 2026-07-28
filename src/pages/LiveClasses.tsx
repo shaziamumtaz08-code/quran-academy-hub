@@ -341,6 +341,10 @@ export default function LiveClasses() {
             ? (r.studentName || "Group class")
             : (r.teacherName || "Teacher");
 
+          const ping = r.scheduleId ? pingState[r.scheduleId] : undefined;
+          const canPing = !!r.scheduleId && !isCompleted && now >= opensAt;
+          const incoming = r.scheduleId ? incomingPings[r.scheduleId] : undefined;
+
           return (
             <Card key={r.key} className={r.status === "live" ? "border-primary" : ""}>
               <CardContent className="p-4 flex flex-wrap items-center gap-4">
@@ -362,8 +366,37 @@ export default function LiveClasses() {
                       </span>
                     )}
                   </div>
+                  {incoming && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-emerald-50">
+                      <span className="flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        {incoming === "teacher"
+                          ? "Your teacher is ready — join now!"
+                          : "Your student is ready — join now!"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-50 hover:bg-emerald-700"
+                        onClick={() => dismissPing(r.scheduleId!)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {canPing && (
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      disabled={!!ping?.sending || (ping?.cooldown ?? 0) > 0}
+                      onClick={() => handlePing(r)}
+                    >
+                      <Bell className="h-4 w-4" />
+                      {(ping?.cooldown ?? 0) > 0 ? `Pinged · next ping in ${ping!.cooldown}s` : "Ping"}
+                    </Button>
+                  )}
                   {isCompleted ? (
                     <Badge variant="outline">Completed</Badge>
                   ) : canJoin ? (
@@ -390,6 +423,7 @@ export default function LiveClasses() {
               </CardContent>
             </Card>
           );
+
         })}
       </div>
     );
