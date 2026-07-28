@@ -4,6 +4,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+const separator = pdfWorkerUrl.includes('?') ? '&' : '?';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `${pdfWorkerUrl}${separator}pdfjs=${pdfjsLib.version}`;
 
 export { pdfjsLib };

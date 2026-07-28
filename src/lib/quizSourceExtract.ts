@@ -32,15 +32,26 @@ async function callExtractor(filename: string, media: any[], instruction: string
 }
 
 async function extractPdf(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let text = '';
-  for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(' ') + '\n';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      text += content.items.map((item: any) => item.str).join(' ') + '\n';
+    }
+    return text.trim();
+  } catch (err: any) {
+    const message = String(err?.message || err || '');
+    if (!/api version|worker version|pdf\.worker|setting up fake worker|loading pdf/i.test(message)) {
+      throw err;
+    }
+
+    const dataUrl = await fileToDataUrl(file);
+    return callExtractor(file.name, [{ kind: 'file', filename: file.name, data_url: dataUrl }],
+      'Extract all educational content from this PDF. OCR scanned pages if needed and preserve Arabic/Urdu text exactly.');
   }
-  return text.trim();
 }
 
 /** Grab evenly spaced frames from a video so vision models can read slides / on-screen text. */
