@@ -644,17 +644,18 @@ export default function QuizEngine() {
 
           return (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-3 w-full max-w-md">
-                <TabsTrigger value="banks" className="gap-1 text-xs">
+              <TabsList className="grid grid-cols-3 w-full max-w-md h-10 p-1 rounded-xl bg-muted/60">
+                <TabsTrigger value="banks" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <FileText className="h-3.5 w-3.5" /> Banks ({banks.length})
                 </TabsTrigger>
-                <TabsTrigger value="sessions" className="gap-1 text-xs">
+                <TabsTrigger value="sessions" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <LinkIcon className="h-3.5 w-3.5" /> Sessions ({sessions.length})
                 </TabsTrigger>
-                <TabsTrigger value="results" className="gap-1 text-xs">
+                <TabsTrigger value="results" className="gap-1.5 text-xs rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-card">
                   <Trophy className="h-3.5 w-3.5" /> Results ({attempts.length})
                 </TabsTrigger>
               </TabsList>
+
 
               {/* ===== Banks Tab ===== */}
               <TabsContent value="banks" className="mt-4 space-y-3">
