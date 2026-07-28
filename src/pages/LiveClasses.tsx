@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Video, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { ensureFreshSession } from '@/lib/ensureSession';
+import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from '@/hooks/useAcademyTimezone';
+import { playPingChime } from '@/lib/pingChime';
+import { Bell, X } from 'lucide-react';
 
 type Row = {
   key: string;
@@ -24,19 +27,6 @@ type Row = {
   meetingLink?: string | null;
   status?: string;
 };
-
-const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-
-function todayKey(d = new Date()) {
-  return DAY_KEYS[d.getDay()];
-}
-
-function parseTimeToday(hhmm: string): number {
-  const [h, m] = (hhmm || "00:00").split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m || 0, 0, 0);
-  return d.getTime();
-}
 
 function fmtCountdown(ms: number) {
   const s = Math.round(ms / 1000);
@@ -66,6 +56,10 @@ export default function LiveClasses() {
   const [role, setRole] = useState<"teacher" | "student" | "other">("other");
   const [now, setNow] = useState(Date.now());
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
+  const tz = useAcademyTimezone();
+  const occurrenceDate = zonedDateKey(tz);
+  const [pingState, setPingState] = useState<Record<string, { cooldown: number; sending: boolean }>>({});
+  const [incomingPings, setIncomingPings] = useState<Record<string, "teacher" | "student">>({});
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15_000);
@@ -86,8 +80,9 @@ export default function LiveClasses() {
       : "other";
     setRole(primary);
 
-    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+    // Academy-timezone day boundaries (not the browser's local midnight)
+    const dayStart = new Date(zonedTimeToEpoch(tz, "00:00"));
+    const dayEnd = new Date(zonedTimeToEpoch(tz, "00:00") + 24 * 60 * 60 * 1000 - 1);
 
     // 1. Existing live_sessions for today
     const lsBase = supabase
@@ -104,7 +99,7 @@ export default function LiveClasses() {
       : await lsBase.limit(0);
 
     // 2. Today's recurring schedules
-    const today = todayKey();
+    const today = zonedDayName(tz);
     const schedBase = supabase
       .from("schedules")
       .select("id, assignment_id, student_local_time, teacher_local_time, duration_minutes, student_teacher_assignments!inner(id, teacher_id, student_id, status, duration_minutes)")
@@ -167,7 +162,7 @@ export default function LiveClasses() {
         return {
           key: `sc:${s.id}`,
           kind: "schedule",
-          scheduledStartMs: parseTimeToday(timeStr),
+          scheduledStartMs: zonedTimeToEpoch(tz, timeStr),
           durationMin: s.duration_minutes || a?.duration_minutes || 30,
           teacherId: a.teacher_id,
           teacherName: nameMap.get(a.teacher_id),
