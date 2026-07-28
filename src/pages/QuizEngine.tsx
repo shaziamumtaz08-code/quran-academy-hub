@@ -1094,7 +1094,6 @@ export default function QuizEngine() {
                   onOpenChange={(o) => { if (!o) { setDetailAttemptId(null); setDetailList([]); } }}
                   attempts={detailList}
                   attemptId={detailAttemptId}
-                  setAttemptId={setDetailAttemptId}
                   sessionNumberMap={sessionNumberMap}
                   attemptNumberMap={attemptNumberMap}
                 />
