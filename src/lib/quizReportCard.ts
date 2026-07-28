@@ -175,6 +175,11 @@ export async function generateReportCardPdf(d: ReportCardData) {
     },
 
     didParseCell: (data: any) => {
+      if (data.column.index === 1 && arabicReady && anyArabic) {
+        data.cell.styles.font = ARABIC_FONT;
+        data.cell.styles.fontStyle = data.section === 'head' ? 'bold' : 'normal';
+        if (data.section === 'body') data.cell.styles.halign = 'right';
+      }
       if (data.section !== 'body') return;
       const status = d.questions[data.row.index]?.status;
       if (data.column.index === 3) {
