@@ -7121,6 +7121,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          identity_mode: string
           opens_at: string | null
           quiz_bank_id: string
           status: string
@@ -7133,6 +7134,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          identity_mode?: string
           opens_at?: string | null
           quiz_bank_id: string
           status?: string
@@ -7145,6 +7147,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          identity_mode?: string
           opens_at?: string | null
           quiz_bank_id?: string
           status?: string
