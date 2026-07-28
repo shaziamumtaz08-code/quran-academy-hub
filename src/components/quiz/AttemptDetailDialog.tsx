@@ -168,6 +168,11 @@ export default function AttemptDetailDialog({
     if (el) el.scrollTop = 0;
   }, [attemptId]);
 
+  useEffect(() => {
+    questionRefs.current = {};
+    setActiveQuestionIndex(0);
+  }, [attempt?.id]);
+
   if (!attempt) return null;
 
   const storedResults: any[] = Array.isArray(attempt.results) ? attempt.results : [];
@@ -195,10 +200,6 @@ export default function AttemptDetailDialog({
     else if (it.correct) correctCount++;
     else wrongCount++;
   });
-
-  useEffect(() => {
-    setActiveQuestionIndex(0);
-  }, [attempt.id]);
 
   const prev = () => {
     const nextIndex = Math.max(0, activeQuestionIndex - 1);
