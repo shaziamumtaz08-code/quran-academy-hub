@@ -64,6 +64,23 @@ export function zonedStartOfDay(timeZone: string, date = new Date()) {
   return new Date(date.getTime() - ((p.hour * 3600 + p.minute * 60 + p.second) * 1000));
 }
 
+/**
+ * Single source of truth for turning a wall-clock "HH:mm" string (stored in
+ * schedules.teacher_local_time / student_local_time) into a real epoch ms
+ * instant for the given academy timezone, on the day of `reference`.
+ */
+export function zonedTimeToEpoch(timeZone: string, hhmm: string, reference = new Date()) {
+  const [h, m] = (hhmm || '00:00').split(':').map(Number);
+  return zonedStartOfDay(timeZone, reference).getTime() + ((h || 0) * 60 + (m || 0)) * 60_000;
+}
+
+/** Date key (YYYY-MM-DD) of `date` as seen in `timeZone`. */
+export function zonedDateKey(timeZone: string, date = new Date()) {
+  return zonedParts(date, timeZone).dateKey;
+}
+
+
+
 /** Formatted clock label, e.g. "11:20 PM". */
 export function zonedClockLabel(timeZone: string, date = new Date()) {
   return date.toLocaleTimeString('en-US', {
