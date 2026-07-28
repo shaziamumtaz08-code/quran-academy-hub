@@ -662,9 +662,12 @@ export default function QuizEngine() {
                 {banksLoading ? (
                   <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                 ) : banks.length === 0 ? (
-                  <Card><CardContent className="p-8 text-center">
-                    <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No quiz banks yet. Create one to get started.</p>
+                  <Card className="border-dashed"><CardContent className="p-10 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-accent/10 mx-auto mb-4 flex items-center justify-center">
+                      <ClipboardCheck className="h-7 w-7 text-accent" />
+                    </div>
+                    <p className="font-medium">No quiz banks yet</p>
+                    <p className="text-sm text-muted-foreground">Create one to get started.</p>
                   </CardContent></Card>
                 ) : (
                   <div className="grid gap-3">
@@ -673,11 +676,16 @@ export default function QuizEngine() {
                       const hasLive = stats.live > 0;
                       const bankAttempts = attempts.filter((a: any) => a.quiz_bank_id === bank.id).length;
                       return (
-                        <Card key={bank.id} className="border-border">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1 flex-1">
+                        <Card
+                          key={bank.id}
+                          className={`group relative overflow-hidden border-border/70 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] ${hasLive ? 'ring-1 ring-success/30' : ''}`}
+                        >
+                          <span className={`absolute inset-y-0 left-0 w-1 ${hasLive ? 'bg-success' : 'bg-accent/50'}`} />
+                          <CardContent className="p-4 pl-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1.5 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
+
                                   <h4 className="text-sm font-medium">{bank.name}</h4>
                                   {hasLive ? (
                                     <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
