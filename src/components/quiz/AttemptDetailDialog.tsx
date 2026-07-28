@@ -205,8 +205,8 @@ export default function AttemptDetailDialog({
     ? `${Math.floor(attempt.time_taken_seconds / 60)}m ${attempt.time_taken_seconds % 60}s`
     : '—';
 
-  const downloadReportCard = () => {
-    generateReportCardPdf({
+  const downloadReportCard = async () => {
+    await generateReportCardPdf({
       studentName: attempt.guest_name || 'Anonymous',
       studentEmail: attempt.guest_email || '—',
       quizName: attempt.quiz_bank?.name || attempt.session?.title || 'Quiz',
