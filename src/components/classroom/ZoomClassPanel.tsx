@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { zonedParts, zonedDayName } from '@/hooks/useAcademyTimezone';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
-  CalendarPlus, X, MonitorUp,
+  CalendarPlus, X, MonitorUp, Bell,
 } from 'lucide-react';
 
 // ─── Types ───
@@ -27,7 +30,36 @@ interface ZoomClassPanelProps {
   onSessionEnd?: () => void;
   courseId?: string;
   classId?: string;
+  /** Optional: schedule row id for the Ping feature. Resolved from courseId when omitted. */
+  scheduleId?: string;
 }
+
+/** Two-tone alert chime via Web Audio API (no bundled audio asset). */
+function playPingChime() {
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const tone = (freq: number, startAt: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + 0.15);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + 0.16);
+    };
+    tone(880, 0);
+    tone(1174.66, 0.18);
+    setTimeout(() => ctx.close().catch(() => {}), 800);
+  } catch {
+    /* audio unavailable — banner still shows */
+  }
+}
+
 
 // ─── Time helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
