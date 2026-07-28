@@ -498,6 +498,7 @@ const App = () => (
       <Sonner />
       <InstallBanner />
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <DivisionProvider>
             <KidContextProvider>
