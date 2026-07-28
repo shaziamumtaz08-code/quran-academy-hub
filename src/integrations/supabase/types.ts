@@ -11539,6 +11539,22 @@ export type Database = {
           whatsapp_number: string
         }[]
       }
+      get_student_quiz_sessions: {
+        Args: never
+        Returns: {
+          course_id: string
+          description: string
+          language: string
+          max_attempts: number
+          name: string
+          passing_percentage: number
+          questions_per_attempt: number
+          quiz_bank_id: string
+          session_id: string
+          session_title: string
+          time_limit_minutes: number
+        }[]
+      }
       get_student_teacher_ids: {
         Args: { _student_id: string }
         Returns: string[]
@@ -11661,6 +11677,7 @@ export type Database = {
         Args: { _user_a: string; _user_b: string }
         Returns: boolean
       }
+      start_quiz_attempt: { Args: { _session_id: string }; Returns: Json }
       submit_demo_feedback: {
         Args: {
           _interested?: string

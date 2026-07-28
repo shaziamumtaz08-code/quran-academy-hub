@@ -25,14 +25,27 @@ export default function StudentQuizView() {
   const [results, setResults] = useState<any>(null);
   const [startTime, setStartTime] = useState(0);
 
-  // Available quizzes for this student (authenticated mode)
+  // Available quizzes for this student (answers never leave the server)
   const { data: availableSessions = [], isLoading } = useQuery({
     queryKey: ['student-quiz-sessions', user?.id],
     queryFn: async () => {
-      const { data } = await (supabase.from('quiz_sessions') as any)
-        .select('*, quiz_bank:quiz_banks(id, name, description, language, questions_per_attempt, time_limit_minutes, max_attempts, passing_percentage, question_bank, mode, course_id)')
-        .eq('status', 'live');
-      return (data || []).filter((s: any) => s.quiz_bank?.mode === 'authenticated');
+      const { data, error } = await (supabase.rpc as any)('get_student_quiz_sessions');
+      if (error) throw error;
+      return (data || []).map((r: any) => ({
+        id: r.session_id,
+        title: r.session_title,
+        quiz_bank: {
+          id: r.quiz_bank_id,
+          name: r.name,
+          description: r.description,
+          language: r.language,
+          questions_per_attempt: r.questions_per_attempt,
+          time_limit_minutes: r.time_limit_minutes,
+          max_attempts: r.max_attempts,
+          passing_percentage: r.passing_percentage,
+          course_id: r.course_id,
+        },
+      }));
     },
     enabled: !!user,
   });
@@ -52,41 +65,18 @@ export default function StudentQuizView() {
   });
 
   const startQuiz = async (session: any) => {
-    const bank = session.quiz_bank;
-    // Check attempts
-    const existingAttempts = pastAttempts.filter((a: any) => a.session_id === session.id).length;
-    if (bank.max_attempts && existingAttempts >= bank.max_attempts) {
-      toast({ title: 'Maximum attempts reached', variant: 'destructive' });
-      return;
-    }
-
-    // Select random questions
-    const allQ = bank.question_bank || [];
-    const numQ = Math.min(bank.questions_per_attempt || 10, allQ.length);
-    const shuffled = [...allQ].sort(() => Math.random() - 0.5).slice(0, numQ);
-
-    // Create attempt
-    const { data: attempt, error } = await (supabase.from('quiz_attempts') as any).insert({
-      session_id: session.id,
-      quiz_bank_id: bank.id,
-      student_id: user?.id,
-      questions: shuffled,
-      max_score: numQ,
-      status: 'in_progress',
-    }).select('id').single();
-
+    const { data, error } = await (supabase.rpc as any)('start_quiz_attempt', { _session_id: session.id });
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
 
-    // Prepare client questions (strip answers)
-    const clientQ = shuffled.map((q: any, i: number) => ({ index: i, text: q.text, type: q.type, options: q.options || [] }));
-    setQuestions(clientQ);
+    setQuestions((data as any).questions || []);
     setActiveQuiz(session);
-    setAttemptId(attempt.id);
+    setAttemptId((data as any).attempt_id);
     setAnswers({});
     setCurrentQ(0);
     setStartTime(Date.now());
     setPhase('quiz');
   };
+
 
   const handleSubmit = async () => {
     setPhase('submitting');
