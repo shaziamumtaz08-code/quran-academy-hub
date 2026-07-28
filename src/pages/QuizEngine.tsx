@@ -1052,7 +1052,14 @@ export default function QuizEngine() {
                   })}
                 />
 
+                <QuizCollaboratorsDialog
+                  quizBankId={shareBank?.id ?? null}
+                  quizName={shareBank?.name}
+                  open={!!shareBank}
+                  onOpenChange={(o) => !o && setShareBank(null)}
+                />
                 <AttemptDetailDialog
+
                   open={!!detailAttemptId}
                   onOpenChange={(o) => !o && setDetailAttemptId(null)}
                   attempts={filteredResults}
