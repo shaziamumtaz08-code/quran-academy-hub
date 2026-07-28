@@ -102,6 +102,8 @@ const TeachingOSAnalytics = lazy(() => import("./pages/TeachingOSAnalytics"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
 const QuizEngine = lazy(() => import("./pages/QuizEngine"));
 const PublicQuiz = lazy(() => import("./pages/PublicQuiz"));
+const QuizInviteAccept = lazy(() => import("./pages/QuizInviteAccept"));
+
 const StudentQuizView = lazy(() => import("./pages/StudentQuizView"));
 const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
 const LiveClasses = lazy(() => import("./pages/LiveClasses"));
