@@ -102,24 +102,7 @@ export default function QuizEngine() {
     if (!files) return;
     setExtractingPdf(true);
     try {
-      const newFiles: { name: string; text: string }[] = [];
-      for (let i = 0; i < Math.min(files.length, 5); i++) {
-        const file = files[i];
-        if (file.type === 'application/pdf') {
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          let text = '';
-          for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
-            const page = await pdf.getPage(p);
-            const content = await page.getTextContent();
-            text += content.items.map((item: any) => item.str).join(' ') + '\n';
-          }
-          newFiles.push({ name: file.name, text: text.trim() });
-        } else {
-          const text = await file.text();
-          newFiles.push({ name: file.name, text: text.trim() });
-        }
-      }
+      const newFiles = await extractSourceFiles(files, 5);
       setUploadedFiles(prev => [...prev, ...newFiles].slice(0, 5));
       const allText = [...uploadedFiles, ...newFiles].map(f => `[SOURCE: ${f.name}]\n${f.text}`).join('\n\n');
       setForm(prev => ({ ...prev, source_content: allText }));
@@ -131,6 +114,7 @@ export default function QuizEngine() {
       if (e.target) e.target.value = '';
     }
   };
+
 
   const removeFile = (index: number) => {
     const updated = uploadedFiles.filter((_, i) => i !== index);
