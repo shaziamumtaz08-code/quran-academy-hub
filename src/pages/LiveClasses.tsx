@@ -181,7 +181,81 @@ export default function LiveClasses() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id, tz]);
+
+  // ── Ping cooldown ticker ──
+  useEffect(() => {
+    const anyActive = Object.values(pingState).some((p) => p.cooldown > 0);
+    if (!anyActive) return;
+    const t = setInterval(() => {
+      setPingState((prev) => {
+        const next: typeof prev = {};
+        for (const [k, v] of Object.entries(prev)) next[k] = { ...v, cooldown: v.cooldown > 1 ? v.cooldown - 1 : 0 };
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [pingState]);
+
+  const handlePing = async (row: Row) => {
+    if (!row.scheduleId) return;
+    const id = row.scheduleId;
+    setPingState((p) => ({ ...p, [id]: { cooldown: p[id]?.cooldown ?? 0, sending: true } }));
+    try {
+      const { error } = await supabase.functions.invoke("send-class-ping", {
+        body: { schedule_id: id, occurrence_date: occurrenceDate },
+      });
+      if (error) {
+        let retryAfter = 0;
+        try {
+          const body = await (error as any)?.context?.json?.();
+          retryAfter = Number(body?.retryAfterSeconds) || 0;
+        } catch { /* ignore */ }
+        if (retryAfter > 0) {
+          setPingState((p) => ({ ...p, [id]: { cooldown: retryAfter, sending: false } }));
+        } else {
+          toast.error("Could not send ping. Please try again.");
+          setPingState((p) => ({ ...p, [id]: { cooldown: 0, sending: false } }));
+        }
+        return;
+      }
+      setPingState((p) => ({ ...p, [id]: { cooldown: 60, sending: false } }));
+      toast.success("Ping sent");
+    } catch {
+      toast.error("Could not send ping. Please try again.");
+      setPingState((p) => ({ ...p, [id]: { cooldown: 0, sending: false } }));
+    }
+  };
+
+  // ── Receive pings: one channel per eligible row ──
+  const eligibleScheduleIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .filter((r) => r.scheduleId && r.status !== "completed")
+            .map((r) => r.scheduleId as string),
+        ),
+      ).sort(),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!user?.id || eligibleScheduleIds.length === 0) return;
+    const channels = eligibleScheduleIds.map((sid) =>
+      supabase
+        .channel(`class-ping:${sid}:${occurrenceDate}`)
+        .on("broadcast", { event: "ping" }, ({ payload }: any) => {
+          if (payload?.recipientId !== user.id) return;
+          playPingChime();
+          setIncomingPings((p) => ({ ...p, [sid]: payload?.senderRole === "teacher" ? "teacher" : "student" }));
+          setTimeout(() => setIncomingPings((p) => { const n = { ...p }; delete n[sid]; return n; }), 15000);
+        })
+        .subscribe(),
+    );
+    return () => { channels.forEach((c) => supabase.removeChannel(c)); };
+  }, [eligibleScheduleIds.join(","), occurrenceDate, user?.id]);
+
 
   useEffect(() => {
     if (!user?.id) return;
