@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import QuizResultsExportDialog from '@/components/quiz/QuizResultsExportDialog';
+import QuizQuestionAnalysis from '@/components/quiz/QuizQuestionAnalysis';
 import QuizFullReportDialog from '@/components/quiz/QuizFullReportDialog';
 import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
 import QuizCollaboratorsDialog from '@/components/quiz/QuizCollaboratorsDialog';
@@ -1010,6 +1011,8 @@ export default function QuizEngine() {
                     </CardContent>
                   </Card>
                 )}
+
+                <QuizQuestionAnalysis attempts={filteredResults} />
 
 
                 <Card>
