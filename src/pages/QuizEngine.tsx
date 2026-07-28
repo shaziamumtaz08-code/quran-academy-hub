@@ -1362,9 +1362,9 @@ export default function QuizEngine() {
                 <div className="mt-2">
                   <Label className="text-xs">Custom AI Instructions (optional)</Label>
                   <Textarea value={editForm.custom_instructions} onChange={e => setEditForm({ ...editForm, custom_instructions: e.target.value })}
-                    placeholder="e.g. Only create questions about Fiqh topics. Ignore watermarks. Focus on chapters 3-5. Do NOT ask about dates."
+                    placeholder="e.g. Focus on chapters 3-5 only."
                     className="min-h-[60px] text-xs" />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Tell AI what to include, exclude, or focus on</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Core-topic focus (ignoring URLs, watermarks, headers, dates, author names) is already applied by default</p>
                 </div>
               </div>
             </div>
