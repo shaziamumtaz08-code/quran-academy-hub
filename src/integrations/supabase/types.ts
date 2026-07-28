@@ -1211,6 +1211,50 @@ export type Database = {
           },
         ]
       }
+      class_pings: {
+        Row: {
+          created_at: string | null
+          id: string
+          occurrence_date: string
+          push_sent: boolean | null
+          realtime_sent: boolean | null
+          recipient_id: string
+          schedule_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          occurrence_date: string
+          push_sent?: boolean | null
+          realtime_sent?: boolean | null
+          recipient_id: string
+          schedule_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          occurrence_date?: string
+          push_sent?: boolean | null
+          realtime_sent?: boolean | null
+          recipient_id?: string
+          schedule_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_pings_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_kits: {
         Row: {
           course_id: string | null
