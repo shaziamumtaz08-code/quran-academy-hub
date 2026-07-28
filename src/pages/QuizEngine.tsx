@@ -754,10 +754,14 @@ export default function QuizEngine() {
               {/* ===== Sessions Tab ===== */}
               <TabsContent value="sessions" className="mt-4 space-y-3">
                 {sessions.length === 0 ? (
-                  <Card><CardContent className="p-8 text-center">
-                    <LinkIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No active sessions. Go Live on a quiz bank to create one.</p>
+                  <Card className="border-dashed"><CardContent className="p-10 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-accent/10 mx-auto mb-4 flex items-center justify-center">
+                      <LinkIcon className="h-7 w-7 text-accent" />
+                    </div>
+                    <p className="font-medium">No active sessions</p>
+                    <p className="text-sm text-muted-foreground">Go Live on a quiz bank to create one.</p>
                   </CardContent></Card>
+
                 ) : (
                   <>
                     {/* Filter bar */}
