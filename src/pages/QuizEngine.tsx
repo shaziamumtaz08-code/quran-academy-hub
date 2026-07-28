@@ -673,9 +673,15 @@ export default function QuizEngine() {
                                   <Play className="h-3 w-3 mr-1" /> {hasLive ? 'New Session' : 'Go Live'}
                                 </Button>
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                                  title="Share with collaborators"
+                                  onClick={() => setShareBank({ id: bank.id, name: bank.name })}>
+                                  <Share2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
                                   onClick={() => openEdit(bank)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
+
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
                                   onClick={() => deleteBank.mutate(bank.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
