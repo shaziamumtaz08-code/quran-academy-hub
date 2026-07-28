@@ -1014,26 +1014,11 @@ export default function QuizEngine() {
 
 
                 {/* Export uses filtered set */}
-                <ExportDialog
+                <QuizResultsExportDialog
                   open={exportOpen}
                   onOpenChange={setExportOpen}
-                  title="Quiz Results"
                   filename="quiz-results"
-                  fields={[
-                    { key: 'row', label: '#' },
-                    { key: 'session_num', label: 'Session #' },
-                    { key: 'attempt_num', label: 'Attempt No.' },
-                    { key: 'name', label: 'Name' },
-                    { key: 'email', label: 'Email' },
-                    { key: 'quiz', label: 'Quiz' },
-                    { key: 'score', label: 'Score' },
-                    { key: 'max_score', label: 'Max Score' },
-                    { key: 'percentage', label: 'Percentage' },
-                    { key: 'pass_fail', label: 'Pass/Fail' },
-                    { key: 'time_taken', label: 'Time Taken' },
-                    { key: 'submitted_at', label: 'Date & Time' },
-                  ]}
-                  data={filteredResults.map((a: any, idx: number) => {
+                  rows={filteredResults.map((a: any, idx: number) => {
                     const isPass = (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50);
                     return {
                       row: idx + 1,
@@ -1042,26 +1027,39 @@ export default function QuizEngine() {
                       name: a.guest_name || '',
                       email: a.guest_email || '',
                       quiz: a.quiz_bank?.name || a.session?.title || '',
-                      score: a.score,
-                      max_score: a.max_score,
-                      percentage: `${a.percentage}%`,
-                      pass_fail: isPass ? 'Pass' : 'Fail',
-                      time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
-                      submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
+                      score: `${a.score}/${a.max_score}`,
+                      percentage: Number(a.percentage) || 0,
+                      result: isPass ? 'Pass' : 'Fail',
+                      time: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
+                      date: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
                     };
                   })}
                 />
 
-                <AttemptDetailDialog
+                <QuizFullReportDialog
+                  open={fullReportOpen}
+                  onOpenChange={setFullReportOpen}
+                  quizName={quizSummary?.bank?.name || 'All Quizzes'}
+                  subtitle={`Quiz Participation & Performance Report · ${filteredResults.length} attempts`}
+                  rows={filteredResults.map((a: any) => ({
+                    name: a.guest_name || 'Anonymous',
+                    email: a.guest_email || '',
+                    percentage: Number(a.percentage) || 0,
+                    score: `${a.score}/${a.max_score}`,
+                    pass: (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50),
+                  }))}
+                />
 
+                <AttemptDetailDialog
                   open={!!detailAttemptId}
-                  onOpenChange={(o) => !o && setDetailAttemptId(null)}
-                  attempts={filteredResults}
+                  onOpenChange={(o) => { if (!o) { setDetailAttemptId(null); setDetailList([]); } }}
+                  attempts={detailList}
                   attemptId={detailAttemptId}
                   setAttemptId={setDetailAttemptId}
                   sessionNumberMap={sessionNumberMap}
                   attemptNumberMap={attemptNumberMap}
                 />
+
               </TabsContent>
             </Tabs>
           );
