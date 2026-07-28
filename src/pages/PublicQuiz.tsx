@@ -18,6 +18,7 @@ interface QuizMeta {
   passing_percentage: number;
   total_questions: number;
   mode: string;
+  identity_mode?: 'email' | 'name';
 }
 
 interface Question {
@@ -89,8 +90,13 @@ export default function PublicQuiz() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
+  const requireEmail = meta?.identity_mode !== 'name';
+  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const nameValid = name.trim().length >= 2;
+  const canStart = nameValid && (!requireEmail || emailValid);
+
   const startQuiz = async () => {
-    if (!email.trim()) return;
+    if (!canStart) return;
     setPhase('loading');
     try {
       const res = await fetch(`${API_BASE}?action=start`, {
@@ -161,15 +167,27 @@ export default function PublicQuiz() {
           <Badge variant="outline">Pass: {meta?.passing_percentage}%</Badge>
         </div>
         <div className="space-y-3">
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-10" type="email" placeholder="Your email *" value={email} onChange={e => setEmail(e.target.value)} />
+          <div className="space-y-1">
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-10" placeholder="Your full name *" value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            {name.length > 0 && !nameValid && (
+              <p className="text-xs text-destructive">Please enter your full name (at least 2 characters).</p>
+            )}
           </div>
-          <div className="relative">
-            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-10" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <Button className="w-full gap-2" onClick={startQuiz} disabled={!email.trim()}>
+          {requireEmail && (
+            <div className="space-y-1">
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input className="pl-10" type="email" placeholder="Your email *" value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              {email.length > 0 && !emailValid && (
+                <p className="text-xs text-destructive">Please enter a valid email address.</p>
+              )}
+            </div>
+          )}
+          <Button className="w-full gap-2" onClick={startQuiz} disabled={!canStart}>
             Start Quiz <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
