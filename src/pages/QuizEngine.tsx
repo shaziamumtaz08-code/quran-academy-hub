@@ -509,7 +509,7 @@ export default function QuizEngine() {
           <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="h-11 w-11 rounded-xl bg-accent/20 flex items-center justify-center ring-1 ring-accent/30 shrink-0">
-                <ClipboardCheck className="h-5.5 w-5.5 h-6 w-6 text-accent" />
+                <ClipboardCheck className="h-6 w-6 text-accent" />
               </div>
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-primary-foreground tracking-tight">Quiz Engine</h1>
