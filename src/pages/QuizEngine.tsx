@@ -1182,7 +1182,11 @@ export default function QuizEngine() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setCreateOpen(false); resetForm(); }} disabled={generating}>Cancel</Button>
+              <Button variant="secondary" onClick={() => saveDraft.mutate()} disabled={!form.name.trim() || generating || saveDraft.isPending}>
+                {saveDraft.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save as Draft'}
+              </Button>
               <Button onClick={() => createBank.mutate()}
+
                 disabled={!form.name.trim() || !form.source_content.trim() || generating}
                 className="gap-1.5">
                 {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : 'Create & Generate'}
