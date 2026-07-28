@@ -27,7 +27,7 @@ import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
 import QuizCollaboratorsDialog from '@/components/quiz/QuizCollaboratorsDialog';
 import { useDraftPersistence, loadDraft, clearDraft } from '@/hooks/useDraftPersistence';
-import { Share2 } from 'lucide-react';
+
 
 
 import { format, formatDistanceStrict, differenceInMilliseconds } from 'date-fns';
