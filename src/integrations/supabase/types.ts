@@ -7017,6 +7017,53 @@ export type Database = {
           },
         ]
       }
+      quiz_collaborators: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          invite_email: string | null
+          invite_token: string
+          invited_by: string | null
+          permission: string
+          quiz_bank_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invite_email?: string | null
+          invite_token?: string
+          invited_by?: string | null
+          permission?: string
+          quiz_bank_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invite_email?: string | null
+          invite_token?: string
+          invited_by?: string | null
+          permission?: string
+          quiz_bank_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_collaborators_quiz_bank_id_fkey"
+            columns: ["quiz_bank_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_banks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_questions: {
         Row: {
           blooms_level: string | null
@@ -11285,6 +11332,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_quiz_invite: { Args: { _token: string }; Returns: string }
       admin_get_organization_settings: {
         Args: { _org_id: string }
         Returns: Json
@@ -11333,6 +11381,10 @@ export type Database = {
         }
         Returns: Json
       }
+      can_edit_quiz_bank: {
+        Args: { _quiz_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_content_kit: { Args: { _kit_id: string }; Returns: boolean }
       can_manage_course_content: {
         Args: { _course_id: string }
@@ -11345,6 +11397,10 @@ export type Database = {
       }
       can_view_exam_template: {
         Args: { _template_id: string }
+        Returns: boolean
+      }
+      can_view_quiz_bank: {
+        Args: { _quiz_id: string; _user_id: string }
         Returns: boolean
       }
       can_view_resource_visibility:
@@ -11574,6 +11630,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_module_access: {
+        Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_permission: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
@@ -11596,6 +11656,10 @@ export type Database = {
       }
       is_enrolled_in_course: {
         Args: { _course_id: string; _student_id: string }
+        Returns: boolean
+      }
+      is_quiz_owner: {
+        Args: { _quiz_id: string; _user_id: string }
         Returns: boolean
       }
       is_student_in_class: {
