@@ -89,8 +89,7 @@ export default function QuizEngine() {
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
-  // Frozen snapshot of the ordered list at click time so Next/Prev can't drift
-  // when filters/sorting/refetches change the underlying array.
+  // Frozen selected attempt so the review modal cannot drift to another student.
   const [detailList, setDetailList] = useState<any[]>([]);
   const [fullReportOpen, setFullReportOpen] = useState(false);
   const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
@@ -1006,7 +1005,7 @@ export default function QuizEngine() {
                                 <TableRow
                                   key={a.id}
                                   className="cursor-pointer transition-colors hover:bg-primary/5"
-                                  onClick={() => { setDetailList([...filteredResults]); setDetailAttemptId(a.id); }}
+                                  onClick={() => { setDetailList([a]); setDetailAttemptId(a.id); }}
                                 >
                                   <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                                   <TableCell className="text-xs font-mono">#{sessionNumberMap.get(a.session_id) || '—'}</TableCell>
@@ -1036,7 +1035,7 @@ export default function QuizEngine() {
                                       size="sm"
                                       variant="ghost"
                                       className="h-7 w-7 p-0"
-                                      onClick={(e) => { e.stopPropagation(); setDetailList([...filteredResults]); setDetailAttemptId(a.id); }}
+                                      onClick={(e) => { e.stopPropagation(); setDetailList([a]); setDetailAttemptId(a.id); }}
                                       title="View full quiz review"
                                     >
                                       <Eye className="h-3.5 w-3.5" />
