@@ -228,6 +228,103 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
 
   const icsUrl = useMemo(() => generateIcsUrl(classInfo, occurrence.nextDate), [classInfo, occurrence.nextDate]);
 
+  // ─── PING: occurrence date (same class timezone the panel already uses) ───
+  const pingActive = panelState === 'live' || panelState === 'starting-soon';
+  const occurrenceDate = useMemo(
+    () => zonedParts(new Date(), classInfo.timezone).dateKey,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classInfo.timezone, panelState],
+  );
+
+  // Resolve schedule id for this course/day when not supplied by the parent
+  const { data: resolvedScheduleId } = useQuery({
+    queryKey: ['ping-schedule', courseId, occurrenceDate],
+    enabled: !scheduleId && !!courseId && pingActive,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schedules')
+        .select('id')
+        .eq('course_id', courseId!)
+        .eq('day_of_week', zonedDayName(classInfo.timezone))
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+  });
+  const activeScheduleId = scheduleId || resolvedScheduleId || null;
+
+  // Cooldown ticker
+  useEffect(() => {
+    if (pingCooldown <= 0) return;
+    const t = setInterval(() => setPingCooldown((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [pingCooldown]);
+
+  const handlePing = useCallback(async () => {
+    if (!activeScheduleId) return;
+    setPinging(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-class-ping', {
+        body: { schedule_id: activeScheduleId, occurrence_date: occurrenceDate },
+      });
+      if (error) {
+        let retryAfter = 0;
+        try {
+          const body = await (error as any)?.context?.json?.();
+          retryAfter = Number(body?.retryAfterSeconds) || 0;
+        } catch { /* ignore */ }
+        if (retryAfter > 0) {
+          setPingCooldown(retryAfter);
+        } else {
+          toast.error('Could not send ping. Please try again.');
+        }
+        return;
+      }
+      setPingCooldown(60);
+      toast.success('Ping sent');
+    } catch {
+      toast.error('Could not send ping. Please try again.');
+    } finally {
+      setPinging(false);
+    }
+  }, [activeScheduleId, occurrenceDate]);
+
+  // Receive pings
+  useEffect(() => {
+    if (!pingActive || !activeScheduleId || !user?.id) return;
+    const channel = supabase
+      .channel(`class-ping:${activeScheduleId}:${occurrenceDate}`)
+      .on('broadcast', { event: 'ping' }, ({ payload }: any) => {
+        if (payload?.recipientId !== user.id) return;
+        playPingChime();
+        setIncomingPing(payload?.senderRole === 'teacher' ? 'teacher' : 'student');
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [pingActive, activeScheduleId, occurrenceDate, user?.id]);
+
+  // Auto-dismiss banner after ~15s
+  useEffect(() => {
+    if (!incomingPing) return;
+    const t = setTimeout(() => setIncomingPing(null), 15000);
+    return () => clearTimeout(t);
+  }, [incomingPing]);
+
+  const pingButton = pingActive && activeScheduleId ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="shrink-0"
+      disabled={pinging || pingCooldown > 0}
+      onClick={handlePing}
+    >
+      <Bell className="h-4 w-4 mr-1.5" />
+      {pingCooldown > 0 ? `Pinged · next ping in ${pingCooldown}s` : 'Ping'}
+    </Button>
+  ) : null;
+
+
   // Border / background styles per state
   const stateStyles = {
     upcoming: 'border-border',
