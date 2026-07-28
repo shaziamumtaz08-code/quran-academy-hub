@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { zonedParts, zonedDayName } from '@/hooks/useAcademyTimezone';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
-  CalendarPlus, X, MonitorUp,
+  CalendarPlus, X, MonitorUp, Bell,
 } from 'lucide-react';
 
 // ─── Types ───
@@ -27,7 +30,36 @@ interface ZoomClassPanelProps {
   onSessionEnd?: () => void;
   courseId?: string;
   classId?: string;
+  /** Optional: schedule row id for the Ping feature. Resolved from courseId when omitted. */
+  scheduleId?: string;
 }
+
+/** Two-tone alert chime via Web Audio API (no bundled audio asset). */
+function playPingChime() {
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const tone = (freq: number, startAt: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + 0.15);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + 0.16);
+    };
+    tone(880, 0);
+    tone(1174.66, 0.18);
+    setTimeout(() => ctx.close().catch(() => {}), 800);
+  } catch {
+    /* audio unavailable — banner still shows */
+  }
+}
+
 
 // ─── Time helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -142,11 +174,16 @@ function generateIcsUrl(classInfo: ClassInfo, nextDate: Date): string {
 type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 
 // ═══ COMPONENT ═══
-export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId }: ZoomClassPanelProps) {
+export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId }: ZoomClassPanelProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [pingCooldown, setPingCooldown] = useState(0);
+  const [pinging, setPinging] = useState(false);
+  const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
+
 
   // Check for virtual session (LiveKit)
   const { data: virtualSession } = useQuery({
@@ -191,6 +228,103 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
 
   const icsUrl = useMemo(() => generateIcsUrl(classInfo, occurrence.nextDate), [classInfo, occurrence.nextDate]);
 
+  // ─── PING: occurrence date (same class timezone the panel already uses) ───
+  const pingActive = panelState === 'live' || panelState === 'starting-soon';
+  const occurrenceDate = useMemo(
+    () => zonedParts(new Date(), classInfo.timezone).dateKey,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classInfo.timezone, panelState],
+  );
+
+  // Resolve schedule id for this course/day when not supplied by the parent
+  const { data: resolvedScheduleId } = useQuery({
+    queryKey: ['ping-schedule', courseId, occurrenceDate],
+    enabled: !scheduleId && !!courseId && pingActive,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schedules')
+        .select('id')
+        .eq('course_id', courseId!)
+        .eq('day_of_week', zonedDayName(classInfo.timezone))
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+  });
+  const activeScheduleId = scheduleId || resolvedScheduleId || null;
+
+  // Cooldown ticker
+  useEffect(() => {
+    if (pingCooldown <= 0) return;
+    const t = setInterval(() => setPingCooldown((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [pingCooldown]);
+
+  const handlePing = useCallback(async () => {
+    if (!activeScheduleId) return;
+    setPinging(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-class-ping', {
+        body: { schedule_id: activeScheduleId, occurrence_date: occurrenceDate },
+      });
+      if (error) {
+        let retryAfter = 0;
+        try {
+          const body = await (error as any)?.context?.json?.();
+          retryAfter = Number(body?.retryAfterSeconds) || 0;
+        } catch { /* ignore */ }
+        if (retryAfter > 0) {
+          setPingCooldown(retryAfter);
+        } else {
+          toast.error('Could not send ping. Please try again.');
+        }
+        return;
+      }
+      setPingCooldown(60);
+      toast.success('Ping sent');
+    } catch {
+      toast.error('Could not send ping. Please try again.');
+    } finally {
+      setPinging(false);
+    }
+  }, [activeScheduleId, occurrenceDate]);
+
+  // Receive pings
+  useEffect(() => {
+    if (!pingActive || !activeScheduleId || !user?.id) return;
+    const channel = supabase
+      .channel(`class-ping:${activeScheduleId}:${occurrenceDate}`)
+      .on('broadcast', { event: 'ping' }, ({ payload }: any) => {
+        if (payload?.recipientId !== user.id) return;
+        playPingChime();
+        setIncomingPing(payload?.senderRole === 'teacher' ? 'teacher' : 'student');
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [pingActive, activeScheduleId, occurrenceDate, user?.id]);
+
+  // Auto-dismiss banner after ~15s
+  useEffect(() => {
+    if (!incomingPing) return;
+    const t = setTimeout(() => setIncomingPing(null), 15000);
+    return () => clearTimeout(t);
+  }, [incomingPing]);
+
+  const pingButton = pingActive && activeScheduleId ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="shrink-0"
+      disabled={pinging || pingCooldown > 0}
+      onClick={handlePing}
+    >
+      <Bell className="h-4 w-4 mr-1.5" />
+      {pingCooldown > 0 ? `Pinged · next ping in ${pingCooldown}s` : 'Ping'}
+    </Button>
+  ) : null;
+
+
   // Border / background styles per state
   const stateStyles = {
     upcoming: 'border-border',
@@ -201,7 +335,21 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
 
   return (
     <div className="space-y-3">
+      {incomingPing && (
+        <div className="flex items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-950 px-4 py-3 text-emerald-50">
+          <Bell className="h-5 w-5 text-emerald-400 animate-pulse shrink-0" />
+          <p className="text-sm font-medium flex-1">
+            {incomingPing === 'teacher'
+              ? 'Your teacher is ready — join now!'
+              : 'Your student is ready — join now!'}
+          </p>
+          <Button variant="ghost" size="sm" className="text-emerald-100 hover:bg-emerald-900" onClick={() => setIncomingPing(null)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <Card className={cn('border-2 transition-colors', stateStyles[panelState])}>
+
         <CardContent className="p-4 space-y-3">
           {/* Header row */}
           <div className="flex items-center justify-between">
@@ -291,25 +439,32 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                   Class starts in {minutesUntil} minute{minutesUntil !== 1 ? 's' : ''}
                 </p>
               </div>
-              <Button
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={() => { setShowIframe(true); setIframeError(false); }}
-              >
-                <Video className="h-4 w-4 mr-2" /> Prepare to Join
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+                >
+                  <Video className="h-4 w-4 mr-2" /> Prepare to Join
+                </Button>
+                {pingButton}
+              </div>
             </>
           )}
 
           {/* STATE: Live — action buttons */}
           {panelState === 'live' && !showIframe && (
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => { setShowIframe(true); setIframeError(false); }}
-            >
-              <Video className="h-4 w-4 mr-2" />
-              {userRole === 'teacher' ? 'Launch Class' : 'Join Live Class'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+              >
+                <Video className="h-4 w-4 mr-2" />
+                {userRole === 'teacher' ? 'Launch Class' : 'Join Live Class'}
+              </Button>
+              {pingButton}
+            </div>
           )}
+
 
           {/* Live + iframe open: End/Open buttons */}
           {(panelState === 'live' || panelState === 'starting-soon') && showIframe && (
