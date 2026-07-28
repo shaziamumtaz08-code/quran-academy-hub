@@ -1,5 +1,4 @@
 import type jsPDF from 'jspdf';
-// @ts-expect-error - no bundled types
 import { ArabicShaper } from 'arabic-persian-reshaper';
 import notoNaskhUrl from '@/assets/fonts/NotoNaskhArabic-Regular.ttf?url';
 
