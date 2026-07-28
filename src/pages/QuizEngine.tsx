@@ -1052,12 +1052,6 @@ export default function QuizEngine() {
                   })}
                 />
 
-                <QuizCollaboratorsDialog
-                  quizBankId={shareBank?.id ?? null}
-                  quizName={shareBank?.name}
-                  open={!!shareBank}
-                  onOpenChange={(o) => !o && setShareBank(null)}
-                />
                 <AttemptDetailDialog
 
                   open={!!detailAttemptId}
@@ -1073,8 +1067,16 @@ export default function QuizEngine() {
           );
         })()}
 
+        <QuizCollaboratorsDialog
+          quizBankId={shareBank?.id ?? null}
+          quizName={shareBank?.name}
+          open={!!shareBank}
+          onOpenChange={(o) => !o && setShareBank(null)}
+        />
+
         {/* Create Quiz Bank Dialog */}
         <Dialog open={createOpen} onOpenChange={c => { if (!generating) { setCreateOpen(c); if (!c) resetForm(); } }}>
+
           <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Quiz Bank</DialogTitle>
