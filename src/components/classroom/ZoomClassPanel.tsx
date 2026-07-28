@@ -335,7 +335,21 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
 
   return (
     <div className="space-y-3">
+      {incomingPing && (
+        <div className="flex items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-950 px-4 py-3 text-emerald-50">
+          <Bell className="h-5 w-5 text-emerald-400 animate-pulse shrink-0" />
+          <p className="text-sm font-medium flex-1">
+            {incomingPing === 'teacher'
+              ? 'Your teacher is ready — join now!'
+              : 'Your student is ready — join now!'}
+          </p>
+          <Button variant="ghost" size="sm" className="text-emerald-100 hover:bg-emerald-900" onClick={() => setIncomingPing(null)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <Card className={cn('border-2 transition-colors', stateStyles[panelState])}>
+
         <CardContent className="p-4 space-y-3">
           {/* Header row */}
           <div className="flex items-center justify-between">
