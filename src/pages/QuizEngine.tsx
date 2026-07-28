@@ -20,7 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
   ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download,
-  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
+  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search, FileBarChart,
 } from 'lucide-react';
 import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import QuizResultsExportDialog from '@/components/quiz/QuizResultsExportDialog';
