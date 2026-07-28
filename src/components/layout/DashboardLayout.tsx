@@ -712,6 +712,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           <main className="flex-1 overflow-auto bg-background">
             <PushNotificationInitializer />
+            <PushPermissionBanner />
             <ActingAsBanner />
 
             {children}
