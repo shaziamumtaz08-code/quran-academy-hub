@@ -1115,6 +1115,44 @@ export default function QuizEngine() {
           onOpenChange={(o) => !o && setShareBank(null)}
         />
 
+        {/* Session access mode dialog */}
+        <Dialog open={!!sessionSetup} onOpenChange={(o) => !o && setSessionSetup(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Go Live — {sessionSetup?.name}</DialogTitle>
+              <DialogDescription>Choose how participants identify themselves. Full name is always required.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs">Access by</Label>
+              <div className="grid gap-2">
+                {([
+                  { v: 'email', t: 'Email + Name', d: 'Participant must enter a valid email and their full name. Enforces attempt limits per email.' },
+                  { v: 'name', t: 'Name only', d: 'Participant only enters their full name — no email needed.' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setSessionIdentityMode(opt.v)}
+                    className={`text-left rounded-md border p-3 transition-colors ${sessionIdentityMode === opt.v ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                  >
+                    <div className="text-sm font-medium">{opt.t}</div>
+                    <div className="text-xs text-muted-foreground">{opt.d}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSessionSetup(null)}>Cancel</Button>
+              <Button
+                disabled={createSession.isPending}
+                onClick={() => sessionSetup && createSession.mutate({ bankId: sessionSetup.id, identityMode: sessionIdentityMode })}
+              >
+                <Play className="h-3.5 w-3.5 mr-1" /> Start Session
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Create Quiz Bank Dialog */}
         <Dialog open={createOpen} onOpenChange={c => { if (!generating) { setCreateOpen(c); if (!c) resetForm(); } }}>
 
