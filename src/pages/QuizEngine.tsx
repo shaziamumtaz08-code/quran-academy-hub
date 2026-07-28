@@ -307,9 +307,11 @@ export default function QuizEngine() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setSessionSetup(null);
       toast({ title: 'Session created & live!' });
     },
   });
+
 
   const toggleSession = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
