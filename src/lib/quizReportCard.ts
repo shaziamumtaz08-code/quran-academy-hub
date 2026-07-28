@@ -57,7 +57,9 @@ export async function generateReportCardPdf(d: ReportCardData) {
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(19);
-  doc.text(d.academyName || 'Al Quran Time Academy', 92, 46);
+  font(d.academyName || '', 'bold');
+  doc.text(rtl(d.academyName || 'Al Quran Time Academy'), 92, 46);
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(214, 224, 238);
