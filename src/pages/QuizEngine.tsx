@@ -685,37 +685,37 @@ export default function QuizEngine() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="space-y-1.5 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-
-                                  <h4 className="text-sm font-medium">{bank.name}</h4>
+                                  <h4 className="text-sm font-semibold truncate">{bank.name}</h4>
                                   {hasLive ? (
-                                    <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                    <Badge className="text-[10px] gap-1 bg-success hover:bg-success text-success-foreground border-transparent">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                                       Live
                                     </Badge>
                                   ) : (
-                                    <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-xs">{bank.status}</Badge>
+                                    <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-[10px] capitalize">{bank.status}</Badge>
                                   )}
-                                  <Badge variant="outline" className="text-xs gap-1">
+                                  <Badge variant="outline" className="text-[10px] gap-1 capitalize">
                                     {bank.mode === 'public' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                                     {bank.mode}
                                   </Badge>
-                                  {bank.course?.name && <Badge variant="outline" className="text-xs">{bank.course.name}</Badge>}
+                                  {bank.course?.name && <Badge variant="outline" className="text-[10px]">{bank.course.name}</Badge>}
                                 </div>
-                                {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
-                                <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
-                                  <span>{getQuestionCount(bank)} Qs</span>
-                                  <span>{bank.language?.toUpperCase()}</span>
-                                  {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
-                                  <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
-                                  <span>Pass: {bank.passing_percentage}%</span>
-                                  <span>{bankAttempts} submission{bankAttempts === 1 ? '' : 's'}</span>
+                                {bank.description && <p className="text-xs text-muted-foreground line-clamp-2">{bank.description}</p>}
+                                <div className="flex gap-1.5 text-[11px] flex-wrap pt-0.5">
+                                  <span className="rounded-md bg-accent/10 text-accent px-2 py-0.5 font-medium">{getQuestionCount(bank)} Qs</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.language?.toUpperCase()}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.time_limit_minutes ? `⏱ ${bank.time_limit_minutes} min` : 'No timer'}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">Pass {bank.passing_percentage}%</span>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{bankAttempts} submission{bankAttempts === 1 ? '' : 's'}</span>
                                   <button
-                                    className="underline hover:text-foreground"
+                                    className="rounded-md bg-primary/5 px-2 py-0.5 text-foreground/80 hover:bg-primary/10 transition-colors"
                                     onClick={() => { setSessFilterBank(bank.id); setActiveTab('sessions'); }}
                                   >
                                     {stats.live} active / {stats.total} session{stats.total === 1 ? '' : 's'}
                                   </button>
                                 </div>
+
                               </div>
                               <div className="flex gap-1">
                                 <Button
