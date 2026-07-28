@@ -12,12 +12,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 // These MUST match the config used in src/lib/pushNotifications.ts.
 // ============================================================================
 const firebaseConfig = {
-  apiKey: 'REPLACE_WITH_FIREBASE_API_KEY',
-  authDomain: 'REPLACE_WITH_FIREBASE_AUTH_DOMAIN',
-  projectId: 'REPLACE_WITH_FIREBASE_PROJECT_ID',
-  storageBucket: 'REPLACE_WITH_FIREBASE_STORAGE_BUCKET',
-  messagingSenderId: 'REPLACE_WITH_FIREBASE_MESSAGING_SENDER_ID',
-  appId: 'REPLACE_WITH_FIREBASE_APP_ID',
+  apiKey: 'AIzaSyDZyIVucuObX1HQh0ecV7nxdGvJYIWgIqI',
+  authDomain: 'aqta-lms.firebaseapp.com',
+  projectId: 'aqta-lms',
+  storageBucket: 'aqta-lms.firebasestorage.app',
+  messagingSenderId: '1025089138581',
+  appId: '1:1025089138581:web:980cf022ec55cb4278d09c',
 };
 
 firebase.initializeApp(firebaseConfig);
