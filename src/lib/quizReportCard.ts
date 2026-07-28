@@ -149,7 +149,6 @@ export async function generateReportCardPdf(d: ReportCardData) {
 
   // ---- Question table
   const QCOL_W = 341; // 515 usable - (26 + 84 + 64)
-  const anyArabic = d.questions.some((q) => hasArabic(q.text));
 
   /**
    * Wrap first (with the Arabic metrics), then shape each visual line, so bidi
