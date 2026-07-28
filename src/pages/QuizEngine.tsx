@@ -88,9 +88,10 @@ export default function QuizEngine() {
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
+  const [shareBank, setShareBank] = useState<{ id: string; name: string } | null>(null);
 
-  // Form state
-  const [form, setForm] = useState({
+  const DRAFT_KEY = 'quiz-engine:create-draft';
+  const emptyForm = {
     name: '', description: '', language: 'en',
     course_id: '', mode: 'public' as 'authenticated' | 'public',
     mcq: 5, tf: 3, fib: 2,
@@ -98,7 +99,13 @@ export default function QuizEngine() {
     questions_per_attempt: 10, time_limit_minutes: 0,
     max_attempts: 1, passing_percentage: 50,
     source_content: '', custom_instructions: '',
-  });
+  };
+
+  // Form state — restored from an unsaved draft when the page was left mid-way
+  const [form, setForm] = useState(() => loadDraft<typeof emptyForm>(DRAFT_KEY) || emptyForm);
+  useDraftPersistence(DRAFT_KEY, form, { enabled: !!form.name || !!form.source_content });
+
+
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
