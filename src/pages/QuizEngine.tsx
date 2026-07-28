@@ -1017,7 +1017,7 @@ export default function QuizEngine() {
                       <div className="overflow-x-auto rounded-md border">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableRow className="bg-muted/60 hover:bg-muted/60 [&>th]:h-9 [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-[10px] [&>th]:text-muted-foreground">
                               <TableHead className="text-xs">#</TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('sessionNum')}>Session<SortIcon k="sessionNum" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('attempt')}>Attempt<SortIcon k="attempt" /></TableHead>
