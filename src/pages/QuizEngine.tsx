@@ -1256,30 +1256,13 @@ export default function QuizEngine() {
                 <p className="text-[10px] text-muted-foreground mb-2">Upload new source files or modify AI instructions to regenerate the question bank. Leave empty to keep existing questions.</p>
                 
                 <div>
-                  <Label className="text-xs">Upload Source Files (PDF/Text, up to 5)</Label>
-                  <Input type="file" accept=".pdf,.txt,.doc,.docx" multiple onChange={async (e) => {
+                  <Label className="text-xs">Upload Source Files (PDF, image, audio, video or text — up to 5)</Label>
+                  <Input type="file" accept={QUIZ_SOURCE_ACCEPT} multiple onChange={async (e) => {
                     const files = e.target.files;
                     if (!files) return;
                     setExtractingPdf(true);
                     try {
-                      const newFiles: { name: string; text: string }[] = [];
-                      for (let i = 0; i < Math.min(files.length, 5); i++) {
-                        const file = files[i];
-                        if (file.type === 'application/pdf') {
-                          const arrayBuffer = await file.arrayBuffer();
-                          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                          let text = '';
-                          for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
-                            const page = await pdf.getPage(p);
-                            const content = await page.getTextContent();
-                            text += content.items.map((item: any) => item.str).join(' ') + '\n';
-                          }
-                          newFiles.push({ name: file.name, text: text.trim() });
-                        } else {
-                          const text = await file.text();
-                          newFiles.push({ name: file.name, text: text.trim() });
-                        }
-                      }
+                      const newFiles = await extractSourceFiles(files, 5);
                       const allFiles = [...editUploadedFiles, ...newFiles].slice(0, 5);
                       setEditUploadedFiles(allFiles);
                       setEditSourceContent(allFiles.map(f => `[SOURCE: ${f.name}]\n${f.text}`).join('\n\n'));
@@ -1291,7 +1274,8 @@ export default function QuizEngine() {
                       if (e.target) e.target.value = '';
                     }
                   }} className="text-xs" disabled={extractingPdf} />
-                  {extractingPdf && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Extracting text...</p>}
+                  {extractingPdf && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Extracting content…</p>}
+
                 </div>
 
                 {editUploadedFiles.length > 0 && (
