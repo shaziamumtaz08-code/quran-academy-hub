@@ -482,6 +482,8 @@ function AppRoutes() {
       <Route path="/quiz-engine" element={<ProtectedRoute><RouteGuard moduleId="quiz_engine"><QuizEngine /></RouteGuard></ProtectedRoute>} />
       <Route path="/my-quizzes" element={<ProtectedRoute><RouteGuard moduleId="my_quizzes"><StudentQuizView /></RouteGuard></ProtectedRoute>} />
       <Route path="/quiz/:token" element={<PublicQuiz />} />
+      <Route path="/quiz-invite/:token" element={<QuizInviteAccept />} />
+
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
       <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
