@@ -47,6 +47,19 @@ interface DerivedSlot extends TodayClass {
 const DAY_START = 6 * 60;
 const DAY_END = 23 * 60;
 
+/** Scoped mission-control palette — local to this view only. */
+const MC_VARS = {
+  '--mc-bg': '#0A0E14',
+  '--mc-panel': '#0E1620',
+  '--mc-border': '#1E2733',
+  '--mc-text': '#E8EEF5',
+  '--mc-muted': '#5C6B7F',
+  '--mc-green': '#00E5A0',
+  '--mc-red': '#FF3B4E',
+  '--mc-amber': '#FFB020',
+  '--mc-blue': '#2E82FF',
+} as React.CSSProperties;
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -56,11 +69,11 @@ function initials(name: string) {
     .join('');
 }
 
-const STATE_BAR: Record<SlotState, string> = {
-  completed: 'bg-emerald-500',
-  live: 'bg-destructive',
-  overdue: 'bg-amber-500',
-  upcoming: 'bg-muted-foreground/30',
+const STATE_COLOR: Record<SlotState, string> = {
+  completed: 'var(--mc-green)',
+  live: 'var(--mc-red)',
+  overdue: 'var(--mc-amber)',
+  upcoming: 'var(--mc-blue)',
 };
 
 export function ZoomLiveOperations() {
@@ -139,11 +152,11 @@ export function ZoomLiveOperations() {
   const showOnAir = filter === 'all' || filter === 'live';
   const showUpNext = filter !== 'live' && filter !== 'completed';
 
-  const tiles: { key: TileFilter; label: string; value: number; amber?: boolean }[] = [
-    { key: 'live', label: 'In progress', value: counts.live },
-    { key: 'upcoming', label: 'Still to go', value: counts.upcoming },
-    { key: 'completed', label: 'Completed', value: counts.completed },
-    { key: 'overdue', label: 'Needs attention', value: counts.overdue, amber: true },
+  const tiles: { key: TileFilter; label: string; value: number; color: string }[] = [
+    { key: 'live', label: 'In progress', value: counts.live, color: 'var(--mc-red)' },
+    { key: 'upcoming', label: 'Still to go', value: counts.upcoming, color: 'var(--mc-blue)' },
+    { key: 'completed', label: 'Completed', value: counts.completed, color: 'var(--mc-green)' },
+    { key: 'overdue', label: 'Needs attention', value: counts.overdue, color: 'var(--mc-amber)' },
   ];
 
   const formatElapsed = (start: string | null) => {
@@ -154,38 +167,60 @@ export function ZoomLiveOperations() {
 
   if (liveLoading || classesLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-20 w-full rounded-xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-48 w-full rounded-xl" />
+      <div className="space-y-4 rounded-xl p-4" style={{ ...MC_VARS, background: 'var(--mc-bg)' }}>
+        <Skeleton className="h-20 w-full rounded-xl bg-white/5" />
+        <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
+        <Skeleton className="h-48 w-full rounded-xl bg-white/5" />
       </div>
     );
   }
 
+  const panel = 'rounded-xl border' as const;
+  const panelStyle: React.CSSProperties = {
+    background: 'var(--mc-panel)',
+    borderColor: 'var(--mc-border)',
+    borderWidth: '0.5px',
+  };
+
   return (
     <TooltipProvider>
-      <div className="space-y-6 animate-fade-in">
+      <style>{`
+        @keyframes mc-pulse { 0%,100% { opacity:1; box-shadow:0 0 0 0 var(--mc-red); } 50% { opacity:.55; box-shadow:0 0 10px 3px var(--mc-red); } }
+        .mc-scope :focus-visible { outline: 2px solid var(--mc-green); outline-offset: 2px; }
+      `}</style>
+      <div
+        className="mc-scope animate-fade-in space-y-6 rounded-2xl p-4 sm:p-6"
+        style={{ ...MC_VARS, background: 'var(--mc-bg)', color: 'var(--mc-text)' }}
+      >
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="font-serif text-xl font-bold text-foreground sm:text-2xl">Live operations</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="font-mono text-xl font-bold uppercase tracking-widest sm:text-2xl" style={{ color: 'var(--mc-text)' }}>
+              Live operations
+            </h2>
+            <p className="mt-1 font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
               {zonedDateLabel(timeZone, now)} · {slots.length} {slots.length === 1 ? 'class' : 'classes'} scheduled today
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 self-start">
-          <span className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            Now {zonedClockLabel(timeZone, now)} · {getTimezoneAbbr(timeZone)} ({timeZone})
-          </span>
-          <div className="flex items-center gap-2 rounded-full border border-destructive/20 bg-destructive/10 px-3 py-1.5">
-            <span className="relative flex h-2 w-2">
-              {liveNow > 0 && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-              )}
-              <span className={cn('relative inline-flex h-2 w-2 rounded-full', liveNow > 0 ? 'bg-destructive' : 'bg-muted-foreground')} />
+          <div className="flex flex-wrap items-center gap-3 self-start sm:flex-col sm:items-end">
+            <span className="font-mono text-lg font-bold tabular-nums sm:text-xl" style={{ color: 'var(--mc-green)' }}>
+              Now {zonedClockLabel(timeZone, now)} · {getTimezoneAbbr(timeZone)}
             </span>
-            <span className="text-sm font-semibold text-destructive">{liveNow} live now</span>
-          </div>
+            <div
+              className="flex items-center gap-2 rounded-full px-3 py-1.5"
+              style={{ border: '0.5px solid var(--mc-red)', background: 'rgba(255,59,78,0.1)' }}
+            >
+              <span
+                className="inline-flex h-2 w-2 rounded-full"
+                style={{
+                  background: liveNow > 0 ? 'var(--mc-red)' : 'var(--mc-muted)',
+                  animation: liveNow > 0 ? 'mc-pulse 1.6s ease-in-out infinite' : undefined,
+                }}
+              />
+              <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: 'var(--mc-red)' }}>
+                {liveNow} LIVE NOW
+              </span>
+            </div>
           </div>
         </div>
 
@@ -198,18 +233,18 @@ export function ZoomLiveOperations() {
                 key={tile.key}
                 type="button"
                 onClick={() => setFilter(active ? 'all' : tile.key)}
-                className={cn(
-                  'rounded-xl border p-4 text-left transition-colors',
-                  tile.amber
-                    ? 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
-                    : 'border-border bg-muted/40 hover:bg-muted',
-                  active && 'ring-2 ring-primary/40',
-                )}
+                className="rounded-xl p-4 text-left transition-opacity hover:opacity-90"
+                style={{
+                  ...panelStyle,
+                  borderStyle: 'solid',
+                  borderLeft: `2px solid ${tile.color}`,
+                  boxShadow: active ? `0 0 0 1px ${tile.color}` : undefined,
+                }}
               >
-                <p className={cn('text-xs', tile.amber ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em]" style={{ color: 'var(--mc-muted)' }}>
                   {tile.label}
                 </p>
-                <p className={cn('mt-1 text-2xl font-bold', tile.amber ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>
+                <p className="mt-1 font-mono text-3xl font-bold tabular-nums" style={{ color: tile.color }}>
                   {tile.value}
                 </p>
               </button>
@@ -218,13 +253,13 @@ export function ZoomLiveOperations() {
         </div>
 
         {/* Day timeline */}
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className={cn(panel, 'p-4')} style={panelStyle}>
+          <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
             <span>6:00 AM</span>
             <span>Today's timeline</span>
             <span>11:00 PM</span>
           </div>
-          <div className="relative h-8 w-full overflow-hidden rounded-md bg-muted/50">
+          <div className="relative h-8 w-full overflow-hidden rounded-md" style={{ background: '#070A0F' }}>
             {slots.map((slot) => {
               const left = ((slot.startMinutes - DAY_START) / (DAY_END - DAY_START)) * 100;
               const width = (slot.durationMinutes / (DAY_END - DAY_START)) * 100;
@@ -233,14 +268,22 @@ export function ZoomLiveOperations() {
                 <Tooltip key={slot.scheduleId}>
                   <TooltipTrigger asChild>
                     <div
-                      className={cn('absolute top-1 h-6 rounded-sm opacity-90', STATE_BAR[slot.state])}
-                      style={{ left: `${Math.max(0, left)}%`, width: `${Math.max(0.8, width)}%` }}
+                      className="absolute top-1 h-6 rounded-sm"
+                      style={{
+                        left: `${Math.max(0, left)}%`,
+                        width: `${Math.max(0.8, width)}%`,
+                        background: STATE_COLOR[slot.state],
+                        boxShadow: slot.state === 'live' ? `0 0 8px 1px ${STATE_COLOR.live}` : undefined,
+                      }}
                     />
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent
+                    className="font-mono"
+                    style={{ background: 'var(--mc-panel)', borderColor: 'var(--mc-border)', color: 'var(--mc-text)' }}
+                  >
                     <p className="text-xs font-semibold">{slot.teacherName}</p>
                     <p className="text-xs">{slot.studentName}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[11px]" style={{ color: 'var(--mc-muted)' }}>
                       {slot.subjectName || 'Class'} · {slot.startLabel}
                     </p>
                   </TooltipContent>
@@ -249,16 +292,23 @@ export function ZoomLiveOperations() {
             })}
             {nowMinutes >= DAY_START && nowMinutes <= DAY_END && (
               <div
-                className="absolute inset-y-0 w-0.5 bg-foreground"
-                style={{ left: `${((nowMinutes - DAY_START) / (DAY_END - DAY_START)) * 100}%` }}
+                className="absolute inset-y-0 w-0.5"
+                style={{
+                  left: `${((nowMinutes - DAY_START) / (DAY_END - DAY_START)) * 100}%`,
+                  background: 'var(--mc-text)',
+                  boxShadow: '0 0 6px 1px rgba(232,238,245,0.6)',
+                }}
               >
-                <span className="absolute -top-0.5 left-1 whitespace-nowrap rounded bg-foreground px-1 text-[9px] font-medium text-background">
+                <span
+                  className="absolute -top-0.5 left-1 whitespace-nowrap rounded px-1 font-mono text-[9px] font-medium"
+                  style={{ background: 'var(--mc-text)', color: 'var(--mc-bg)' }}
+                >
                   {zonedClockLabel(timeZone, now)}
                 </span>
               </div>
             )}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-4 font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
             {([
               ['completed', 'Completed'],
               ['live', 'Live'],
@@ -266,7 +316,7 @@ export function ZoomLiveOperations() {
               ['overdue', 'Overdue'],
             ] as [SlotState, string][]).map(([state, label]) => (
               <span key={state} className="flex items-center gap-1.5">
-                <span className={cn('h-2 w-3 rounded-sm', STATE_BAR[state])} />
+                <span className="h-2 w-3 rounded-sm" style={{ background: STATE_COLOR[state] }} />
                 {label}
               </span>
             ))}
@@ -276,7 +326,9 @@ export function ZoomLiveOperations() {
         {/* On air */}
         {showOnAir && (
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground">On air</h3>
+            <h3 className="font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--mc-muted)' }}>
+              On air
+            </h3>
             {liveSessions && liveSessions.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2">
                 {liveSessions.map((session: any) => {
@@ -288,17 +340,27 @@ export function ZoomLiveOperations() {
                     slots.find((s) => s.session?.id === session.id)?.durationMinutes || 30;
                   const pct = Math.min(100, (elapsedSec / (expectedMin * 60)) * 100);
                   const overrun = elapsedSec > expectedMin * 60;
+                  const statusColor = overrun ? 'var(--mc-amber)' : 'var(--mc-red)';
 
                   return (
-                    <div key={session.id} className="rounded-xl border border-destructive/20 bg-card p-4">
+                    <div
+                      key={session.id}
+                      className="rounded-xl p-4"
+                      style={{ background: 'var(--mc-panel)', border: `1px solid ${statusColor}` }}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                          <div
+                            className="flex h-11 w-11 items-center justify-center rounded-full font-mono text-sm font-bold"
+                            style={{ background: 'rgba(46,130,255,0.15)', color: 'var(--mc-blue)' }}
+                          >
                             {initials(session.teacherName)}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm font-semibold" style={{ color: 'var(--mc-text)' }}>
+                              {session.teacherName}
+                            </p>
+                            <p className="font-mono text-[11px] uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
                               {slots.find((s) => s.session?.id === session.id)?.subjectName || 'Class'} ·{' '}
                               {session.studentName || 'Group session'}
                             </p>
@@ -306,12 +368,18 @@ export function ZoomLiveOperations() {
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                            <span
+                              className="flex items-center gap-1 rounded-full px-2 py-1 font-mono text-xs font-medium tabular-nums"
+                              style={{ background: 'rgba(232,238,245,0.08)', color: 'var(--mc-text)' }}
+                            >
                               <Users className="h-3 w-3" />
                               {session.activeCount}
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent
+                            className="font-mono"
+                            style={{ background: 'var(--mc-panel)', borderColor: 'var(--mc-border)', color: 'var(--mc-text)' }}
+                          >
                             {session.participants.map((p: any) => (
                               <p key={p.userId} className="text-xs">
                                 {p.userName}
@@ -323,22 +391,19 @@ export function ZoomLiveOperations() {
                       </div>
 
                       <div className="mt-3">
-                        <p className={cn('font-mono text-sm', overrun ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>
+                        <p className="font-mono text-sm tabular-nums" style={{ color: statusColor }}>
                           {formatElapsed(session.actual_start)} / {expectedMin}:00
                         </p>
-                        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn('h-full rounded-full', overrun ? 'bg-amber-500' : 'bg-destructive')}
-                            style={{ width: `${pct}%` }}
-                          />
+                        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full" style={{ background: 'rgba(232,238,245,0.08)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: statusColor }} />
                         </div>
                       </div>
 
                       <div className="mt-4 flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="gap-1"
+                          className="gap-1 border-0 font-mono text-xs font-semibold uppercase tracking-wider hover:opacity-90"
+                          style={{ background: 'var(--mc-green)', color: '#04140E' }}
                           disabled={!license?.meeting_link}
                           onClick={() => window.open(license?.meeting_link, '_blank', 'noopener,noreferrer')}
                         >
@@ -347,7 +412,12 @@ export function ZoomLiveOperations() {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" className="gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 bg-transparent font-mono text-xs font-semibold uppercase tracking-wider hover:bg-transparent hover:opacity-80"
+                              style={{ borderColor: 'var(--mc-red)', color: 'var(--mc-red)' }}
+                            >
                               <Power className="h-3.5 w-3.5" />
                               End
                             </Button>
@@ -394,7 +464,9 @@ export function ZoomLiveOperations() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No classes running right now.</p>
+              <p className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
+                No classes running right now.
+              </p>
             )}
           </section>
         )}
@@ -402,46 +474,57 @@ export function ZoomLiveOperations() {
         {/* Up next */}
         {showUpNext && (
           <section className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground">Up next</h3>
+            <h3 className="font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--mc-muted)' }}>
+              Up next
+            </h3>
             {upNext.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing else scheduled for today.</p>
+              <p className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--mc-muted)' }}>
+                Nothing else scheduled for today.
+              </p>
             ) : (
-              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {upNext.map((slot) => {
+              <div className="overflow-hidden rounded-xl" style={panelStyle}>
+                {upNext.map((slot, idx) => {
                   const minsAway = slot.startMinutes - nowMinutes;
                   const overdue = slot.state === 'overdue';
+                  const soon = !overdue && minsAway <= 10;
                   return (
                     <div
                       key={slot.scheduleId}
-                      className={cn(
-                        'flex items-center justify-between gap-3 px-4 py-3',
-                        overdue ? 'bg-amber-500/10' : 'bg-card',
-                      )}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                      style={{
+                        background: overdue ? 'rgba(255,176,32,0.07)' : 'transparent',
+                        borderTop: idx === 0 ? undefined : '0.5px solid var(--mc-border)',
+                      }}
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="font-mono text-xs text-muted-foreground">{slot.startLabel}</span>
+                        <span className="font-mono text-xs tabular-nums" style={{ color: 'var(--mc-text)' }}>
+                          {slot.startLabel}
+                        </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
+                          <p className="truncate text-sm font-medium" style={{ color: 'var(--mc-text)' }}>
                             {slot.teacherName} → {slot.studentName}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p
+                            className="truncate font-mono text-[11px] uppercase tracking-wider"
+                            style={{ color: 'var(--mc-muted)' }}
+                          >
                             {slot.subjectName || 'Class'} · {slot.durationMinutes} min
                           </p>
                         </div>
                       </div>
                       <span
-                        className={cn(
-                          'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium',
+                        className="shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider"
+                        style={
                           overdue
-                            ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                            : minsAway <= 10
-                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                              : 'bg-muted text-muted-foreground',
-                        )}
+                            ? { background: 'var(--mc-amber)', color: '#1A1000' }
+                            : soon
+                              ? { border: '1px solid var(--mc-green)', color: 'var(--mc-green)' }
+                              : { border: '1px solid var(--mc-border)', color: 'var(--mc-muted)' }
+                        }
                       >
                         {overdue
                           ? `${nowMinutes - slot.startMinutes} min late`
-                          : minsAway <= 10
+                          : soon
                             ? 'starting soon'
                             : `in ${minsAway} min`}
                       </span>
@@ -454,26 +537,29 @@ export function ZoomLiveOperations() {
         )}
 
         {/* Room capacity */}
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={panelStyle}>
           <div className="flex flex-1 gap-1">
             {(licenses || []).map((l) => (
               <Tooltip key={l.id}>
                 <TooltipTrigger asChild>
                   <span
-                    className={cn(
-                      'h-2 flex-1 rounded-full',
-                      l.status === 'available' ? 'bg-emerald-500' : 'bg-destructive',
-                    )}
+                    className="h-2 flex-1 rounded-full"
+                    style={{ background: l.status === 'available' ? 'var(--mc-green)' : 'var(--mc-red)' }}
                   />
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent
+                  className="font-mono"
+                  style={{ background: 'var(--mc-panel)', borderColor: 'var(--mc-border)', color: 'var(--mc-text)' }}
+                >
                   <p className="text-xs">{l.zoom_email}</p>
-                  <p className="text-[11px] text-muted-foreground">{l.status}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--mc-muted)' }}>
+                    {l.status}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             ))}
           </div>
-          <span className="shrink-0 text-xs text-muted-foreground">
+          <span className="shrink-0 font-mono text-[11px] uppercase tracking-wider tabular-nums" style={{ color: 'var(--mc-muted)' }}>
             {busyLicenses} of {totalLicenses} in use
           </span>
         </div>
