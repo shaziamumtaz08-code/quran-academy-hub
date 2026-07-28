@@ -431,7 +431,8 @@ export default function LiveClasses() {
         })}
       </div>
     );
-  }, [rows, now, loading, joiningKey, role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, now, loading, joiningKey, role, pingState, incomingPings]);
 
   return (
     <DashboardLayout>
