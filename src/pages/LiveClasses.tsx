@@ -277,8 +277,12 @@ export default function LiveClasses() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const dismissPing = (scheduleId: string) =>
+    setIncomingPings((p) => { const n = { ...p }; delete n[scheduleId]; return n; });
+
   const handleJoin = async (row: Row) => {
     if (!user?.id) return;
+    if (row.scheduleId) dismissPing(row.scheduleId);
     setJoiningKey(row.key);
     try {
       await ensureFreshSession();
