@@ -64,7 +64,7 @@ Rules:
         "Authorization": `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash",
+        model: "google/gemini-3.6-flash",
         messages: [{ role: "user", content }],
       }),
     });
