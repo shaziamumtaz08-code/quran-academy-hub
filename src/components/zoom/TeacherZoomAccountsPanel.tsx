@@ -190,6 +190,9 @@ export function TeacherZoomAccountsPanel() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={runSyncZoomUsers} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sync Zoom Users
+        </Button>
         <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
           <Upload className="h-4 w-4" /> Bulk Link
         </Button>
