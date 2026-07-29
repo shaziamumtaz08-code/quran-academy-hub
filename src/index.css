@@ -107,11 +107,19 @@
     --gold-light: 40 88% 55%;
     --sky: 204 65% 54%;
     --alert-red: 0 65% 55%;
+    /* Progress Timeline — soft per-subject accents */
+    --report-accent-1: 174 52% 42%;
+    --report-accent-2: 27 78% 55%;
+    --report-accent-3: 268 45% 58%;
+    --report-accent-4: 152 45% 42%;
+    --report-accent-5: 341 62% 58%;
+    --report-accent-6: 199 62% 45%;
     /* Font stacks */
     --font-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
     --font-arabic: 'Noto Naskh Arabic', 'Traditional Arabic', 'Amiri', serif;
     --font-en: 'Inter', sans-serif;
   }
+
 
   .dark {
     --background: 220 40% 8%;
