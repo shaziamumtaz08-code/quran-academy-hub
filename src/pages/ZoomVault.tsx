@@ -58,6 +58,25 @@ export default function ZoomVault() {
   const [editing, setEditing] = useState<VaultAccount | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [importing, setImporting] = useState(false);
+
+  const runImport = async () => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.rpc('sync_vault_from_zoom_accounts' as any);
+      if (error) throw error;
+      const row: any = Array.isArray(data) ? data[0] : data;
+      toast({
+        title: 'Zoom accounts imported',
+        description: `${row?.imported ?? 0} added, ${row?.updated ?? 0} updated.`,
+      });
+      qc.invalidateQueries({ queryKey: ['zoom-vault-accounts'] });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['zoom-vault-accounts'],
