@@ -702,7 +702,9 @@ export default function QuizEngine() {
 
               {/* ===== Banks Tab ===== */}
               <TabsContent value="banks" className="mt-4 space-y-3">
+                <QuizJobProgress onCompleted={() => queryClient.invalidateQueries({ queryKey: ['quiz-banks'] })} />
                 {banksLoading ? (
+
                   <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                 ) : banks.length === 0 ? (
                   <Card className="border-dashed"><CardContent className="p-10 text-center">
