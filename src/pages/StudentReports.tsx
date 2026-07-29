@@ -466,6 +466,19 @@ export default function StudentReports() {
             </div>
             {/* Progress tracking */}
             <div className="hidden sm:flex items-center gap-3">
+              <Button
+                variant="secondary"
+                className="bg-white/10 text-white hover:bg-white/20 border-0"
+                onClick={() =>
+                  navigate(
+                    `/progress-timeline?range=12&mode=${isStudentOrParent ? 'student' : 'staff'}` +
+                      (studentFilter ? `&student=${studentFilter}` : ''),
+                  )
+                }
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Progress Timeline
+              </Button>
               {!isStudentOrParent && reportsThisMonth.size > 0 && (
                 <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
                   <TrendingUp className="h-5 w-5 text-cyan-400" />
@@ -479,6 +492,10 @@ export default function StudentReports() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500" />
         </div>
+
+        {!isStudentOrParent && <NeedsReviewQueue />}
+
+
 
         {/* Filters Card */}
         <Card className="bg-white shadow-md rounded-xl border-0">
