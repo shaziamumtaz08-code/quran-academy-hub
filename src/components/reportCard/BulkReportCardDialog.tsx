@@ -294,7 +294,7 @@ export function BulkReportCardDialog({
     setImportProgress(0);
 
     const validRows = parsedRows.filter((r) => r.status === 'valid');
-    const results = { success: 0, failed: 0, failedRows: [] as { rowNum: number; studentName: string; error: string }[] };
+    const results = { success: 0, failed: 0, flagged: 0, failedRows: [] as { rowNum: number; studentName: string; error: string }[] };
 
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -308,7 +308,7 @@ export function BulkReportCardDialog({
           obtained_marks: row.criteriaMarks[criteria.id] ?? 0,
         }));
 
-        const { error } = await supabase.functions.invoke('submit-report-card', {
+        const { data: submitted, error } = await supabase.functions.invoke('submit-report-card', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: {
             template_id: selectedTemplateId,
@@ -322,6 +322,17 @@ export function BulkReportCardDialog({
 
         if (error) throw error;
         results.success++;
+
+        // Auto-write + auto-publish the parent-facing remark unless the CSV
+        // already supplied one. Low marks / sensitive wording self-flag instead.
+        const examId = (submitted as { id?: string } | null)?.id;
+        if (examId && !row.publicRemarks) {
+          const { data: gen } = await supabase.functions.invoke('auto-report-remarks', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: { exam_id: examId, threshold: reviewThreshold },
+          });
+          if ((gen as { needs_review?: boolean } | null)?.needs_review) results.flagged++;
+        }
       } catch (err: any) {
         results.failed++;
         results.failedRows.push({
@@ -337,7 +348,9 @@ export function BulkReportCardDialog({
     setImportResults(results);
     setStep('done');
     queryClient.invalidateQueries({ queryKey: ['student-reports'] });
+    queryClient.invalidateQueries({ queryKey: ['remarks-needs-review'] });
   };
+
 
   const reset = () => {
     setStep('select-template');
