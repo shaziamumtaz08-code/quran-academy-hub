@@ -21,7 +21,7 @@ import {
   MessageSquare, ArrowRight, X as XIcon, ChevronRight, Eye,
   UserPlus, Send, Star, ThumbsUp, ThumbsDown, Minus, GripVertical,
   Filter, RefreshCw, MoreVertical, Shield, FileText, Upload, Mic,
-  Copy, Check
+  Copy, Check, ChevronDown
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -108,21 +108,48 @@ const LEAD_TIMEZONES = [
 ];
 
 // ── Create Lead Dialog ──
+type LeadStudent = {
+  uid: string;
+  name: string;
+  child_age: string;
+  gender: string;
+  subjects: string[];
+  other_subject: string;
+  current_level_specimen: string;
+  learning_goals: string;
+};
+
+const emptyStudent = (): LeadStudent => ({
+  uid: crypto.randomUUID(),
+  name: '', child_age: '', gender: '', subjects: [], other_subject: '',
+  current_level_specimen: '', learning_goals: '',
+});
+
+const emptyShared = () => ({
+  email: '', phone_whatsapp: '', country: '', country_code: '', city: '', timezone: '',
+  for_whom: 'child', guardian_name: '', guardian_relationship: '',
+  message: '',
+  slot1_from: '', slot1_to: '', slot1_note: '',
+  slot2_from: '', slot2_to: '', slot2_note: '',
+});
+
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [form, setForm] = useState({
-    name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '',
-    for_whom: 'child', child_name: '', child_age: '',
-    message: '', gender: '',
-    current_level_specimen: '', learning_goals: '',
-    guardian_name: '', guardian_relationship: '',
-    other_subject: '',
-    timezone: '',
-    slot1_from: '', slot1_to: '', slot1_note: '',
-    slot2_from: '', slot2_to: '', slot2_note: '',
-  });
+  const [form, setForm] = useState(emptyShared());
+  const [students, setStudents] = useState<LeadStudent[]>([emptyStudent()]);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const isSelf = form.for_whom === 'self';
+  const visibleStudents = isSelf ? students.slice(0, 1) : students;
+
+  const patchStudent = (uid: string, patch: Partial<LeadStudent>) =>
+    setStudents(prev => prev.map(s => (s.uid === uid ? { ...s, ...patch } : s)));
+
+  const toggleSubject = (uid: string, subject: string) =>
+    setStudents(prev => prev.map(s => s.uid === uid
+      ? { ...s, subjects: s.subjects.includes(subject) ? s.subjects.filter(x => x !== subject) : [...s.subjects, subject] }
+      : s));
 
   const buildPreferredTime = () => {
     const parts: string[] = [];
@@ -132,90 +159,84 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     return parts.join(' | ') || null;
   };
 
-  const buildSubjects = () => {
-    const labels = selectedSubjects.map(s => s === 'Other' ? (form.other_subject ? `Other: ${form.other_subject}` : 'Other') : s);
-    return labels.join(', ') || null;
-  };
+  const buildSubjects = (s: LeadStudent) =>
+    s.subjects.map(v => (v === 'Other' ? (s.other_subject ? `Other: ${s.other_subject}` : 'Other') : v)).join(', ') || null;
+
+  const isStudentValid = (s: LeadStudent) => s.name.trim().length > 0 && s.subjects.length > 0;
+  const canSubmit =
+    !!form.email.trim() && visibleStudents.length > 0 && visibleStudents.every(isStudentValid);
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('leads').insert({
-        name: form.name,
-        email: form.email || null,
+      const rows = visibleStudents.map(s => ({
+        name: s.name.trim(),
+        email: form.email.trim() || null,
         phone_whatsapp: form.phone_whatsapp || null,
         country: form.country || null,
         city: form.city || null,
         timezone: form.timezone || null,
         for_whom: form.for_whom,
-
-        child_name: form.for_whom === 'child' ? form.child_name || null : null,
-        child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
-        subject_interest: buildSubjects(),
+        child_name: form.for_whom === 'child' ? s.name.trim() : null,
+        child_age: s.child_age ? parseInt(s.child_age) : null,
+        subject_interest: buildSubjects(s),
         preferred_time: buildPreferredTime(),
         message: form.message || null,
-        gender: form.gender || null,
-        current_level_specimen: form.current_level_specimen || null,
-        learning_goals: form.learning_goals || null,
-        guardian_name: form.guardian_name || null,
-        guardian_relationship: form.guardian_relationship || null,
+        gender: s.gender || null,
+        current_level_specimen: s.current_level_specimen || null,
+        learning_goals: s.learning_goals || null,
+        guardian_name: isSelf ? null : form.guardian_name || null,
+        guardian_relationship: isSelf ? null : form.guardian_relationship || null,
         status: 'new',
         division_id: activeDivision?.id ?? null,
         branch_id: activeBranch?.id ?? null,
-      } as any);
+      }));
+      const { error } = await supabase.from('leads').insert(rows as any);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
-      toast({ title: 'Lead created successfully' });
+    onSuccess: (count) => {
+      toast({ title: count > 1 ? `${count} leads created` : 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', country_code: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
-      setSelectedSubjects([]);
+      setForm(emptyShared());
+      setStudents([emptyStudent()]);
+      setActiveIdx(0);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const toggleSubject = (s: string) => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" /> New Lead</DialogTitle>
+      <DialogContent className="max-w-md max-h-[88vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-base"><UserPlus className="h-4 w-4" /> New Lead</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student Details</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Student Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
-            <div><Label className="text-xs">Age</Label><Input value={form.child_age} onChange={e => setForm(p => ({ ...p, child_age: e.target.value }))} placeholder="Age" type="number" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Gender</Label>
-              <Select value={form.gender} onValueChange={v => setForm(p => ({ ...p, gender: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label className="text-xs">For Whom</Label>
-              <Select value={form.for_whom} onValueChange={v => setForm(p => ({ ...p, for_whom: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="self">Self</SelectItem>
-                  <SelectItem value="child">Child</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          {(form.for_whom === 'child' || form.for_whom === 'other') && (
-            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
-              <div><Label className="text-xs">Guardian Name</Label><Input value={form.guardian_name} onChange={e => setForm(p => ({ ...p, guardian_name: e.target.value }))} placeholder="Parent/Guardian" /></div>
-              <div><Label className="text-xs">Relationship</Label>
+        <div className="space-y-4">
+          {/* ── Contact (shared) ── */}
+          <section className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Contact</p>
+
+            <div className="flex gap-1.5">
+              {[
+                { key: 'child', label: 'Parent / Guardian' },
+                { key: 'self', label: 'Self (adult)' },
+              ].map(opt => (
+                <button key={opt.key} type="button"
+                  onClick={() => setForm(p => ({ ...p, for_whom: opt.key }))}
+                  className={`flex-1 text-[11px] py-1.5 rounded-md border transition-colors ${
+                    form.for_whom === opt.key ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {!isSelf && (
+              <div className="grid grid-cols-2 gap-2">
+                <Input className="h-9 text-sm" value={form.guardian_name} onChange={e => setForm(p => ({ ...p, guardian_name: e.target.value }))} placeholder="Parent name" />
                 <Select value={form.guardian_relationship} onValueChange={v => setForm(p => ({ ...p, guardian_relationship: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Relationship" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="mother">Mother</SelectItem>
                     <SelectItem value="father">Father</SelectItem>
@@ -224,105 +245,135 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">WhatsApp *</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
-            <div>
-              <Label className="text-xs">Email *</Label>
-              <Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" />
-              <p className="text-[10px] text-muted-foreground mt-1">Used to notify about demo messages and updates.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Input className="h-9 text-sm" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email *" type="email" />
+              <Input className="h-9 text-sm" value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="WhatsApp" />
             </div>
 
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Country</Label>
+            <div className="grid grid-cols-2 gap-2">
               <Select value={form.country_code} onValueChange={v => applyLeadCountry(setForm, v)}>
-                <SelectTrigger><SelectValue placeholder="Select country..." /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Country" /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   {LEAD_ALL_COUNTRIES.map(c => (
                     <SelectItem key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label className="text-xs">City</Label>
               <SearchableCitySelect
                 countryCode={form.country_code}
                 value={form.city}
                 onValueChange={v => setForm(p => ({ ...p, city: v }))}
               />
             </div>
-          </div>
 
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
-          <div>
-            <Label className="text-xs">Subject to Study *</Label>
-            <p className="text-[11px] text-muted-foreground mb-2">Select one or more subjects</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {LEAD_SUBJECTS.map(s => {
-                const isSelected = selectedSubjects.includes(s.value);
-                return (
-                  <button key={s.value} type="button" onClick={() => toggleSubject(s.value)}
-                    className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                      isSelected ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'border-border hover:border-primary/30'
-                    }`}>
-                    {isSelected && <div className="absolute top-1.5 right-1.5"><Star className="h-3 w-3 text-primary fill-primary" /></div>}
-                    <span className="text-xl block mb-1">{s.emoji}</span>
-                    <span className="text-xs font-medium text-foreground leading-tight">{s.label}</span>
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {form.timezone ? `Timezone: ${form.timezone.replace('_', ' ')}` : 'Timezone syncs from country'}
+            </p>
+          </section>
+
+          {/* ── Students ── */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {isSelf ? 'Student' : `Children (${visibleStudents.length})`}
+              </p>
+              {!isSelf && (
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] px-2"
+                  onClick={() => { setStudents(prev => [...prev, emptyStudent()]); setActiveIdx(students.length); }}>
+                  <UserPlus className="h-3 w-3 mr-1" /> Add child
+                </Button>
+              )}
+            </div>
+
+            {visibleStudents.map((s, idx) => {
+              const isOpen = activeIdx === idx;
+              return (
+                <div key={s.uid} className={`rounded-lg border ${isOpen ? 'border-primary/40 bg-muted/20' : 'border-border'}`}>
+                  <button type="button" onClick={() => setActiveIdx(isOpen ? -1 : idx)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left">
+                    <span className="text-sm font-medium truncate">
+                      {s.name || (isSelf ? 'Student details' : `Child ${idx + 1}`)}
+                    </span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {s.subjects.length > 0 && <Badge variant="secondary" className="text-[9px]">{s.subjects.length} subj</Badge>}
+                      {!isSelf && visibleStudents.length > 1 && (
+                        <span role="button" tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); setStudents(prev => prev.filter(x => x.uid !== s.uid)); setActiveIdx(0); }}
+                          className="text-[10px] text-destructive hover:underline">Remove</span>
+                      )}
+                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </span>
                   </button>
-                );
-              })}
-            </div>
-          </div>
-          {selectedSubjects.includes('Other') && (
-            <div><Label className="text-xs">Other Subject *</Label><Input value={form.other_subject} onChange={e => setForm(p => ({ ...p, other_subject: e.target.value }))} placeholder="Specify (e.g. Hadith, Fiqh, Seerah)" /></div>
-          )}
-          <div><Label className="text-xs">Current Level / Specimen</Label><Input value={form.current_level_specimen} onChange={e => setForm(p => ({ ...p, current_level_specimen: e.target.value }))} placeholder="e.g. Noorani Qaida page 5" /></div>
-          <div><Label className="text-xs">Learning Goals</Label><Textarea value={form.learning_goals} onChange={e => setForm(p => ({ ...p, learning_goals: e.target.value }))} placeholder="What does the student want to achieve?" rows={2} /></div>
 
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Preferred Class Time</p>
-          <p className="text-[11px] text-muted-foreground -mt-1">Add at least 2 specific slots so we can match a teacher.</p>
-          <div>
-            <Label className="text-xs">Timezone (auto-synced from country)</Label>
-            <div className="mt-1 h-10 px-3 flex items-center justify-between rounded-md border border-input bg-muted/40 text-sm">
-              <span className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className={form.timezone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                  {form.timezone ? form.timezone.replace('_', ' ') : 'Select country to set timezone'}
-                </span>
-              </span>
-              {form.timezone && <Badge variant="secondary" className="text-[10px]">Synced</Badge>}
-            </div>
-          </div>
-          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-            <p className="text-xs font-semibold">🟢 Slot 1 — Most Preferred</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot1_from} onChange={e => setForm(p => ({ ...p, slot1_from: e.target.value }))} /></div>
-              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot1_to} onChange={e => setForm(p => ({ ...p, slot1_to: e.target.value }))} /></div>
-            </div>
-            <Input value={form.slot1_note} onChange={e => setForm(p => ({ ...p, slot1_note: e.target.value }))} placeholder="Optional note (e.g. weekdays only)" className="h-9 text-xs" />
-          </div>
-          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-            <p className="text-xs font-semibold">🟡 Slot 2 — Backup</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot2_from} onChange={e => setForm(p => ({ ...p, slot2_from: e.target.value }))} /></div>
-              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot2_to} onChange={e => setForm(p => ({ ...p, slot2_to: e.target.value }))} /></div>
-            </div>
-            <Input value={form.slot2_note} onChange={e => setForm(p => ({ ...p, slot2_note: e.target.value }))} placeholder="Optional note" className="h-9 text-xs" />
-          </div>
+                  {isOpen && (
+                    <div className="px-3 pb-3 space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input className="h-9 text-sm col-span-2" value={s.name} onChange={e => patchStudent(s.uid, { name: e.target.value })} placeholder="Full name *" />
+                        <Input className="h-9 text-sm" type="number" value={s.child_age} onChange={e => patchStudent(s.uid, { child_age: e.target.value })} placeholder="Age" />
+                      </div>
 
-          <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
-          <Button onClick={() => createMutation.mutate()} disabled={!form.name || !form.email.trim() || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
-            {createMutation.isPending ? 'Creating...' : 'Create Lead'}
+                      <Select value={s.gender} onValueChange={v => patchStudent(s.uid, { gender: v })}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Gender" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {LEAD_SUBJECTS.map(sub => {
+                          const on = s.subjects.includes(sub.value);
+                          return (
+                            <button key={sub.value} type="button" onClick={() => toggleSubject(s.uid, sub.value)}
+                              className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                                on ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:border-primary/40'
+                              }`}>
+                              {sub.emoji} {sub.value === 'Qaida (Beginners)' ? 'Qaida' : sub.value === 'Other' ? 'Other' : sub.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {s.subjects.includes('Other') && (
+                        <Input className="h-9 text-sm" value={s.other_subject} onChange={e => patchStudent(s.uid, { other_subject: e.target.value })} placeholder="Specify subject" />
+                      )}
+
+                      <Input className="h-9 text-sm" value={s.current_level_specimen} onChange={e => patchStudent(s.uid, { current_level_specimen: e.target.value })} placeholder="Current level (e.g. Qaida p.5)" />
+                      <Textarea className="text-sm" rows={2} value={s.learning_goals} onChange={e => patchStudent(s.uid, { learning_goals: e.target.value })} placeholder="Learning goals" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </section>
+
+          {/* ── Preferred time (shared) ── */}
+          <section className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Preferred class time</p>
+            <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">🟢 1st</span>
+              <Input className="h-9 text-sm" type="time" value={form.slot1_from} onChange={e => setForm(p => ({ ...p, slot1_from: e.target.value }))} />
+              <Input className="h-9 text-sm" type="time" value={form.slot1_to} onChange={e => setForm(p => ({ ...p, slot1_to: e.target.value }))} />
+              <span className="text-[11px] text-muted-foreground">🟡 2nd</span>
+              <Input className="h-9 text-sm" type="time" value={form.slot2_from} onChange={e => setForm(p => ({ ...p, slot2_from: e.target.value }))} />
+              <Input className="h-9 text-sm" type="time" value={form.slot2_to} onChange={e => setForm(p => ({ ...p, slot2_to: e.target.value }))} />
+            </div>
+            <Input className="h-9 text-xs" value={form.slot1_note} onChange={e => setForm(p => ({ ...p, slot1_note: e.target.value }))} placeholder="Note (e.g. weekdays only)" />
+            <Textarea className="text-sm" rows={2} value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} placeholder="Notes" />
+          </section>
+
+          <Button onClick={() => createMutation.mutate()} disabled={!canSubmit || createMutation.isPending} className="w-full">
+            {createMutation.isPending
+              ? 'Creating...'
+              : visibleStudents.length > 1 ? `Create ${visibleStudents.length} Leads` : 'Create Lead'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
+
 }
 
 // ── Schedule Demo Sub-Dialog ──
