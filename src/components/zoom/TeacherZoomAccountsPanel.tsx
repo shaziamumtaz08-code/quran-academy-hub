@@ -173,6 +173,8 @@ export function TeacherZoomAccountsPanel() {
     }
   };
 
+  const canSubmit = form.teacher_id && form.account_id && form.client_id && form.client_secret && form.zoom_email;
+
 
   return (
     <Card>
