@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
+import { SharedZoomAvailabilityPanel } from '@/components/zoom/SharedZoomAvailabilityPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 
@@ -45,7 +46,7 @@ export default function ZoomManagement() {
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
-  const [mainTab, setMainTab] = React.useState<'live' | 'accounts'>('live');
+  const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'shared'>('live');
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
 
   const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
@@ -413,6 +414,7 @@ export default function ZoomManagement() {
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
+            { id: 'shared' as const, label: 'Shared Seat' },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -435,6 +437,8 @@ export default function ZoomManagement() {
 
 
         {mainTab === 'live' && <ZoomLiveOperations />}
+
+        {mainTab === 'shared' && <SharedZoomAvailabilityPanel />}
 
         {mainTab === 'accounts' && (<>
         {/* Header */}
