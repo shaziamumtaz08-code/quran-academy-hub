@@ -134,7 +134,45 @@ export function TeacherZoomAccountsPanel() {
     }
   };
 
-  const canSubmit = form.teacher_id && form.account_id && form.client_id && form.client_secret && form.zoom_email;
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncResult, setSyncResult] = React.useState<any>(null);
+
+  const runSyncZoomUsers = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-sync-account-users`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ apply: true }),
+      });
+      const body = await resp.json();
+      setSyncResult(body);
+      if (body?.success) {
+        const s = body.summary || {};
+        toast({
+          title: 'Zoom users synced',
+          description: `${body.zoom_user_count} Zoom users • ${s.created || 0} created, ${s.updated || 0} updated, ${s.already_mapped || 0} already mapped`,
+        });
+        qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      } else {
+        toast({ title: 'Sync failed', description: body?.error || body?.hint || 'See details', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      setSyncResult({ error: e.message });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
 
   return (
     <Card>
