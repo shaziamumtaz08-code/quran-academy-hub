@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Eye, Plus, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, Plus, ShieldCheck, KeyRound, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Assignment = 'shared' | 'dedicated' | 'unassigned';
