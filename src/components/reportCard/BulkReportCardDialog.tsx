@@ -621,7 +621,13 @@ export function BulkReportCardDialog({
                   Successfully created {importResults.success} report cards
                   {importResults.failed > 0 && `, ${importResults.failed} failed`}
                 </p>
+                {!!importResults.flagged && (
+                  <p className="mt-2 text-sm text-amber-600">
+                    {importResults.flagged} remark(s) held for review — approve them in the “Needs review” queue.
+                  </p>
+                )}
               </div>
+
 
               {importResults.failed > 0 && importResults.failedRows.length > 0 && (
                 <ScrollArea className="h-48 w-full max-w-md rounded-md border border-destructive/30 bg-destructive/5">
