@@ -19,6 +19,8 @@ import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
 import { useToast } from '@/hooks/use-toast';
+import { NeedsReviewQueue } from '@/components/reportCard/NeedsReviewQueue';
+
 
 interface StudentReport {
   id: string;
