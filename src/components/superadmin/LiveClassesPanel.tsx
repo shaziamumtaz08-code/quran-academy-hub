@@ -37,6 +37,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
   const [loading, setLoading] = useState(true);
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [expanded, setExpanded] = useState(false);
+
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
