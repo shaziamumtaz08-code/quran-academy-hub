@@ -180,8 +180,11 @@ export function SharedZoomAvailabilityPanel() {
         setCreated(body.meeting);
         toast({ title: 'Meeting booked', description: body.meeting.recording === 'cloud' ? 'Cloud recording is on.' : 'No recording on this seat.' });
         handleCheck();
+        queryClient.invalidateQueries({ queryKey: ['zoom-booking-audit'] });
       } else {
+        queryClient.invalidateQueries({ queryKey: ['zoom-booking-audit'] });
         toast({ title: 'Could not create meeting', description: body?.error || 'Unknown error', variant: 'destructive' });
+
       }
     } finally {
       setCreating(false);
