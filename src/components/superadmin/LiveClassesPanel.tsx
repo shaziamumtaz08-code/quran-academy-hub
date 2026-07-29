@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Loader2, Video, Radio } from 'lucide-react';
 import { ensureFreshSession } from '@/lib/ensureSession';
-import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
+import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 
 interface ClassRow {
   key: string;
@@ -186,7 +186,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
                 <p className="truncate text-xs text-muted-foreground">with {row.teacherName}</p>
               </div>
               <span className="text-xs font-medium text-muted-foreground">
-                {new Date(row.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                {zonedClockLabel(tz, new Date(row.startMs))}
               </span>
               <Button
                 size="sm"
