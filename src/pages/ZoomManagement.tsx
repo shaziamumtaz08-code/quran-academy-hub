@@ -407,7 +407,7 @@ export default function ZoomManagement() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Top-level tabs */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
@@ -426,7 +426,11 @@ export default function ZoomManagement() {
               {tab.label}
             </button>
           ))}
+          <div className="ml-auto">
+            <SyncZoomUsersButton />
+          </div>
         </div>
+
 
         {mainTab === 'live' && <ZoomLiveOperations />}
 
