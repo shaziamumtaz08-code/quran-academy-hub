@@ -168,8 +168,10 @@ export function SharedZoomAvailabilityPanel() {
         start_time: proposedStartIso,
         duration,
         topic,
+        meeting_type: meetingType,
         timezone: TZ,
       });
+
       if (body?.success) {
         setCreated(body.meeting);
         toast({ title: 'Meeting booked', description: body.meeting.recording === 'cloud' ? 'Cloud recording is on.' : 'No recording on this seat.' });
