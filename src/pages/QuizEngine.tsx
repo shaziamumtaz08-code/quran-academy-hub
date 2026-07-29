@@ -27,6 +27,8 @@ import QuizResultsExportDialog from '@/components/quiz/QuizResultsExportDialog';
 import QuizQuestionAnalysis from '@/components/quiz/QuizQuestionAnalysis';
 import QuizFullReportDialog from '@/components/quiz/QuizFullReportDialog';
 import { extractSourceFiles, QUIZ_SOURCE_ACCEPT } from '@/lib/quizSourceExtract';
+import { startQuizExtractionJob } from '@/lib/quizJobs';
+import { QuizJobProgress } from '@/components/quiz/QuizJobProgress';
 import QuizCollaboratorsDialog from '@/components/quiz/QuizCollaboratorsDialog';
 import { useDraftPersistence, loadDraft, clearDraft } from '@/hooks/useDraftPersistence';
 
