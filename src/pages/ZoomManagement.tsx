@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
+import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
+
 
 import { AlertTriangle } from 'lucide-react';
 
