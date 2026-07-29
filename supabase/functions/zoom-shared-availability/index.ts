@@ -1,6 +1,6 @@
-// Shared (pooled) Zoom account operations: register the licensed academy seat,
-// read its booked schedule for availability checks, and create demo/group
-// meetings on it with cloud recording enabled.
+// Shared (pooled) Zoom seats: register/unregister pool accounts, read their
+// booked schedules for availability, create demo/group/quick meetings on a
+// chosen seat (cloud recording when the seat supports it), and list recordings.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
@@ -57,6 +57,39 @@ async function zoomGet(token: string, path: string) {
   return { ok: resp.ok, status: resp.status, body };
 }
 
+async function seatBusy(token: string, userId: string) {
+  const meetings: any[] = [];
+  for (const type of ["scheduled", "upcoming_meetings"]) {
+    let next = "";
+    do {
+      const { ok, body: b } = await zoomGet(
+        token,
+        `/users/${userId}/meetings?type=${type}&page_size=300${next ? `&next_page_token=${next}` : ""}`,
+      );
+      if (!ok) break;
+      for (const m of b.meetings || []) {
+        if (!meetings.some((x) => x.id === m.id)) meetings.push(m);
+      }
+      next = b.next_page_token || "";
+    } while (next);
+  }
+  return meetings
+    .filter((m) => m.start_time)
+    .map((m) => {
+      const start = new Date(m.start_time);
+      const mins = Number(m.duration || 40);
+      return {
+        id: String(m.id),
+        topic: m.topic || "Zoom meeting",
+        start: start.toISOString(),
+        end: new Date(start.getTime() + mins * 60000).toISOString(),
+        duration: mins,
+        join_url: m.join_url || null,
+      };
+    })
+    .sort((a, b2) => a.start.localeCompare(b2.start));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -79,21 +112,29 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userData.user.id);
-    const allowed = (roles || []).some((r: any) =>
-      ["super_admin", "admin"].includes(r.role) || String(r.role).startsWith("admin_")
+    const roleList = (roles || []).map((r: any) => String(r.role));
+    const isAdmin = roleList.some((r) =>
+      ["super_admin", "admin"].includes(r) || r.startsWith("admin_")
     );
-    if (!allowed) return json({ error: "Admin access required" }, 403);
+    const isTeacher = roleList.includes("teacher");
+    if (!isAdmin && !isTeacher) return json({ error: "Access denied" }, 403);
 
     const body = await req.json().catch(() => ({} as any));
-    const action: string = body?.action || "availability";
+    const action: string = body?.action || "pool_availability";
 
-    // ---------- register / refresh a shared seat ----------
+    // Configuration actions are admin-only. Teachers may check + book.
+    const adminOnly = ["register_shared", "unregister_shared"];
+    if (adminOnly.includes(action) && !isAdmin) {
+      return json({ error: "Admin access required" }, 403);
+    }
+
+    // ---------- register / refresh a pool seat ----------
     if (action === "register_shared") {
       const email = String(body?.email || "").trim();
       if (!email) return json({ error: "email is required" }, 400);
       const purposes: string[] = Array.isArray(body?.purposes) && body.purposes.length
         ? body.purposes
-        : ["demo", "group"];
+        : ["demo", "group", "quick"];
 
       const token = await zoomToken(admin);
       const { ok, status, body: zu } = await zoomGet(token, `/users/${encodeURIComponent(email)}`);
@@ -118,9 +159,10 @@ Deno.serve(async (req) => {
         meeting_link: zu.personal_meeting_url || null,
         is_active: true,
         is_shared: true,
+        teacher_id: null,
         shared_purposes: purposes,
         auto_record: zu.type === 2,
-        display_label: body?.label || "Academy shared seat",
+        display_label: body?.label || `Pool seat — ${zu.email}`,
         last_validated_at: new Date().toISOString(),
       };
 
@@ -138,84 +180,84 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Resolve the shared seat used for every remaining action
-    const { data: shared } = await admin
+    if (action === "unregister_shared") {
+      const id = String(body?.account_id || "");
+      if (!id) return json({ error: "account_id is required" }, 400);
+      const { error } = await admin.from("zoom_accounts").update({ is_shared: false }).eq("id", id);
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    // Resolve the pool
+    const { data: pool } = await admin
       .from("zoom_accounts")
       .select("id, zoom_account_email, zoom_user_id, tier, shared_purposes, auto_record, display_label")
       .eq("is_shared", true)
       .eq("is_active", true)
-      .order("tier", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("tier", { ascending: false });
 
-    if (!shared?.zoom_user_id) {
-      return json({ error: "No shared Zoom seat is registered yet.", needs_registration: true }, 400);
+    const seats = (pool || []).filter((s: any) => s.zoom_user_id);
+    if (!seats.length) {
+      return json({ error: "No shared Zoom seats registered yet.", needs_registration: true, seats: [] }, 400);
     }
 
     const token = await zoomToken(admin);
 
-    // ---------- read booked schedule ----------
-    if (action === "availability") {
-      const meetings: any[] = [];
-      for (const type of ["scheduled", "upcoming_meetings"]) {
-        let next = "";
-        do {
-          const { ok, status, body: b } = await zoomGet(
-            token,
-            `/users/${shared.zoom_user_id}/meetings?type=${type}&page_size=300${next ? `&next_page_token=${next}` : ""}`,
-          );
-          if (!ok) {
-            return json({ error: "Failed to read Zoom schedule", status, details: b }, status);
-          }
-          for (const m of b.meetings || []) {
-            if (!meetings.some((x) => x.id === m.id)) meetings.push(m);
-          }
-          next = b.next_page_token || "";
-        } while (next);
-      }
+    // ---------- pool availability ----------
+    if (action === "pool_availability" || action === "availability") {
+      const checkStart = body?.check_start ? new Date(body.check_start).getTime() : null;
+      const checkEnd = checkStart ? checkStart + Number(body?.check_duration || 40) * 60000 : null;
 
-      const busy = meetings
-        .filter((m) => m.start_time)
-        .map((m) => {
-          const start = new Date(m.start_time);
-          const mins = Number(m.duration || 40);
-          return {
-            id: String(m.id),
-            topic: m.topic || "Zoom meeting",
-            start: start.toISOString(),
-            end: new Date(start.getTime() + mins * 60000).toISOString(),
-            duration: mins,
-            join_url: m.join_url || null,
-          };
-        })
-        .sort((a, b2) => a.start.localeCompare(b2.start));
+      const results = await Promise.all(seats.map(async (seat: any) => {
+        const busy = await seatBusy(token, seat.zoom_user_id);
+        let conflict: any = null;
+        if (checkStart && checkEnd) {
+          conflict = busy.find((b3) => {
+            const bs = new Date(b3.start).getTime();
+            const be = new Date(b3.end).getTime();
+            return checkStart < be && checkEnd > bs;
+          }) || null;
+        }
+        return { seat, busy, conflict, available: checkStart ? !conflict : null };
+      }));
 
-      // Optional conflict test for a proposed slot
-      let conflict: any = null;
-      if (body?.check_start) {
-        const s = new Date(body.check_start).getTime();
-        const e = s + Number(body?.check_duration || 40) * 60000;
-        conflict = busy.find((b3) => {
-          const bs = new Date(b3.start).getTime();
-          const be = new Date(b3.end).getTime();
-          return s < be && e > bs;
-        }) || null;
-      }
-
-      return json({ success: true, account: shared, busy, conflict, available: !conflict });
+      return json({ success: true, seats: results });
     }
 
-    // ---------- create a demo / group meeting on the shared seat ----------
+    // ---------- recordings on a pool seat ----------
+    if (action === "recordings") {
+      const seat = seats.find((s: any) => s.id === body?.account_id) || seats[0];
+      const to = new Date();
+      const from = new Date(to.getTime() - 30 * 86400000);
+      const { ok, status, body: b } = await zoomGet(
+        token,
+        `/users/${seat.zoom_user_id}/recordings?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}&page_size=100`,
+      );
+      if (!ok) return json({ error: "Failed to read recordings", status, details: b }, status);
+      const recordings = (b.meetings || []).map((m: any) => ({
+        id: String(m.uuid || m.id),
+        topic: m.topic,
+        start_time: m.start_time,
+        duration: m.duration,
+        share_url: m.share_url || null,
+        play_url: (m.recording_files || []).find((f: any) => f.play_url)?.play_url || null,
+      }));
+      return json({ success: true, seat, recordings });
+    }
+
+    // ---------- create a meeting on a chosen pool seat ----------
     if (action === "create_meeting") {
       const startTime = String(body?.start_time || "");
       const duration = Number(body?.duration || 40);
       if (!startTime) return json({ error: "start_time is required" }, 400);
 
-      const resp = await fetch(`https://api.zoom.us/v2/users/${shared.zoom_user_id}/meetings`, {
+      const seat = seats.find((s: any) => s.id === body?.account_id) || seats[0];
+
+      const resp = await fetch(`https://api.zoom.us/v2/users/${seat.zoom_user_id}/meetings`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: body?.topic || "Demo class — Al Quran Time Academy",
+          topic: body?.topic || "Al Quran Time Academy session",
           type: 2,
           start_time: new Date(startTime).toISOString().replace(/\.\d{3}Z$/, "Z"),
           duration,
@@ -225,7 +267,7 @@ Deno.serve(async (req) => {
             join_before_host: true,
             jbh_time: 5,
             waiting_room: false,
-            auto_recording: shared.auto_record ? "cloud" : "none",
+            auto_recording: seat.auto_record ? "cloud" : "none",
             mute_upon_entry: true,
             approval_type: 2,
           },
@@ -236,11 +278,10 @@ Deno.serve(async (req) => {
         return json({ error: "Zoom could not create the meeting", status: resp.status, details: created }, resp.status);
       }
 
-      // Optionally attach to a demo session record
       if (body?.demo_session_id) {
         await admin
           .from("demo_sessions")
-          .update({ meeting_link: created.join_url })
+          .update({ zoom_link: created.join_url })
           .eq("id", body.demo_session_id);
       }
 
@@ -253,7 +294,8 @@ Deno.serve(async (req) => {
           duration: created.duration,
           join_url: created.join_url,
           start_url: created.start_url,
-          recording: shared.auto_record ? "cloud" : "off",
+          seat: seat.zoom_account_email,
+          recording: seat.auto_record ? "cloud" : "off",
         },
       });
     }
