@@ -1341,8 +1341,15 @@ export default function QuizEngine() {
                     Upload PDF / Image / Audio / Video / Text
                     <input type="file" multiple accept={QUIZ_SOURCE_ACCEPT} className="hidden" onChange={handleFileUpload} disabled={extractingPdf} />
                   </label>
-                  <span className="text-[10px] text-muted-foreground">Max 5 files · PDFs up to 50 pages · media is transcribed by AI</span>
+                  <span className="text-[10px] text-muted-foreground">Max 5 files · big books (4&nbsp;MB+) are processed in the background · media is transcribed by AI</span>
                 </div>
+                {backgroundMode && (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] text-muted-foreground">
+                    Background mode: the book will be uploaded and processed page-batch by page-batch on the server.
+                    You can close this page — progress appears on the Quiz Banks tab.
+                  </div>
+                )}
+
                 {uploadedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {uploadedFiles.map((f, i) => (
