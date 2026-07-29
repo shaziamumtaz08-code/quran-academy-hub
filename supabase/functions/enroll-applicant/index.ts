@@ -60,31 +60,37 @@ Deno.serve(async (req) => {
     let profileId: string | null = null;
     let matchedExisting = false;
 
-    // 1. Deduplicate by email
+    // Siblings often share a parent email/phone. Only merge when the NAME also
+    // matches, so each child keeps its own profile + downstream pipeline.
+    const normName = (n: string) => (n || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const targetName = normName(fullName);
+
+    // 1. Deduplicate by email + name
     if (email) {
       const { data: existing } = await supabaseAdmin
         .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .limit(1);
-      if (existing?.length) {
-        profileId = existing[0].id;
+        .select("id, full_name")
+        .eq("email", email);
+      const match = (existing || []).find((p: any) => normName(p.full_name) === targetName);
+      if (match) {
+        profileId = match.id;
         matchedExisting = true;
       }
     }
 
-    // 2. Deduplicate by phone
+    // 2. Deduplicate by phone + name
     if (!profileId && phone) {
       const { data: existing } = await supabaseAdmin
         .from("profiles")
-        .select("id")
-        .eq("whatsapp_number", phone)
-        .limit(1);
-      if (existing?.length) {
-        profileId = existing[0].id;
+        .select("id, full_name")
+        .eq("whatsapp_number", phone);
+      const match = (existing || []).find((p: any) => normName(p.full_name) === targetName);
+      if (match) {
+        profileId = match.id;
         matchedExisting = true;
       }
     }
+
 
     // 3. Create new profile if not found
     if (!profileId) {
