@@ -87,6 +87,8 @@ export function SharedZoomAvailabilityPanel() {
   const [slotTime, setSlotTime] = React.useState('18:00');
   const [duration, setDuration] = React.useState(40);
   const [topic, setTopic] = React.useState('Demo class — Al Quran Time Academy');
+  const [meetingType, setMeetingType] = React.useState('demo');
+
 
   const poolQuery = useQuery({
     queryKey: ['zoom-shared-pool'],
