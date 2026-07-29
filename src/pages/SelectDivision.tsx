@@ -205,9 +205,16 @@ export default function SelectDivision() {
                   </Card>
                 );
               })}
-            </div>
-          )}
-        </section>
+              </div>
+            )}
+          </section>
+
+          {/* Live & Upcoming */}
+          <div className="lg:pt-[4.25rem]">
+            <LiveClassesPanel divisionNames={divisionNames} />
+          </div>
+        </div>
+
 
         <p className="pb-6 text-center text-xs text-muted-foreground">
           💡 You can switch workspaces anytime using the header dropdown
