@@ -11098,13 +11098,17 @@ export type Database = {
       }
       zoom_accounts: {
         Row: {
+          auto_record: boolean
           created_at: string
+          display_label: string | null
           id: string
           is_active: boolean
+          is_shared: boolean
           last_validated_at: string | null
           meeting_link: string | null
           notes: string | null
-          teacher_id: string
+          shared_purposes: string[]
+          teacher_id: string | null
           tier: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at: string
           zoom_account_email: string
@@ -11114,13 +11118,17 @@ export type Database = {
           zoom_user_id: string | null
         }
         Insert: {
+          auto_record?: boolean
           created_at?: string
+          display_label?: string | null
           id?: string
           is_active?: boolean
+          is_shared?: boolean
           last_validated_at?: string | null
           meeting_link?: string | null
           notes?: string | null
-          teacher_id: string
+          shared_purposes?: string[]
+          teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at?: string
           zoom_account_email: string
@@ -11130,13 +11138,17 @@ export type Database = {
           zoom_user_id?: string | null
         }
         Update: {
+          auto_record?: boolean
           created_at?: string
+          display_label?: string | null
           id?: string
           is_active?: boolean
+          is_shared?: boolean
           last_validated_at?: string | null
           meeting_link?: string | null
           notes?: string | null
-          teacher_id?: string
+          shared_purposes?: string[]
+          teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at?: string
           zoom_account_email?: string
