@@ -158,7 +158,16 @@
     --sidebar-accent-foreground: 210 25% 95%;
     --sidebar-border: 220 30% 18%;
     --sidebar-ring: 200 85% 55%;
+
+    /* Progress Timeline — soft per-subject accents (dark) */
+    --report-accent-1: 174 48% 52%;
+    --report-accent-2: 27 72% 62%;
+    --report-accent-3: 268 48% 68%;
+    --report-accent-4: 152 42% 52%;
+    --report-accent-5: 341 58% 66%;
+    --report-accent-6: 199 58% 58%;
   }
+
 }
 
 @layer base {
