@@ -104,15 +104,19 @@ Deno.serve(async (req) => {
     }
 
     // ── STEP 1: Create / Find Profile ──
+    // Siblings share a parent email; only merge when the name matches too so
+    // each child keeps a separate profile and downstream pipeline.
     try {
+      const normName = (n: string) => (n || "").toLowerCase().replace(/\s+/g, " ").trim();
       const { data: existing } = await supabaseAdmin
         .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .limit(1);
+        .select("id, full_name")
+        .eq("email", email);
 
-      if (existing?.length) {
-        profileId = existing[0].id;
+      const nameMatch = (existing || []).find((p: any) => normName(p.full_name) === normName(fullName));
+      if (nameMatch) {
+        profileId = nameMatch.id;
+
         // Backfill gov_id on existing profile if provided and not yet set
         if (govIdNumber) {
           const { data: ep } = await supabaseAdmin

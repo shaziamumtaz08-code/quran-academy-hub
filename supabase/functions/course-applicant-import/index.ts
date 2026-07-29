@@ -74,16 +74,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Dedup
+      // Dedup — siblings can share a parent email/phone, so require a name match too
+      const normName = (n: string) => (n || "").toLowerCase().replace(/\s+/g, " ").trim();
       let existingProfile: any = null;
       if (email) {
-        const { data } = await supabaseAdmin.from("profiles").select("id, full_name, email, phone").eq("email", email).limit(1);
-        if (data?.length) existingProfile = data[0];
+        const { data } = await supabaseAdmin.from("profiles").select("id, full_name, email, phone").eq("email", email);
+        existingProfile = (data || []).find((p: any) => normName(p.full_name) === normName(fullName)) || null;
       }
       if (!existingProfile && phone) {
-        const { data } = await supabaseAdmin.from("profiles").select("id, full_name, email, phone").eq("phone", phone).limit(1);
-        if (data?.length) existingProfile = data[0];
+        const { data } = await supabaseAdmin.from("profiles").select("id, full_name, email, phone").eq("phone", phone);
+        existingProfile = (data || []).find((p: any) => normName(p.full_name) === normName(fullName)) || null;
       }
+
 
       // Run eligibility checks if profile exists and rules exist
       let eligible = true;
