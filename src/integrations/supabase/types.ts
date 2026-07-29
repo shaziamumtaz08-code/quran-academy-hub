@@ -7064,6 +7064,106 @@ export type Database = {
           },
         ]
       }
+      quiz_generation_chunks: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          job_id: string
+          label: string | null
+          seq: number
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          job_id: string
+          label?: string | null
+          seq: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          label?: string | null
+          seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_generation_chunks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_generation_jobs: {
+        Row: {
+          created_at: string
+          created_by: string
+          cursor: Json
+          error: string | null
+          files: Json
+          id: string
+          locked_until: string | null
+          params: Json
+          processed_units: number
+          questions_generated: number
+          quiz_bank_id: string | null
+          stage: string
+          stage_message: string | null
+          status: string
+          total_units: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          cursor?: Json
+          error?: string | null
+          files?: Json
+          id?: string
+          locked_until?: string | null
+          params?: Json
+          processed_units?: number
+          questions_generated?: number
+          quiz_bank_id?: string | null
+          stage?: string
+          stage_message?: string | null
+          status?: string
+          total_units?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          cursor?: Json
+          error?: string | null
+          files?: Json
+          id?: string
+          locked_until?: string | null
+          params?: Json
+          processed_units?: number
+          questions_generated?: number
+          quiz_bank_id?: string | null
+          stage?: string
+          stage_message?: string | null
+          status?: string
+          total_units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_generation_jobs_quiz_bank_id_fkey"
+            columns: ["quiz_bank_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_banks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_questions: {
         Row: {
           blooms_level: string | null
