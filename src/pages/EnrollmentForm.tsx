@@ -68,15 +68,17 @@ export default function EnrollmentForm() {
     if (!lead) return;
     setForm(prev => ({
       ...prev,
-      student_name: isChild ? (lead.child_name || '') : lead.name,
+      student_name: isChild ? (lead.child_name || lead.name || '') : lead.name,
       student_email: !isChild ? (lead.email || '') : '',
       student_whatsapp: !isChild ? (lead.phone_whatsapp || '') : '',
       student_country: lead.country || '',
       student_city: lead.city || '',
       student_gender: lead.child_gender || '',
-      parent_name: isChild ? lead.name : '',
+      parent_name: isChild ? ((lead as any).guardian_name || lead.name || '') : '',
+      parent_relationship: isChild ? ((lead as any).guardian_relationship || '') : '',
       parent_email: isChild ? (lead.email || '') : '',
       parent_whatsapp: isChild ? (lead.phone_whatsapp || '') : '',
+
     }));
   }, [lead, isChild]);
 
