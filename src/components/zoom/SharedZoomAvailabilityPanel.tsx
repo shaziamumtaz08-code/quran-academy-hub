@@ -257,7 +257,7 @@ export function SharedZoomAvailabilityPanel() {
           <CardTitle className="text-base">Book a slot</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
               <Input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
@@ -270,11 +270,25 @@ export function SharedZoomAvailabilityPanel() {
               <Label className="text-xs">Minutes</Label>
               <Input type="number" min={15} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value) || 40)} />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Type</Label>
+              <select
+                value={meetingType}
+                onChange={(e) => setMeetingType(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="demo">Demo class</option>
+                <option value="group">Group class</option>
+                <option value="class">Regular class</option>
+                <option value="quick">Quick meeting</option>
+              </select>
+            </div>
             <div className="space-y-1 col-span-2">
               <Label className="text-xs">Topic</Label>
               <Input value={topic} onChange={(e) => setTopic(e.target.value)} />
             </div>
           </div>
+
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={handleCheck} disabled={checking || pool.length === 0}>
