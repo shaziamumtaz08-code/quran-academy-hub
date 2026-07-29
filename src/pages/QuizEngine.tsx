@@ -1380,9 +1380,9 @@ export default function QuizEngine() {
               </Button>
               <Button onClick={() => createBank.mutate()}
 
-                disabled={!form.name.trim() || !form.source_content.trim() || generating}
+                disabled={!form.name.trim() || (!form.source_content.trim() && !(backgroundMode && rawFiles.length)) || generating}
                 className="gap-1.5">
-                {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : 'Create & Generate'}
+                {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> {backgroundMode ? 'Uploading...' : 'Generating...'}</> : backgroundMode ? 'Create & Process in Background' : 'Create & Generate'}
               </Button>
             </DialogFooter>
           </DialogContent>
