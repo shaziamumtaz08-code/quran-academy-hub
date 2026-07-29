@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
 
@@ -134,7 +134,47 @@ export function TeacherZoomAccountsPanel() {
     }
   };
 
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncResult, setSyncResult] = React.useState<any>(null);
+
+  const runSyncZoomUsers = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-sync-account-users`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ apply: true }),
+      });
+      const body = await resp.json();
+      setSyncResult(body);
+      if (body?.success) {
+        const s = body.summary || {};
+        toast({
+          title: 'Zoom users synced',
+          description: `${body.zoom_user_count} Zoom users • ${s.created || 0} created, ${s.updated || 0} updated, ${s.already_mapped || 0} already mapped`,
+        });
+        qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      } else {
+        toast({ title: 'Sync failed', description: body?.error || body?.hint || 'See details', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      setSyncResult({ error: e.message });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const canSubmit = form.teacher_id && form.account_id && form.client_id && form.client_secret && form.zoom_email;
+
 
   return (
     <Card>
@@ -150,6 +190,9 @@ export function TeacherZoomAccountsPanel() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={runSyncZoomUsers} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sync Zoom Users
+        </Button>
         <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
           <Upload className="h-4 w-4" /> Bulk Link
         </Button>
@@ -231,7 +274,44 @@ export function TeacherZoomAccountsPanel() {
         </div>
 
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {syncResult && (
+          <Alert variant={syncResult.success ? 'default' : 'destructive'}>
+            {syncResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+            <AlertTitle className="text-sm">
+              {syncResult.success
+                ? `Synced ${syncResult.zoom_user_count} Zoom users`
+                : 'Zoom sync failed'}
+            </AlertTitle>
+            <AlertDescription className="text-xs space-y-2">
+              {!syncResult.success && (
+                <p className="whitespace-pre-wrap">{syncResult.error}{syncResult.hint ? ` — ${syncResult.hint}` : ''}</p>
+              )}
+              {syncResult.success && (
+                <>
+                  <p>
+                    Created {syncResult.summary?.created ?? 0} • Updated {syncResult.summary?.updated ?? 0} •
+                    Already mapped {syncResult.summary?.already_mapped ?? 0} • Failed {syncResult.summary?.failed ?? 0}
+                  </p>
+                  {(syncResult.teachers_without_zoom || []).length > 0 && (
+                    <p>
+                      <span className="font-medium">Teachers not in your Zoom account:</span>{' '}
+                      {(syncResult.teachers_without_zoom || []).map((t: any) => t.full_name || t.email).join(', ')} — add them
+                      in Zoom → User Management, then sync again.
+                    </p>
+                  )}
+                  {(syncResult.unmatched_zoom_users || []).length > 0 && (
+                    <p>
+                      <span className="font-medium">Zoom users with no matching teacher email:</span>{' '}
+                      {(syncResult.unmatched_zoom_users || []).map((u: any) => u.email).join(', ')}
+                    </p>
+                  )}
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading accounts…
