@@ -75,6 +75,8 @@ interface SeatResult {
 
 export function SharedZoomAvailabilityPanel() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [registerEmail, setRegisterEmail] = React.useState('');
   const [registering, setRegistering] = React.useState(false);
   const [checking, setChecking] = React.useState(false);
