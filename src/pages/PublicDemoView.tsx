@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Calendar, Video, User, BookOpen, Clock, Phone, Mail, Star, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { DemoChatPanel } from "@/components/demo/DemoChatPanel";
+
 
 interface DemoData {
   audience: "teacher" | "student";
@@ -292,7 +294,15 @@ export default function PublicDemoView() {
             </Button>
           </Card>
         )}
+
+        {token && (
+          <DemoChatPanel
+            token={token}
+            otherPartyName={isTeacher ? (data.student?.name || "the student") : (data.teacher?.name || "your teacher")}
+          />
+        )}
       </div>
+
     </div>
   );
 }

@@ -3062,9 +3062,70 @@ export type Database = {
           },
         ]
       }
+      demo_messages: {
+        Row: {
+          admin_reviewed_at: string | null
+          admin_reviewed_by: string | null
+          body: string
+          created_at: string
+          demo_session_id: string
+          flag_reasons: string[] | null
+          id: string
+          is_flagged: boolean
+          raw_body: string | null
+          read_by_student_at: string | null
+          read_by_teacher_at: string | null
+          sender_label: string
+          sender_role: string
+          updated_at: string
+        }
+        Insert: {
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          body: string
+          created_at?: string
+          demo_session_id: string
+          flag_reasons?: string[] | null
+          id?: string
+          is_flagged?: boolean
+          raw_body?: string | null
+          read_by_student_at?: string | null
+          read_by_teacher_at?: string | null
+          sender_label: string
+          sender_role: string
+          updated_at?: string
+        }
+        Update: {
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          body?: string
+          created_at?: string
+          demo_session_id?: string
+          flag_reasons?: string[] | null
+          id?: string
+          is_flagged?: boolean
+          raw_body?: string | null
+          read_by_student_at?: string | null
+          read_by_teacher_at?: string | null
+          sender_label?: string
+          sender_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_messages_demo_session_id_fkey"
+            columns: ["demo_session_id"]
+            isOneToOne: false
+            referencedRelation: "demo_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demo_sessions: {
         Row: {
           cancelled_at: string | null
+          chat_disabled_reason: string | null
+          chat_enabled: boolean
           created_at: string
           duration_min: number
           feedback_comment: string | null
@@ -3081,15 +3142,24 @@ export type Database = {
           share_sent_at: string | null
           status: string
           student_share_token: string | null
+          teacher_email: string | null
+          teacher_gender: string | null
           teacher_id: string | null
+          teacher_kind: string
+          teacher_name: string | null
           teacher_note: string | null
           teacher_notes: string | null
+          teacher_phone: string | null
           teacher_share_token: string | null
+          teacher_subjects: string[] | null
+          teacher_timezone: string | null
           timezone: string | null
           updated_at: string
         }
         Insert: {
           cancelled_at?: string | null
+          chat_disabled_reason?: string | null
+          chat_enabled?: boolean
           created_at?: string
           duration_min?: number
           feedback_comment?: string | null
@@ -3106,15 +3176,24 @@ export type Database = {
           share_sent_at?: string | null
           status?: string
           student_share_token?: string | null
+          teacher_email?: string | null
+          teacher_gender?: string | null
           teacher_id?: string | null
+          teacher_kind?: string
+          teacher_name?: string | null
           teacher_note?: string | null
           teacher_notes?: string | null
+          teacher_phone?: string | null
           teacher_share_token?: string | null
+          teacher_subjects?: string[] | null
+          teacher_timezone?: string | null
           timezone?: string | null
           updated_at?: string
         }
         Update: {
           cancelled_at?: string | null
+          chat_disabled_reason?: string | null
+          chat_enabled?: boolean
           created_at?: string
           duration_min?: number
           feedback_comment?: string | null
@@ -3131,10 +3210,17 @@ export type Database = {
           share_sent_at?: string | null
           status?: string
           student_share_token?: string | null
+          teacher_email?: string | null
+          teacher_gender?: string | null
           teacher_id?: string | null
+          teacher_kind?: string
+          teacher_name?: string | null
           teacher_note?: string | null
           teacher_notes?: string | null
+          teacher_phone?: string | null
           teacher_share_token?: string | null
+          teacher_subjects?: string[] | null
+          teacher_timezone?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -4709,6 +4795,7 @@ export type Database = {
           source_url: string | null
           status: string
           subject_interest: string | null
+          timezone: string | null
           updated_at: string
         }
         Insert: {
@@ -4747,6 +4834,7 @@ export type Database = {
           source_url?: string | null
           status?: string
           subject_interest?: string | null
+          timezone?: string | null
           updated_at?: string
         }
         Update: {
@@ -4785,6 +4873,7 @@ export type Database = {
           source_url?: string | null
           status?: string
           subject_interest?: string | null
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11822,6 +11911,11 @@ export type Database = {
         }
         Returns: Json
       }
+      demo_chat_guard: { Args: { _text: string }; Returns: Json }
+      demo_chat_is_open: {
+        Args: { _ds: Database["public"]["Tables"]["demo_sessions"]["Row"] }
+        Returns: boolean
+      }
       enforce_assignment_windows_all: { Args: never; Returns: number }
       ensure_division_root_folders: {
         Args: { _division_id: string }
@@ -11892,6 +11986,7 @@ export type Database = {
         Returns: string
       }
       get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
+      get_demo_chat: { Args: { _token: string }; Returns: Json }
       get_my_sensitive_profile: {
         Args: never
         Returns: {
@@ -12151,6 +12246,7 @@ export type Database = {
         }
         Returns: Json
       }
+      send_demo_chat: { Args: { _body: string; _token: string }; Returns: Json }
       set_vault_password: {
         Args: { _account_id: string; _field: string; _password: string }
         Returns: undefined
