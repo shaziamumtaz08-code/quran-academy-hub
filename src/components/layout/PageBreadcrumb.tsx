@@ -15,6 +15,8 @@ const MODULE_DEFAULTS: Record<string, string> = {
   '/people': '/people?view=students',
   '/finance': '/finance?view=invoices',
   '/reports': '/reports?view=executive',
+  '/student-reports': '/student-reports',
+  '/progress-timeline': '/student-reports',
   '/communication': '/communication?view=academy-chat',
   '/settings': '/settings?view=organization',
   '/work-hub': '/work-hub',
@@ -26,6 +28,8 @@ const MODULE_LABELS: Record<string, string> = {
   '/people': 'People',
   '/finance': 'Finance',
   '/reports': 'Reports',
+  '/student-reports': 'Student Reports',
+  '/progress-timeline': 'Progress Timeline',
   '/communication': 'Communication',
   '/settings': 'Settings',
   '/work-hub': 'Work Hub',
@@ -60,6 +64,7 @@ const VIEW_LABELS: Record<string, string> = {
   'activity-logs': 'Activity Logs',
   alerts: 'Alerts & Automation',
   custom: 'Custom Report Builder',
+  'student-reports': 'Student Reports',
   'academy-chat': 'Academy Chat',
   chat: 'Academy Chat',
   whatsapp: 'WhatsApp Inbox',
@@ -84,8 +89,10 @@ export function PageBreadcrumb() {
   const params = new URLSearchParams(location.search);
   const view = params.get('view') || params.get('section');
 
-  const moduleLabel = MODULE_LABELS[pathname] || pathname.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-  const moduleHref = MODULE_DEFAULTS[pathname] || pathname;
+  const isProgressDetail = pathname.startsWith('/progress-timeline/');
+  const normalizedPath = isProgressDetail ? '/progress-timeline' : pathname;
+  const moduleLabel = MODULE_LABELS[normalizedPath] || normalizedPath.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const moduleHref = MODULE_DEFAULTS[normalizedPath] || normalizedPath;
   const currentLabel = pathname === '/work-hub'
     ? 'Work Hub'
     : view

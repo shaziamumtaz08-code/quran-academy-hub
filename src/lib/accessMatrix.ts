@@ -63,6 +63,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'reports',             route:'/reports',                roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_academic:VIEW_ONLY, admin_fees:VIEW_ONLY, admin_admissions:VIEW_ONLY}, group:'reports' },
   { id:'kpi',                 route:'/kpi',                    roles:{...adminFull}, group:'reports' },
   { id:'student_reports',     route:'/student-reports',        roles:{...adminFull, teacher:VIEW_ONLY, examiner:['view','create','edit'], student:VIEW_ONLY, parent:VIEW_ONLY}, group:'reports' },
+  { id:'progress_timeline',    route:'/progress-timeline',      roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'reports' },
   { id:'report_card_tpl',     route:'/report-card-templates',  roles:{...adminFull, examiner:ADMIN_FULL}, group:'reports' },
   { id:'generate_report_card',route:'/generate-report-card',   roles:{...adminFull, examiner:['view','create']}, group:'reports' },
   { id:'communication',       route:'/communication',          roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'communication', mobile:['super_admin','admin_division','teacher','student','parent','examiner'] },

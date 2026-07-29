@@ -146,7 +146,8 @@ export default function ProgressTimeline() {
       const id = subj?.id || row.template?.id || 'unknown';
       const name = subj?.name || row.template?.name || 'Subject';
       if (!bySubject.has(id)) bySubject.set(id, { name, rows: [] });
-      bySubject.get(id)!.rows.push(row);
+      const subjectBucket = bySubject.get(id);
+      if (subjectBucket) subjectBucket.rows.push(row);
     }
 
     return Array.from(bySubject.entries()).map(([subjectId, { name, rows }]) => {
