@@ -252,16 +252,45 @@ Deno.serve(async (req) => {
       if (!startTime) return json({ error: "start_time is required" }, 400);
 
       const seat = seats.find((s: any) => s.id === body?.account_id) || seats[0];
+      const meetingType = ["demo", "group", "quick", "class"].includes(String(body?.meeting_type))
+        ? String(body.meeting_type)
+        : body?.demo_session_id
+          ? "demo"
+          : "quick";
+
+      const { data: actor } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+
+      const auditBase = {
+        zoom_account_id: seat.id,
+        seat_email: seat.zoom_account_email,
+        seat_label: seat.display_label,
+        seat_tier: seat.tier,
+        booked_by: userData.user.id,
+        booked_by_name: actor?.full_name || userData.user.email || null,
+        booked_by_role: isAdmin ? "admin" : "teacher",
+        meeting_type: meetingType,
+        topic: body?.topic || "Al Quran Time Academy session",
+        start_time: new Date(startTime).toISOString(),
+        duration_minutes: duration,
+        timezone: body?.timezone || "Asia/Karachi",
+        auto_record: !!seat.auto_record,
+        course_class_id: body?.course_class_id || null,
+        demo_session_id: body?.demo_session_id || null,
+      };
 
       const resp = await fetch(`https://api.zoom.us/v2/users/${seat.zoom_user_id}/meetings`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: body?.topic || "Al Quran Time Academy session",
+          topic: auditBase.topic,
           type: 2,
           start_time: new Date(startTime).toISOString().replace(/\.\d{3}Z$/, "Z"),
           duration,
-          timezone: body?.timezone || "Asia/Karachi",
+          timezone: auditBase.timezone,
           agenda: body?.agenda || undefined,
           settings: {
             join_before_host: true,
@@ -275,6 +304,12 @@ Deno.serve(async (req) => {
       });
       const created = await resp.json().catch(() => ({}));
       if (!resp.ok) {
+        await admin.from("zoom_booking_audit_log").insert({
+          ...auditBase,
+          status: "failed",
+          error_reason: typeof created?.message === "string" ? created.message : `Zoom error ${resp.status}`,
+          metadata: { zoom_status: resp.status },
+        });
         return json({ error: "Zoom could not create the meeting", status: resp.status, details: created }, resp.status);
       }
 
@@ -284,6 +319,13 @@ Deno.serve(async (req) => {
           .update({ zoom_link: created.join_url })
           .eq("id", body.demo_session_id);
       }
+
+      await admin.from("zoom_booking_audit_log").insert({
+        ...auditBase,
+        status: "created",
+        zoom_meeting_id: String(created.id),
+        join_url: created.join_url || null,
+      });
 
       return json({
         success: true,
@@ -299,6 +341,7 @@ Deno.serve(async (req) => {
         },
       });
     }
+
 
     return json({ error: `Unknown action: ${action}` }, 400);
   } catch (e) {
