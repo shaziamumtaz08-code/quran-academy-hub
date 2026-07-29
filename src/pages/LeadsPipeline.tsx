@@ -143,7 +143,9 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         phone_whatsapp: form.phone_whatsapp || null,
         country: form.country || null,
         city: form.city || null,
+        timezone: form.timezone || null,
         for_whom: form.for_whom,
+
         child_name: form.for_whom === 'child' ? form.child_name || null : null,
         child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
         subject_interest: buildSubjects(),
@@ -225,7 +227,12 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs">WhatsApp *</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
-            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
+            <div>
+              <Label className="text-xs">Email *</Label>
+              <Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" />
+              <p className="text-[10px] text-muted-foreground mt-1">Used to notify about demo messages and updates.</p>
+            </div>
+
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -307,7 +314,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
 
           <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
-          <Button onClick={() => createMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
+          <Button onClick={() => createMutation.mutate()} disabled={!form.name || !form.email.trim() || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
             {createMutation.isPending ? 'Creating...' : 'Create Lead'}
           </Button>
         </div>
@@ -323,7 +330,11 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
     scheduled_date: '', scheduled_time: '', duration_min: '30',
     platform: 'zoom', meeting_link: '', teacher_id: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    teacher_kind: 'staff',
+    teacher_name: '', teacher_email: '', teacher_phone: '',
+    teacher_timezone: '', teacher_gender: '', teacher_subjects: '',
   });
+  const isTrial = form.teacher_kind === 'trial';
 
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers-for-demo'],
@@ -344,12 +355,22 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
         duration_min: parseInt(form.duration_min),
         platform: form.platform,
         meeting_link: form.meeting_link || null,
-        teacher_id: form.teacher_id || null,
+        teacher_id: isTrial ? null : (form.teacher_id || null),
         timezone: form.timezone || null,
+        teacher_kind: form.teacher_kind,
+        teacher_name: isTrial ? form.teacher_name.trim() : null,
+        teacher_email: isTrial ? form.teacher_email.trim() : null,
+        teacher_phone: isTrial ? form.teacher_phone.trim() || null : null,
+        teacher_timezone: isTrial ? form.teacher_timezone.trim() || null : null,
+        teacher_gender: isTrial ? form.teacher_gender || null : null,
+        teacher_subjects: isTrial && form.teacher_subjects.trim()
+          ? form.teacher_subjects.split(',').map(s => s.trim()).filter(Boolean)
+          : null,
         status: 'scheduled',
         feedback_token: crypto.randomUUID(),
       } as any).select('id').single();
       if (error) throw error;
+
       // Auto-advance lead to demo_scheduled
       if (lead.status === 'new' || lead.status === 'contacted') {
         await supabase.from('leads').update({ status: 'demo_scheduled' }).eq('id', lead.id);
@@ -389,19 +410,75 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
           </Select>
         </div>
       </div>
-      <div><Label className="text-xs">Teacher</Label>
-        <Select value={form.teacher_id} onValueChange={v => setForm(p => ({ ...p, teacher_id: v }))}>
-          <SelectTrigger><SelectValue placeholder="Assign teacher..." /></SelectTrigger>
-          <SelectContent>
-            {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+        <div className="flex gap-1.5">
+          {[
+            { key: 'staff', label: 'Existing teacher' },
+            { key: 'trial', label: 'Trial teacher (not on LMS)' },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setForm(p => ({ ...p, teacher_kind: opt.key }))}
+              className={`flex-1 text-[11px] py-1.5 rounded-md border transition-colors ${
+                form.teacher_kind === opt.key ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {isTrial ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Teacher Name *</Label><Input value={form.teacher_name} onChange={e => setForm(p => ({ ...p, teacher_name: e.target.value }))} placeholder="Full name" /></div>
+              <div><Label className="text-xs">Teacher Email *</Label><Input type="email" value={form.teacher_email} onChange={e => setForm(p => ({ ...p, teacher_email: e.target.value }))} placeholder="Used for notifications" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Phone (admin only)</Label><Input value={form.teacher_phone} onChange={e => setForm(p => ({ ...p, teacher_phone: e.target.value }))} placeholder="+92..." /></div>
+              <div><Label className="text-xs">Teacher Timezone</Label><Input value={form.teacher_timezone} onChange={e => setForm(p => ({ ...p, teacher_timezone: e.target.value }))} placeholder="e.g. Asia/Karachi" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Gender</Label>
+                <Select value={form.teacher_gender} onValueChange={v => setForm(p => ({ ...p, teacher_gender: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label className="text-xs">Subjects being trialled</Label><Input value={form.teacher_subjects} onChange={e => setForm(p => ({ ...p, teacher_subjects: e.target.value }))} placeholder="Qaida, Nazra" /></div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Trial teachers get a link-only workspace. The student's phone and email stay hidden from them.
+            </p>
+          </div>
+        ) : (
+          <div><Label className="text-xs">Teacher</Label>
+            <Select value={form.teacher_id} onValueChange={v => setForm(p => ({ ...p, teacher_id: v }))}>
+              <SelectTrigger><SelectValue placeholder="Assign teacher..." /></SelectTrigger>
+              <SelectContent>
+                {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label className="text-xs">Timezone</Label><Input value={form.timezone} onChange={e => setForm(p => ({ ...p, timezone: e.target.value }))} placeholder="e.g. Asia/Karachi" /></div>
         <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
       </div>
-      <Button onClick={() => scheduleMutation.mutate()} disabled={!form.scheduled_date || !form.scheduled_time || scheduleMutation.isPending} className="w-full">
+      <Button
+        onClick={() => scheduleMutation.mutate()}
+        disabled={
+          !form.scheduled_date || !form.scheduled_time || scheduleMutation.isPending ||
+          (isTrial && (!form.teacher_name.trim() || !form.teacher_email.trim()))
+        }
+        className="w-full"
+      >
+
         <Calendar className="h-4 w-4 mr-1" /> {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule Demo'}
       </Button>
     </div>
