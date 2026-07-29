@@ -603,9 +603,21 @@ function DemoSessionsList({ leadId }: { leadId: string }) {
               {s.status}
             </Badge>
           </div>
-          {s.profiles?.full_name && <p className="text-xs text-muted-foreground">Teacher: {s.profiles.full_name}</p>}
+          {(s.profiles?.full_name || s.teacher_name) && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              Teacher: {s.profiles?.full_name || s.teacher_name}
+              {s.teacher_kind === 'trial' && <Badge variant="outline" className="text-[9px]">Trial</Badge>}
+            </p>
+          )}
           {s.platform && <p className="text-xs text-muted-foreground capitalize">Platform: {s.platform}</p>}
           {s.meeting_link && <a href={s.meeting_link} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Join Link</a>}
+
+          <DemoChatAdminPanel
+            sessionId={s.id}
+            chatEnabled={s.chat_enabled !== false}
+            chatDisabledReason={s.chat_disabled_reason ?? null}
+          />
+
 
           {/* Feedback display */}
           {s.feedback_rating && (
