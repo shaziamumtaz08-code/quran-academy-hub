@@ -106,6 +106,7 @@ export default function SharedPool() {
       refetch();
       qc.invalidateQueries({ queryKey: ['my-pool-bookings'] });
       qc.invalidateQueries({ queryKey: ['all-pool-bookings'] });
+      qc.invalidateQueries({ queryKey: ['pool-day-schedule'] });
     },
     onError: (e: any) => toast({ title: 'Booking failed', description: e.message, variant: 'destructive' }),
   });
