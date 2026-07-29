@@ -31,11 +31,21 @@ export default function SharedPool() {
   const [seat, setSeat] = useState<string>('');
   const [created, setCreated] = useState<{ link: string; label: string; records: boolean } | null>(null);
 
+  const { data: teacherBookingEnabled = false } = useQuery({
+    queryKey: ['teacher-pool-booking-enabled'],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('teacher_pool_booking_enabled' as any);
+      return data === true;
+    },
+  });
+  const canBook = isAdmin || teacherBookingEnabled;
+
   const startIso = new Date(start).toISOString();
   const endIso = new Date(end).toISOString();
 
   const { data: seats = [], isFetching, refetch } = useQuery({
     queryKey: ['pool-availability', startIso, endIso],
+    enabled: canBook,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_pool_availability' as any, { _start: startIso, _end: endIso });
       if (error) throw error;
@@ -96,6 +106,19 @@ export default function SharedPool() {
 
   const seatLabel = (id: string) =>
     seats.find((s: any) => s.vault_account_id === id)?.label ?? '—';
+
+  if (!canBook) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Shared pool booking is not enabled yet</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            An administrator needs to switch on teacher booking before you can reserve a shared Zoom seat.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
