@@ -521,6 +521,31 @@ export function BulkReportCardDialog({
                 </div>
               )}
 
+              <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Auto-write parent remarks</p>
+                    <p className="text-xs text-muted-foreground">
+                      Rows without a public remark get one written and published automatically.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">Review below</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={reviewThreshold}
+                      onChange={(e) => setReviewThreshold(Number(e.target.value))}
+                      className="h-8 w-16 text-center"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+
+
+
               <ScrollArea className="h-64 border rounded-lg">
                 <div className="p-3 space-y-2">
                   {parsedRows.map((row) => (
