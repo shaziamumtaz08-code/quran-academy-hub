@@ -81,6 +81,7 @@ export function MobileBottomNav({ role }: MobileBottomNavProps) {
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return location.pathname === '/dashboard';
+    if (href === '/student-reports') return location.pathname.startsWith('/student-reports') || location.pathname.startsWith('/progress-timeline');
     return location.pathname.startsWith(href);
   };
 

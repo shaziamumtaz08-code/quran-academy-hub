@@ -209,6 +209,7 @@ function getReportsSidebar(role?: string | null): { title: string; subtitle: str
       subtitle: '',
       items: [
         { label: 'Student Reports', href: '/student-reports' },
+        { label: 'Progress Timeline', href: '/progress-timeline' },
       ],
     };
   }
@@ -217,6 +218,8 @@ function getReportsSidebar(role?: string | null): { title: string; subtitle: str
     subtitle: '',
     items: [
       { label: 'Executive Dashboard', href: '/reports?section=executive', group: 'OVERVIEW' },
+      { label: 'Student Reports', href: '/student-reports' },
+      { label: 'Progress Timeline', href: '/progress-timeline' },
       { label: 'Attendance Reports', href: '/reports?section=attendance', group: 'ANALYTICS' },
       { label: 'Fee & Financial', href: '/reports?section=fees' },
       { label: 'Student Engagement', href: '/reports?section=engagement' },

@@ -120,6 +120,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Report Card Templates", href: "/report-card-templates" },
               { label: "Generate Report Card", href: "/generate-report-card" },
               { label: "Student Reports", href: "/student-reports" },
+              { label: "Progress Timeline", href: "/progress-timeline" },
             ],
           },
           {
@@ -158,6 +159,8 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             icon: BarChart3,
             children: [
               { label: "Executive Dashboard", href: "/reports?view=executive" },
+              { label: "Student Reports", href: "/student-reports" },
+              { label: "Progress Timeline", href: "/progress-timeline" },
               { label: "Attendance Reports", href: "/reports?view=attendance" },
               { label: "Fee & Financial", href: "/reports?view=fees" },
               { label: "Student Engagement", href: "/reports?view=engagement" },
@@ -225,6 +228,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           },
           { label: "Students", href: "/students", icon: Users },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
+          { label: "Progress Timeline", href: "/progress-timeline", icon: BarChart3 },
           { label: "Performance", href: "/performance", icon: BarChart3 },
         ],
       },

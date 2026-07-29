@@ -459,7 +459,7 @@ export default function StudentReports() {
         {/* Premium Page Header */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-dark via-navy to-navy-dark p-6 sm:p-8">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAyMGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAzIi8+PC9nPjwvc3ZnPg==')] opacity-30" />
-          <div className="relative flex items-center justify-between">
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">Student Report Cards</h1>
               <p className="text-cyan-300/80 mt-1">
@@ -467,10 +467,10 @@ export default function StudentReports() {
               </p>
             </div>
             {/* Progress tracking */}
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 variant="secondary"
-                className="bg-white/10 text-white hover:bg-white/20 border-0"
+                className="w-full bg-white/10 text-white hover:bg-white/20 border-0 sm:w-auto"
                 onClick={() =>
                   navigate(
                     `/progress-timeline?range=12&mode=${isStudentOrParent ? 'student' : 'staff'}` +
@@ -736,6 +736,18 @@ export default function StudentReports() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-primary hover:text-primary hover:bg-primary/10"
+                                      onClick={() =>
+                                        navigate(
+                                          `/progress-timeline?student=${report.student_id}&range=12&mode=${isStudentOrParent ? 'student' : 'staff'}`,
+                                        )
+                                      }
+                                    >
+                                      <TrendingUp className="h-4 w-4" />
+                                    </Button>
                                 {isAdminOrExaminer && (
                                   <>
                                     <Button

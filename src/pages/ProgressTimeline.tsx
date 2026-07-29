@@ -1,11 +1,17 @@
 import React from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useKidContext } from '@/contexts/KidContext';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarRange } from 'lucide-react';
+import { ConditionalDashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
+import { PageShell } from '@/components/layout/PageShell';
+import { ArrowLeft, CalendarRange, FileText, Search, TrendingUp, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SubjectProgressTimelineCard,
@@ -32,17 +38,82 @@ function buildMonths(count: number) {
   return keys;
 }
 
+interface TimelineStudentOption {
+  id: string;
+  name: string;
+  reportCount: number;
+  latestDate: string | null;
+  averagePercentage: number | null;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return 'No date';
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export default function ProgressTimeline() {
   const { studentId: routeStudentId } = useParams<{ studentId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { activeRole, user } = useAuth();
+  const { activeKidId } = useKidContext();
+  const [studentSearch, setStudentSearch] = React.useState('');
 
-  const mode = (searchParams.get('mode') || 'staff') as 'student' | 'staff';
+  const isStudentOrParent = activeRole === 'student' || activeRole === 'parent';
+  const mode = (searchParams.get('mode') || (isStudentOrParent ? 'student' : 'staff')) as 'student' | 'staff';
   const range = Number(searchParams.get('range') || 12) === 6 ? 6 : 12;
-  const studentId = routeStudentId || searchParams.get('student') || user?.id || '';
+  const studentId = routeStudentId || searchParams.get('student') || (activeRole === 'student' ? user?.id : '') || (activeRole === 'parent' ? activeKidId || '' : '');
 
   const months = React.useMemo(() => buildMonths(range), [range]);
   const fromDate = React.useMemo(() => `${months[0]}-01`, [months]);
+
+  const { data: studentOptions = [], isLoading: studentsLoading } = useQuery({
+    queryKey: ['progress-timeline-students', user?.id, activeRole, activeKidId],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exams')
+        .select(`
+          id, student_id, exam_date, percentage,
+          student:profiles!exams_student_id_fkey(id, full_name),
+          template:exam_templates!inner(id, tenure)
+        `)
+        .eq('template.tenure', 'monthly')
+        .is('deleted_at', null)
+        .order('exam_date', { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+
+      const byStudent = new Map<string, { name: string; count: number; latest: string | null; total: number; scored: number }>();
+      for (const row of (data || []) as any[]) {
+        if (!row.student_id) continue;
+        const current = byStudent.get(row.student_id) || {
+          name: row.student?.full_name || 'Student',
+          count: 0,
+          latest: null,
+          total: 0,
+          scored: 0,
+        };
+        current.count += 1;
+        if (!current.latest || new Date(row.exam_date) > new Date(current.latest)) current.latest = row.exam_date;
+        if (row.percentage !== null && row.percentage !== undefined) {
+          current.total += Number(row.percentage);
+          current.scored += 1;
+        }
+        byStudent.set(row.student_id, current);
+      }
+
+      return Array.from(byStudent.entries())
+        .map(([id, item]) => ({
+          id,
+          name: item.name,
+          reportCount: item.count,
+          latestDate: item.latest,
+          averagePercentage: item.scored ? Math.round(item.total / item.scored) : null,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)) as TimelineStudentOption[];
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['progress-timeline', studentId, range],
@@ -64,7 +135,8 @@ export default function ProgressTimeline() {
     },
   });
 
-  const studentName = (data?.[0] as any)?.student?.full_name ?? '';
+  const selectedStudent = studentOptions.find((student) => student.id === studentId);
+  const studentName = selectedStudent?.name || (data?.[0] as any)?.student?.full_name || '';
 
   const timelines: SubjectTimeline[] = React.useMemo(() => {
     if (!data) return [];
@@ -74,7 +146,8 @@ export default function ProgressTimeline() {
       const id = subj?.id || row.template?.id || 'unknown';
       const name = subj?.name || row.template?.name || 'Subject';
       if (!bySubject.has(id)) bySubject.set(id, { name, rows: [] });
-      bySubject.get(id)!.rows.push(row);
+      const subjectBucket = bySubject.get(id);
+      if (subjectBucket) subjectBucket.rows.push(row);
     }
 
     return Array.from(bySubject.entries()).map(([subjectId, { name, rows }]) => {
@@ -117,58 +190,150 @@ export default function ProgressTimeline() {
     setSearchParams(next, { replace: true });
   };
 
-  return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
-      <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Progress Timeline</p>
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            {studentName || 'Student progress'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Monthly report cards across the last {range} months
-            {mode === 'staff' ? ' — staff view with internal notes' : ''}
-          </p>
-        </div>
+  const selectStudent = (id: string) => {
+    navigate(`/progress-timeline?student=${id}&range=${range}&mode=${mode}`);
+  };
 
-        <div className="inline-flex items-center gap-1 rounded-full border bg-card p-1">
-          <CalendarRange className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
-          {[6, 12].map((r) => (
-            <Button
-              key={r}
-              size="sm"
-              variant="ghost"
-              onClick={() => setRange(r)}
-              className={cn(
-                'h-8 rounded-full px-4 text-xs font-medium',
-                range === r && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
-              )}
-            >
-              {r} months
-            </Button>
-          ))}
-        </div>
-      </header>
+  const filteredStudents = studentOptions.filter((student) =>
+    student.name.toLowerCase().includes(studentSearch.trim().toLowerCase()),
+  );
 
-      {isLoading ? (
-        <div className="space-y-8">
-          <Skeleton className="h-80 w-full rounded-xl" />
-          <Skeleton className="h-80 w-full rounded-xl" />
-        </div>
-      ) : timelines.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-12 text-center">
-          <p className="text-base font-medium">No monthly report cards in this period</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Try the 12-month range, or publish a monthly report card first.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-10">
-          {timelines.map((t, i) => (
-            <SubjectProgressTimelineCard key={t.subjectId} timeline={t} accentIndex={i} mode={mode} />
-          ))}
-        </div>
-      )}
+  const actions = (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+      <Button variant="outline" size="sm" asChild>
+        <Link to="/student-reports">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Student Reports
+        </Link>
+      </Button>
+      <div className="inline-flex items-center gap-1 rounded-md border bg-card p-1">
+        <CalendarRange className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
+        {[6, 12].map((r) => (
+          <Button
+            key={r}
+            size="sm"
+            variant="ghost"
+            onClick={() => setRange(r)}
+            className={cn(
+              'h-8 px-3 text-xs font-medium',
+              range === r && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+            )}
+          >
+            {r} months
+          </Button>
+        ))}
+      </div>
     </div>
+  );
+
+  const studentSelector = studentOptions.length > 0 ? (
+    <Card className="border-border bg-card shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="h-4 w-4 text-primary" />
+          Student report timeline
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-center">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={studentSearch}
+            onChange={(event) => setStudentSearch(event.target.value)}
+            placeholder="Search student by name"
+            className="pl-9"
+          />
+        </div>
+        <Select value={studentId || undefined} onValueChange={selectStudent}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose a student" />
+          </SelectTrigger>
+          <SelectContent>
+            {filteredStudents.map((student) => (
+              <SelectItem key={student.id} value={student.id}>
+                {student.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
+  ) : null;
+
+  const emptyStudentSelection = (
+    <Card className="border-dashed bg-card/70">
+      <CardContent className="py-10 text-center">
+        <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+        <p className="text-base font-medium">No monthly report cards found</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          Generate or publish monthly student report cards first; they will appear here as progress timelines.
+        </p>
+        <Button className="mt-5" asChild>
+          <Link to="/student-reports">Open Student Reports</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <ConditionalDashboardLayout>
+      <PageShell
+        title={studentName ? `${studentName} — Progress Timeline` : 'Progress Timeline'}
+        description={`Monthly report card trends across the last ${range} months${mode === 'staff' ? ', including staff notes.' : '.'}`}
+        actions={actions}
+      >
+        <div className="space-y-6">
+          {studentsLoading ? <Skeleton className="h-24 w-full rounded-xl" /> : studentSelector}
+
+          {!studentsLoading && studentOptions.length === 0 ? (
+            emptyStudentSelection
+          ) : !studentId ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredStudents.slice(0, 18).map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => selectStudent(student.id)}
+                  className="rounded-lg border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:bg-accent"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-foreground">{student.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Latest: {formatDate(student.latestDate)}</p>
+                    </div>
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{student.reportCount} monthly reports</span>
+                    {student.averagePercentage !== null ? <span>• Avg {student.averagePercentage}%</span> : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : isLoading ? (
+            <div className="space-y-8">
+              <Skeleton className="h-80 w-full rounded-xl" />
+              <Skeleton className="h-80 w-full rounded-xl" />
+            </div>
+          ) : timelines.length === 0 ? (
+            <Card className="border-dashed bg-card/70">
+              <CardContent className="py-10 text-center">
+                <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                <p className="text-base font-medium">No monthly report cards in this period</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Try the 12-month range, or choose another student with monthly reports.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-10">
+              {timelines.map((t, i) => (
+                <SubjectProgressTimelineCard key={t.subjectId} timeline={t} accentIndex={i} mode={mode} />
+              ))}
+            </div>
+          )}
+        </div>
+      </PageShell>
+    </ConditionalDashboardLayout>
   );
 }
