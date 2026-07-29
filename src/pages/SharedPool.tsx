@@ -30,6 +30,7 @@ export default function SharedPool() {
   const [purpose, setPurpose] = useState(PURPOSES[0]);
   const [seat, setSeat] = useState<string>('');
   const [created, setCreated] = useState<{ link: string; label: string; records: boolean } | null>(null);
+  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
 
   const { data: teacherBookingEnabled = false } = useQuery({
     queryKey: ['teacher-pool-booking-enabled'],
@@ -39,6 +40,16 @@ export default function SharedPool() {
     },
   });
   const canBook = isAdmin || teacherBookingEnabled;
+
+  const { data: daySchedule = [], isFetching: dayLoading } = useQuery({
+    queryKey: ['pool-day-schedule', day],
+    enabled: canBook,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_pool_day_schedule' as any, { _day: day });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
 
   const startIso = new Date(start).toISOString();
   const endIso = new Date(end).toISOString();
@@ -95,6 +106,7 @@ export default function SharedPool() {
       refetch();
       qc.invalidateQueries({ queryKey: ['my-pool-bookings'] });
       qc.invalidateQueries({ queryKey: ['all-pool-bookings'] });
+      qc.invalidateQueries({ queryKey: ['pool-day-schedule'] });
     },
     onError: (e: any) => toast({ title: 'Booking failed', description: e.message, variant: 'destructive' }),
   });
@@ -128,6 +140,38 @@ export default function SharedPool() {
         </h1>
         <p className="text-sm text-muted-foreground">Check seat availability and book a room for demos, group classes or quick meetings.</p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <CardTitle className="text-base flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Day schedule</CardTitle>
+          <Input type="date" className="w-auto" value={day} onChange={e => setDay(e.target.value)} />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {dayLoading && <p className="text-sm text-muted-foreground">Loading schedule…</p>}
+          {!dayLoading && daySchedule.length === 0 && (
+            <p className="text-sm text-muted-foreground">No shared seats in the pool yet. Add or import them in Zoom Vault.</p>
+          )}
+          {daySchedule.map((s: any) => (
+            <div key={s.vault_account_id} className="rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="font-medium text-sm">{s.label}</span>
+                <Badge variant="secondary">{s.account_type === 'paid' && s.auto_record ? 'Paid + Recording' : s.account_type === 'paid' ? 'Paid' : 'Free'}</Badge>
+              </div>
+              {(s.bookings ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">Free all day</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(s.bookings ?? []).map((b: any) => (
+                    <Badge key={b.id} variant={b.mine ? 'default' : 'outline'} className="font-normal">
+                      {format(new Date(b.start_time), 'HH:mm')}–{format(new Date(b.end_time), 'HH:mm')} · {b.purpose} · {b.booked_by}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Time window</CardTitle></CardHeader>

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Eye, Plus, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, Plus, ShieldCheck, KeyRound, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Assignment = 'shared' | 'dedicated' | 'unassigned';
@@ -58,6 +58,25 @@ export default function ZoomVault() {
   const [editing, setEditing] = useState<VaultAccount | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [importing, setImporting] = useState(false);
+
+  const runImport = async () => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.rpc('sync_vault_from_zoom_accounts' as any);
+      if (error) throw error;
+      const row: any = Array.isArray(data) ? data[0] : data;
+      toast({
+        title: 'Zoom accounts imported',
+        description: `${row?.imported ?? 0} added, ${row?.updated ?? 0} updated.`,
+      });
+      qc.invalidateQueries({ queryKey: ['zoom-vault-accounts'] });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['zoom-vault-accounts'],
@@ -198,10 +217,25 @@ export default function ZoomVault() {
             Encrypted credential store for every Zoom seat. Password reveals are logged.
           </p>
         </div>
-        <Button onClick={() => { setEditing(null); setForm(emptyForm); setOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Add account
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" disabled={importing} onClick={runImport}>
+            <Download className="h-4 w-4 mr-1" /> {importing ? 'Importing…' : 'Import Zoom accounts'}
+          </Button>
+          <Button onClick={() => { setEditing(null); setForm(emptyForm); setOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Add account
+          </Button>
+        </div>
       </div>
+
+      {accounts.length === 0 && (
+        <Card>
+          <CardContent className="py-8 text-sm text-muted-foreground">
+            The vault is empty. Click <strong>Import Zoom accounts</strong> to pull every active Zoom seat already
+            configured in the LMS — seats linked to a teacher become <em>dedicated</em>, and paid seats with no teacher
+            join the <em>shared pool</em> with cloud recording on.
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>

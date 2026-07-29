@@ -181,6 +181,8 @@ function getZoomSidebar(role?: string | null): { title: string; subtitle: string
     items: [
       { label: 'Live Classes', href: '/live-classes' },
       ...(can(r, 'zoom_management', 'view') ? [{ label: 'Zoom Control Room', href: '/zoom-management' }] : []),
+      ...(can(r, 'zoom_vault', 'view') ? [{ label: 'Zoom Vault', href: '/admin/zoom-vault' }] : []),
+      ...(can(r, 'shared_pool', 'view') ? [{ label: 'Shared Zoom Pool', href: '/shared-pool' }] : []),
     ],
   };
 }
