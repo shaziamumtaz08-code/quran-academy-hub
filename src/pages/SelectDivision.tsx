@@ -107,24 +107,23 @@ export default function SelectDivision() {
         {/* Global KPIs */}
         <GlobalKpiStrip items={kpis} loading={isLoading || authLoading} />
 
-        {/* Live & Upcoming */}
-        <LiveClassesPanel divisionNames={divisionNames} />
-
-        {/* Division snapshots / workspace entry */}
-        <section>
-          <div className="mb-4">
-            <h3 className="font-serif text-xl font-bold text-foreground">Divisions</h3>
-            <p className="text-sm text-muted-foreground">
-              Enter a workspace — each division is fully isolated with its own data, schedules and records.
-            </p>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {[0, 1].map((i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
+        {/* Divisions (left) + Live classes (right) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section>
+            <div className="mb-4">
+              <h3 className="font-serif text-xl font-bold text-foreground">Divisions</h3>
+              <p className="text-sm text-muted-foreground">
+                Enter a workspace — each division is fully isolated with its own data and records.
+              </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-4">
+                {[0, 1].map((i) => <Skeleton key={i} className="h-56 rounded-xl" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+
               {divisions.map((card) => {
                 const config = MODEL_CONFIG[card.modelType] || MODEL_CONFIG.group;
                 const BranchIcon = BRANCH_ICONS[card.branchType] || Globe;
