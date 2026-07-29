@@ -43,6 +43,8 @@ const KPI = lazy(() => import("./pages/KPI"));
 const ReportCardTemplates = lazy(() => import("./pages/ReportCardTemplates"));
 const GenerateReportCard = lazy(() => import("./pages/GenerateReportCard"));
 const StudentReports = lazy(() => import("./pages/StudentReports"));
+const ProgressTimeline = lazy(() => import("./pages/ProgressTimeline"));
+
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Resources = lazy(() => import("./pages/Resources"));
 const Library = lazy(() => import("./pages/Library"));
@@ -456,6 +458,9 @@ function AppRoutes() {
       <Route path="/report-card-templates" element={<ProtectedRoute><RouteGuard moduleId="report_card_tpl"><ReportCardTemplates /></RouteGuard></ProtectedRoute>} />
       <Route path="/generate-report-card" element={<ProtectedRoute><RouteGuard moduleId="generate_report_card"><GenerateReportCard /></RouteGuard></ProtectedRoute>} />
       <Route path="/student-reports" element={<ProtectedRoute><RouteGuard moduleId="student_reports"><StudentReports /></RouteGuard></ProtectedRoute>} />
+      <Route path="/progress-timeline" element={<ProtectedRoute><ProgressTimeline /></ProtectedRoute>} />
+      <Route path="/progress-timeline/:studentId" element={<ProtectedRoute><ProgressTimeline /></ProtectedRoute>} />
+
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />

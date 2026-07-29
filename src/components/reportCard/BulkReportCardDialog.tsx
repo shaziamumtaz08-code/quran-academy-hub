@@ -80,11 +80,14 @@ export function BulkReportCardDialog({
   const [isValidating, setIsValidating] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [importProgress, setImportProgress] = useState(0);
+  const [reviewThreshold, setReviewThreshold] = useState(50);
   const [importResults, setImportResults] = useState<{
     success: number;
     failed: number;
+    flagged?: number;
     failedRows: { rowNum: number; studentName: string; error: string }[];
   } | null>(null);
+
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -294,7 +297,7 @@ export function BulkReportCardDialog({
     setImportProgress(0);
 
     const validRows = parsedRows.filter((r) => r.status === 'valid');
-    const results = { success: 0, failed: 0, failedRows: [] as { rowNum: number; studentName: string; error: string }[] };
+    const results = { success: 0, failed: 0, flagged: 0, failedRows: [] as { rowNum: number; studentName: string; error: string }[] };
 
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -308,7 +311,7 @@ export function BulkReportCardDialog({
           obtained_marks: row.criteriaMarks[criteria.id] ?? 0,
         }));
 
-        const { error } = await supabase.functions.invoke('submit-report-card', {
+        const { data: submitted, error } = await supabase.functions.invoke('submit-report-card', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: {
             template_id: selectedTemplateId,
@@ -322,6 +325,17 @@ export function BulkReportCardDialog({
 
         if (error) throw error;
         results.success++;
+
+        // Auto-write + auto-publish the parent-facing remark unless the CSV
+        // already supplied one. Low marks / sensitive wording self-flag instead.
+        const examId = (submitted as { id?: string } | null)?.id;
+        if (examId && !row.publicRemarks) {
+          const { data: gen } = await supabase.functions.invoke('auto-report-remarks', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: { exam_id: examId, threshold: reviewThreshold },
+          });
+          if ((gen as { needs_review?: boolean } | null)?.needs_review) results.flagged++;
+        }
       } catch (err: any) {
         results.failed++;
         results.failedRows.push({
@@ -337,7 +351,9 @@ export function BulkReportCardDialog({
     setImportResults(results);
     setStep('done');
     queryClient.invalidateQueries({ queryKey: ['student-reports'] });
+    queryClient.invalidateQueries({ queryKey: ['remarks-needs-review'] });
   };
+
 
   const reset = () => {
     setStep('select-template');
@@ -505,6 +521,31 @@ export function BulkReportCardDialog({
                 </div>
               )}
 
+              <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Auto-write parent remarks</p>
+                    <p className="text-xs text-muted-foreground">
+                      Rows without a public remark get one written and published automatically.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">Review below</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={reviewThreshold}
+                      onChange={(e) => setReviewThreshold(Number(e.target.value))}
+                      className="h-8 w-16 text-center"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+
+
+
               <ScrollArea className="h-64 border rounded-lg">
                 <div className="p-3 space-y-2">
                   {parsedRows.map((row) => (
@@ -580,7 +621,13 @@ export function BulkReportCardDialog({
                   Successfully created {importResults.success} report cards
                   {importResults.failed > 0 && `, ${importResults.failed} failed`}
                 </p>
+                {!!importResults.flagged && (
+                  <p className="mt-2 text-sm text-amber-600">
+                    {importResults.flagged} remark(s) held for review — approve them in the “Needs review” queue.
+                  </p>
+                )}
               </div>
+
 
               {importResults.failed > 0 && importResults.failedRows.length > 0 && (
                 <ScrollArea className="h-48 w-full max-w-md rounded-md border border-destructive/30 bg-destructive/5">

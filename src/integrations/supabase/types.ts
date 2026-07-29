@@ -3598,6 +3598,10 @@ export type Database = {
           max_total_marks: number
           percentage: number
           public_remarks: string | null
+          remarks_auto_generated: boolean
+          remarks_flag_reason: string | null
+          remarks_generated_at: string | null
+          remarks_status: string
           student_id: string
           template_id: string
           total_marks: number
@@ -3614,6 +3618,10 @@ export type Database = {
           max_total_marks?: number
           percentage?: number
           public_remarks?: string | null
+          remarks_auto_generated?: boolean
+          remarks_flag_reason?: string | null
+          remarks_generated_at?: string | null
+          remarks_status?: string
           student_id: string
           template_id: string
           total_marks?: number
@@ -3630,6 +3638,10 @@ export type Database = {
           max_total_marks?: number
           percentage?: number
           public_remarks?: string | null
+          remarks_auto_generated?: boolean
+          remarks_flag_reason?: string | null
+          remarks_generated_at?: string | null
+          remarks_status?: string
           student_id?: string
           template_id?: string
           total_marks?: number
