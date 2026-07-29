@@ -1,9 +1,11 @@
 import { useMemo } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageShell } from "@/components/layout/PageShell";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
+import { FileText, TrendingUp } from "lucide-react";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
 import FeeReports from "@/components/reports/FeeReports";
@@ -78,7 +80,26 @@ export default function Reports() {
       : baseDescriptions[activeView];
 
   return (
-    <PageShell title="Reports" description={description}>
+    <PageShell
+      title="Reports"
+      description={description}
+      actions={
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/student-reports">
+              <FileText className="mr-2 h-4 w-4" />
+              Student Reports
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link to="/progress-timeline">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Progress Timeline
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       <div className="animate-fade-in">
         <ErrorBoundary>{renderSection()}</ErrorBoundary>
       </div>
