@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Loader2, Video, Radio } from 'lucide-react';
+import { Loader2, Video, Radio, ChevronDown, ChevronUp } from 'lucide-react';
 import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 
@@ -37,6 +37,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
   const [loading, setLoading] = useState(true);
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [expanded, setExpanded] = useState(false);
+
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
@@ -151,7 +153,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card shadow-card">
+    <section className="flex flex-col rounded-xl border border-border bg-card shadow-card">
       <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
           <Radio className="h-4 w-4 text-accent" /> Live &amp; Upcoming Classes
@@ -166,45 +168,61 @@ export function LiveClassesPanel({ divisionNames }: Props) {
       ) : decorated.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-muted-foreground">No classes scheduled today.</p>
       ) : (
-        <ul className="divide-y divide-border">
-          {decorated.slice(0, 10).map((row) => (
-            <li key={row.key} className="flex flex-wrap items-center gap-3 px-5 py-3">
-              <Badge
-                className={
-                  row.live
-                    ? 'border-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                    : 'border-0 bg-muted text-muted-foreground'
-                }
-              >
-                {row.live ? 'Live' : 'Upcoming'}
-              </Badge>
-              <Badge variant="outline" className="text-[11px]">
-                {divisionNames[row.divisionId || ''] || 'Unassigned'}
-              </Badge>
-              <div className="min-w-[180px] flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{row.studentName}</p>
-                <p className="truncate text-xs text-muted-foreground">with {row.teacherName}</p>
-              </div>
-              <span className="text-xs font-medium text-muted-foreground">
-                {zonedClockLabel(tz, new Date(row.startMs))}
-              </span>
-              <Button
-                size="sm"
-                disabled={!row.live || joiningKey === row.key}
-                onClick={() => handleJoin(row)}
-                className="ml-auto"
-              >
-                {joiningKey === row.key ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Video className="mr-1 h-3.5 w-3.5" />
-                )}
-                Join
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul
+            className={`divide-y divide-border overflow-y-auto ${expanded ? 'max-h-[70vh]' : 'max-h-[480px]'}`}
+          >
+            {decorated.map((row) => (
+              <li key={row.key} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <Badge
+                  className={
+                    row.live
+                      ? 'border-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                      : 'border-0 bg-muted text-muted-foreground'
+                  }
+                >
+                  {row.live ? 'Live' : 'Upcoming'}
+                </Badge>
+                <Badge variant="outline" className="text-[11px]">
+                  {divisionNames[row.divisionId || ''] || 'Unassigned'}
+                </Badge>
+                <div className="min-w-[180px] flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{row.studentName}</p>
+                  <p className="truncate text-xs text-muted-foreground">with {row.teacherName}</p>
+                </div>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {zonedClockLabel(tz, new Date(row.startMs))}
+                </span>
+                <Button
+                  size="sm"
+                  disabled={!row.live || joiningKey === row.key}
+                  onClick={() => handleJoin(row)}
+                  className="ml-auto"
+                >
+                  {joiningKey === row.key ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Video className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  Join
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center justify-center gap-1.5 border-t border-border px-5 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          >
+            {expanded ? (
+              <>Collapse <ChevronUp className="h-3.5 w-3.5" /></>
+            ) : (
+              <>Expand all ({decorated.length}) <ChevronDown className="h-3.5 w-3.5" /></>
+            )}
+          </button>
+        </>
       )}
     </section>
   );
 }
+
