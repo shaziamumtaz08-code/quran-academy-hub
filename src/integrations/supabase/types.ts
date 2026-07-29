@@ -11407,6 +11407,160 @@ export type Database = {
         }
         Relationships: []
       }
+      zoom_pool_bookings: {
+        Row: {
+          booked_by_user_id: string
+          created_at: string
+          end_time: string
+          id: string
+          meeting_link: string | null
+          purpose: string
+          recording_url: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["zoom_pool_booking_status"]
+          vault_account_id: string
+          zoom_meeting_id: string | null
+        }
+        Insert: {
+          booked_by_user_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          meeting_link?: string | null
+          purpose?: string
+          recording_url?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["zoom_pool_booking_status"]
+          vault_account_id: string
+          zoom_meeting_id?: string | null
+        }
+        Update: {
+          booked_by_user_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          meeting_link?: string | null
+          purpose?: string
+          recording_url?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["zoom_pool_booking_status"]
+          vault_account_id?: string
+          zoom_meeting_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_pool_bookings_vault_account_id_fkey"
+            columns: ["vault_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_vault_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_vault_access_log: {
+        Row: {
+          id: string
+          vault_account_id: string
+          viewed_at: string
+          viewed_by_user_id: string
+          viewed_field: Database["public"]["Enums"]["zoom_vault_field"]
+        }
+        Insert: {
+          id?: string
+          vault_account_id: string
+          viewed_at?: string
+          viewed_by_user_id: string
+          viewed_field: Database["public"]["Enums"]["zoom_vault_field"]
+        }
+        Update: {
+          id?: string
+          vault_account_id?: string
+          viewed_at?: string
+          viewed_by_user_id?: string
+          viewed_field?: Database["public"]["Enums"]["zoom_vault_field"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_vault_access_log_vault_account_id_fkey"
+            columns: ["vault_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_vault_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_vault_accounts: {
+        Row: {
+          account_type: Database["public"]["Enums"]["zoom_vault_account_type"]
+          assigned_teacher_id: string | null
+          auto_record: boolean
+          created_at: string
+          google_email: string | null
+          google_password_secret_id: string | null
+          host_key: string | null
+          id: string
+          label: string
+          passcode: string | null
+          pmi: string | null
+          pool_assignment: Database["public"]["Enums"]["zoom_pool_assignment"]
+          status: Database["public"]["Enums"]["zoom_vault_status"]
+          updated_at: string
+          zoom_email: string
+          zoom_password_secret_id: string | null
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["zoom_vault_account_type"]
+          assigned_teacher_id?: string | null
+          auto_record?: boolean
+          created_at?: string
+          google_email?: string | null
+          google_password_secret_id?: string | null
+          host_key?: string | null
+          id?: string
+          label: string
+          passcode?: string | null
+          pmi?: string | null
+          pool_assignment?: Database["public"]["Enums"]["zoom_pool_assignment"]
+          status?: Database["public"]["Enums"]["zoom_vault_status"]
+          updated_at?: string
+          zoom_email: string
+          zoom_password_secret_id?: string | null
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["zoom_vault_account_type"]
+          assigned_teacher_id?: string | null
+          auto_record?: boolean
+          created_at?: string
+          google_email?: string | null
+          google_password_secret_id?: string | null
+          host_key?: string | null
+          id?: string
+          label?: string
+          passcode?: string | null
+          pmi?: string | null
+          pool_assignment?: Database["public"]["Enums"]["zoom_pool_assignment"]
+          status?: Database["public"]["Enums"]["zoom_vault_status"]
+          updated_at?: string
+          zoom_email?: string
+          zoom_password_secret_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_vault_accounts_assigned_teacher_id_fkey"
+            columns: ["assigned_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_vault_accounts_assigned_teacher_id_fkey"
+            columns: ["assigned_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zoom_webhook_events: {
         Row: {
           event_ts: string | null
@@ -11579,6 +11733,21 @@ export type Database = {
       auto_generate_plan_invoices: {
         Args: { _plan_id: string }
         Returns: undefined
+      }
+      book_pool_seat: {
+        Args: {
+          end_time: string
+          purpose: string
+          start_time: string
+          vault_account_id: string
+        }
+        Returns: {
+          booking_id: string
+          meeting_link: string
+          recording_url: string
+          records: boolean
+          seat_label: string
+        }[]
       }
       build_split_month_lines: {
         Args: {
@@ -11756,6 +11925,17 @@ export type Database = {
           votes: number
         }[]
       }
+      get_pool_availability: {
+        Args: { _end?: string; _start?: string }
+        Returns: {
+          account_type: Database["public"]["Enums"]["zoom_vault_account_type"]
+          auto_record: boolean
+          bookings: Json
+          is_available: boolean
+          label: string
+          vault_account_id: string
+        }[]
+      }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_safe_profiles: {
         Args: { p_ids: string[] }
@@ -11926,6 +12106,10 @@ export type Database = {
         Args: { _session_id: string; _teacher_id: string }
         Returns: boolean
       }
+      reveal_vault_password: {
+        Args: { account_id: string; field: string }
+        Returns: string
+      }
       revise_billing_plan: {
         Args: {
           _assignment_id?: string
@@ -11957,6 +12141,10 @@ export type Database = {
         }
         Returns: Json
       }
+      set_vault_password: {
+        Args: { _account_id: string; _field: string; _password: string }
+        Returns: undefined
+      }
       share_a_class: {
         Args: { _user_a: string; _user_b: string }
         Returns: boolean
@@ -11976,6 +12164,14 @@ export type Database = {
       submit_payment_proof: {
         Args: { _invoice_ids: string[]; _note: string; _proof_url: string }
         Returns: number
+      }
+      teacher_pool_booking_enabled: { Args: never; Returns: boolean }
+      update_pool_booking_status: {
+        Args: {
+          _booking_id: string
+          _status: Database["public"]["Enums"]["zoom_pool_booking_status"]
+        }
+        Returns: undefined
       }
       user_created_chat_group: {
         Args: { _group_id: string; _user_id: string }
@@ -12086,6 +12282,15 @@ export type Database = {
       session_status: "scheduled" | "live" | "frozen" | "completed"
       zoom_account_tier: "free" | "licensed"
       zoom_license_status: "available" | "busy"
+      zoom_pool_assignment: "shared" | "dedicated" | "unassigned"
+      zoom_pool_booking_status:
+        | "booked"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      zoom_vault_account_type: "paid" | "free"
+      zoom_vault_field: "zoom_password" | "google_password"
+      zoom_vault_status: "active" | "disabled" | "locked_out"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -12315,6 +12520,16 @@ export const Constants = {
       session_status: ["scheduled", "live", "frozen", "completed"],
       zoom_account_tier: ["free", "licensed"],
       zoom_license_status: ["available", "busy"],
+      zoom_pool_assignment: ["shared", "dedicated", "unassigned"],
+      zoom_pool_booking_status: [
+        "booked",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      zoom_vault_account_type: ["paid", "free"],
+      zoom_vault_field: ["zoom_password", "google_password"],
+      zoom_vault_status: ["active", "disabled", "locked_out"],
     },
   },
 } as const
