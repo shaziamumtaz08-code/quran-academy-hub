@@ -494,8 +494,11 @@ export default function QuizEngine() {
   const resetForm = () => {
     setForm(emptyForm);
     setUploadedFiles([]);
+    setRawFiles([]);
+    setBackgroundMode(false);
     clearDraft(DRAFT_KEY);
   };
+
 
   // Save the half-finished quiz as a draft without running AI generation
   const saveDraft = useMutation({
