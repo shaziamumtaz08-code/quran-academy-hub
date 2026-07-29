@@ -173,13 +173,22 @@ export function LiveClassesPanel({ divisionNames }: Props) {
             className={`divide-y divide-border overflow-y-auto ${expanded ? 'max-h-[70vh]' : 'max-h-[480px]'}`}
           >
             {decorated.map((row) => (
-              <li key={row.key} className="flex flex-wrap items-center gap-3 px-5 py-3">
+              <li
+                key={row.key}
+                className={cn(
+                  'flex flex-wrap items-center gap-3 px-5 py-3 transition-colors',
+                  row.live
+                    ? 'bg-emerald-500/[0.06] border-l-4 border-l-emerald-500 dark:bg-emerald-500/[0.09]'
+                    : 'border-l-4 border-l-transparent hover:bg-muted/30'
+                )}
+              >
                 <Badge
-                  className={
+                  className={cn(
+                    'border-0',
                     row.live
-                      ? 'border-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                      : 'border-0 bg-muted text-muted-foreground'
-                  }
+                      ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 animate-pulse'
+                      : 'bg-muted text-muted-foreground'
+                  )}
                 >
                   {row.live ? 'Live' : 'Upcoming'}
                 </Badge>
@@ -197,7 +206,10 @@ export function LiveClassesPanel({ divisionNames }: Props) {
                   size="sm"
                   disabled={!row.live || joiningKey === row.key}
                   onClick={() => handleJoin(row)}
-                  className="ml-auto"
+                  className={cn(
+                    'ml-auto',
+                    row.live && 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  )}
                 >
                   {joiningKey === row.key ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
