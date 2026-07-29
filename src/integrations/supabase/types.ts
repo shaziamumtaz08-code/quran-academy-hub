@@ -11275,6 +11275,99 @@ export type Database = {
           },
         ]
       }
+      zoom_booking_audit_log: {
+        Row: {
+          auto_record: boolean
+          booked_at: string
+          booked_by: string | null
+          booked_by_name: string | null
+          booked_by_role: string | null
+          course_class_id: string | null
+          created_at: string
+          demo_session_id: string | null
+          duration_minutes: number | null
+          error_reason: string | null
+          id: string
+          join_url: string | null
+          meeting_type: string
+          metadata: Json
+          seat_email: string | null
+          seat_label: string | null
+          seat_tier: string | null
+          start_time: string | null
+          status: string
+          timezone: string | null
+          topic: string | null
+          zoom_account_id: string | null
+          zoom_meeting_id: string | null
+        }
+        Insert: {
+          auto_record?: boolean
+          booked_at?: string
+          booked_by?: string | null
+          booked_by_name?: string | null
+          booked_by_role?: string | null
+          course_class_id?: string | null
+          created_at?: string
+          demo_session_id?: string | null
+          duration_minutes?: number | null
+          error_reason?: string | null
+          id?: string
+          join_url?: string | null
+          meeting_type?: string
+          metadata?: Json
+          seat_email?: string | null
+          seat_label?: string | null
+          seat_tier?: string | null
+          start_time?: string | null
+          status?: string
+          timezone?: string | null
+          topic?: string | null
+          zoom_account_id?: string | null
+          zoom_meeting_id?: string | null
+        }
+        Update: {
+          auto_record?: boolean
+          booked_at?: string
+          booked_by?: string | null
+          booked_by_name?: string | null
+          booked_by_role?: string | null
+          course_class_id?: string | null
+          created_at?: string
+          demo_session_id?: string | null
+          duration_minutes?: number | null
+          error_reason?: string | null
+          id?: string
+          join_url?: string | null
+          meeting_type?: string
+          metadata?: Json
+          seat_email?: string | null
+          seat_label?: string | null
+          seat_tier?: string | null
+          start_time?: string | null
+          status?: string
+          timezone?: string | null
+          topic?: string | null
+          zoom_account_id?: string | null
+          zoom_meeting_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_booking_audit_log_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_booking_audit_log_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zoom_licenses: {
         Row: {
           created_at: string

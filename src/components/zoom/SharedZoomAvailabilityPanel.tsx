@@ -1,5 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ZoomBookingAuditLog } from '@/components/zoom/ZoomBookingAuditLog';
+
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,6 +75,8 @@ interface SeatResult {
 
 export function SharedZoomAvailabilityPanel() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [registerEmail, setRegisterEmail] = React.useState('');
   const [registering, setRegistering] = React.useState(false);
   const [checking, setChecking] = React.useState(false);
@@ -87,6 +91,8 @@ export function SharedZoomAvailabilityPanel() {
   const [slotTime, setSlotTime] = React.useState('18:00');
   const [duration, setDuration] = React.useState(40);
   const [topic, setTopic] = React.useState('Demo class — Al Quran Time Academy');
+  const [meetingType, setMeetingType] = React.useState('demo');
+
 
   const poolQuery = useQuery({
     queryKey: ['zoom-shared-pool'],
@@ -166,14 +172,19 @@ export function SharedZoomAvailabilityPanel() {
         start_time: proposedStartIso,
         duration,
         topic,
+        meeting_type: meetingType,
         timezone: TZ,
       });
+
       if (body?.success) {
         setCreated(body.meeting);
         toast({ title: 'Meeting booked', description: body.meeting.recording === 'cloud' ? 'Cloud recording is on.' : 'No recording on this seat.' });
         handleCheck();
+        queryClient.invalidateQueries({ queryKey: ['zoom-booking-audit'] });
       } else {
+        queryClient.invalidateQueries({ queryKey: ['zoom-booking-audit'] });
         toast({ title: 'Could not create meeting', description: body?.error || 'Unknown error', variant: 'destructive' });
+
       }
     } finally {
       setCreating(false);
@@ -257,7 +268,7 @@ export function SharedZoomAvailabilityPanel() {
           <CardTitle className="text-base">Book a slot</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
               <Input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
@@ -270,11 +281,25 @@ export function SharedZoomAvailabilityPanel() {
               <Label className="text-xs">Minutes</Label>
               <Input type="number" min={15} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value) || 40)} />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Type</Label>
+              <select
+                value={meetingType}
+                onChange={(e) => setMeetingType(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="demo">Demo class</option>
+                <option value="group">Group class</option>
+                <option value="class">Regular class</option>
+                <option value="quick">Quick meeting</option>
+              </select>
+            </div>
             <div className="space-y-1 col-span-2">
               <Label className="text-xs">Topic</Label>
               <Input value={topic} onChange={(e) => setTopic(e.target.value)} />
             </div>
           </div>
+
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={handleCheck} disabled={checking || pool.length === 0}>
@@ -422,6 +447,9 @@ export function SharedZoomAvailabilityPanel() {
           </CardContent>
         </Card>
       )}
+
+      <ZoomBookingAuditLog />
     </div>
   );
+
 }
