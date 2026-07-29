@@ -447,6 +447,9 @@ export function SharedZoomAvailabilityPanel() {
           </CardContent>
         </Card>
       )}
+
+      <ZoomBookingAuditLog />
     </div>
   );
+
 }
