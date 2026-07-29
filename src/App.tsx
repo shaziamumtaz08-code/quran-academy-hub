@@ -58,6 +58,8 @@ const TeacherNazraDashboard = lazy(() => import("./pages/TeacherNazraDashboard")
 const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
+const ZoomVault = lazy(() => import("./pages/ZoomVault"));
+const SharedPool = lazy(() => import("./pages/SharedPool"));
 const IntegrityAudit = lazy(() => import("./pages/IntegrityAudit"));
 const ActivityLog = lazy(() => import("./pages/ActivityLog"));
 const Courses = lazy(() => import("./pages/Courses"));
@@ -442,6 +444,8 @@ function AppRoutes() {
       <Route path="/schedules" element={<ProtectedRoute><RouteGuard moduleId="schedules"><Schedules /></RouteGuard></ProtectedRoute>} />
       <Route path="/my-schedule" element={<ProtectedRoute><RouteGuard moduleId="my_schedule"><DashboardLayout><MySchedule /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><RouteGuard moduleId="zoom_management"><ZoomManagement /></RouteGuard></ProtectedRoute>} />
+      <Route path="/admin/zoom-vault" element={<ProtectedRoute><RouteGuard moduleId="zoom_vault"><DashboardLayout><ZoomVault /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/shared-pool" element={<ProtectedRoute><RouteGuard moduleId="shared_pool"><DashboardLayout><SharedPool /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><RouteGuard moduleId="integrity_audit"><IntegrityAudit /></RouteGuard></ProtectedRoute>} />
       <Route path="/activity-log" element={<ProtectedRoute><RouteGuard moduleId="activity_log"><DashboardLayout><ActivityLog /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><Courses /></RouteGuard></ProtectedRoute>} />
