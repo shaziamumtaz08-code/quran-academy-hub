@@ -11936,6 +11936,16 @@ export type Database = {
           vault_account_id: string
         }[]
       }
+      get_pool_day_schedule: {
+        Args: { _day: string; _tz?: string }
+        Returns: {
+          account_type: Database["public"]["Enums"]["zoom_vault_account_type"]
+          auto_record: boolean
+          bookings: Json
+          label: string
+          vault_account_id: string
+        }[]
+      }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_safe_profiles: {
         Args: { p_ids: string[] }
@@ -12164,6 +12174,13 @@ export type Database = {
       submit_payment_proof: {
         Args: { _invoice_ids: string[]; _note: string; _proof_url: string }
         Returns: number
+      }
+      sync_vault_from_zoom_accounts: {
+        Args: never
+        Returns: {
+          imported: number
+          updated: number
+        }[]
       }
       teacher_pool_booking_enabled: { Args: never; Returns: boolean }
       update_pool_booking_status: {
