@@ -414,7 +414,7 @@ export default function ZoomManagement() {
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
-            { id: 'shared' as const, label: 'Shared Seat' },
+            { id: 'shared' as const, label: 'Shared Pool' },
           ]).map((tab) => (
             <button
               key={tab.id}
