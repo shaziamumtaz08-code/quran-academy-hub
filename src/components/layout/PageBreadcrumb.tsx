@@ -99,6 +99,52 @@ export function PageBreadcrumb() {
       ? VIEW_LABELS[view] || view.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
       : moduleLabel;
 
+  if (normalizedPath === '/student-reports' || normalizedPath === '/progress-timeline') {
+    return (
+      <div className="mb-4">
+        <Breadcrumb>
+          <BreadcrumbList className="flex-wrap">
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/dashboard" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/reports?view=executive" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Reports</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </BreadcrumbSeparator>
+            {normalizedPath === '/progress-timeline' ? (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/student-reports" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Student Reports</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="font-medium text-foreground">Progress Timeline</BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            ) : (
+              <BreadcrumbItem>
+                <BreadcrumbPage className="font-medium text-foreground">Student Reports</BreadcrumbPage>
+              </BreadcrumbItem>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-4">
       <Breadcrumb>
