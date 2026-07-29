@@ -274,7 +274,44 @@ export function TeacherZoomAccountsPanel() {
         </div>
 
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {syncResult && (
+          <Alert variant={syncResult.success ? 'default' : 'destructive'}>
+            {syncResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+            <AlertTitle className="text-sm">
+              {syncResult.success
+                ? `Synced ${syncResult.zoom_user_count} Zoom users`
+                : 'Zoom sync failed'}
+            </AlertTitle>
+            <AlertDescription className="text-xs space-y-2">
+              {!syncResult.success && (
+                <p className="whitespace-pre-wrap">{syncResult.error}{syncResult.hint ? ` — ${syncResult.hint}` : ''}</p>
+              )}
+              {syncResult.success && (
+                <>
+                  <p>
+                    Created {syncResult.summary?.created ?? 0} • Updated {syncResult.summary?.updated ?? 0} •
+                    Already mapped {syncResult.summary?.already_mapped ?? 0} • Failed {syncResult.summary?.failed ?? 0}
+                  </p>
+                  {(syncResult.teachers_without_zoom || []).length > 0 && (
+                    <p>
+                      <span className="font-medium">Teachers not in your Zoom account:</span>{' '}
+                      {(syncResult.teachers_without_zoom || []).map((t: any) => t.full_name || t.email).join(', ')} — add them
+                      in Zoom → User Management, then sync again.
+                    </p>
+                  )}
+                  {(syncResult.unmatched_zoom_users || []).length > 0 && (
+                    <p>
+                      <span className="font-medium">Zoom users with no matching teacher email:</span>{' '}
+                      {(syncResult.unmatched_zoom_users || []).map((u: any) => u.email).join(', ')}
+                    </p>
+                  )}
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading accounts…
