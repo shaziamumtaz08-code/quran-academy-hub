@@ -80,11 +80,14 @@ export function BulkReportCardDialog({
   const [isValidating, setIsValidating] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [importProgress, setImportProgress] = useState(0);
+  const [reviewThreshold, setReviewThreshold] = useState(50);
   const [importResults, setImportResults] = useState<{
     success: number;
     failed: number;
+    flagged?: number;
     failedRows: { rowNum: number; studentName: string; error: string }[];
   } | null>(null);
+
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
