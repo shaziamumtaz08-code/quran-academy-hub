@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
       if (body?.demo_session_id) {
         await admin
           .from("demo_sessions")
-          .update({ zoom_link: created.join_url })
+          .update({ meeting_link: created.join_url })
           .eq("id", body.demo_session_id);
       }
 
