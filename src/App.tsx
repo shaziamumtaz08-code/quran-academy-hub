@@ -43,6 +43,8 @@ const KPI = lazy(() => import("./pages/KPI"));
 const ReportCardTemplates = lazy(() => import("./pages/ReportCardTemplates"));
 const GenerateReportCard = lazy(() => import("./pages/GenerateReportCard"));
 const StudentReports = lazy(() => import("./pages/StudentReports"));
+const ProgressTimeline = lazy(() => import("./pages/ProgressTimeline"));
+
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Resources = lazy(() => import("./pages/Resources"));
 const Library = lazy(() => import("./pages/Library"));
