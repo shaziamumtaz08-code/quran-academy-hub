@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
+import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
+
 
 import { AlertTriangle } from 'lucide-react';
 
@@ -407,7 +409,7 @@ export default function ZoomManagement() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Top-level tabs */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
@@ -426,7 +428,11 @@ export default function ZoomManagement() {
               {tab.label}
             </button>
           ))}
+          <div className="ml-auto">
+            <SyncZoomUsersButton />
+          </div>
         </div>
+
 
         {mainTab === 'live' && <ZoomLiveOperations />}
 
