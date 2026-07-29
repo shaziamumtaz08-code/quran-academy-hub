@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.push-fee-reminders]
 verify_jwt = false
+
+[functions.zoom-webhook-recording-complete]
+verify_jwt = false
