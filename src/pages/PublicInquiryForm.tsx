@@ -17,8 +17,8 @@ const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic L
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Mode = 'self' | 'child' | 'other';
-type Student = { id: string; name: string; email: string; age: string; gender: string; subjects: string[]; otherSubject: string; level: string; goals: string; time1: string; note1: string; time2: string; note2: string };
-const newStudent = (): Student => ({ id: crypto.randomUUID(), name: '', email: '', age: '', gender: '', subjects: [], otherSubject: '', level: '', goals: '', time1: '', note1: '', time2: '', note2: '' });
+type Student = { id: string; name: string; email: string; useContactEmail: boolean; age: string; gender: string; subjects: string[]; otherSubject: string; level: string; goals: string; time1: string; note1: string; time2: string; note2: string };
+const newStudent = (): Student => ({ id: crypto.randomUUID(), name: '', email: '', useContactEmail: true, age: '', gender: '', subjects: [], otherSubject: '', level: '', goals: '', time1: '', note1: '', time2: '', note2: '' });
 
 export default function PublicInquiryForm() {
   const [mode, setMode] = useState<Mode | null>(null);
