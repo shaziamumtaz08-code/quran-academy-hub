@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Download } from 'lucide-react';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Download, IdCard } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -592,6 +593,12 @@ export default function Teachers() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/teacher-profile/${teacher.id}`}>
+                                <IdCard className="h-4 w-4 mr-2" />
+                                View profile
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(teacher)}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
