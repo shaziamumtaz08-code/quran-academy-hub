@@ -451,6 +451,8 @@ function AppRoutes() {
       <Route path="/teacher-profile/:teacherId" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/onboard/:token" element={<TeacherOnboarding />} />
       <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><Students /></RouteGuard></ProtectedRoute>} />
+      <Route path="/student-profile/:studentId" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/parent-profile/:parentId" element={<ProtectedRoute><DashboardLayout><ParentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><RouteGuard moduleId="attendance"><Attendance /></RouteGuard></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><RouteGuard moduleId="lessons"><Lessons /></RouteGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RouteGuard moduleId="reports"><DashboardLayout><Reports /></DashboardLayout></RouteGuard></ProtectedRoute>} />
