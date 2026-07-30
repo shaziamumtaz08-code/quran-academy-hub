@@ -27,7 +27,7 @@ import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import TeacherSchedulesView from '@/components/teacher/TeacherSchedulesView';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { useToast } from '@/hooks/use-toast';

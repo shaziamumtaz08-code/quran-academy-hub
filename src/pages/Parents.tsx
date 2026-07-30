@@ -14,6 +14,7 @@ import {
   AlertTriangle, UserCheck, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
