@@ -492,7 +492,7 @@ async function findOrCreateDedicatedSession(
 async function handleDedicatedAccountEvent(
   supabase: any,
   event: ZoomEvent,
-  account: { id: string; teacher_id: string; zoom_account_email: string; tier: string },
+  rawAccount: { id: string; teacher_id: string | null; zoom_account_email: string; tier: string },
   ctx: {
     hostId: string | undefined;
     meetingUuid: string | null;
@@ -502,6 +502,14 @@ async function handleDedicatedAccountEvent(
   },
 ) {
   const { hostId, meetingUuid, meetingId } = ctx;
+  const resolvedTeacherId = await resolveAccountTeacherId(supabase, rawAccount, event);
+  if (!resolvedTeacherId) {
+    console.error(
+      `Zoom account ${rawAccount.zoom_account_email} has no teacher_id and no teacher could be resolved from the event — skipping ${event.event}`,
+    );
+    return;
+  }
+  const account = { ...rawAccount, teacher_id: resolvedTeacherId };
   const { data: teacherProfile } = await supabase
     .from("profiles")
     .select("full_name, email")
