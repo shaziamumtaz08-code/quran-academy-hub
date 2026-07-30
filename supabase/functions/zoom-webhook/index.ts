@@ -373,6 +373,59 @@ async function resolveDedicatedAccount(
   return data || null;
 }
 
+// Some Zoom accounts (e.g. the academy's shared licensed seat) have no
+// teacher_id on zoom_accounts. Resolve the acting teacher from the account
+// email first, then from the event's participant identity, so real Zoom
+// events are never dropped with a NOT NULL violation.
+async function resolveAccountTeacherId(
+  supabase: any,
+  account: { teacher_id: string | null; zoom_account_email: string },
+  event: ZoomEvent,
+): Promise<string | null> {
+  if (account.teacher_id) return account.teacher_id;
+
+  const isTeacher = async (userId: string | null | undefined) => {
+    if (!userId) return false;
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["teacher", "trial_teacher"]);
+    return Boolean(data && data.length);
+  };
+
+  const byEmail = async (email?: string | null) => {
+    const clean = normalizeParticipantValue(email);
+    if (!clean) return null;
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", clean)
+      .maybeSingle();
+    return (await isTeacher(data?.id)) ? data!.id : null;
+  };
+
+  const fromAccountEmail = await byEmail(account.zoom_account_email);
+  if (fromAccountEmail) return fromAccountEmail;
+
+  const participant = event.payload.object?.participant;
+  const fromParticipantEmail = await byEmail(participant?.email);
+  if (fromParticipantEmail) return fromParticipantEmail;
+
+  const rawName = (participant?.user_name || "").replace(/^\s*(teacher|ustadha?|ustadh|sir|miss|mr\.?|mrs\.?|ms\.?)\s+/i, "").trim();
+  if (rawName.length >= 3) {
+    const { data: matches } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .ilike("full_name", `%${rawName}%`)
+      .limit(5);
+    for (const m of matches || []) {
+      if (await isTeacher(m.id)) return m.id;
+    }
+  }
+  return null;
+}
+
 // NEW — find or create a live_sessions row for a dedicated account.
 async function findOrCreateDedicatedSession(
   supabase: any,
