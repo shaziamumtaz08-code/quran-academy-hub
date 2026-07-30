@@ -11868,6 +11868,10 @@ export type Database = {
         Args: { _course_id: string }
         Returns: boolean
       }
+      can_manage_session_plan: {
+        Args: { _session_plan_id: string }
+        Returns: boolean
+      }
       can_view_content_kit: { Args: { _kit_id: string }; Returns: boolean }
       can_view_course_content: {
         Args: { _course_id: string }
