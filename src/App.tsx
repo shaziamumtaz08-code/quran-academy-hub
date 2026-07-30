@@ -56,6 +56,8 @@ const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
 const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
 const TeacherNazraDashboard = lazy(() => import("./pages/TeacherNazraDashboard"));
 const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
+const TeacherProfile = lazy(() => import("./pages/TeacherProfile"));
+const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
 const ZoomVault = lazy(() => import("./pages/ZoomVault"));
