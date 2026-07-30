@@ -328,7 +328,9 @@ function LoginRedirect() {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
     if (activeRole === 'admin_division') return '/dashboard';
-    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    // /admin is super-admin only and immediately bounces other admins,
+    // so send them straight to the dashboard instead of flashing a redirect.
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/dashboard';
     if (activeRole === 'teacher' || activeRole === 'examiner') return '/dashboard';
     if (activeRole === 'parent') return '/parent';
     return '/dashboard';
@@ -345,8 +347,16 @@ function LoginRedirect() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={nextTarget || from || getDefaultRoute()} replace />;
+    // Super admins must always pass through the division picker on a fresh
+    // login — a stale `from` path (set when an expired session bounced them
+    // to /login) otherwise drops them straight into whichever division was
+    // last cached, skipping the global overview.
+    const target = activeRole === 'super_admin'
+      ? (nextTarget || '/select-division')
+      : (nextTarget || from || getDefaultRoute());
+    return <Navigate to={target} replace />;
   }
+
   return <Login />;
 }
 
