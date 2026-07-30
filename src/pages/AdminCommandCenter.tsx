@@ -86,7 +86,7 @@ export default function AdminCommandCenter() {
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_SAFE_COLUMNS)
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;

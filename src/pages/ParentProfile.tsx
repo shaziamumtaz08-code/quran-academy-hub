@@ -36,7 +36,7 @@ export default function ParentProfile() {
     enabled: !!parentId,
     queryFn: async () => {
       let profile: any = null;
-      const full = await supabase.from('profiles').select('*').eq('id', parentId!).maybeSingle();
+      const full = await supabase.from('profiles').select(PROFILE_SAFE_COLUMNS).eq('id', parentId!).maybeSingle();
       if (full.error) {
         const basic = await supabase
           .from('profiles')

@@ -146,7 +146,7 @@ export function TeacherOnboardingWizard({ token, teacherId, onCompleted }: Props
         } else if (teacherId) {
           const { data: p, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PROFILE_SAFE_COLUMNS)
             .eq('id', teacherId)
             .maybeSingle();
           if (error) throw error;
