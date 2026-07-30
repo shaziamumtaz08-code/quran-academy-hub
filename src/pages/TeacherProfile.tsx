@@ -1,0 +1,396 @@
+import { useMemo, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from '@/components/ui/accordion';
+import { useToast } from '@/hooks/use-toast';
+import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
+import {
+  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, Clock, Copy, Download,
+  Eye, EyeOff, FileText, GraduationCap, Link2, Mail, MapPin, Pencil, Phone,
+  ShieldCheck, User, Video,
+} from 'lucide-react';
+
+const mask = (v?: string | null) => (v ? `••••${v.slice(-4)}` : null);
+const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString() : '—');
+
+function StatusPill({ status, kind }: { status?: string | null; kind: 'banking' | 'cv' }) {
+  const s = status ?? 'not_provided';
+  const label =
+    s === 'verified' ? 'Verified'
+    : s === 'approved' ? 'Approved'
+    : s === 'pending' ? (kind === 'banking' ? 'Pending verification' : 'Pending review')
+    : 'Not provided';
+  const cls =
+    s === 'verified' || s === 'approved' ? 'bg-primary/10 text-primary border-primary/30'
+    : s === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+    : 'bg-muted text-muted-foreground border-border';
+  return <span className={`text-[10px] rounded-full border px-2 py-0.5 ${cls}`}>{label}</span>;
+}
+
+function Card({ icon: Icon, title, action, children }: any) {
+  return (
+    <section className="rounded-xl border bg-card p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <h2 className="font-semibold text-foreground">{title}</h2>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Row({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm text-foreground break-words">{value || '—'}</p>
+    </div>
+  );
+}
+
+export default function TeacherProfile() {
+  const { teacherId: paramId } = useParams<{ teacherId: string }>();
+  const { profile: me, isAdmin, isSuperAdmin } = useAuth() as any;
+  const teacherId = paramId ?? me?.id;
+  const canAdmin = !!(isAdmin || isSuperAdmin);
+  const isSelf = teacherId === me?.id;
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [reveal, setReveal] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['teacher-profile-page', teacherId],
+    enabled: !!teacherId,
+    queryFn: async () => {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', teacherId!)
+        .maybeSingle();
+      if (error) throw error;
+
+      const { data: sensitive } = await (supabase as any)
+        .from('profile_sensitive_data')
+        .select('bank_name, bank_account_title, bank_account_number, bank_iban')
+        .eq('user_id', teacherId!)
+        .maybeSingle();
+
+      const { data: salary } = await (supabase as any)
+        .from('staff_salaries')
+        .select('monthly_amount, effective_from')
+        .eq('user_id', teacherId!)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: assignments } = await supabase
+        .from('student_teacher_assignments')
+        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
+        .eq('teacher_id', teacherId!)
+        .eq('status', 'active');
+
+      return { profile: profile as any, sensitive, salary, assignments: assignments ?? [] };
+    },
+  });
+
+  const p = data?.profile;
+
+  const timeWithUs = useMemo(() => {
+    const start = p?.joining_date ?? p?.created_at;
+    if (!start) return '—';
+    const months = Math.max(
+      0,
+      Math.round((Date.now() - new Date(start).getTime()) / (1000 * 60 * 60 * 24 * 30.44)),
+    );
+    return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}m` : `${months}m`;
+  }, [p]);
+
+  const setVerification = async (patch: { banking?: string; cv?: string }) => {
+    const { error } = await (supabase as any).rpc('admin_set_teacher_verification', {
+      _teacher_id: teacherId,
+      _banking: patch.banking ?? null,
+      _cv: patch.cv ?? null,
+    });
+    if (error) {
+      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Updated' });
+    qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] });
+  };
+
+  const copyOnboardingLink = async () => {
+    const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', {
+      _teacher_id: teacherId,
+    });
+    if (error || !token) {
+      toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+      return;
+    }
+    const url = `${window.location.origin}/onboard/${token}`;
+    await navigator.clipboard.writeText(url).catch(() => undefined);
+    toast({ title: 'Onboarding link copied', description: url });
+  };
+
+  const openCv = async () => {
+    if (!p?.cv_url) return;
+    const { data: signed } = await supabase.storage
+      .from('teacher-documents')
+      .createSignedUrl(p.cv_url, 60 * 5);
+    if (signed?.signedUrl) window.open(signed.signedUrl, '_blank', 'noopener,noreferrer');
+    else toast({ title: 'Could not open the CV', variant: 'destructive' });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (!p) return <p className="text-muted-foreground">Teacher profile not found.</p>;
+
+  const stats = [
+    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase },
+    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen },
+    { label: 'Time with us', value: timeWithUs, icon: Clock },
+    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap },
+  ];
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      {/* Header */}
+      <header className="rounded-xl border bg-card p-5">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+            {p.avatar_url ? (
+              <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-7 w-7 text-primary" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-serif font-bold text-foreground">{p.full_name}</h1>
+              {p.gov_id_verified && (
+                <Badge variant="secondary" className="gap-1 text-[10px]">
+                  <BadgeCheck className="h-3 w-3" /> Verified
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {p.registration_id && <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
+              {p.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
+              {p.whatsapp_number && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
+              {(p.city || p.country) && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {(isSelf || canAdmin) && (
+              <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit profile
+              </Button>
+            )}
+            {canAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={copyOnboardingLink}>
+                <Link2 className="h-3.5 w-3.5" /> Onboarding link
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Stat cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-[11px] uppercase tracking-wide">
+              <s.icon className="h-3.5 w-3.5" /> {s.label}
+            </div>
+            <p className="mt-1.5 text-lg font-bold text-foreground truncate">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card icon={User} title="Personal information">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Full name" value={p.full_name} />
+            <Row label="Email" value={p.email} />
+            <Row label="Phone" value={p.whatsapp_number} />
+            <Row label="Gender" value={p.gender} />
+            <Row label="Date of birth" value={p.date_of_birth ? fmtDate(p.date_of_birth) : '—'} />
+            <Row label="Address" value={p.address} />
+          </div>
+        </Card>
+
+        <Card icon={ShieldCheck} title="Professional information">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Teacher ID" value={p.registration_id} />
+            <Row label="Department" value={p.department} />
+            <Row label="Designation" value={p.designation} />
+            <Row label="Qualification" value={p.qualification} />
+            <Row label="Specialization" value={p.specialization} />
+            <Row label="Experience" value={p.years_experience ? `${p.years_experience} years` : '—'} />
+          </div>
+          {!canAdmin && <p className="text-[10px] text-muted-foreground">Set by admin — read-only.</p>}
+        </Card>
+
+        <Card icon={CalendarDays} title="Employment details">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Joining date" value={p.joining_date ? fmtDate(p.joining_date) : fmtDate(p.created_at)} />
+            <Row label="Employment type" value={p.employment_type} />
+            {canAdmin && (
+              <Row
+                label="Salary"
+                value={data?.salary?.monthly_amount != null ? `PKR ${Number(data.salary.monthly_amount).toLocaleString()}` : '—'}
+              />
+            )}
+            <Row label="Status" value={p.archived_at ? 'Archived' : 'Active'} />
+            <Row label="Account status" value={p.account_status} />
+            <Row label="Email verified" value={p.email ? 'Yes' : 'No'} />
+          </div>
+        </Card>
+
+        <Card
+          icon={Banknote}
+          title="Banking information"
+          action={
+            <div className="flex items-center gap-2">
+              <StatusPill status={p.banking_status} kind="banking" />
+              {canAdmin && p.banking_status !== 'verified' && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setVerification({ banking: 'verified' })}>
+                  Verify
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Bank name" value={data?.sensitive?.bank_name} />
+            <Row label="Account title" value={data?.sensitive?.bank_account_title} />
+            <Row
+              label="Account number"
+              value={
+                data?.sensitive?.bank_account_number ? (
+                  <span className="inline-flex items-center gap-2">
+                    {reveal ? data.sensitive.bank_account_number : mask(data.sensitive.bank_account_number)}
+                    <button type="button" onClick={() => setReveal((v) => !v)} className="text-muted-foreground">
+                      {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </span>
+                ) : null
+              }
+            />
+            <Row label="IBAN" value={reveal ? data?.sensitive?.bank_iban : mask(data?.sensitive?.bank_iban)} />
+          </div>
+        </Card>
+
+        <Card
+          icon={FileText}
+          title="CV / Resume"
+          action={
+            <div className="flex items-center gap-2">
+              <StatusPill status={p.cv_status} kind="cv" />
+              {canAdmin && p.cv_url && p.cv_status !== 'approved' && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setVerification({ cv: 'approved' })}>
+                  Approve
+                </Button>
+              )}
+            </div>
+          }
+        >
+          {p.cv_url ? (
+            <div className="flex items-center gap-3">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm truncate">{p.cv_file_name || 'CV document'}</p>
+                <p className="text-[11px] text-muted-foreground">Uploaded {fmtDate(p.cv_uploaded_at)}</p>
+              </div>
+              <Button size="sm" variant="outline" className="ml-auto h-7 text-xs gap-1" onClick={openCv}>
+                <Download className="h-3 w-3" /> View
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No CV uploaded yet.</p>
+          )}
+          {(isSelf || canAdmin) && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setWizardOpen(true)}>
+              {p.cv_url ? 'Re-upload CV' : 'Upload CV'}
+            </Button>
+          )}
+        </Card>
+
+        <Card icon={Video} title="Communication">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Zoom personal meeting ID" value={p.zoom_personal_id} />
+            <Row label="Zoom email" value={p.zoom_email || p.email} />
+            <Row label="WhatsApp number" value={p.whatsapp_number} />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Reference only — live classes are hosted through the academy Zoom licence pool.
+          </p>
+        </Card>
+      </div>
+
+      <Card icon={BookOpen} title={`Assigned students & subjects (${data?.assignments.length ?? 0})`}>
+        {data?.assignments.length ? (
+          <Accordion type="single" collapsible>
+            {data.assignments.map((a: any) => (
+              <AccordionItem key={a.id} value={a.id}>
+                <AccordionTrigger className="text-sm">
+                  {a.student?.full_name ?? 'Unknown student'}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="text-[10px]">{a.subject?.name ?? 'No subject'}</Badge>
+                    <Link to={`/students?search=${encodeURIComponent(a.student?.full_name ?? '')}`} className="text-primary hover:underline text-xs">
+                      Open student
+                    </Link>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        ) : (
+          <p className="text-sm text-muted-foreground">No active assignments.</p>
+        )}
+      </Card>
+
+      <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Update teacher profile</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <TeacherOnboardingWizard
+            teacherId={teacherId}
+            onCompleted={() => {
+              setWizardOpen(false);
+              qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
