@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
 
       const { data: existing } = await admin
         .from("zoom_accounts")
-        .select("id")
+        .select("id, teacher_id, display_label")
         .ilike("zoom_account_email", email)
         .maybeSingle();
 
@@ -159,20 +159,23 @@ Deno.serve(async (req) => {
         meeting_link: zu.personal_meeting_url || null,
         is_active: true,
         is_shared: true,
-        teacher_id: null,
         shared_purposes: purposes,
         auto_record: zu.type === 2,
-        display_label: body?.label || `Pool seat — ${zu.email}`,
+        display_label: body?.label || existing?.display_label || `Pool seat — ${zu.email}`,
         last_validated_at: new Date().toISOString(),
       };
 
       if (existing) {
+        // Never wipe an existing dedicated teacher link when a seat joins the pool.
+        // Only clear it when the caller explicitly asks to detach the teacher.
+        if (body?.detach_teacher === true) payload.teacher_id = null;
         const { error } = await admin.from("zoom_accounts").update(payload).eq("id", existing.id);
         if (error) return json({ error: error.message }, 400);
       } else {
-        const { error } = await admin.from("zoom_accounts").insert(payload);
+        const { error } = await admin.from("zoom_accounts").insert({ ...payload, teacher_id: null });
         if (error) return json({ error: error.message }, 400);
       }
+
 
       return json({
         success: true,
