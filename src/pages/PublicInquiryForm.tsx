@@ -17,8 +17,8 @@ const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic L
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Mode = 'self' | 'child' | 'other';
-type Student = { id: string; name: string; email: string; age: string; gender: string; subjects: string[]; otherSubject: string; level: string; goals: string; time1: string; note1: string; time2: string; note2: string };
-const newStudent = (): Student => ({ id: crypto.randomUUID(), name: '', email: '', age: '', gender: '', subjects: [], otherSubject: '', level: '', goals: '', time1: '', note1: '', time2: '', note2: '' });
+type Student = { id: string; name: string; email: string; useContactEmail: boolean; age: string; gender: string; subjects: string[]; otherSubject: string; level: string; goals: string; time1: string; note1: string; time2: string; note2: string };
+const newStudent = (): Student => ({ id: crypto.randomUUID(), name: '', email: '', useContactEmail: true, age: '', gender: '', subjects: [], otherSubject: '', level: '', goals: '', time1: '', note1: '', time2: '', note2: '' });
 
 export default function PublicInquiryForm() {
   const [mode, setMode] = useState<Mode | null>(null);
@@ -41,7 +41,7 @@ export default function PublicInquiryForm() {
   const studentValid = (student: Student) => Boolean(
     student.name.trim() && student.subjects.length && student.time1 && student.time2 &&
     (!student.subjects.includes('Other') || student.otherSubject.trim()) &&
-    (isSelf || EMAIL_RE.test(student.email.trim()))
+    (isSelf || student.useContactEmail || EMAIL_RE.test(student.email.trim()))
   );
   const valid = Boolean(
     mode && EMAIL_RE.test(contact.email.trim()) && contact.phone.trim() && contact.country && contact.timezone &&
@@ -52,7 +52,7 @@ export default function PublicInquiryForm() {
     mutationFn: async () => {
       const rows = students.map(student => {
         const preferredTime = `TZ: ${contact.timezone} | Slot 1: ${student.time1}${student.note1 ? ` (${student.note1})` : ''} | Slot 2: ${student.time2}${student.note2 ? ` (${student.note2})` : ''}`;
-        const email = (isSelf ? contact.email : student.email).trim();
+        const email = (isSelf || student.useContactEmail ? contact.email : student.email).trim();
         return {
           name: student.name.trim(), child_name: isSelf ? null : student.name.trim(), child_age: student.age ? Number(student.age) : null,
           child_gender: isSelf ? null : (student.gender || null), gender: student.gender || null, email,
@@ -104,14 +104,17 @@ export default function PublicInquiryForm() {
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><Mail className="h-3.5 w-3.5 mt-0.5 shrink-0" />A valid email is required — demo links, teacher chat and class details are sent there.</p></section>
 
       <section className="border border-border bg-card p-4 space-y-3">
-        {!isSelf && <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Students ({students.length})</h2><p className="text-xs text-muted-foreground">Each student needs their own email and time slots.</p></div><Button type="button" size="sm" variant="outline" onClick={() => { setStudents(current => [...current, newStudent()]); setOpenStudent(students.length); }}><Plus className="h-4 w-4 mr-1" />Add student</Button></div>}
+        {!isSelf && <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Students ({students.length})</h2><p className="text-xs text-muted-foreground">Each student can use the parent email or their own.</p></div><Button type="button" size="sm" variant="outline" onClick={() => { setStudents(current => [...current, newStudent()]); setOpenStudent(students.length); }}><Plus className="h-4 w-4 mr-1" />Add student</Button></div>}
         {isSelf && <h2 className="font-semibold">Your learning details</h2>}
         {students.map((student, index) => { const open = isSelf || openStudent === index; return <div key={student.id} className={cn(!isSelf && 'border', !isSelf && open && 'border-primary')}>
           {!isSelf && <div className="flex items-center"><Button type="button" variant="ghost" className="flex-1 justify-between rounded-none" onClick={() => setOpenStudent(open ? -1 : index)}><span>{student.name || `Student ${index + 1}`}</span><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>{students.length > 1 && <Button type="button" variant="ghost" size="icon" aria-label={`Remove student ${index + 1}`} onClick={() => { setStudents(current => current.filter(item => item.id !== student.id)); setOpenStudent(0); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</div>}
           {open && <div className={cn('space-y-3', !isSelf && 'border-t border-border p-3')}>
             {!isSelf && <>
               <div className="grid grid-cols-[1fr_90px] gap-2"><div><Label>Student name *</Label><Input className="mt-1" value={student.name} onChange={event => patchStudent(student.id, { name: event.target.value })} /></div><div><Label>Age</Label><Input className="mt-1" type="number" min="3" max="99" value={student.age} onChange={event => patchStudent(student.id, { age: event.target.value })} /></div></div>
-              <div><Label>Student email *</Label><Input className="mt-1" type="email" value={student.email} onChange={event => patchStudent(student.id, { email: event.target.value })} placeholder="Used for the demo link & chat" /></div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={student.useContactEmail} onChange={event => patchStudent(student.id, { useContactEmail: event.target.checked })} />Use the parent/guardian email above{contact.email ? ` (${contact.email})` : ''}</label>
+                {!student.useContactEmail && <div><Label>Student email *</Label><Input className="mt-1" type="email" value={student.email} onChange={event => patchStudent(student.id, { email: event.target.value })} placeholder="Used for the demo link & chat" /></div>}
+              </div>
             </>}
             {isSelf && <div><Label>Age</Label><Input className="mt-1 max-w-[120px]" type="number" min="3" max="99" value={student.age} onChange={event => patchStudent(student.id, { age: event.target.value })} /></div>}
             <Select value={student.gender} onValueChange={gender => patchStudent(student.id, { gender })}><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger><SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem></SelectContent></Select>
