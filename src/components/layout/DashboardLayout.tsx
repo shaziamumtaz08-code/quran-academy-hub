@@ -132,6 +132,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Teachers", href: "/people?view=teachers" },
               { label: "Staff", href: "/people?view=staff" },
               { label: "Parents", href: "/people?view=parents" },
+              { label: "Registrations", href: "/people?view=registrations" },
             ],
           },
           {
