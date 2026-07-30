@@ -98,6 +98,13 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">Teacher Details</SheetTitle>
         </SheetHeader>
+        {teacher && (
+          <Button asChild variant="outline" size="sm" className="mt-3 w-full gap-1.5">
+            <Link to={`/teacher-profile/${teacher.id}`}>
+              Open full profile <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
+        )}
 
         {isLoading ? (
           <div className="space-y-4 mt-4">
