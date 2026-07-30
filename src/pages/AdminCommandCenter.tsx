@@ -1,3 +1,4 @@
+import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,7 +87,7 @@ export default function AdminCommandCenter() {
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_SAFE_COLUMNS)
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;

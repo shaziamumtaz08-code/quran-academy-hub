@@ -1,3 +1,4 @@
+import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -146,7 +147,7 @@ export function TeacherOnboardingWizard({ token, teacherId, onCompleted }: Props
         } else if (teacherId) {
           const { data: p, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PROFILE_SAFE_COLUMNS)
             .eq('id', teacherId)
             .maybeSingle();
           if (error) throw error;

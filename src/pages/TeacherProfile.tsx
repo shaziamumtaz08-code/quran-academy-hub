@@ -1,3 +1,4 @@
+import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -78,7 +79,7 @@ export default function TeacherProfile() {
     enabled: !!teacherId,
     queryFn: async () => {
       let profile: any = null;
-      const full = await supabase.from('profiles').select('*').eq('id', teacherId!).maybeSingle();
+      const full = await supabase.from('profiles').select(PROFILE_SAFE_COLUMNS).eq('id', teacherId!).maybeSingle();
       if (full.error) {
         console.error('[TeacherProfile] profiles select * failed', full.error);
         const basic = await supabase
