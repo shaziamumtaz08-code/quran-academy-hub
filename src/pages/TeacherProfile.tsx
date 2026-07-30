@@ -164,65 +164,99 @@ export default function TeacherProfile() {
     else toast({ title: 'Could not open the CV', variant: 'destructive' });
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading || (isFetching && !data)) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-36 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
-  if (!p) return <p className="text-muted-foreground">Teacher profile not found.</p>;
+  if (error) {
+    return (
+      <div className="rounded-xl border bg-card p-6 space-y-3">
+        <h1 className="font-serif text-xl font-bold text-foreground">Could not load this profile</h1>
+        <p className="text-sm text-muted-foreground">{(error as any)?.message ?? 'Unknown error'}</p>
+        <Button asChild variant="outline" size="sm"><Link to="/teachers">Back to teachers</Link></Button>
+      </div>
+    );
+  }
+
+  if (!p) {
+    return (
+      <div className="rounded-xl border bg-card p-6 space-y-3">
+        <h1 className="font-serif text-xl font-bold text-foreground">Teacher profile not found</h1>
+        <p className="text-sm text-muted-foreground">
+          {teacherId
+            ? 'No profile record exists for this teacher, or you do not have permission to view it.'
+            : 'No teacher selected. Open a teacher from the Teachers list.'}
+        </p>
+        <Button asChild variant="outline" size="sm"><Link to="/teachers">Back to teachers</Link></Button>
+      </div>
+    );
+  }
 
   const stats = [
-    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase },
-    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen },
-    { label: 'Time with us', value: timeWithUs, icon: Clock },
-    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap },
+    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase, tone: 'border-l-primary' },
+    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen, tone: 'border-l-teal' },
+    { label: 'Time with us', value: timeWithUs, icon: Clock, tone: 'border-l-amber-500' },
+    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap, tone: 'border-l-accent' },
   ];
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <header className="rounded-xl border bg-card p-5">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
-            {p.avatar_url ? (
-              <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
-            ) : (
-              <User className="h-7 w-7 text-primary" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-serif font-bold text-foreground">{p.full_name}</h1>
-              {p.gov_id_verified && (
-                <Badge variant="secondary" className="gap-1 text-[10px]">
-                  <BadgeCheck className="h-3 w-3" /> Verified
-                </Badge>
+      <Button asChild variant="ghost" size="sm" className="h-7 -ml-2 text-xs gap-1">
+        <Link to="/teachers"><ChevronLeft className="h-3.5 w-3.5" /> Back to all teachers</Link>
+      </Button>
+
+      {/* Hero header */}
+      <header className="rounded-2xl border overflow-hidden bg-card">
+        <div className="h-24 bg-gradient-to-r from-primary via-primary/80 to-accent" />
+        <div className="px-5 pb-5 -mt-10">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="h-20 w-20 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+              {p.avatar_url ? (
+                <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-8 w-8 text-muted-foreground" />
               )}
-              <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
             </div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {p.registration_id && <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
-              {p.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
-              {p.whatsapp_number && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
-              {(p.city || p.country) && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
+            <div className="min-w-0 flex-1 pb-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-serif font-bold text-foreground">{p.full_name}</h1>
+                {p.gov_id_verified && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <BadgeCheck className="h-3 w-3" /> Verified
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {p.registration_id && <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
+                {p.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
+                {p.whatsapp_number && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
+                {(p.city || p.country) && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2">
-            {(isSelf || canAdmin) && (
-              <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" /> Edit profile
-              </Button>
-            )}
-            {canAdmin && (
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={copyOnboardingLink}>
-                <Link2 className="h-3.5 w-3.5" /> Onboarding link
-              </Button>
-            )}
+            <div className="flex gap-2 pb-1">
+              {(isSelf || canAdmin) && (
+                <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit profile
+                </Button>
+              )}
+              {p.email && (
+                <Button asChild size="sm" variant="outline" className="gap-1.5">
+                  <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
+                </Button>
+              )}
+              {canAdmin && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={copyOnboardingLink}>
+                  <Link2 className="h-3.5 w-3.5" /> Onboarding link
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -230,11 +264,12 @@ export default function TeacherProfile() {
       {/* Stat cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border bg-card p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-[11px] uppercase tracking-wide">
-              <s.icon className="h-3.5 w-3.5" /> {s.label}
+          <div key={s.label} className={`rounded-xl border border-l-4 ${s.tone} bg-card p-4`}>
+            <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center mb-2">
+              <s.icon className="h-4 w-4 text-primary" />
             </div>
-            <p className="mt-1.5 text-lg font-bold text-foreground truncate">{s.value}</p>
+            <p className="text-2xl font-black text-foreground truncate">{s.value}</p>
+            <p className="text-[11px] text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
