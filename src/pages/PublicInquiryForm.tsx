@@ -111,7 +111,10 @@ export default function PublicInquiryForm() {
           {open && <div className={cn('space-y-3', !isSelf && 'border-t border-border p-3')}>
             {!isSelf && <>
               <div className="grid grid-cols-[1fr_90px] gap-2"><div><Label>Student name *</Label><Input className="mt-1" value={student.name} onChange={event => patchStudent(student.id, { name: event.target.value })} /></div><div><Label>Age</Label><Input className="mt-1" type="number" min="3" max="99" value={student.age} onChange={event => patchStudent(student.id, { age: event.target.value })} /></div></div>
-              <div><Label>Student email *</Label><Input className="mt-1" type="email" value={student.email} onChange={event => patchStudent(student.id, { email: event.target.value })} placeholder="Used for the demo link & chat" /></div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={student.useContactEmail} onChange={event => patchStudent(student.id, { useContactEmail: event.target.checked })} />Use the parent/guardian email above{contact.email ? ` (${contact.email})` : ''}</label>
+                {!student.useContactEmail && <div><Label>Student email *</Label><Input className="mt-1" type="email" value={student.email} onChange={event => patchStudent(student.id, { email: event.target.value })} placeholder="Used for the demo link & chat" /></div>}
+              </div>
             </>}
             {isSelf && <div><Label>Age</Label><Input className="mt-1 max-w-[120px]" type="number" min="3" max="99" value={student.age} onChange={event => patchStudent(student.id, { age: event.target.value })} /></div>}
             <Select value={student.gender} onValueChange={gender => patchStudent(student.id, { gender })}><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger><SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem></SelectContent></Select>
