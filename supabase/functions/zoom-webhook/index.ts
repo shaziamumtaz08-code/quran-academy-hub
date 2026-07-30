@@ -362,7 +362,7 @@ async function getMonitorTeacherId(supabase: any, licenseId: string): Promise<st
 async function resolveDedicatedAccount(
   supabase: any,
   hostId: string | undefined,
-): Promise<{ id: string; teacher_id: string; zoom_account_email: string; tier: string } | null> {
+): Promise<{ id: string; teacher_id: string | null; zoom_account_email: string; tier: string } | null> {
   if (!hostId) return null;
   const { data } = await supabase
     .from("zoom_accounts")
