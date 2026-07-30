@@ -11992,6 +11992,19 @@ export type Database = {
       }
       get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
       get_demo_chat: { Args: { _token: string }; Returns: Json }
+      get_kit_quiz_questions_for_student: {
+        Args: { _kit_id: string }
+        Returns: {
+          blooms_level: string
+          difficulty: string
+          id: string
+          kit_id: string
+          options: Json
+          question: string
+          question_index: number
+          type: string
+        }[]
+      }
       get_my_sensitive_profile: {
         Args: never
         Returns: {
