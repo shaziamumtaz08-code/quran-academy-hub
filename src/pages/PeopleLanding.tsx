@@ -111,6 +111,7 @@ export default function PeopleLanding() {
     staff: <Suspense fallback={<Loading />}><UserManagement /></Suspense>,
     leads: <Suspense fallback={<Loading />}><LeadsPipeline /></Suspense>,
     parents: <Suspense fallback={<Loading />}><Parents /></Suspense>,
+    registrations: <Suspense fallback={<Loading />}><FamilyRegistrations /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/people?view=students" replace />;
