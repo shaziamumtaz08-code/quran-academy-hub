@@ -52,7 +52,7 @@ export default function PublicInquiryForm() {
     mutationFn: async () => {
       const rows = students.map(student => {
         const preferredTime = `TZ: ${contact.timezone} | Slot 1: ${student.time1}${student.note1 ? ` (${student.note1})` : ''} | Slot 2: ${student.time2}${student.note2 ? ` (${student.note2})` : ''}`;
-        const email = (isSelf ? contact.email : student.email).trim();
+        const email = (isSelf || student.useContactEmail ? contact.email : student.email).trim();
         return {
           name: student.name.trim(), child_name: isSelf ? null : student.name.trim(), child_age: student.age ? Number(student.age) : null,
           child_gender: isSelf ? null : (student.gender || null), gender: student.gender || null, email,
