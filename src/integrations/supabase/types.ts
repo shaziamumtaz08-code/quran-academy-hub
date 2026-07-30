@@ -4061,6 +4061,92 @@ export type Database = {
           },
         ]
       }
+      family_registrations: {
+        Row: {
+          address: string | null
+          children: Json
+          city: string | null
+          country: string | null
+          created_at: string
+          created_profile_ids: string[]
+          email: string
+          id: string
+          lead_id: string | null
+          notes: string | null
+          occupation: string | null
+          parent_name: string
+          phone: string
+          preferred_contact: string | null
+          registration_type: string
+          relationship: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_url: string | null
+          status: string
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          children?: Json
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_profile_ids?: string[]
+          email: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          occupation?: string | null
+          parent_name: string
+          phone: string
+          preferred_contact?: string | null
+          registration_type?: string
+          relationship?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          children?: Json
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_profile_ids?: string[]
+          email?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          occupation?: string | null
+          parent_name?: string
+          phone?: string
+          preferred_contact?: string | null
+          registration_type?: string
+          relationship?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_registrations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_invoices: {
         Row: {
           amount: number
@@ -12278,6 +12364,10 @@ export type Database = {
           id: string
           name: string
         }[]
+      }
+      lookup_family_prefill: {
+        Args: { _email: string; _phone: string }
+        Returns: Json
       }
       normalize_phone: {
         Args: { p_country: string; raw_phone: string }
