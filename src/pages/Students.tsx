@@ -27,7 +27,7 @@ import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import TeacherSchedulesView from '@/components/teacher/TeacherSchedulesView';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { useToast } from '@/hooks/use-toast';
@@ -712,6 +712,7 @@ export default function Students() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" asChild><Link to={`/student-profile/${student.id}`}>Profile</Link></Button>
                           <Button size="sm" variant="ghost" onClick={() => setAttendanceStudent(student)}>Attendance</Button>
                           <Button size="sm" variant="ghost" onClick={() => setScheduleStudent(student)}>Schedule</Button>
                           <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)}>History</Button>
@@ -797,7 +798,7 @@ export default function Students() {
                       <TableCell>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{student.full_name}</span>
+                            <Link to={`/student-profile/${student.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
                             {isAdmin && authStatusMap[student.id] === false && (
                               <Badge
                                 variant="destructive"

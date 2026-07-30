@@ -14,6 +14,7 @@ import {
   AlertTriangle, UserCheck, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 
@@ -309,7 +310,7 @@ function GuardianList({
         <Card key={p.id} className="p-4 flex items-center gap-4 flex-wrap md:flex-nowrap">
           <div className="flex-1 min-w-[200px]">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-foreground">{p.full_name || 'Unnamed'}</span>
+              <Link to={`/parent-profile/${p.id}`} className="font-bold text-foreground hover:text-primary hover:underline">{p.full_name || 'Unnamed'}</Link>
               <Badge variant="outline" className="capitalize text-[10px]">
                 {(p.guardian_type || 'parent').replace('_', ' ')}
               </Badge>
