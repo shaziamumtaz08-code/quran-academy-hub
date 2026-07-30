@@ -593,6 +593,12 @@ export default function Teachers() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/teacher-profile/${teacher.id}`}>
+                                <IdCard className="h-4 w-4 mr-2" />
+                                View profile
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(teacher)}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
