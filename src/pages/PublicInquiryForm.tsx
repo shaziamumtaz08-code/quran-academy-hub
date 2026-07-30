@@ -41,7 +41,7 @@ export default function PublicInquiryForm() {
   const studentValid = (student: Student) => Boolean(
     student.name.trim() && student.subjects.length && student.time1 && student.time2 &&
     (!student.subjects.includes('Other') || student.otherSubject.trim()) &&
-    (isSelf || EMAIL_RE.test(student.email.trim()))
+    (isSelf || student.useContactEmail || EMAIL_RE.test(student.email.trim()))
   );
   const valid = Boolean(
     mode && EMAIL_RE.test(contact.email.trim()) && contact.phone.trim() && contact.country && contact.timezone &&
