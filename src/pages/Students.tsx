@@ -798,7 +798,7 @@ export default function Students() {
                       <TableCell>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{student.full_name}</span>
+                            <Link to={`/student-profile/${student.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
                             {isAdmin && authStatusMap[student.id] === false && (
                               <Badge
                                 variant="destructive"
