@@ -12,10 +12,11 @@ const Students = lazy(() => import('./Students'));
 const UserManagement = lazy(() => import('./UserManagement'));
 const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
 const Parents = lazy(() => import('./Parents'));
+const FamilyRegistrations = lazy(() => import('./FamilyRegistrations'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
-const views = ['students', 'teachers', 'staff', 'parents', 'leads'] as const;
+const views = ['students', 'teachers', 'staff', 'parents', 'leads', 'registrations'] as const;
 
 export default function PeopleLanding() {
   const { activeDivision } = useDivision();
