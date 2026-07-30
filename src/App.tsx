@@ -507,6 +507,10 @@ function AppRoutes() {
       <Route path="/course/:slug" element={<PublicCoursePage />} />
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
       <Route path="/inquiry" element={<PublicInquiryForm />} />
+      <Route path="/register/family" element={<ParentRegistration />} />
+      <Route path="/register/parent" element={<ParentRegistration />} />
+      <Route path="/register/parent/:token" element={<ParentRegistration />} />
+      <Route path="/admin/family-registrations" element={<ProtectedRoute><DashboardLayout><FamilyRegistrations /></DashboardLayout></ProtectedRoute>} />
       <Route path="/demo/:token" element={<PublicDemoView />} />
       <Route path="/courses-catalog" element={<CourseCatalog />} />
       <Route path="/recorded-courses" element={<RecordedCourses />} />
