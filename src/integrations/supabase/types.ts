@@ -6616,25 +6616,35 @@ export type Database = {
       profiles: {
         Row: {
           account_status: string | null
+          address: string | null
           age: number | null
           arabic_level: string | null
           archived_at: string | null
+          avatar_url: string | null
           bank_account_number: string | null
           bank_account_title: string | null
           bank_iban: string | null
           bank_name: string | null
+          banking_status: Database["public"]["Enums"]["banking_verify_status"]
           city: string | null
           country: string | null
           country_code: string | null
           created_at: string
+          cv_file_name: string | null
+          cv_status: Database["public"]["Enums"]["cv_review_status"]
+          cv_uploaded_at: string | null
+          cv_url: string | null
           daily_target_amount: number
           daily_target_lines: number
           date_of_birth: string | null
           default_payout_rate: number | null
+          department: string | null
+          designation: string | null
           display_name: string | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          employment_type: string | null
           first_language: string | null
           force_password_reset: boolean | null
           full_name: string
@@ -6650,42 +6660,60 @@ export type Database = {
             | null
           hear_about_us: string | null
           id: string
+          joining_date: string | null
           learning_goals: string | null
           meeting_link: string | null
           mushaf_type: string
           nationality: string | null
+          onboarding_completed_at: string | null
+          onboarding_token: string | null
           preferred_contact_method: string | null
           preferred_language: string | null
           preferred_unit: string
+          qualification: string | null
           region: string | null
           registration_id: string | null
           special_needs: string | null
+          specialization: string | null
           teaching_os_language: string
           timezone: string | null
           updated_at: string
           whatsapp_number: string | null
+          years_experience: number | null
+          zoom_email: string | null
+          zoom_personal_id: string | null
         }
         Insert: {
           account_status?: string | null
+          address?: string | null
           age?: number | null
           arabic_level?: string | null
           archived_at?: string | null
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_account_title?: string | null
           bank_iban?: string | null
           bank_name?: string | null
+          banking_status?: Database["public"]["Enums"]["banking_verify_status"]
           city?: string | null
           country?: string | null
           country_code?: string | null
           created_at?: string
+          cv_file_name?: string | null
+          cv_status?: Database["public"]["Enums"]["cv_review_status"]
+          cv_uploaded_at?: string | null
+          cv_url?: string | null
           daily_target_amount?: number
           daily_target_lines?: number
           date_of_birth?: string | null
           default_payout_rate?: number | null
+          department?: string | null
+          designation?: string | null
           display_name?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          employment_type?: string | null
           first_language?: string | null
           force_password_reset?: boolean | null
           full_name: string
@@ -6701,42 +6729,60 @@ export type Database = {
             | null
           hear_about_us?: string | null
           id?: string
+          joining_date?: string | null
           learning_goals?: string | null
           meeting_link?: string | null
           mushaf_type?: string
           nationality?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_token?: string | null
           preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
+          qualification?: string | null
           region?: string | null
           registration_id?: string | null
           special_needs?: string | null
+          specialization?: string | null
           teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
+          years_experience?: number | null
+          zoom_email?: string | null
+          zoom_personal_id?: string | null
         }
         Update: {
           account_status?: string | null
+          address?: string | null
           age?: number | null
           arabic_level?: string | null
           archived_at?: string | null
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_account_title?: string | null
           bank_iban?: string | null
           bank_name?: string | null
+          banking_status?: Database["public"]["Enums"]["banking_verify_status"]
           city?: string | null
           country?: string | null
           country_code?: string | null
           created_at?: string
+          cv_file_name?: string | null
+          cv_status?: Database["public"]["Enums"]["cv_review_status"]
+          cv_uploaded_at?: string | null
+          cv_url?: string | null
           daily_target_amount?: number
           daily_target_lines?: number
           date_of_birth?: string | null
           default_payout_rate?: number | null
+          department?: string | null
+          designation?: string | null
           display_name?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          employment_type?: string | null
           first_language?: string | null
           force_password_reset?: boolean | null
           full_name?: string
@@ -6752,20 +6798,28 @@ export type Database = {
             | null
           hear_about_us?: string | null
           id?: string
+          joining_date?: string | null
           learning_goals?: string | null
           meeting_link?: string | null
           mushaf_type?: string
           nationality?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_token?: string | null
           preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
+          qualification?: string | null
           region?: string | null
           registration_id?: string | null
           special_needs?: string | null
+          specialization?: string | null
           teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
+          years_experience?: number | null
+          zoom_email?: string | null
+          zoom_personal_id?: string | null
         }
         Relationships: []
       }
@@ -11796,6 +11850,10 @@ export type Database = {
     }
     Functions: {
       accept_quiz_invite: { Args: { _token: string }; Returns: string }
+      admin_generate_onboarding_token: {
+        Args: { _teacher_id: string }
+        Returns: string
+      }
       admin_get_organization_settings: {
         Args: { _org_id: string }
         Returns: Json
@@ -11813,6 +11871,14 @@ export type Database = {
           gov_id_number: string
           gov_id_type: string
         }[]
+      }
+      admin_set_teacher_verification: {
+        Args: {
+          _banking?: Database["public"]["Enums"]["banking_verify_status"]
+          _cv?: Database["public"]["Enums"]["cv_review_status"]
+          _teacher_id: string
+        }
+        Returns: undefined
       }
       admin_update_organization_settings: {
         Args: { _org_id: string; _settings: Json }
@@ -12331,8 +12397,10 @@ export type Database = {
         | "admin_division"
       assignment_status: "active" | "on_hold" | "completed" | "left"
       attendance_action: "join_intent" | "leave"
+      banking_verify_status: "not_provided" | "pending" | "verified"
       billing_cycle: "monthly" | "quarterly" | "one_time"
       branch_type: "online" | "onsite"
+      cv_review_status: "not_provided" | "pending" | "approved"
       discount_type: "percentage" | "fixed_amount"
       division_model: "one_to_one" | "group"
       eligibility_rule_type:
@@ -12563,8 +12631,10 @@ export const Constants = {
       ],
       assignment_status: ["active", "on_hold", "completed", "left"],
       attendance_action: ["join_intent", "leave"],
+      banking_verify_status: ["not_provided", "pending", "verified"],
       billing_cycle: ["monthly", "quarterly", "one_time"],
       branch_type: ["online", "onsite"],
+      cv_review_status: ["not_provided", "pending", "approved"],
       discount_type: ["percentage", "fixed_amount"],
       division_model: ["one_to_one", "group"],
       eligibility_rule_type: [
