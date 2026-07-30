@@ -712,6 +712,7 @@ export default function Students() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" asChild><Link to={`/student-profile/${student.id}`}>Profile</Link></Button>
                           <Button size="sm" variant="ghost" onClick={() => setAttendanceStudent(student)}>Attendance</Button>
                           <Button size="sm" variant="ghost" onClick={() => setScheduleStudent(student)}>Schedule</Button>
                           <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)}>History</Button>
