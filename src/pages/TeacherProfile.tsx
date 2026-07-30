@@ -14,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
 import {
-  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, Clock, Copy, Download,
+  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, ChevronLeft, Clock, Download,
   Eye, EyeOff, FileText, GraduationCap, Link2, Mail, MapPin, Pencil, Phone,
   ShieldCheck, User, Video,
 } from 'lucide-react';
