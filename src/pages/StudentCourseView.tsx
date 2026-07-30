@@ -270,7 +270,7 @@ export default function StudentCourseView() {
       const [{ data: slides }, { data: flashcards }, { data: quizQs }] = await Promise.all([
         supabase.from('slides').select('*').eq('kit_id', kitId).order('sort_order'),
         supabase.from('flashcards').select('*').eq('kit_id', kitId).order('sort_order'),
-        supabase.from('quiz_questions').select('*').eq('kit_id', kitId).order('sort_order'),
+        supabase.rpc('get_kit_quiz_questions_for_student', { _kit_id: kitId }),
       ]);
       return { slides: slides || [], flashcards: flashcards || [], quizQuestions: quizQs || [] };
     },
