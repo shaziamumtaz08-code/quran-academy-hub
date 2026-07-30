@@ -64,25 +64,33 @@ function Row({ label, value }: { label: string; value?: React.ReactNode }) {
 
 export default function TeacherProfile() {
   const { teacherId: paramId } = useParams<{ teacherId: string }>();
-  const { profile: me, isAdmin, isSuperAdmin } = useAuth() as any;
+  const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const teacherId = paramId ?? me?.id;
-  const canAdmin = !!(isAdmin || isSuperAdmin);
+  const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const isSelf = teacherId === me?.id;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['teacher-profile-page', teacherId],
     enabled: !!teacherId,
     queryFn: async () => {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', teacherId!)
-        .maybeSingle();
-      if (error) throw error;
+      let profile: any = null;
+      const full = await supabase.from('profiles').select('*').eq('id', teacherId!).maybeSingle();
+      if (full.error) {
+        console.error('[TeacherProfile] profiles select * failed', full.error);
+        const basic = await supabase
+          .from('profiles')
+          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id')
+          .eq('id', teacherId!)
+          .maybeSingle();
+        if (basic.error) throw basic.error;
+        profile = basic.data;
+      } else {
+        profile = full.data;
+      }
 
       const { data: sensitive } = await (supabase as any)
         .from('profile_sensitive_data')
@@ -104,7 +112,7 @@ export default function TeacherProfile() {
         .eq('teacher_id', teacherId!)
         .eq('status', 'active');
 
-      return { profile: profile as any, sensitive, salary, assignments: assignments ?? [] };
+      return { profile, sensitive, salary, assignments: assignments ?? [] };
     },
   });
 
