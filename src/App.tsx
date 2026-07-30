@@ -83,6 +83,8 @@ const WorkHub = lazy(() => import("./pages/WorkHub"));
 const LeadsPipeline = lazy(() => import("./pages/LeadsPipeline"));
 const EnrollmentForm = lazy(() => import("./pages/EnrollmentForm"));
 const PublicInquiryForm = lazy(() => import("./pages/PublicInquiryForm"));
+const ParentRegistration = lazy(() => import("./pages/ParentRegistration"));
+const FamilyRegistrations = lazy(() => import("./pages/FamilyRegistrations"));
 const StudentCourseView = lazy(() => import("./pages/StudentCourseView"));
 const MyCourses = lazy(() => import("./pages/MyCourses"));
 const Recordings = lazy(() => import("./pages/Recordings"));
