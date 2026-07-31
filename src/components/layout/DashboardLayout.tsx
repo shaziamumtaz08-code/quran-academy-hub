@@ -594,7 +594,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <DropdownMenuContent align="end" side={collapsed ? "right" : "top"} className="w-56">
             <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { navigate("/dashboard"); closeMobileDrawer(); }}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { navigate("/my-profile"); closeMobileDrawer(); }}>My profile</DropdownMenuItem>
             {profile?.roles && profile.roles.length > 1
               ? profile.roles.map((role) => (
                   <DropdownMenuItem
