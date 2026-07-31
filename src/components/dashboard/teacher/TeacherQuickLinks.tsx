@@ -28,9 +28,9 @@ export function TeacherQuickLinks() {
     { icon: AlertTriangle,  label: 'Missing',         tone: 'coral',  onClick: () => navigate('/attendance?tab=1on1&filter=missing') },
     { icon: Wallet,         label: 'My salary',       tone: 'purple', onClick: () => navigate('/salary') },
     { icon: Globe,          label: 'My network',      tone: 'gray',   onClick: () => navigate(`/connections/teacher/${user?.id}`) },
-    { icon: CalendarOff,    label: 'Request leave',   tone: 'amber',  onClick: () => navigate('/leaves') },
+    { icon: CalendarOff,    label: 'Request leave',   tone: 'amber',  onClick: () => navigate('/work-hub?tab=leave') },
     { icon: BookOpen,       label: 'Library',         tone: 'blue',   onClick: () => navigate('/library') },
-    { icon: ClipboardList,  label: 'Fill plan',       tone: 'teal',   onClick: () => navigate('/planning') },
+    { icon: ClipboardList,  label: 'Fill plan',       tone: 'teal',   onClick: () => navigate('/monthly-planning') },
   ];
 
   return (
