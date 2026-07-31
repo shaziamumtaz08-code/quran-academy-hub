@@ -693,7 +693,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>Profile</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/my-profile")}>My profile</DropdownMenuItem>
                   {profile?.roles && profile.roles.length > 1
                     ? profile.roles.map((role) => (
                         <DropdownMenuItem
