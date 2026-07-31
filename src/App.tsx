@@ -58,6 +58,7 @@ const TeacherNazraDashboard = lazy(() => import("./pages/TeacherNazraDashboard")
 const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
 const TeacherProfile = lazy(() => import("./pages/TeacherProfile"));
 const StudentProfile = lazy(() => import("./pages/StudentProfile"));
+const MyProfile = lazy(() => import("./pages/MyProfile"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const Subjects = lazy(() => import("./pages/Subjects"));
@@ -455,8 +456,11 @@ function AppRoutes() {
       <Route path="/teacher-profile/:teacherId" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/onboard/:token" element={<TeacherOnboarding />} />
       <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><Students /></RouteGuard></ProtectedRoute>} />
+      <Route path="/student-profile" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/student-profile/:studentId" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/parent-profile" element={<ProtectedRoute><DashboardLayout><ParentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/parent-profile/:parentId" element={<ProtectedRoute><DashboardLayout><ParentProfile /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/my-profile" element={<ProtectedRoute><DashboardLayout><MyProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><RouteGuard moduleId="attendance"><Attendance /></RouteGuard></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><RouteGuard moduleId="lessons"><Lessons /></RouteGuard></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><RouteGuard moduleId="reports"><DashboardLayout><Reports /></DashboardLayout></RouteGuard></ProtectedRoute>} />

@@ -93,7 +93,7 @@ export default function AdminCommandCenter() {
       if (profilesError) throw profilesError;
 
       const usersWithRoles = await Promise.all(
-        (profiles || []).map(async (profile) => {
+        ((profiles || []) as any[]).map(async (profile: any) => {
           const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
