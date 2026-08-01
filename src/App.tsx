@@ -61,6 +61,8 @@ const StudentProfile = lazy(() => import("./pages/StudentProfile"));
 const MyProfile = lazy(() => import("./pages/MyProfile"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
+const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
+
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
 const ZoomVault = lazy(() => import("./pages/ZoomVault"));
