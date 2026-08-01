@@ -39,8 +39,8 @@ function StatusPill({ status, kind }: { status?: string | null; kind: 'banking' 
 
 function Card({ icon: Icon, title, action, children }: any) {
   return (
-    <section className="rounded-xl border bg-card p-5 space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <section className="rounded-xl border bg-card overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-5 py-3">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <Icon className="h-4 w-4 text-primary" />
@@ -49,19 +49,20 @@ function Card({ icon: Icon, title, action, children }: any) {
         </div>
         {action}
       </div>
-      {children}
+      <div className="p-5 space-y-4">{children}</div>
     </section>
   );
 }
 
 function Row({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground break-words">{value || '—'}</p>
+    <div className="space-y-1">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground break-words">{value || <span className="text-muted-foreground font-normal">—</span>}</p>
     </div>
   );
 }
+
 
 export default function TeacherProfile() {
   const { teacherId: paramId } = useParams<{ teacherId: string }>();
