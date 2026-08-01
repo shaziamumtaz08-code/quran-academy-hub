@@ -144,18 +144,8 @@ export default function TeacherProfile() {
     qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] });
   };
 
-  const copyOnboardingLink = async () => {
-    const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', {
-      _teacher_id: teacherId,
-    });
-    if (error || !token) {
-      toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
-      return;
-    }
-    const url = `${window.location.origin}/onboard/${token}`;
-    await navigator.clipboard.writeText(url).catch(() => undefined);
-    toast({ title: 'Onboarding link copied', description: url });
-  };
+  // Onboarding links are generated from User Management (admin), not the profile.
+
 
   const openCv = async () => {
     if (!p?.cv_url) return;
