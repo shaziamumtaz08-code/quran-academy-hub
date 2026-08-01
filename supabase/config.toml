@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.zoom-webhook-recording-complete]
 verify_jwt = false
+
+[functions.student-onboarding]
+verify_jwt = false
