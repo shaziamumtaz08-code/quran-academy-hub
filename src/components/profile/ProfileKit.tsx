@@ -4,12 +4,58 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, User as UserIcon } from 'lucide-react';
 
-export const toneMap: Record<string, { border: string; bg: string; text: string }> = {
-  primary: { border: 'border-l-primary', bg: 'bg-primary/10', text: 'text-primary' },
-  teal: { border: 'border-l-teal-500', bg: 'bg-teal-500/10', text: 'text-teal-600' },
-  amber: { border: 'border-l-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-600' },
-  violet: { border: 'border-l-violet-500', bg: 'bg-violet-500/10', text: 'text-violet-600' },
-  rose: { border: 'border-l-rose-500', bg: 'bg-rose-500/10', text: 'text-rose-600' },
+export const toneMap: Record<
+  string,
+  { border: string; bg: string; text: string; ring: string; head: string; glow: string }
+> = {
+  primary: {
+    border: 'border-l-primary',
+    bg: 'bg-primary/10',
+    text: 'text-primary',
+    ring: 'ring-primary/20',
+    head: 'from-primary/12 via-primary/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_hsl(var(--primary)/0.55)]',
+  },
+  teal: {
+    border: 'border-l-teal-500',
+    bg: 'bg-teal-500/10',
+    text: 'text-teal-600',
+    ring: 'ring-teal-500/20',
+    head: 'from-teal-500/12 via-teal-500/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_rgba(20,184,166,0.55)]',
+  },
+  amber: {
+    border: 'border-l-amber-500',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600',
+    ring: 'ring-amber-500/20',
+    head: 'from-amber-500/12 via-amber-500/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_rgba(245,158,11,0.55)]',
+  },
+  violet: {
+    border: 'border-l-violet-500',
+    bg: 'bg-violet-500/10',
+    text: 'text-violet-600',
+    ring: 'ring-violet-500/20',
+    head: 'from-violet-500/12 via-violet-500/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_rgba(139,92,246,0.55)]',
+  },
+  rose: {
+    border: 'border-l-rose-500',
+    bg: 'bg-rose-500/10',
+    text: 'text-rose-600',
+    ring: 'ring-rose-500/20',
+    head: 'from-rose-500/12 via-rose-500/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_rgba(244,63,94,0.55)]',
+  },
+  sky: {
+    border: 'border-l-sky-500',
+    bg: 'bg-sky-500/10',
+    text: 'text-sky-600',
+    ring: 'ring-sky-500/20',
+    head: 'from-sky-500/12 via-sky-500/5 to-transparent',
+    glow: 'shadow-[0_10px_30px_-16px_rgba(14,165,233,0.55)]',
+  },
 };
 
 export function BackLink({ to, label }: { to: string; label: string }) {
@@ -38,15 +84,18 @@ export function ProfileHero({
   gradient?: string;
 }) {
   return (
-    <header className="rounded-2xl border overflow-hidden bg-card">
-      <div className={`h-24 bg-gradient-to-r ${gradient}`} />
-      <div className="px-5 pb-5 -mt-10">
+    <header className="rounded-2xl border bg-card overflow-hidden shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
+      <div className={`relative h-32 bg-gradient-to-br ${gradient}`}>
+        <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
+        <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/15 to-transparent" />
+      </div>
+      <div className="px-5 pb-5 -mt-12">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="h-20 w-20 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+          <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
             {avatarUrl ? (
               <img src={avatarUrl} alt={`${name} profile photo`} className="h-full w-full object-cover" />
             ) : (
-              <UserIcon className="h-8 w-8 text-muted-foreground" />
+              <UserIcon className="h-9 w-9 text-muted-foreground" />
             )}
           </div>
           <div className="min-w-0 flex-1 pb-1">
@@ -55,7 +104,7 @@ export function ProfileHero({
               {badges}
             </div>
             {meta && (
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{meta}</div>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{meta}</div>
             )}
           </div>
           {actions && <div className="flex flex-wrap gap-2 pb-1">{actions}</div>}
@@ -75,12 +124,17 @@ export function StatTiles({
       {stats.map((s) => {
         const tone = toneMap[s.tone ?? 'primary'];
         return (
-          <div key={s.label} className={`rounded-xl border border-l-4 ${tone.border} bg-card p-4`}>
-            <div className={`h-8 w-8 rounded-lg ${tone.bg} flex items-center justify-center mb-2`}>
+          <div
+            key={s.label}
+            className={`group relative overflow-hidden rounded-2xl border border-l-4 ${tone.border} bg-gradient-to-br ${tone.head} bg-card p-4 ${tone.glow} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg`}
+          >
+            <div
+              className={`h-9 w-9 rounded-xl ${tone.bg} ring-1 ${tone.ring} flex items-center justify-center mb-2.5 shadow-sm`}
+            >
               <s.icon className={`h-4 w-4 ${tone.text}`} />
             </div>
-            <p className="text-xl font-black text-foreground truncate">{s.value}</p>
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            <p className="text-2xl font-black tracking-tight text-foreground truncate">{s.value}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
           </div>
         );
       })}
@@ -94,19 +148,23 @@ export function InfoCard({
   tone = 'primary',
   action,
   children,
+  className,
 }: {
   icon: any;
   title: string;
   tone?: keyof typeof toneMap;
   action?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }) {
   const t = toneMap[tone];
   return (
-    <section className="rounded-xl border bg-card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-5 py-3">
+    <section
+      className={`rounded-2xl border bg-card overflow-hidden ${t.glow} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${className ?? ''}`}
+    >
+      <div className={`flex items-center justify-between gap-3 border-b bg-gradient-to-r ${t.head} px-5 py-3.5`}>
         <div className="flex items-center gap-2.5">
-          <div className={`h-8 w-8 rounded-lg ${t.bg} flex items-center justify-center`}>
+          <div className={`h-9 w-9 rounded-xl ${t.bg} ring-1 ${t.ring} flex items-center justify-center shadow-sm`}>
             <Icon className={`h-4 w-4 ${t.text}`} />
           </div>
           <h2 className="font-semibold text-foreground">{title}</h2>
@@ -128,7 +186,7 @@ export function InfoRow({
   value?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-3">
+    <div className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-muted/40">
       <span className="flex items-center gap-2 text-sm text-muted-foreground">
         {Icon && <Icon className="h-4 w-4 opacity-70" />}
         {label}
