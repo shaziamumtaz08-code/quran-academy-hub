@@ -68,4 +68,11 @@ export const PROFILE_SAFE_COLUMNS = [
   'banking_status',
   'bank_account_title',
   'onboarding_completed_at',
+  // student detail fields
+  'blood_group',
+  'medical_conditions',
+  'medical_notes',
+  'school_name',
+  'grade_level',
 ].join(', ');
+
