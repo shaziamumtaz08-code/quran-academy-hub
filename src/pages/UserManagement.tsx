@@ -104,7 +104,7 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Info, Video, Presentation, ClipboardCheck, UserCircle2, Power } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Info, Video, Presentation, ClipboardCheck, UserCircle2, Power, Link2 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -2415,6 +2415,30 @@ export default function UserManagement() {
 
                                {/* Login as user — super_admin & admin only, opens in a new tab */}
                                <ImpersonateButton userId={user.id} userLabel={user.full_name || user.email || 'user'} />
+
+                               {/* Onboarding link — teachers only, admins only */}
+                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
+                                 (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'teacher') && (
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     title="Copy onboarding link"
+                                     onClick={async () => {
+                                       const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', { _teacher_id: user.id });
+                                       if (error || !token) {
+                                         toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                         return;
+                                       }
+                                       const url = `${window.location.origin}/onboard/${token}`;
+                                       await navigator.clipboard.writeText(url).catch(() => undefined);
+                                       toast({ title: 'Onboarding link copied', description: url });
+                                     }}
+                                   >
+                                     <Link2 className="h-4 w-4" />
+                                   </Button>
+                                 )}
+
+
 
 
 
