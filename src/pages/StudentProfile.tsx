@@ -10,8 +10,8 @@ import {
   BackLink, ProfileHero, StatTiles, InfoCard, InfoRow, StatusBadge, EmptyState,
 } from '@/components/profile/ProfileKit';
 import {
-  BadgeCheck, BookOpen, CalendarDays, Clock, GraduationCap, Globe, HeartPulse,
-  Mail, MapPin, Phone, ShieldCheck, Target, User, Users, IdCard, Languages,
+  BadgeCheck, BookOpen, CalendarDays, Clock, Droplet, GraduationCap, Globe, HeartPulse,
+  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
@@ -52,7 +52,7 @@ export default function StudentProfile() {
 
       const { data: links } = await supabase
         .from('student_parent_links')
-        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url)')
+        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url, whatsapp_number)')
         .eq('student_id', studentId!);
 
       const { data: assignments } = await supabase
@@ -100,7 +100,7 @@ export default function StudentProfile() {
       <ProfileHero
         name={p.full_name ?? 'Unnamed student'}
         avatarUrl={p.avatar_url}
-        gradient="from-primary via-primary/80 to-teal-500"
+        gradient="from-primary via-sky-500 to-teal-500"
         badges={
           <>
             {p.gov_id_verified && (
@@ -138,7 +138,7 @@ export default function StudentProfile() {
           { label: 'Active subjects', value: teachers.length, icon: BookOpen, tone: 'primary' },
           { label: 'Guardians linked', value: data!.links.length, icon: Users, tone: 'teal' },
           { label: 'Time with us', value: monthsSince(p.created_at), icon: Clock, tone: 'violet' },
-          { label: 'Daily target', value: p.daily_target_amount ?? p.daily_target_lines ?? '—', icon: Target, tone: 'amber' },
+          { label: 'Blood group', value: p.blood_group ?? 'Not provided', icon: Droplet, tone: 'amber' },
         ]}
       />
 
@@ -155,7 +155,9 @@ export default function StudentProfile() {
         </InfoCard>
 
         <InfoCard icon={GraduationCap} title="Academic information" tone="teal">
-          <InfoRow icon={CalendarDays} label="Enrolled on" value={fmtDate(p.created_at)} />
+          <InfoRow icon={IdCard} label="Student ID" value={p.registration_id} />
+          <InfoRow icon={CalendarDays} label="Enrolment date" value={fmtDate(p.created_at)} />
+          <InfoRow icon={School} label="School / grade" value={[p.school_name, p.grade_level].filter(Boolean).join(' • ')} />
           <InfoRow icon={BookOpen} label="Mushaf / unit" value={[p.mushaf_type, p.preferred_unit].filter(Boolean).join(' • ')} />
           <InfoRow icon={Target} label="Daily target" value={p.daily_target_amount ?? p.daily_target_lines} />
           <InfoRow icon={Languages} label="Arabic level" value={p.arabic_level} />
@@ -168,18 +170,26 @@ export default function StudentProfile() {
             <EmptyState icon={Users} title="No guardian linked" hint="Link a parent from the Parents page." />
           ) : (
             data!.links.map((l: any) => (
-              <div key={l.parent_id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <div key={l.parent_id} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
                 <div className="min-w-0">
                   <Link to={`/parent-profile/${l.parent_id}`} className="text-sm font-medium text-foreground hover:underline">
                     {l.parent?.full_name ?? 'Unnamed'}
                   </Link>
-                  <p className="text-xs text-muted-foreground truncate">{l.parent?.email ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {[l.parent?.email, l.parent?.whatsapp_number].filter(Boolean).join(' • ') || '—'}
+                  </p>
                 </div>
                 <Badge variant="outline" className="text-[10px] capitalize">{l.relationship ?? 'guardian'}</Badge>
               </div>
             ))
           )}
-          <InfoRow icon={Phone} label="Emergency contact" value={[p.emergency_contact_name, p.emergency_contact_phone].filter(Boolean).join(' • ')} />
+        </InfoCard>
+
+        <InfoCard icon={Siren} title="Emergency contact" tone="rose">
+          <InfoRow icon={User} label="Contact name" value={p.emergency_contact_name} />
+          <InfoRow icon={Phone} label="Contact phone" value={p.emergency_contact_phone} />
+          <InfoRow icon={Users} label="Relation" value={p.guardian_type} />
+          <InfoRow icon={Mail} label="Preferred contact" value={p.preferred_contact_method} />
         </InfoCard>
 
         <InfoCard icon={GraduationCap} title="Teachers & subjects" tone="amber">
@@ -187,7 +197,7 @@ export default function StudentProfile() {
             <EmptyState icon={GraduationCap} title="No active assignment" hint="Assign a teacher from the Assignments page." />
           ) : (
             teachers.map((a: any) => (
-              <div key={a.id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <div key={a.id} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{a.subject?.name ?? 'Subject'}</p>
                   <p className="text-xs text-muted-foreground truncate">{a.teacher?.full_name ?? 'Unassigned'}</p>
@@ -198,7 +208,13 @@ export default function StudentProfile() {
           )}
         </InfoCard>
 
-        <InfoCard icon={HeartPulse} title="Learning & wellbeing" tone="rose">
+        <InfoCard icon={HeartPulse} title="Medical information" tone="sky">
+          <InfoRow icon={Droplet} label="Blood group" value={p.blood_group} />
+          <InfoRow label="Medical conditions" value={p.medical_conditions ?? 'None'} />
+          <InfoRow label="Notes" value={p.medical_notes ?? p.special_needs} />
+        </InfoCard>
+
+        <InfoCard icon={Target} title="Learning & background" tone="violet" className="lg:col-span-2">
           <InfoRow label="Learning goals" value={p.learning_goals} />
           <InfoRow label="Special needs / notes" value={p.special_needs} />
           <InfoRow label="How they heard about us" value={p.hear_about_us} />

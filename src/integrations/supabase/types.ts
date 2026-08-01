@@ -6712,6 +6712,7 @@ export type Database = {
           bank_iban: string | null
           bank_name: string | null
           banking_status: Database["public"]["Enums"]["banking_verify_status"]
+          blood_group: string | null
           city: string | null
           country: string | null
           country_code: string | null
@@ -6741,6 +6742,7 @@ export type Database = {
           gov_id_verified: boolean
           gov_id_verified_at: string | null
           gov_id_verified_by: string | null
+          grade_level: string | null
           guardian_type:
             | Database["public"]["Enums"]["guardian_type_enum"]
             | null
@@ -6748,6 +6750,8 @@ export type Database = {
           id: string
           joining_date: string | null
           learning_goals: string | null
+          medical_conditions: string | null
+          medical_notes: string | null
           meeting_link: string | null
           mushaf_type: string
           nationality: string | null
@@ -6759,6 +6763,7 @@ export type Database = {
           qualification: string | null
           region: string | null
           registration_id: string | null
+          school_name: string | null
           special_needs: string | null
           specialization: string | null
           teaching_os_language: string
@@ -6781,6 +6786,7 @@ export type Database = {
           bank_iban?: string | null
           bank_name?: string | null
           banking_status?: Database["public"]["Enums"]["banking_verify_status"]
+          blood_group?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
@@ -6810,6 +6816,7 @@ export type Database = {
           gov_id_verified?: boolean
           gov_id_verified_at?: string | null
           gov_id_verified_by?: string | null
+          grade_level?: string | null
           guardian_type?:
             | Database["public"]["Enums"]["guardian_type_enum"]
             | null
@@ -6817,6 +6824,8 @@ export type Database = {
           id?: string
           joining_date?: string | null
           learning_goals?: string | null
+          medical_conditions?: string | null
+          medical_notes?: string | null
           meeting_link?: string | null
           mushaf_type?: string
           nationality?: string | null
@@ -6828,6 +6837,7 @@ export type Database = {
           qualification?: string | null
           region?: string | null
           registration_id?: string | null
+          school_name?: string | null
           special_needs?: string | null
           specialization?: string | null
           teaching_os_language?: string
@@ -6850,6 +6860,7 @@ export type Database = {
           bank_iban?: string | null
           bank_name?: string | null
           banking_status?: Database["public"]["Enums"]["banking_verify_status"]
+          blood_group?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
@@ -6879,6 +6890,7 @@ export type Database = {
           gov_id_verified?: boolean
           gov_id_verified_at?: string | null
           gov_id_verified_by?: string | null
+          grade_level?: string | null
           guardian_type?:
             | Database["public"]["Enums"]["guardian_type_enum"]
             | null
@@ -6886,6 +6898,8 @@ export type Database = {
           id?: string
           joining_date?: string | null
           learning_goals?: string | null
+          medical_conditions?: string | null
+          medical_notes?: string | null
           meeting_link?: string | null
           mushaf_type?: string
           nationality?: string | null
@@ -6897,6 +6911,7 @@ export type Database = {
           qualification?: string | null
           region?: string | null
           registration_id?: string | null
+          school_name?: string | null
           special_needs?: string | null
           specialization?: string | null
           teaching_os_language?: string
@@ -11938,6 +11953,10 @@ export type Database = {
       accept_quiz_invite: { Args: { _token: string }; Returns: string }
       admin_generate_onboarding_token: {
         Args: { _teacher_id: string }
+        Returns: string
+      }
+      admin_generate_student_onboarding_token: {
+        Args: { _student_id: string }
         Returns: string
       }
       admin_get_organization_settings: {

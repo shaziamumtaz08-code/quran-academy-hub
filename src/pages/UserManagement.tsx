@@ -2438,6 +2438,28 @@ export default function UserManagement() {
                                    </Button>
                                  )}
 
+                               {/* Registration link — students only, admins only */}
+                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
+                                 (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'student') && (
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     title="Copy student registration link"
+                                     onClick={async () => {
+                                       const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: user.id });
+                                       if (error || !token) {
+                                         toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                         return;
+                                       }
+                                       const url = `${window.location.origin}/register/student/${token}`;
+                                       await navigator.clipboard.writeText(url).catch(() => undefined);
+                                       toast({ title: 'Registration link copied', description: url });
+                                     }}
+                                   >
+                                     <Link2 className="h-4 w-4" />
+                                   </Button>
+                                 )}
+
 
 
 
