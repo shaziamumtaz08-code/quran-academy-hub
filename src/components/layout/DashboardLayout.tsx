@@ -52,7 +52,7 @@ import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 // Stored on globalThis so that duplicate module instances (HMR / split chunks)
 // still share the same context and never render a second nested shell.
 const globalKey = "__aqta_dashboard_layout_ctx__";
-const DashboardLayoutContext: React.Context<boolean> =
+const DashboardLayoutContext: ReturnType<typeof createContext<boolean>> =
   (globalThis as any)[globalKey] ?? ((globalThis as any)[globalKey] = createContext(false));
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
 
