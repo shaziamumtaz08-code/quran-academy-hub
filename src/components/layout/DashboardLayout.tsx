@@ -49,7 +49,11 @@ import { ActingAsBanner } from "@/components/shared/ActingAsBanner";
 import { PushNotificationInitializer } from "@/components/pwa/PushNotificationInitializer";
 import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 
-const DashboardLayoutContext = createContext(false);
+// Stored on globalThis so that duplicate module instances (HMR / split chunks)
+// still share the same context and never render a second nested shell.
+const globalKey = "__aqta_dashboard_layout_ctx__";
+const DashboardLayoutContext: ReturnType<typeof createContext<boolean>> =
+  (globalThis as any)[globalKey] ?? ((globalThis as any)[globalKey] = createContext(false));
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
 
 interface DashboardLayoutProps {
