@@ -200,10 +200,10 @@ export default function TeacherProfile() {
   }
 
   const stats = [
-    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase, tone: 'border-l-primary' },
-    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen, tone: 'border-l-teal' },
-    { label: 'Time with us', value: timeWithUs, icon: Clock, tone: 'border-l-amber-500' },
-    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap, tone: 'border-l-accent' },
+    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase, tone: 'border-l-primary', bg: 'bg-primary/10', fg: 'text-primary' },
+    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen, tone: 'border-l-teal-500', bg: 'bg-teal-500/10', fg: 'text-teal-600' },
+    { label: 'Time with us', value: timeWithUs, icon: Clock, tone: 'border-l-amber-500', bg: 'bg-amber-500/10', fg: 'text-amber-600' },
+    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap, tone: 'border-l-violet-500', bg: 'bg-violet-500/10', fg: 'text-violet-600' },
   ];
 
   return (
@@ -213,35 +213,42 @@ export default function TeacherProfile() {
       </Button>
 
       {/* Hero header */}
-      <header className="rounded-2xl border overflow-hidden bg-card">
-        <div className="h-24 bg-gradient-to-r from-primary via-primary/80 to-accent" />
-        <div className="px-5 pb-5 -mt-10">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="h-20 w-20 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0">
-              {p.avatar_url ? (
-                <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
-              ) : (
-                <User className="h-8 w-8 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 pb-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-serif font-bold text-foreground">{p.full_name}</h1>
-                {p.gov_id_verified && (
-                  <Badge variant="secondary" className="gap-1 text-[10px]">
-                    <BadgeCheck className="h-3 w-3" /> Verified
-                  </Badge>
+      <header className="rounded-2xl border overflow-hidden bg-card shadow-sm">
+        <div className="h-20 bg-gradient-to-r from-primary via-primary/85 to-accent" />
+        <div className="px-6 pb-6">
+          <div className="-mt-12 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
+              <div className="h-24 w-24 rounded-2xl ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                {p.avatar_url ? (
+                  <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
+                ) : (
+                  <User className="h-10 w-10 text-muted-foreground" />
                 )}
-                <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                {p.registration_id && <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
-                {p.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
-                {p.whatsapp_number && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
-                {(p.city || p.country) && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
+              <div className="min-w-0 sm:pb-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-foreground">{p.full_name}</h1>
+                  {p.gov_id_verified && (
+                    <Badge variant="secondary" className="gap-1 text-[10px]">
+                      <BadgeCheck className="h-3 w-3" /> Verified
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
+                </div>
+                {(p.designation || p.department) && (
+                  <p className="mt-0.5 text-sm font-medium text-primary">
+                    {[p.designation, p.department].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {p.registration_id && <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
+                  {p.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
+                  {p.whatsapp_number && <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
+                  {(p.city || p.country) && <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
+                </div>
               </div>
             </div>
-            <div className="flex gap-2 pb-1">
+            <div className="flex flex-wrap gap-2">
               {(isSelf || canAdmin) && (
                 <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
                   <Pencil className="h-3.5 w-3.5" /> Edit profile
@@ -252,11 +259,6 @@ export default function TeacherProfile() {
                   <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
                 </Button>
               )}
-              {canAdmin && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={copyOnboardingLink}>
-                  <Link2 className="h-3.5 w-3.5" /> Onboarding link
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -265,12 +267,12 @@ export default function TeacherProfile() {
       {/* Stat cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className={`rounded-xl border border-l-4 ${s.tone} bg-card p-4`}>
-            <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center mb-2">
-              <s.icon className="h-4 w-4 text-primary" />
+          <div key={s.label} className={`rounded-xl border border-l-4 ${s.tone} bg-card p-4 shadow-sm`}>
+            <div className={`h-8 w-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
+              <s.icon className={`h-4 w-4 ${s.fg}`} />
             </div>
-            <p className="text-2xl font-black text-foreground truncate">{s.value}</p>
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            <p className="text-xl font-black text-foreground truncate">{s.value}</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
@@ -283,36 +285,45 @@ export default function TeacherProfile() {
             <Row label="Phone" value={p.whatsapp_number} />
             <Row label="Gender" value={p.gender} />
             <Row label="Date of birth" value={p.date_of_birth ? fmtDate(p.date_of_birth) : '—'} />
-            <Row label="Address" value={p.address} />
+            <Row label="Address" value={[p.address, p.city, p.country].filter(Boolean).join(', ')} />
           </div>
         </Card>
 
-        <Card icon={ShieldCheck} title="Professional information">
+        <Card icon={GraduationCap} title="Professional & education">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Teacher ID" value={p.registration_id} />
-            <Row label="Department" value={p.department} />
-            <Row label="Designation" value={p.designation} />
-            <Row label="Qualification" value={p.qualification} />
+            <Row label="Highest qualification" value={p.qualification} />
             <Row label="Specialization" value={p.specialization} />
-            <Row label="Experience" value={p.years_experience ? `${p.years_experience} years` : '—'} />
+            <Row label="Years of experience" value={p.years_experience ? `${p.years_experience} years` : '—'} />
+            <Row label="Arabic / Quran level" value={p.arabic_level} />
+            <Row label="Languages" value={[p.preferred_language, p.first_language].filter(Boolean).join(', ')} />
+            <Row label="Teaching language" value={p.teaching_os_language} />
           </div>
-          {!canAdmin && <p className="text-[10px] text-muted-foreground">Set by admin — read-only.</p>}
+          <p className="text-[10px] text-muted-foreground">Education & experience — entered by the teacher during onboarding.</p>
         </Card>
 
         <Card icon={CalendarDays} title="Employment details">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Joining date" value={p.joining_date ? fmtDate(p.joining_date) : fmtDate(p.created_at)} />
+            <Row label="Employee / teacher ID" value={p.registration_id} />
+            <Row label="Designation" value={p.designation} />
+            <Row label="Department" value={p.department} />
             <Row label="Employment type" value={p.employment_type} />
+            <Row label="Joining date" value={p.joining_date ? fmtDate(p.joining_date) : fmtDate(p.created_at)} />
+            <Row label="Employment status" value={p.archived_at ? 'Archived' : 'Active'} />
             {canAdmin && (
-              <Row
-                label="Salary"
-                value={data?.salary?.monthly_amount != null ? `PKR ${Number(data.salary.monthly_amount).toLocaleString()}` : '—'}
-              />
+              <>
+                <Row
+                  label="Monthly salary"
+                  value={data?.salary?.monthly_amount != null ? `PKR ${Number(data.salary.monthly_amount).toLocaleString()}` : '—'}
+                />
+                <Row
+                  label="Default payout rate"
+                  value={p.default_payout_rate != null ? `PKR ${Number(p.default_payout_rate).toLocaleString()}` : '—'}
+                />
+              </>
             )}
-            <Row label="Status" value={p.archived_at ? 'Archived' : 'Active'} />
             <Row label="Account status" value={p.account_status} />
-            <Row label="Email verified" value={p.email ? 'Yes' : 'No'} />
           </div>
+          <p className="text-[10px] text-muted-foreground">Assigned by the admin — read-only for teachers.</p>
         </Card>
 
         <Card
@@ -336,18 +347,33 @@ export default function TeacherProfile() {
               label="Account number"
               value={
                 data?.sensitive?.bank_account_number ? (
-                  <span className="inline-flex items-center gap-2">
-                    {reveal ? data.sensitive.bank_account_number : mask(data.sensitive.bank_account_number)}
-                    <button type="button" onClick={() => setReveal((v) => !v)} className="text-muted-foreground">
-                      {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </span>
+                  canAdmin ? (
+                    <span className="font-mono tabular-nums">{data.sensitive.bank_account_number}</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 font-mono">
+                      {reveal ? data.sensitive.bank_account_number : mask(data.sensitive.bank_account_number)}
+                      <button type="button" onClick={() => setReveal((v) => !v)} className="text-muted-foreground">
+                        {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    </span>
+                  )
                 ) : null
               }
             />
-            <Row label="IBAN" value={reveal ? data?.sensitive?.bank_iban : mask(data?.sensitive?.bank_iban)} />
+            <Row
+              label="IBAN"
+              value={
+                data?.sensitive?.bank_iban
+                  ? <span className="font-mono">{canAdmin || reveal ? data.sensitive.bank_iban : mask(data.sensitive.bank_iban)}</span>
+                  : null
+              }
+            />
           </div>
+          {canAdmin && (
+            <p className="text-[10px] text-muted-foreground">Visible in full to admins for salary disbursement.</p>
+          )}
         </Card>
+
 
         <Card
           icon={FileText}
