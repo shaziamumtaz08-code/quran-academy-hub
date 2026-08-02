@@ -44,19 +44,18 @@ export function ImpersonateButton({
     // then navigate it once we have the magic link.
     const newTab = window.open('about:blank', '_blank');
     try {
-      const target = redirectTo || `${window.location.origin}/dashboard`;
-      // Append impersonate=1 so the new tab's supabase client uses sessionStorage
-      // and a unique storage key — keeping admin's session intact in this tab.
-      const sep = target.includes('?') ? '&' : '?';
-      const impersonateRedirect = `${target}${sep}impersonate=1`;
+      const target = redirectTo || '/dashboard';
+      const targetPath = target.startsWith('http')
+        ? new URL(target).pathname + new URL(target).search
+        : target;
 
       const { data, error } = await supabase.functions.invoke('impersonate-user', {
         body: {
           targetUserId: userId,
-          redirectTo: impersonateRedirect,
+          redirectTo: `${window.location.origin}/impersonate`,
         },
       });
-      if (error || !data?.actionLink) {
+      if (error || !(data?.tokenHash || data?.actionLink)) {
         if (newTab) newTab.close();
         toast({
           title: 'Impersonation failed',
@@ -66,8 +65,18 @@ export function ImpersonateButton({
         setLoading(false);
         return;
       }
+
+      // Verify the one-time token inside our own app (?impersonate=1 keeps the
+      // session in sessionStorage) instead of relying on Supabase's redirect,
+      // which 404s when the origin isn't in the auth redirect allow-list.
+      const landing = data.tokenHash
+        ? `${window.location.origin}/impersonate?impersonate=1&th=${encodeURIComponent(
+            data.tokenHash,
+          )}&next=${encodeURIComponent(targetPath)}`
+        : data.actionLink;
+
       if (newTab) {
-        newTab.location.href = data.actionLink;
+        newTab.location.href = landing;
       } else {
         // Popup was blocked — fall back to opening in this tab is undesirable;
         // surface a clear message instead.

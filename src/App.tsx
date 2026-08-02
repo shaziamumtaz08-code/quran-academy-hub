@@ -59,6 +59,7 @@ const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
 const TeacherProfile = lazy(() => import("./pages/TeacherProfile"));
 const StudentProfile = lazy(() => import("./pages/StudentProfile"));
 const MyProfile = lazy(() => import("./pages/MyProfile"));
+const Impersonate = lazy(() => import("./pages/Impersonate"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
@@ -397,6 +398,7 @@ function AppRoutes() {
       <Route path="/login/:slug" element={<TenantLoginPage />} />
       <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/trust" element={<Trust />} />
+      <Route path="/impersonate" element={<Impersonate />} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
