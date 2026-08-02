@@ -12229,6 +12229,7 @@ export type Database = {
           id: string
         }[]
       }
+      fn_is_grading_staff: { Args: never; Returns: boolean }
       generate_registration_id: {
         Args: { _branch_code: string; _org_code: string; _role_code: string }
         Returns: string
