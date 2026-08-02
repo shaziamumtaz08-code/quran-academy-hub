@@ -133,6 +133,7 @@ export default function PeopleLanding() {
           <button type="button" onClick={() => navigate('/identity')} className="text-xs font-bold text-foreground underline underline-offset-2">Review</button>
         </div>
       ) : null}
+      {isAdmin && <RegistrationLinksCard />}
       <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
     </PageShell>
   );
