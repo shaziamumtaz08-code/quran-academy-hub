@@ -4080,6 +4080,7 @@ export type Database = {
       family_registrations: {
         Row: {
           address: string | null
+          applicant_data: Json
           children: Json
           city: string | null
           country: string | null
@@ -4105,6 +4106,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          applicant_data?: Json
           children?: Json
           city?: string | null
           country?: string | null
@@ -4130,6 +4132,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          applicant_data?: Json
           children?: Json
           city?: string | null
           country?: string | null
