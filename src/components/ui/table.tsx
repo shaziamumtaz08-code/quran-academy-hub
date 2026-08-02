@@ -1,15 +1,22 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { FloatingHScrollbar } from "@/components/ui/floating-h-scrollbar";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement> & { wrapperClassName?: string; wrapperRef?: React.Ref<HTMLDivElement> }>(
-  ({ className, wrapperClassName, wrapperRef, ...props }, ref) => (
-    <div ref={wrapperRef} className={cn("relative w-full overflow-auto max-h-[70vh] md:max-h-none", wrapperClassName)}>
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
-  ),
+  ({ className, wrapperClassName, wrapperRef, ...props }, ref) => {
+    const innerRef = React.useRef<HTMLDivElement>(null);
+    React.useImperativeHandle(wrapperRef, () => innerRef.current as HTMLDivElement);
+    return (
+      <div ref={innerRef} className={cn("relative w-full overflow-auto max-h-[70vh] md:max-h-none", wrapperClassName)}>
+        <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+        <FloatingHScrollbar targetRef={innerRef} />
+      </div>
+    );
+  },
 );
 Table.displayName = "Table";
+
 
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => <thead ref={ref} className={cn("[&_tr]:border-b sticky top-0 z-10 bg-card", className)} {...props} />,

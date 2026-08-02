@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { FloatingScrollbarSuppressContext } from "@/components/ui/floating-h-scrollbar";
 
 /**
  * Wraps a wide table with a floating horizontal scrollbar that stays visible
@@ -119,7 +120,7 @@ export function StickyScrollTable({
         className={cn("overflow-x-auto", innerClassName)}
         onScroll={onTableScroll}
       >
-        {children}
+        <FloatingScrollbarSuppressContext.Provider value={true}>{children}</FloatingScrollbarSuppressContext.Provider>
       </div>
       {visible && (
         <div
