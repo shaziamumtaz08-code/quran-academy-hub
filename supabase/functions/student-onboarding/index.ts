@@ -23,7 +23,7 @@ const str = (v: unknown, max = 500): string | null => {
 };
 
 const FIELDS =
-  'id, full_name, email, whatsapp_number, gender, date_of_birth, address, city, country, timezone, avatar_url, registration_id, school_name, grade_level, blood_group, medical_conditions, medical_notes, emergency_contact_name, emergency_contact_phone, guardian_type, preferred_contact_method, preferred_language, first_language, arabic_level, mushaf_type, preferred_unit, learning_goals, special_needs, hear_about_us, onboarding_completed_at';
+  'id, full_name, email, whatsapp_number, gender, date_of_birth, address, city, country, timezone, avatar_url, registration_id, school_name, grade_level, blood_group, medical_conditions, medical_notes, emergency_contact_name, emergency_contact_phone, guardian_type, preferred_contact_method, preferred_language, first_language, arabic_level, mushaf_type, preferred_unit, father_name, father_contact, mother_name, mother_contact, learning_goals, special_needs, hear_about_us, onboarding_completed_at';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -49,9 +49,32 @@ Deno.serve(async (req) => {
       const v = body?.values ?? {};
       const complete = body?.complete === true;
 
+      const REQUIRED: Array<[string, string]> = [
+        ['full_name', 'Student full name'],
+        ['date_of_birth', 'Date of birth'],
+        ['email', 'Email address'],
+        ['address', 'Address'],
+        ['father_name', "Father's name"],
+        ['father_contact', "Father's contact number"],
+        ['mother_name', "Mother's name"],
+        ['mother_contact', "Mother's contact number"],
+        ['emergency_contact_phone', 'Emergency contact number'],
+        ['school_name', 'School / institute'],
+        ['grade_level', 'Grade / class'],
+      ];
+      if (complete) {
+        const missing = REQUIRED.filter(([k]) => !str(v[k], 400) && !(profile as Record<string, unknown>)[k]).map(([, l]) => l);
+        if (missing.length) return json({ error: `Please complete: ${missing.join(', ')}` }, 400);
+      }
+
       const update: Record<string, unknown> = {
         full_name: str(v.full_name, 120) ?? profile.full_name,
+        email: str(v.email, 160),
         whatsapp_number: str(v.whatsapp_number, 40),
+        father_name: str(v.father_name, 120),
+        father_contact: str(v.father_contact, 40),
+        mother_name: str(v.mother_name, 120),
+        mother_contact: str(v.mother_contact, 40),
         gender: v.gender === 'male' || v.gender === 'female' ? v.gender : null,
         date_of_birth: str(v.date_of_birth, 20),
         address: str(v.address, 400),
