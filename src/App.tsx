@@ -63,6 +63,7 @@ const Impersonate = lazy(() => import("./pages/Impersonate"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
+const StudentRegistration = lazy(() => import("./pages/StudentRegistration"));
 
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
@@ -458,7 +459,8 @@ function AppRoutes() {
       <Route path="/teachers" element={<ProtectedRoute><RouteGuard moduleId="teachers"><Teachers /></RouteGuard></ProtectedRoute>} />
       <Route path="/teacher-profile" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teacher-profile/:teacherId" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/register/student/:token" element={<StudentOnboarding />} />
+      <Route path="/register/student" element={<StudentRegistration />} />
+      <Route path="/register/student/:token" element={<StudentRegistration />} />
       <Route path="/onboard/:token" element={<TeacherOnboarding />} />
 
       <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><Students /></RouteGuard></ProtectedRoute>} />

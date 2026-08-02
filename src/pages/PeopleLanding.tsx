@@ -7,7 +7,6 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
 
 const Teachers = lazy(() => import('./Teachers'));
 const Students = lazy(() => import('./Students'));
@@ -133,7 +132,6 @@ export default function PeopleLanding() {
           <button type="button" onClick={() => navigate('/identity')} className="text-xs font-bold text-foreground underline underline-offset-2">Review</button>
         </div>
       ) : null}
-      {isAdmin && <RegistrationLinksCard />}
       <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
     </PageShell>
   );
