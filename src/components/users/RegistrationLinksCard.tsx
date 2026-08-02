@@ -14,9 +14,16 @@ interface LinkDef {
 
 const LINKS: LinkDef[] = [
   {
+    key: 'student',
+    label: 'New student enrolment form',
+    hint: 'Single-page enrolment form for one student. Use this after the trial class. Lands in Registrations for admin review.',
+    path: '/register/student',
+    icon: GraduationCap,
+  },
+  {
     key: 'family',
-    label: 'New student / family registration',
-    hint: 'Share with a brand-new family. One form covers the parent and all their children. Lands in Registrations for admin review.',
+    label: 'New family registration (multiple children)',
+    hint: 'One form covers the parent and all their children. Lands in Registrations for admin review.',
     path: '/register/family',
     icon: Users,
   },
@@ -54,7 +61,7 @@ export function RegistrationLinksCard() {
           <h3 className="text-sm font-semibold text-foreground">Registration links</h3>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {LINKS.map((item) => (
             <div
               key={item.key}
@@ -78,10 +85,9 @@ export function RegistrationLinksCard() {
         <div className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            Already in the system? Use the <span className="font-medium text-foreground">chain icon</span> on that
-            person's row below to copy their personal <span className="font-medium text-foreground">profile-completion
-            link</span>. It opens their existing record with details pre-filled, so they only fill what's missing —
-            no duplicate profile is created, and the record is updated in place.
+            These links are for people who are not in the LMS yet. Every submission arrives as a
+            pending registration for admin review — anything missing or incomplete is completed by an admin
+            from the person's profile, so no per-person links are needed.
           </p>
         </div>
       </CardContent>
