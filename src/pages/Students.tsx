@@ -755,8 +755,9 @@ export default function Students() {
               </div>
             ) : (
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur">
+                  <TableRow className="border-b-2 border-border [&>th]:text-xs [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide">
+
                     <TableHead className="w-[50px] text-xs text-muted-foreground">#</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none hover:bg-muted/50"
