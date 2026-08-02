@@ -2122,6 +2122,29 @@ export default function UserManagement() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Copy profile-completion link"
+                                  onClick={async () => {
+                                    const isTeacher = (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'teacher');
+                                    const rpc = isTeacher ? 'admin_generate_onboarding_token' : 'admin_generate_student_onboarding_token';
+                                    const args = isTeacher ? { _teacher_id: user.id } : { _student_id: user.id };
+                                    const { data: token, error } = await (supabase as any).rpc(rpc, args);
+                                    if (error || !token) {
+                                      toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                      return;
+                                    }
+                                    const url = `${window.location.origin}${isTeacher ? '/onboard/' : '/register/student/'}${token}`;
+                                    await navigator.clipboard.writeText(url).catch(() => undefined);
+                                    toast({ title: 'Profile-completion link copied', description: url });
+                                  }}
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
+                              )}
+
                             </div>
                           </TableCell>
                         </TableRow>
