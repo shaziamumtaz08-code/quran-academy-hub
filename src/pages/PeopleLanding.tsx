@@ -23,6 +23,8 @@ const views = ['students', 'teachers', 'staff', 'parents', 'leads', 'registratio
 
 export default function PeopleLanding() {
   const { activeDivision } = useDivision();
+  const { activeRole } = useAuth();
+  const isAdmin = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_academic'].includes(activeRole || '');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
