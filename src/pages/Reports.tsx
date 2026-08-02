@@ -16,12 +16,14 @@ import ActivityLogs from "@/components/reports/ActivityLogs";
 import AlertsAutomation from "@/components/reports/AlertsAutomation";
 import CustomReportBuilder from "@/components/reports/CustomReportBuilder";
 import AccountabilityReport from "@/components/reports/AccountabilityReport";
+import QaidaProgressReport from "@/components/reports/QaidaProgressReport";
 
 const allViews = [
   { label: 'Executive', value: 'executive' },
   { label: 'Attendance', value: 'attendance' },
   { label: 'Fees', value: 'fees' },
   { label: 'Engagement', value: 'engagement' },
+  { label: 'Qaida Progress', value: 'qaida' },
   { label: 'Teachers', value: 'teachers' },
   { label: 'Accountability', value: 'accountability' },
   { label: 'Course/Batch', value: 'course-batch' },
@@ -35,6 +37,7 @@ const baseDescriptions: Record<string, string> = {
   attendance: 'Daily attendance summaries, absence detection, and streak tracking.',
   fees: 'Revenue tracking, pending dues, and payment analysis.',
   engagement: 'Student progress tracking, consistency, and engagement patterns.',
+  qaida: 'Noorani Qaida baab-by-baab progress for every Qaida student.',
   teachers: 'Classes taken, punctuality, and teacher performance analysis.',
   accountability: 'Zoom session accountability, no-shows, and punctuality.',
   'course-batch': 'Enrollment counts, completion rates, and drop-off analysis.',
@@ -64,6 +67,7 @@ export default function Reports() {
       case 'attendance': return <AttendanceReports />;
       case 'fees': return <FeeReports />;
       case 'engagement': return <StudentEngagement />;
+      case 'qaida': return <QaidaProgressReport />;
       case 'teachers': return <TeacherPerformance />;
       case 'accountability': return <AccountabilityReport />;
       case 'course-batch': return <CourseReports />;
