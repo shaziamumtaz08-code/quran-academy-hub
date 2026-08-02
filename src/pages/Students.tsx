@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, LayoutGrid, List } from 'lucide-react';
+import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, LayoutGrid, List, Link2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -645,12 +645,23 @@ export default function Students() {
           )}
         </div>
 
-        {/* Info note - only for admins */}
+        {/* Admin stat strip */}
         {isAdmin && (
-          <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            To add or manage students, go to <strong>User Management</strong>. To assign teachers, use the <strong>Assignments</strong> page.
-          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Students', value: filteredStudents.length, tone: 'from-sky/20 to-sky/5' },
+              { label: 'Assigned', value: filteredStudents.filter(s => !!s.teacher_name).length, tone: 'from-emerald-500/20 to-emerald-500/5' },
+              { label: 'Unassigned', value: filteredStudents.filter(s => !s.teacher_name).length, tone: 'from-amber-500/20 to-amber-500/5' },
+              { label: 'No login', value: filteredStudents.filter(s => authStatusMap[s.id] === false).length, tone: 'from-rose-500/20 to-rose-500/5' },
+            ].map((stat) => (
+              <div key={stat.label} className={`rounded-xl border border-border bg-gradient-to-br ${stat.tone} px-4 py-3 shadow-sm`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums text-foreground">{stat.value}</p>
+              </div>
+            ))}
+          </div>
         )}
+
 
         {/* Content */}
         {isLoading ? (
@@ -744,8 +755,9 @@ export default function Students() {
               </div>
             ) : (
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur">
+                  <TableRow className="border-b-2 border-border [&>th]:text-xs [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide">
+
                     <TableHead className="w-[50px] text-xs text-muted-foreground">#</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none hover:bg-muted/50"
@@ -787,36 +799,44 @@ export default function Students() {
                         >
                           <span className="flex items-center">Age {getSortIcon('age')}</span>
                         </TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+
                       </>
                     )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.map((student, idx) => (
-                    <TableRow key={student.id}>
+                    <TableRow key={student.id} className="group odd:bg-muted/20 hover:bg-sky/5 transition-colors">
                       <TableCell className="text-xs text-muted-foreground tabular-nums">{idx + 1}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <Link to={`/student-profile/${student.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
-                            {isAdmin && authStatusMap[student.id] === false && (
-                              <Badge
-                                variant="destructive"
-                                className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
-                                onClick={() => setCreateLoginStudent(student)}
-                              >
-                                No Login
-                              </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-light text-xs font-bold text-white shadow-sm dark:from-sky dark:to-sky-dark">
+                            {student.full_name.split(/\s+/).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('')}
+                          </div>
+                          <div className="flex min-w-0 flex-col">
+                            <div className="flex items-center gap-2">
+                              <Link to={`/student-profile/${student.id}`} className="font-semibold text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
+                              {isAdmin && authStatusMap[student.id] === false && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
+                                  onClick={() => setCreateLoginStudent(student)}
+                                >
+                                  No Login
+                                </Badge>
+                              )}
+                            </div>
+                            {student.email && (
+                              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {student.email}
+                              </span>
                             )}
                           </div>
-                          {student.email && (
-                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              {student.email}
-                            </span>
-                          )}
                         </div>
                       </TableCell>
+
                       <TableCell>
                         {student.teacher_name && student.teacher_id ? (
                           <EntityLink
@@ -869,6 +889,30 @@ export default function Students() {
                           <TableCell className="text-muted-foreground">{student.city || '-'}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">{student.gender || '-'}</TableCell>
                           <TableCell className="text-muted-foreground">{student.age || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" asChild><Link to={`/student-profile/${student.id}`}>Profile</Link></Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Copy registration / profile-completion link"
+                                onClick={async () => {
+                                  const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: student.id });
+                                  if (error || !token) {
+                                    toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                    return;
+                                  }
+                                  const url = `${window.location.origin}/register/student/${token}`;
+                                  await navigator.clipboard.writeText(url).catch(() => undefined);
+                                  toast({ title: 'Registration link copied', description: url });
+                                }}
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </Button>
+                              <ImpersonateButton userId={student.id} userLabel={student.full_name} />
+                            </div>
+                          </TableCell>
+
                         </>
                       )}
                     </TableRow>
