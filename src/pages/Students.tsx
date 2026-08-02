@@ -804,30 +804,36 @@ export default function Students() {
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.map((student, idx) => (
-                    <TableRow key={student.id}>
+                    <TableRow key={student.id} className="group odd:bg-muted/20 hover:bg-sky/5 transition-colors">
                       <TableCell className="text-xs text-muted-foreground tabular-nums">{idx + 1}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <Link to={`/student-profile/${student.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
-                            {isAdmin && authStatusMap[student.id] === false && (
-                              <Badge
-                                variant="destructive"
-                                className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
-                                onClick={() => setCreateLoginStudent(student)}
-                              >
-                                No Login
-                              </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-light text-xs font-bold text-white shadow-sm dark:from-sky dark:to-sky-dark">
+                            {student.full_name.split(/\s+/).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('')}
+                          </div>
+                          <div className="flex min-w-0 flex-col">
+                            <div className="flex items-center gap-2">
+                              <Link to={`/student-profile/${student.id}`} className="font-semibold text-foreground hover:text-primary hover:underline">{student.full_name}</Link>
+                              {isAdmin && authStatusMap[student.id] === false && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
+                                  onClick={() => setCreateLoginStudent(student)}
+                                >
+                                  No Login
+                                </Badge>
+                              )}
+                            </div>
+                            {student.email && (
+                              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {student.email}
+                              </span>
                             )}
                           </div>
-                          {student.email && (
-                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              {student.email}
-                            </span>
-                          )}
                         </div>
                       </TableCell>
+
                       <TableCell>
                         {student.teacher_name && student.teacher_id ? (
                           <EntityLink
