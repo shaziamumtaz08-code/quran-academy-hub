@@ -105,6 +105,8 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Info, Video, Presentation, ClipboardCheck, UserCircle2, Power, Link2 } from 'lucide-react';
+import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
+
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
