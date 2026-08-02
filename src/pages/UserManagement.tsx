@@ -1791,9 +1791,6 @@ export default function UserManagement() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">
-            {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
-              <RegistrationLinksCard />
-            )}
             {/* Search and Filters — compact one-row layout */}
 
             <div className="space-y-3">
