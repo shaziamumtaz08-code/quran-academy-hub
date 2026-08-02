@@ -799,6 +799,8 @@ export default function Students() {
                         >
                           <span className="flex items-center">Age {getSortIcon('age')}</span>
                         </TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+
                       </>
                     )}
                   </TableRow>
