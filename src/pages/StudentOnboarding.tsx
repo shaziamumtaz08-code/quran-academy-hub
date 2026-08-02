@@ -17,6 +17,29 @@ const STEPS = [
   { key: 'learning', title: 'Learning preferences', icon: BookOpen, hint: 'Optional — you can update these later.' },
 ];
 
+/**
+ * Declared at module scope so its identity is stable across renders —
+ * defining it inside the page component remounts the input on every keystroke
+ * and the field loses focus.
+ */
+function Field({
+  k, label, type = 'text', area = false, placeholder, values, set,
+}: {
+  k: string; label: string; type?: string; area?: boolean; placeholder?: string;
+  values: Record<string, string>; set: (k: string, v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={k} className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {area ? (
+        <Textarea id={k} value={values[k] ?? ''} placeholder={placeholder} onChange={(e) => set(k, e.target.value)} rows={3} />
+      ) : (
+        <Input id={k} type={type} value={values[k] ?? ''} placeholder={placeholder} onChange={(e) => set(k, e.target.value)} />
+      )}
+    </div>
+  );
+}
+
 export default function StudentOnboarding() {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
@@ -86,17 +109,6 @@ export default function StudentOnboarding() {
     else toast({ title: 'Saved' });
   };
 
-  const Field = ({ k, label, type = 'text', area = false, placeholder }: { k: string; label: string; type?: string; area?: boolean; placeholder?: string }) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={k} className="text-xs font-medium text-muted-foreground">{label}</Label>
-      {area ? (
-        <Textarea id={k} value={values[k] ?? ''} placeholder={placeholder} onChange={(e) => set(k, e.target.value)} rows={3} />
-      ) : (
-        <Input id={k} type={type} value={values[k] ?? ''} placeholder={placeholder} onChange={(e) => set(k, e.target.value)} />
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
@@ -154,41 +166,41 @@ export default function StudentOnboarding() {
               <div className="grid gap-4 p-5 sm:grid-cols-2">
                 {step === 0 && (
                   <>
-                    <Field k="full_name" label="Student full name *" />
-                    <Field k="email" label="Email address *" type="email" />
-                    <Field k="whatsapp_number" label="Phone / WhatsApp" />
-                    <Field k="date_of_birth" label="Date of birth *" type="date" />
-                    <Field k="gender" label="Gender (male / female)" />
-                    <Field k="school_name" label="School / institute *" />
-                    <Field k="grade_level" label="Grade / class *" />
-                    <Field k="city" label="City" />
-                    <Field k="country" label="Country" />
-                    <Field k="timezone" label="Timezone" placeholder="e.g. Asia/Karachi" />
-                    <div className="sm:col-span-2"><Field k="address" label="Address *" area /></div>
+                    <Field values={values} set={set} k="full_name" label="Student full name *" />
+                    <Field values={values} set={set} k="email" label="Email address *" type="email" />
+                    <Field values={values} set={set} k="whatsapp_number" label="Phone / WhatsApp" />
+                    <Field values={values} set={set} k="date_of_birth" label="Date of birth *" type="date" />
+                    <Field values={values} set={set} k="gender" label="Gender (male / female)" />
+                    <Field values={values} set={set} k="school_name" label="School / institute *" />
+                    <Field values={values} set={set} k="grade_level" label="Grade / class *" />
+                    <Field values={values} set={set} k="city" label="City" />
+                    <Field values={values} set={set} k="country" label="Country" />
+                    <Field values={values} set={set} k="timezone" label="Timezone" placeholder="e.g. Asia/Karachi" />
+                    <div className="sm:col-span-2"><Field values={values} set={set} k="address" label="Address *" area /></div>
                   </>
                 )}
                 {step === 1 && (
                   <>
-                    <Field k="father_name" label="Father's full name *" />
-                    <Field k="father_contact" label="Father's contact number *" />
-                    <Field k="mother_name" label="Mother's full name *" />
-                    <Field k="mother_contact" label="Mother's contact number *" />
-                    <Field k="emergency_contact_name" label="Emergency contact name" />
-                    <Field k="emergency_contact_phone" label="Emergency contact number *" />
-                    <Field k="guardian_type" label="Relation to student" />
-                    <Field k="blood_group" label="Blood group" placeholder="e.g. O+" />
-                    <Field k="preferred_contact_method" label="Preferred contact method" />
-                    <Field k="medical_conditions" label="Medical conditions" />
-                    <div className="sm:col-span-2"><Field k="medical_notes" label="Medical notes" area /></div>
+                    <Field values={values} set={set} k="father_name" label="Father's full name *" />
+                    <Field values={values} set={set} k="father_contact" label="Father's contact number *" />
+                    <Field values={values} set={set} k="mother_name" label="Mother's full name *" />
+                    <Field values={values} set={set} k="mother_contact" label="Mother's contact number *" />
+                    <Field values={values} set={set} k="emergency_contact_name" label="Emergency contact name" />
+                    <Field values={values} set={set} k="emergency_contact_phone" label="Emergency contact number *" />
+                    <Field values={values} set={set} k="guardian_type" label="Relation to student" />
+                    <Field values={values} set={set} k="blood_group" label="Blood group" placeholder="e.g. O+" />
+                    <Field values={values} set={set} k="preferred_contact_method" label="Preferred contact method" />
+                    <Field values={values} set={set} k="medical_conditions" label="Medical conditions" />
+                    <div className="sm:col-span-2"><Field values={values} set={set} k="medical_notes" label="Medical notes" area /></div>
                   </>
                 )}
                 {step === 2 && (
                   <>
-                    <Field k="preferred_language" label="Preferred language" />
-                    <Field k="arabic_level" label="Arabic / Quran level" />
-                    <Field k="hear_about_us" label="How did you hear about us?" />
-                    <div className="sm:col-span-2"><Field k="learning_goals" label="Learning goals" area /></div>
-                    <div className="sm:col-span-2"><Field k="special_needs" label="Special needs / notes" area /></div>
+                    <Field values={values} set={set} k="preferred_language" label="Preferred language" />
+                    <Field values={values} set={set} k="arabic_level" label="Arabic / Quran level" />
+                    <Field values={values} set={set} k="hear_about_us" label="How did you hear about us?" />
+                    <div className="sm:col-span-2"><Field values={values} set={set} k="learning_goals" label="Learning goals" area /></div>
+                    <div className="sm:col-span-2"><Field values={values} set={set} k="special_needs" label="Special needs / notes" area /></div>
                   </>
                 )}
               </div>
