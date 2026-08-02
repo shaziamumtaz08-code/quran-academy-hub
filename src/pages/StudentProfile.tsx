@@ -186,6 +186,8 @@ export default function StudentProfile() {
         </InfoCard>
 
         <InfoCard icon={Siren} title="Emergency contact" tone="rose">
+          <InfoRow icon={User} label="Father" value={[p.father_name, p.father_contact].filter(Boolean).join(' • ')} />
+          <InfoRow icon={User} label="Mother" value={[p.mother_name, p.mother_contact].filter(Boolean).join(' • ')} />
           <InfoRow icon={User} label="Contact name" value={p.emergency_contact_name} />
           <InfoRow icon={Phone} label="Contact phone" value={p.emergency_contact_phone} />
           <InfoRow icon={Users} label="Relation" value={p.guardian_type} />
