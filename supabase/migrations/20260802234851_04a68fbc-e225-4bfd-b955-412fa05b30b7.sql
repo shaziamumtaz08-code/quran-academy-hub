@@ -1,0 +1,1 @@
+ALTER TABLE public.family_registrations ADD COLUMN IF NOT EXISTS applicant_data jsonb NOT NULL DEFAULT '{}'::jsonb;
