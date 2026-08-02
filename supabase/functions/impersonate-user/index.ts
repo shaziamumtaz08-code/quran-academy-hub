@@ -86,6 +86,7 @@ serve(async (req) => {
 
     return json(200, {
       actionLink: linkData.properties.action_link,
+      tokenHash: linkData.properties.hashed_token,
       email,
       targetUserId,
     }, origin);
