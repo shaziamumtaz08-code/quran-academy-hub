@@ -6732,6 +6732,8 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           employment_type: string | null
+          father_contact: string | null
+          father_name: string | null
           first_language: string | null
           force_password_reset: boolean | null
           full_name: string
@@ -6753,6 +6755,8 @@ export type Database = {
           medical_conditions: string | null
           medical_notes: string | null
           meeting_link: string | null
+          mother_contact: string | null
+          mother_name: string | null
           mushaf_type: string
           nationality: string | null
           onboarding_completed_at: string | null
@@ -6806,6 +6810,8 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           employment_type?: string | null
+          father_contact?: string | null
+          father_name?: string | null
           first_language?: string | null
           force_password_reset?: boolean | null
           full_name: string
@@ -6827,6 +6833,8 @@ export type Database = {
           medical_conditions?: string | null
           medical_notes?: string | null
           meeting_link?: string | null
+          mother_contact?: string | null
+          mother_name?: string | null
           mushaf_type?: string
           nationality?: string | null
           onboarding_completed_at?: string | null
@@ -6880,6 +6888,8 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           employment_type?: string | null
+          father_contact?: string | null
+          father_name?: string | null
           first_language?: string | null
           force_password_reset?: boolean | null
           full_name?: string
@@ -6901,6 +6911,8 @@ export type Database = {
           medical_conditions?: string | null
           medical_notes?: string | null
           meeting_link?: string | null
+          mother_contact?: string | null
+          mother_name?: string | null
           mushaf_type?: string
           nationality?: string | null
           onboarding_completed_at?: string | null
