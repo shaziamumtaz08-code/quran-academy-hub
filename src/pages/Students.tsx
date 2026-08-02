@@ -889,6 +889,30 @@ export default function Students() {
                           <TableCell className="text-muted-foreground">{student.city || '-'}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">{student.gender || '-'}</TableCell>
                           <TableCell className="text-muted-foreground">{student.age || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" asChild><Link to={`/student-profile/${student.id}`}>Profile</Link></Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Copy registration / profile-completion link"
+                                onClick={async () => {
+                                  const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: student.id });
+                                  if (error || !token) {
+                                    toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                    return;
+                                  }
+                                  const url = `${window.location.origin}/register/student/${token}`;
+                                  await navigator.clipboard.writeText(url).catch(() => undefined);
+                                  toast({ title: 'Registration link copied', description: url });
+                                }}
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </Button>
+                              <ImpersonateButton userId={student.id} userLabel={student.full_name} />
+                            </div>
+                          </TableCell>
+
                         </>
                       )}
                     </TableRow>
