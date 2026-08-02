@@ -207,6 +207,9 @@ export function UnifiedAttendanceForm({
   // Subject-specific fields
   const [lessonNumber, setLessonNumber] = useState('');
   const [pageNumber, setPageNumber] = useState('');
+  const [qaidaPageId, setQaidaPageId] = useState('');
+  const [qaidaUnitFrom, setQaidaUnitFrom] = useState('');
+  const [qaidaUnitTo, setQaidaUnitTo] = useState('');
   const [markerType, setMarkerType] = useState<MarkerType>('ayah');
   
   // Sabaq fields for Hifz/Nazra
@@ -330,7 +333,7 @@ export function UnifiedAttendanceForm({
       if (!student.id) return null;
       let q = supabase
         .from('attendance')
-        .select('id, class_date, lesson_covered, sabaq_marker_type, sabaq_surah_from, sabaq_surah_to, sabaq_ayah_from, sabaq_ayah_to, sabaq_ruku_from_juz, sabaq_ruku_from_number, sabaq_ruku_to_juz, sabaq_ruku_to_number, sabaq_quarter_from_juz, sabaq_quarter_from_number, sabaq_quarter_to_juz, sabaq_quarter_to_number, lesson_number, page_number')
+        .select('id, class_date, lesson_covered, sabaq_marker_type, sabaq_surah_from, sabaq_surah_to, sabaq_ayah_from, sabaq_ayah_to, sabaq_ruku_from_juz, sabaq_ruku_from_number, sabaq_ruku_to_juz, sabaq_ruku_to_number, sabaq_quarter_from_juz, sabaq_quarter_from_number, sabaq_quarter_to_juz, sabaq_quarter_to_number, lesson_number, page_number, qaida_page_id, qaida_unit_from, qaida_unit_to')
         .eq('student_id', student.id)
         .eq('status', 'present')
         .lt('class_date', classDate || format(new Date(), 'yyyy-MM-dd'))
@@ -354,6 +357,9 @@ export function UnifiedAttendanceForm({
     } else if (currentSubjectType === 'qaida') {
       if (p.lesson_number != null) setLessonNumber(String(p.lesson_number));
       if (p.page_number != null) setPageNumber(String(p.page_number));
+      if (p.qaida_page_id) setQaidaPageId(p.qaida_page_id);
+      if (p.qaida_unit_from != null) setQaidaUnitFrom(String(p.qaida_unit_from));
+      if (p.qaida_unit_to != null) setQaidaUnitTo(String(p.qaida_unit_to));
     } else {
       if (p.sabaq_marker_type) setMarkerType(p.sabaq_marker_type);
       setAyahFromSurah(p.sabaq_surah_from || '');
@@ -554,7 +560,9 @@ export function UnifiedAttendanceForm({
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
-        lessonCoveredText = lessonNumber ? `Lesson ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}` : '';
+        lessonCoveredText = lessonNumber
+          ? `Baab ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}${qaidaUnitTo ? `, up to unit ${qaidaUnitTo}` : ''}`
+          : '';
       } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
         if (ayahFromSurah && ayahFromNumber) {
           lessonCoveredText = `${ayahFromSurah} ${ayahFromNumber}`;
@@ -607,6 +615,9 @@ export function UnifiedAttendanceForm({
         ayah_to: isQaida ? null : (ayahToNumber ? parseInt(ayahToNumber) : null),
         lesson_number: isQaida && lessonNumber ? parseInt(lessonNumber) : null,
         page_number: isQaida && pageNumber ? parseInt(pageNumber) : null,
+        qaida_page_id: isQaida ? (qaidaPageId || null) : null,
+        qaida_unit_from: isQaida && qaidaUnitFrom ? parseInt(qaidaUnitFrom) : null,
+        qaida_unit_to: isQaida && qaidaUnitTo ? parseInt(qaidaUnitTo) : null,
         sabaq_surah_from: isHifzOrNazra ? ayahFromSurah || null : null,
         sabaq_surah_to: isHifzOrNazra ? ayahToSurah || null : null,
         sabaq_ayah_from: isHifzOrNazra && ayahFromNumber ? parseInt(ayahFromNumber) : null,
@@ -777,11 +788,11 @@ export function UnifiedAttendanceForm({
   const lessonRequired = selectedStatus === 'present' || requiresReschedule(selectedStatus);
   const hasLessonDetails = useMemo(() => {
     if (!lessonRequired) return true;
-    if (currentSubjectType === 'qaida') return !!lessonNumber;
+    if (currentSubjectType === 'qaida') return !!qaidaPageId && !!qaidaUnitTo;
     if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [lessonRequired, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, currentSubjectType, lessonNumber, qaidaPageId, qaidaUnitTo, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
@@ -1155,6 +1166,12 @@ export function UnifiedAttendanceForm({
                   onLessonNumberChange={setLessonNumber}
                   pageNumber={pageNumber}
                   onPageNumberChange={setPageNumber}
+                  qaidaPageId={qaidaPageId}
+                  onQaidaPageIdChange={setQaidaPageId}
+                  unitFrom={qaidaUnitFrom}
+                  onUnitFromChange={setQaidaUnitFrom}
+                  unitTo={qaidaUnitTo}
+                  onUnitToChange={setQaidaUnitTo}
                 />
               )}
 
