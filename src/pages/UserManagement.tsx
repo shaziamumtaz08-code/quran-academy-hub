@@ -105,6 +105,8 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Info, Video, Presentation, ClipboardCheck, UserCircle2, Power, Link2 } from 'lucide-react';
+import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
+
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -1789,7 +1791,11 @@ export default function UserManagement() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">
+            {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+              <RegistrationLinksCard />
+            )}
             {/* Search and Filters — compact one-row layout */}
+
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 {/* Search */}
@@ -2116,6 +2122,29 @@ export default function UserManagement() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Copy profile-completion link"
+                                  onClick={async () => {
+                                    const isTeacher = (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'teacher');
+                                    const rpc = isTeacher ? 'admin_generate_onboarding_token' : 'admin_generate_student_onboarding_token';
+                                    const args = isTeacher ? { _teacher_id: user.id } : { _student_id: user.id };
+                                    const { data: token, error } = await (supabase as any).rpc(rpc, args);
+                                    if (error || !token) {
+                                      toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
+                                      return;
+                                    }
+                                    const url = `${window.location.origin}${isTeacher ? '/onboard/' : '/register/student/'}${token}`;
+                                    await navigator.clipboard.writeText(url).catch(() => undefined);
+                                    toast({ title: 'Profile-completion link copied', description: url });
+                                  }}
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
+                              )}
+
                             </div>
                           </TableCell>
                         </TableRow>
@@ -2422,7 +2451,7 @@ export default function UserManagement() {
                                    <Button
                                      variant="ghost"
                                      size="sm"
-                                     title="Copy onboarding link"
+                                     title="Copy teacher profile-completion link (pre-filled with existing details)"
                                      onClick={async () => {
                                        const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', { _teacher_id: user.id });
                                        if (error || !token) {
@@ -2444,7 +2473,7 @@ export default function UserManagement() {
                                    <Button
                                      variant="ghost"
                                      size="sm"
-                                     title="Copy student registration link"
+                                     title="Copy student profile-completion link (pre-filled with existing details)"
                                      onClick={async () => {
                                        const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: user.id });
                                        if (error || !token) {
