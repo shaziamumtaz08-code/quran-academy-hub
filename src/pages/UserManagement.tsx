@@ -2451,7 +2451,7 @@ export default function UserManagement() {
                                    <Button
                                      variant="ghost"
                                      size="sm"
-                                     title="Copy onboarding link"
+                                     title="Copy teacher profile-completion link (pre-filled with existing details)"
                                      onClick={async () => {
                                        const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', { _teacher_id: user.id });
                                        if (error || !token) {
@@ -2473,7 +2473,7 @@ export default function UserManagement() {
                                    <Button
                                      variant="ghost"
                                      size="sm"
-                                     title="Copy student registration link"
+                                     title="Copy student profile-completion link (pre-filled with existing details)"
                                      onClick={async () => {
                                        const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: user.id });
                                        if (error || !token) {
