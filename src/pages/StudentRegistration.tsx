@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Country } from 'country-state-city';
 import {
-  BookOpen, CheckCircle2, GraduationCap, HeartPulse, Loader2, MapPin, Phone, Plus, Send,
+  BookOpen, CheckCircle2, GraduationCap, Loader2, MapPin, Plus, Send,
   ShieldCheck, Trash2, User, Users,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -473,9 +473,6 @@ export default function StudentRegistration() {
           </Button>
         </div>
       </div>
-
-      <HeartPulse className="hidden" />
-      <Phone className="hidden" />
     </div>
   );
 }
