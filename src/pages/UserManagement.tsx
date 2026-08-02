@@ -2444,49 +2444,7 @@ export default function UserManagement() {
                                {/* Login as user — super_admin & admin only, opens in a new tab */}
                                <ImpersonateButton userId={user.id} userLabel={user.full_name || user.email || 'user'} />
 
-                               {/* Onboarding link — teachers only, admins only */}
-                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
-                                 (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'teacher') && (
-                                   <Button
-                                     variant="ghost"
-                                     size="sm"
-                                     title="Copy teacher profile-completion link (pre-filled with existing details)"
-                                     onClick={async () => {
-                                       const { data: token, error } = await (supabase as any).rpc('admin_generate_onboarding_token', { _teacher_id: user.id });
-                                       if (error || !token) {
-                                         toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
-                                         return;
-                                       }
-                                       const url = `${window.location.origin}/onboard/${token}`;
-                                       await navigator.clipboard.writeText(url).catch(() => undefined);
-                                       toast({ title: 'Onboarding link copied', description: url });
-                                     }}
-                                   >
-                                     <Link2 className="h-4 w-4" />
-                                   </Button>
-                                 )}
 
-                               {/* Registration link — students only, admins only */}
-                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
-                                 (user.roles ?? []).some((r: any) => (typeof r === 'string' ? r : r?.role) === 'student') && (
-                                   <Button
-                                     variant="ghost"
-                                     size="sm"
-                                     title="Copy student profile-completion link (pre-filled with existing details)"
-                                     onClick={async () => {
-                                       const { data: token, error } = await (supabase as any).rpc('admin_generate_student_onboarding_token', { _student_id: user.id });
-                                       if (error || !token) {
-                                         toast({ title: 'Could not create link', description: error?.message, variant: 'destructive' });
-                                         return;
-                                       }
-                                       const url = `${window.location.origin}/register/student/${token}`;
-                                       await navigator.clipboard.writeText(url).catch(() => undefined);
-                                       toast({ title: 'Registration link copied', description: url });
-                                     }}
-                                   >
-                                     <Link2 className="h-4 w-4" />
-                                   </Button>
-                                 )}
 
 
 
