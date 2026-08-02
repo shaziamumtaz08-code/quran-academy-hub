@@ -10,7 +10,8 @@ interface Props {
 
 export function QaidaMilestoneTracker({ studentId, compact }: Props) {
   const progress = useQaidaProgress(studentId);
-  if (!progress) return null;
+  // Only surfaced for students who actually have Qaida lessons recorded.
+  if (!progress || progress.unitsReached === 0) return null;
   const { baabs, overallPercent, currentBaab, currentPage } = progress;
   const started = progress.unitsReached > 0;
 
