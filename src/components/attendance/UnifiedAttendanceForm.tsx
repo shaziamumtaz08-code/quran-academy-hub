@@ -475,6 +475,9 @@ export function UnifiedAttendanceForm({
       setLeaveEndDate('');
       setLessonNumber('');
       setPageNumber('');
+      setQaidaPageId('');
+      setQaidaUnitFrom('');
+      setQaidaUnitTo('');
       setMarkerType('ayah');
       setRukuFromJuz(''); setRukuFromNumber(''); setRukuToJuz(''); setRukuToNumber('');
       setQuarterFromJuz(''); setQuarterFromNumber(''); setQuarterToJuz(''); setQuarterToNumber('');
@@ -529,6 +532,9 @@ export function UnifiedAttendanceForm({
       setManzilAnswered(r.manzil_done !== null && r.manzil_done !== undefined);
       setLessonNumber(r.lesson_number != null ? String(r.lesson_number) : '');
       setPageNumber(r.page_number != null ? String(r.page_number) : '');
+      setQaidaPageId((r as any).qaida_page_id || '');
+      setQaidaUnitFrom((r as any).qaida_unit_from != null ? String((r as any).qaida_unit_from) : '');
+      setQaidaUnitTo((r as any).qaida_unit_to != null ? String((r as any).qaida_unit_to) : '');
       setLinesCompleted(r.lines_completed != null ? String(r.lines_completed) : '');
       setVarianceReason(r.variance_reason ?? '');
       setInputUnit(r.input_unit ?? '');
