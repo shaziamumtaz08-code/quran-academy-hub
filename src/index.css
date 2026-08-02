@@ -627,3 +627,37 @@
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Public student enrolment form theme (Ocean Deep + Sora/Manrope) ───────── */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap');
+
+.enrol-scope {
+  --background: 205 40% 97%;
+  --foreground: 213 60% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 213 60% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 213 60% 14%;
+  --primary: 211 79% 15%;
+  --primary-foreground: 190 50% 96%;
+  --secondary: 205 45% 92%;
+  --secondary-foreground: 211 60% 20%;
+  --muted: 205 40% 94%;
+  --muted-foreground: 209 20% 42%;
+  --accent: 189 56% 40%;
+  --accent-foreground: 0 0% 100%;
+  --border: 205 30% 86%;
+  --input: 205 30% 86%;
+  --ring: 189 56% 40%;
+  --radius: 0.85rem;
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.enrol-scope .font-heading,
+.enrol-scope h1,
+.enrol-scope h2 {
+  font-family: 'Sora', system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+.enrol-scope .font-body { font-family: 'Manrope', system-ui, sans-serif; }
