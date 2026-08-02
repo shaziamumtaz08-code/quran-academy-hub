@@ -21,6 +21,7 @@ import {
   MessageSquare,
   UserCog,
   Users,
+  Target,
   Video,
   Wallet,
 
@@ -221,12 +222,13 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         label: "MENU",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Monthly Planning", href: "/monthly-planning", icon: Target },
           {
             label: "My Classes",
             icon: BookOpen,
             children: [
               { label: "Attendance", href: "/teaching?view=attendance" },
-              { label: "Planning", href: "/teaching?view=planning" },
+              { label: "Planning", href: "/monthly-planning" },
               { label: "AI Teaching OS", href: "/teaching-os" },
               { label: "Quiz Engine", href: "/quiz-engine" },
             ],
