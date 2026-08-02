@@ -21,6 +21,7 @@ import {
   MessageSquare,
   UserCog,
   Users,
+  Target,
   Video,
   Wallet,
 
