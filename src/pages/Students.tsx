@@ -645,12 +645,23 @@ export default function Students() {
           )}
         </div>
 
-        {/* Info note - only for admins */}
+        {/* Admin stat strip */}
         {isAdmin && (
-          <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            To add or manage students, go to <strong>User Management</strong>. To assign teachers, use the <strong>Assignments</strong> page.
-          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Students', value: filteredStudents.length, tone: 'from-sky/20 to-sky/5' },
+              { label: 'Assigned', value: filteredStudents.filter(s => !!s.teacher_name).length, tone: 'from-emerald-500/20 to-emerald-500/5' },
+              { label: 'Unassigned', value: filteredStudents.filter(s => !s.teacher_name).length, tone: 'from-amber-500/20 to-amber-500/5' },
+              { label: 'No login', value: filteredStudents.filter(s => authStatusMap[s.id] === false).length, tone: 'from-rose-500/20 to-rose-500/5' },
+            ].map((stat) => (
+              <div key={stat.label} className={`rounded-xl border border-border bg-gradient-to-br ${stat.tone} px-4 py-3 shadow-sm`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums text-foreground">{stat.value}</p>
+              </div>
+            ))}
+          </div>
         )}
+
 
         {/* Content */}
         {isLoading ? (
