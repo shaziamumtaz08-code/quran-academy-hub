@@ -12,8 +12,8 @@ import { BookOpen, CheckCircle2, HeartPulse, User } from 'lucide-react';
 type Values = Record<string, string>;
 
 const STEPS = [
-  { key: 'personal', title: 'Student details', icon: User, hint: 'Required — this identifies the student.' },
-  { key: 'medical', title: 'Guardian & wellbeing', icon: HeartPulse, hint: 'Optional, but helps us keep the student safe.' },
+  { key: 'personal', title: 'Student & academics', icon: User, hint: 'Required — identity, contact and academic details.' },
+  { key: 'medical', title: 'Parents & wellbeing', icon: HeartPulse, hint: 'Parent names, contact numbers and an emergency number are required.' },
   { key: 'learning', title: 'Learning preferences', icon: BookOpen, hint: 'Optional — you can update these later.' },
 ];
 
@@ -48,7 +48,27 @@ export default function StudentOnboarding() {
   }, [token]);
 
   const save = async (complete: boolean) => {
-    if (!values.full_name?.trim()) {
+    if (complete) {
+      const required: Array<[string, string, number]> = [
+        ['full_name', 'Student full name', 0],
+        ['date_of_birth', 'Date of birth', 0],
+        ['email', 'Email address', 0],
+        ['address', 'Address', 0],
+        ['school_name', 'School / institute', 0],
+        ['grade_level', 'Grade / class', 0],
+        ['father_name', "Father's name", 1],
+        ['father_contact', "Father's contact number", 1],
+        ['mother_name', "Mother's name", 1],
+        ['mother_contact', "Mother's contact number", 1],
+        ['emergency_contact_phone', 'Emergency contact number', 1],
+      ];
+      const missing = required.filter(([k]) => !values[k]?.trim());
+      if (missing.length) {
+        toast({ title: 'Please complete required fields', description: missing.map(([, l]) => l).join(', '), variant: 'destructive' });
+        setStep(missing[0][2]);
+        return;
+      }
+    } else if (!values.full_name?.trim()) {
       toast({ title: 'Student name is required', variant: 'destructive' });
       setStep(0);
       return;
@@ -87,7 +107,7 @@ export default function StudentOnboarding() {
           <div>
             <h1 className="text-lg font-serif font-bold text-foreground">Student registration</h1>
             <p className="text-xs text-muted-foreground">
-              Complete the student profile — only the name is required, everything else is optional.
+              Complete the student profile — fields marked * are required.
             </p>
           </div>
         </div>
@@ -135,21 +155,26 @@ export default function StudentOnboarding() {
                 {step === 0 && (
                   <>
                     <Field k="full_name" label="Student full name *" />
+                    <Field k="email" label="Email address *" type="email" />
                     <Field k="whatsapp_number" label="Phone / WhatsApp" />
-                    <Field k="date_of_birth" label="Date of birth" type="date" />
+                    <Field k="date_of_birth" label="Date of birth *" type="date" />
                     <Field k="gender" label="Gender (male / female)" />
-                    <Field k="school_name" label="School name" />
-                    <Field k="grade_level" label="Grade / class" />
+                    <Field k="school_name" label="School / institute *" />
+                    <Field k="grade_level" label="Grade / class *" />
                     <Field k="city" label="City" />
                     <Field k="country" label="Country" />
                     <Field k="timezone" label="Timezone" placeholder="e.g. Asia/Karachi" />
-                    <div className="sm:col-span-2"><Field k="address" label="Address" area /></div>
+                    <div className="sm:col-span-2"><Field k="address" label="Address *" area /></div>
                   </>
                 )}
                 {step === 1 && (
                   <>
+                    <Field k="father_name" label="Father's full name *" />
+                    <Field k="father_contact" label="Father's contact number *" />
+                    <Field k="mother_name" label="Mother's full name *" />
+                    <Field k="mother_contact" label="Mother's contact number *" />
                     <Field k="emergency_contact_name" label="Emergency contact name" />
-                    <Field k="emergency_contact_phone" label="Emergency contact phone" />
+                    <Field k="emergency_contact_phone" label="Emergency contact number *" />
                     <Field k="guardian_type" label="Relation to student" />
                     <Field k="blood_group" label="Blood group" placeholder="e.g. O+" />
                     <Field k="preferred_contact_method" label="Preferred contact method" />
