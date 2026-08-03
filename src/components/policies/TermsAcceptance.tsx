@@ -61,8 +61,9 @@ export function TermsAcceptance({ audience, checked, onChange, label }: TermsAcc
 
       <p className="text-xs text-muted-foreground">
         You can review all documents any time at{" "}
-        <a href="/legal/policies" target="_blank" rel="noreferrer" className="underline">
+        <a href={`/legal/policies?for=${audience}`} target="_blank" rel="noreferrer" className="underline">
           /legal/policies
+
         </a>
         .
       </p>
