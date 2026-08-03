@@ -17,8 +17,6 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const COUNTRIES = Country.getAllCountries();
-const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
-const DAY_SETS = ['Mon–Fri', 'Sat–Sun', 'Mon / Wed / Fri', 'Tue / Thu / Sat', 'Any day'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Household = {
@@ -33,8 +31,7 @@ type Student = {
   fullName: string; dob: string; gender: string; language: string;
   phone: string; whatsappSame: boolean; whatsapp: string; email: string; useGuardianEmail: boolean;
   schoolName: string; gradeLevel: string; currentLevel: string;
-  bloodGroup: string; medicalNotes: string;
-  subjects: string[]; goals: string; days: string; time1: string; time2: string;
+  medicalNotes: string; goals: string;
 };
 
 const emptyStudent = (): Student => ({
@@ -42,8 +39,7 @@ const emptyStudent = (): Student => ({
   fullName: '', dob: '', gender: '', language: '',
   phone: '', whatsappSame: true, whatsapp: '', email: '', useGuardianEmail: false,
   schoolName: '', gradeLevel: '', currentLevel: '',
-  bloodGroup: '', medicalNotes: '',
-  subjects: [], goals: '', days: '', time1: '', time2: '',
+  medicalNotes: '', goals: '',
 });
 
 const initialHousehold: Household = {
@@ -115,8 +111,7 @@ export default function StudentRegistration() {
     (student.useGuardianEmail ? home.guardianEmail : student.email).trim();
 
   const studentValid = (student: Student) => Boolean(
-    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)) &&
-    student.schoolName.trim() && student.gradeLevel.trim() && student.subjects.length,
+    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)),
   );
 
   const valid = useMemo(() => Boolean(
@@ -155,14 +150,9 @@ export default function StudentRegistration() {
           whatsapp: student.whatsappSame ? withDial(student.phone) : withDial(student.whatsapp),
           school_name: student.schoolName.trim() || null,
           grade_level: student.gradeLevel.trim() || null,
-          subjects: student.subjects,
           level: student.currentLevel || null,
           goals: student.goals || null,
-          blood_group: student.bloodGroup || null,
           medical_notes: student.medicalNotes || null,
-          preferred_time_1: student.time1 || null,
-          preferred_time_2: student.time2 || null,
-          preferred_days: student.days || null,
           preferred_language: student.language || null,
         })),
       });
@@ -364,65 +354,20 @@ export default function StudentRegistration() {
                 )}
               </Field>
 
-              <Field label="School / institute" required>
+              <Field label="School / institute">
                 <Input value={student.schoolName} onChange={e => setStudent(student.key, { schoolName: e.target.value })} className="h-11" />
               </Field>
-              <Field label="Grade / class" required>
+              <Field label="Grade / class">
                 <Input value={student.gradeLevel} onChange={e => setStudent(student.key, { gradeLevel: e.target.value })} placeholder="e.g. Grade 6" className="h-11" />
               </Field>
               <Field label="Current Quran / Arabic level" wide hint="e.g. Qaida page 12, Juz 3 memorised, complete beginner.">
                 <Input value={student.currentLevel} onChange={e => setStudent(student.key, { currentLevel: e.target.value })} className="h-11" />
               </Field>
 
-              <Field label="Blood group">
-                <Input value={student.bloodGroup} onChange={e => setStudent(student.key, { bloodGroup: e.target.value })} placeholder="e.g. O+" className="h-11" />
-              </Field>
-              <Field label="Medical conditions or special needs">
+              <Field label="Medical conditions or special needs" wide>
                 <Input value={student.medicalNotes} onChange={e => setStudent(student.key, { medicalNotes: e.target.value })} placeholder="Anything the teacher should know" className="h-11" />
               </Field>
 
-              <div className="space-y-3 sm:col-span-2">
-                <Label className="text-[13px] font-medium text-foreground">Subjects<span className="ml-1 text-accent">*</span></Label>
-                <div className="flex flex-wrap gap-2">
-                  {SUBJECTS.map(subject => {
-                    const active = student.subjects.includes(subject);
-                    return (
-                      <button
-                        key={subject}
-                        type="button"
-                        onClick={() => setStudent(student.key, {
-                          subjects: active
-                            ? student.subjects.filter(item => item !== subject)
-                            : [...student.subjects, subject],
-                        })}
-                        className={cn(
-                          'rounded-full border px-4 py-2 text-sm transition-all',
-                          active
-                            ? 'border-accent bg-accent text-accent-foreground shadow-[0_8px_20px_-10px_hsl(var(--accent))]'
-                            : 'border-border bg-background text-muted-foreground hover:border-accent/50 hover:text-foreground',
-                        )}
-                      >
-                        {subject}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Field label="Preferred days">
-                <Select value={student.days} onValueChange={value => setStudent(student.key, { days: value })}>
-                  <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {DAY_SETS.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Preferred time" hint={home.timezone ? `In ${home.timezone}` : 'Select a country to set the timezone'}>
-                <Input type="time" value={student.time1} onChange={e => setStudent(student.key, { time1: e.target.value })} className="h-11" />
-              </Field>
-              <Field label="Backup time">
-                <Input type="time" value={student.time2} onChange={e => setStudent(student.key, { time2: e.target.value })} className="h-11" />
-              </Field>
               <Field label="Learning goals" wide>
                 <Textarea value={student.goals} onChange={e => setStudent(student.key, { goals: e.target.value })} rows={2} placeholder="What should the student achieve in the next 6 months?" />
               </Field>
