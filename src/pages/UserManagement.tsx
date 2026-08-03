@@ -413,7 +413,7 @@ interface UserWithRoles {
 
 export type RoleStatus = 'active' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
-export default function UserManagement() {
+export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' | 'student' } = {}) {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
   const { activeDivision, switcherOptions } = useDivision();
   const { toast } = useToast();
