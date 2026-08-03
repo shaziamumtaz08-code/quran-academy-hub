@@ -1,67 +1,26 @@
+# Teachers & Students tabs = filtered User Management rows
 
-# Fix the three sisters' finance (Dua, Areej, Ayesha Khan)
+## Goal
+The Teachers tab and Students tab under People should look and behave exactly like the User Management table — same rows, same columns, same icons, same eye/actions — just pre-filtered to that role. The "Assigned Students" expansion that currently sits on the Teachers list page moves into the teacher's own profile page, at the bottom.
 
-## Target state
+## What changes
 
-| Period | Fee per sister | Total fee | Payout per assignment | Total payout |
-|---|---|---|---|---|
-| Jan – Feb 2026 | 2,333 PKR | 7,000 | 1,666.67 PKR | 5,000 |
-| Mar – Jun 2026 | 3,000 PKR | 9,000 | 1,666.67 PKR | 5,000 |
-| Jul 2026 onward | 3,000 PKR | 9,000 | **2,000 PKR** | **6,000** |
+### 1. One shared table, three tabs
+- User Management gets an optional "locked role" mode. When locked to `teacher` or `student`:
+  - only users with that role are listed,
+  - the role filter dropdown is hidden (it's already implied by the tab),
+  - the page heading/description reflects the tab ("Teachers", "Students"),
+  - everything else stays identical: search, country/city/status/gender/division filters, ID & roles column with division-coloured icons, archived badge, sticky horizontal scrollbar, row click → profile drawer, eye icon → full profile, edit / impersonate / delete actions, bulk actions for super admins.
+- People → Teachers renders that table locked to `teacher`; People → Students renders it locked to `student`. The old bespoke Teachers/Students tables are retired from those tabs.
+- Role-specific extras that only make sense on those tabs (e.g. the student stats strip, registration-link card placement) are kept above the table where they already exist, so nothing useful is lost.
 
-Currency stays PKR. Teacher stays the same (`82237100-…`). No academic records touched.
+### 2. Assigned students move into the teacher profile
+- Remove the expandable "Assigned Students" row from the Teachers list (no more chevron column there).
+- On the teacher profile page (`/teacher-profile/:id`), the bottom "Assigned students & subjects" section is upgraded to the card grid from the screenshot: one card per student with avatar, name, age • gender, and subject line, plus the schedule details already fetched. Clicking a student card opens that student's profile.
+- The equivalent bottom sections on the student profile (parents/relationships + enrolled subjects & teachers) stay as they are.
 
----
-
-## Step 1 — Ayesha's duplicate invoices (root cause of "arrears")
-
-Ayesha has **3 duplicate invoices per month** for Jan, Feb, Mar, Apr, May 2026. Real payments got smeared across duplicates so each one shows as partially paid → phantom arrears.
-
-For each affected month, keep **one** invoice per sister and drop the extras:
-
-- **Jan 2026 (Ayesha)** — keep 1 invoice at 2,333, mark paid (7,000 total paid across duplicates already). Delete the other 2 duplicates + their payment_transactions after re-pointing them to the kept invoice.
-- **Feb 2026 (Ayesha)** — same treatment, kept invoice at 2,333, paid.
-- **Mar / Apr 2026 (Ayesha)** — keep 1 invoice at 3,000, mark paid. Delete 2 duplicates each month, re-point transactions.
-- **May 2026 (Ayesha)** — keep 1 invoice at 3,000, mark paid (one duplicate already paid, two are pending zeros → just delete the two unpaid duplicates).
-
-Result: Ayesha's account matches Dua & Areej — one invoice per month, all Jan–Jun paid in full.
-
-## Step 2 — Rewrite Jan–Feb fee to 2,333 per sister
-
-Dua and Areej's Jan-Feb invoices are currently 2,500 each (paid 2,500). Update them to 2,333, keep `amount_paid` intact, and record a 167 PKR **credit adjustment** on each so ledger balances (available toward July).
-
-Ayesha's Jan-Feb kept invoice from Step 1 goes in at 2,333 (paid 2,333); the extra 667 PKR she paid each month (2,333 vs 3,000 previously billed) also becomes a credit adjustment.
-
-_Alternative if you prefer no credit adjustments:_ leave Jan-Feb Dua/Areej at 2,500 as historical and set only Ayesha to 2,333 — say the word and I'll take that path instead.
-
-## Step 3 — Backdate Ayesha's assignment to align with sisters
-
-Ayesha's `student_teacher_assignments.effective_from_date` is currently **01-Apr-2026** while Dua/Areej are **01-Jan-2026**. Since teacher was paid 1,666.67 for Ayesha from Jan (part of the 5,000 total), backdate Ayesha's assignment `effective_from_date` to **01-Jan-2026** so historical payroll math ties out.
-
-## Step 4 — Raise all three payouts to 2,000 from July
-
-Update `student_teacher_assignments.payout_amount` from **1,666.60 → 2,000** on all three assignments, effective **01-Jul-2026** (`effective_from_date` stays Jan; we use the existing salary revision flow so history stays at 1,666.67 and Jul onward is 2,000). If your payroll model requires a new row per rate change, I'll close the current rows on 30-Jun and insert three fresh ones from 01-Jul instead — flag which model you use.
-
-## Step 5 — Regenerate July→ invoices via auto-generator
-
-Trigger `auto_generate_plan_invoices` for all three billing plans. Existing Jul-Oct pending invoices are already 3,000 PKR ✓ so no change expected; the run just confirms nothing stale remains.
-
-## Step 6 — Verification query
-
-Run a single readback showing per-sister per-month: invoice amount, amount_paid, status, plus per-assignment monthly payout, and confirm:
-- 3 sisters × (Jan-Feb 2,333) + (Mar-Jun 3,000) all marked paid
-- Jul-Oct 3,000 each, pending
-- Payouts 1,666.67 for Jan-Jun, 2,000 for Jul+
-
-Screenshot / paste of the readback returned to you.
-
----
-
-## Technical details
-
-- All writes go through the `supabase--insert` tool for data (UPDATE / DELETE on `fee_invoices`, `payment_transactions`, `invoice_adjustments`, `student_teacher_assignments`) since these are data-only changes on existing tables — no schema migration.
-- `trg_sync_invoice_from_transactions` will auto-recompute `amount_paid` / `status` on affected invoices after we re-point transactions.
-- `trg_recompute_plans_on_assignment_change` will fire when we backdate Ayesha's assignment; we'll disable regeneration for closed months by relying on the "paid invoices never modified" rule already in `auto_generate_plan_invoices`.
-- Nothing touches academic tables (attendance, schedules, enrollments).
-
-Reply **go** to run it, or tell me to switch Step 2 to the "keep 2,500" alternative and I'll adjust.
+## Technical notes
+- `src/pages/UserManagement.tsx` gains a `lockedRole?: 'teacher' | 'student'` prop; the role filter state is initialised from it and the `Select` for role is not rendered when set. No duplicate table markup is created.
+- `src/pages/PeopleLanding.tsx` maps `view=teachers` / `view=students` to `<UserManagement lockedRole="..." />` instead of the lazy `Teachers` / `Students` pages for the table portion.
+- `src/pages/Teachers.tsx` keeps its data hooks only where still needed; the assigned-students rendering block is lifted into `src/pages/TeacherProfile.tsx` (or a small `TeacherAssignedStudents` component reused by it).
+- Direct routes `/teachers` and `/students` continue to work and show the same filtered table.
