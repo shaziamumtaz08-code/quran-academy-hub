@@ -30,8 +30,12 @@ function monthsSince(iso?: string | null) {
 
 export default function ParentProfile() {
   const { parentId: paramId } = useParams<{ parentId: string }>();
-  const { profile: me, isLoading: authLoading } = useAuth();
+  const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const parentId = paramId ?? me?.id;
+  const queryClient = useQueryClient();
+  const canEditPhoto = !!(parentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(parentId, () =>
+    queryClient.invalidateQueries({ queryKey: ['parent-profile-page', parentId] }));
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['parent-profile-page', parentId],
