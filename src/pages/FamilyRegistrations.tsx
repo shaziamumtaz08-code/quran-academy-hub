@@ -126,7 +126,7 @@ export default function FamilyRegistrations() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{row.relationship || (isTeacher ? 'Applicant' : 'Guardian')}</p>
+                            <p className="text-xs text-muted-foreground truncate">{isTeacher ? 'Teacher applicant' : 'Student'}</p>
                           </div>
                         </div>
                       </TableCell>
