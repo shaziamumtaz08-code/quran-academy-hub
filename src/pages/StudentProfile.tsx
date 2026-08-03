@@ -145,9 +145,9 @@ export default function StudentProfile() {
       <div className="grid gap-4 lg:grid-cols-2">
         <InfoCard icon={User} title="Personal information" tone="primary">
           <InfoRow icon={User} label="Full name" value={p.full_name} />
-          <InfoRow icon={IdCard} label="Student ID" value={p.registration_id} />
-          <InfoRow icon={Mail} label="Email address" value={p.email} />
-          <InfoRow icon={Phone} label="Phone number" value={p.whatsapp_number} />
+          <InfoRow icon={IdCard} label="Student ID" value={p.registration_id ? <span className="font-semibold text-primary">{p.registration_id}</span> : null} />
+          <InfoRow icon={Mail} label="Email address" value={p.email ? <a href={`mailto:${p.email}`} className="font-medium text-sky-600 hover:underline">{p.email}</a> : null} />
+          <InfoRow icon={Phone} label="Phone number" value={p.whatsapp_number ? <span className="font-medium text-teal-600">{p.whatsapp_number}</span> : null} />
           <InfoRow icon={User} label="Gender" value={p.gender ? <span className="capitalize">{p.gender}</span> : null} />
           <InfoRow icon={CalendarDays} label="Date of birth" value={fmtDate(p.date_of_birth) ?? (p.age ? `${p.age} years` : null)} />
           <InfoRow icon={MapPin} label="Address" value={[p.address, p.city, p.country].filter(Boolean).join(', ')} />
@@ -155,73 +155,98 @@ export default function StudentProfile() {
         </InfoCard>
 
         <InfoCard icon={GraduationCap} title="Academic information" tone="teal">
-          <InfoRow icon={IdCard} label="Student ID" value={p.registration_id} />
+          <InfoRow icon={IdCard} label="Student ID" value={p.registration_id ? <span className="font-semibold text-teal-600">{p.registration_id}</span> : null} />
           <InfoRow icon={CalendarDays} label="Enrolment date" value={fmtDate(p.created_at)} />
           <InfoRow icon={School} label="School / grade" value={[p.school_name, p.grade_level].filter(Boolean).join(' • ')} />
           <InfoRow icon={BookOpen} label="Mushaf / unit" value={[p.mushaf_type, p.preferred_unit].filter(Boolean).join(' • ')} />
           <InfoRow icon={Target} label="Daily target" value={p.daily_target_amount ?? p.daily_target_lines} />
           <InfoRow icon={Languages} label="Arabic level" value={p.arabic_level} />
-          <InfoRow icon={Languages} label="Preferred language" value={p.preferred_language ?? p.first_language} />
           <InfoRow icon={ShieldCheck} label="Account status" value={<StatusBadge ok={(p.account_status ?? 'active') === 'active'} label={p.account_status ?? 'Active'} />} />
+          <InfoRow icon={BadgeCheck} label="Email verified" value={<StatusBadge ok={!!p.email} label={p.email ? 'Verified' : 'Pending'} />} />
         </InfoCard>
 
-        <InfoCard icon={Users} title="Guardians & parents" tone="violet">
-          {data!.links.length === 0 ? (
-            <EmptyState icon={Users} title="No guardian linked" hint="Link a parent from the Parents page." />
-          ) : (
-            data!.links.map((l: any) => (
-              <div key={l.parent_id} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                <div className="min-w-0">
-                  <Link to={`/parent-profile/${l.parent_id}`} className="text-sm font-medium text-foreground hover:underline">
-                    {l.parent?.full_name ?? 'Unnamed'}
-                  </Link>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {[l.parent?.email, l.parent?.whatsapp_number].filter(Boolean).join(' • ') || '—'}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px] capitalize">{l.relationship ?? 'guardian'}</Badge>
-              </div>
-            ))
-          )}
-        </InfoCard>
-
-        <InfoCard icon={Siren} title="Emergency contact" tone="rose">
-          <InfoRow icon={User} label="Father" value={[p.father_name, p.father_contact].filter(Boolean).join(' • ')} />
-          <InfoRow icon={User} label="Mother" value={[p.mother_name, p.mother_contact].filter(Boolean).join(' • ')} />
-          <InfoRow icon={User} label="Contact name" value={p.emergency_contact_name} />
-          <InfoRow icon={Phone} label="Contact phone" value={p.emergency_contact_phone} />
+        <InfoCard icon={Users} title="Guardian information" tone="amber">
+          <InfoRow icon={User} label="Father" value={p.father_name} />
+          <InfoRow icon={Phone} label="Father's phone" value={p.father_contact ? <span className="font-medium text-sky-600">{p.father_contact}</span> : null} />
+          <InfoRow icon={User} label="Mother" value={p.mother_name} />
+          <InfoRow icon={Phone} label="Mother's phone" value={p.mother_contact ? <span className="font-medium text-sky-600">{p.mother_contact}</span> : null} />
           <InfoRow icon={Users} label="Relation" value={p.guardian_type} />
           <InfoRow icon={Mail} label="Preferred contact" value={p.preferred_contact_method} />
         </InfoCard>
 
-        <InfoCard icon={GraduationCap} title="Teachers & subjects" tone="amber">
-          {teachers.length === 0 ? (
-            <EmptyState icon={GraduationCap} title="No active assignment" hint="Assign a teacher from the Assignments page." />
-          ) : (
-            teachers.map((a: any) => (
-              <div key={a.id} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{a.subject?.name ?? 'Subject'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{a.teacher?.full_name ?? 'Unassigned'}</p>
-                </div>
-                <span className="text-[11px] text-muted-foreground">{fmtDate(a.start_date) ?? ''}</span>
-              </div>
-            ))
-          )}
+        <InfoCard icon={Siren} title="Emergency contact" tone="rose">
+          <InfoRow icon={User} label="Contact name" value={p.emergency_contact_name} />
+          <InfoRow icon={Phone} label="Contact phone" value={p.emergency_contact_phone ? <span className="font-medium text-rose-600">{p.emergency_contact_phone}</span> : null} />
+          <InfoRow icon={Users} label="Relation" value={p.guardian_type} />
         </InfoCard>
 
-        <InfoCard icon={HeartPulse} title="Medical information" tone="sky">
+        <InfoCard icon={HeartPulse} title="Medical information" tone="violet">
           <InfoRow icon={Droplet} label="Blood group" value={p.blood_group} />
           <InfoRow label="Medical conditions" value={p.medical_conditions ?? 'None'} />
-          <InfoRow label="Notes" value={p.medical_notes ?? p.special_needs} />
+          <InfoRow label="Notes" value={p.medical_notes ?? p.special_needs ?? 'No notes'} />
         </InfoCard>
 
-        <InfoCard icon={Target} title="Learning & background" tone="violet" className="lg:col-span-2">
+        <InfoCard icon={Target} title="Learning & background" tone="sky">
           <InfoRow label="Learning goals" value={p.learning_goals} />
           <InfoRow label="Special needs / notes" value={p.special_needs} />
+          <InfoRow label="Preferred language" value={p.preferred_language ?? p.first_language} />
           <InfoRow label="How they heard about us" value={p.hear_about_us} />
         </InfoCard>
       </div>
+
+      <InfoCard icon={Users} title="Parents" tone="violet">
+        {data!.links.length === 0 ? (
+          <EmptyState icon={Users} title="No guardian linked" hint="Link a parent from the Parents page." />
+        ) : (
+          <div className="grid gap-3 p-4 sm:grid-cols-2">
+            {data!.links.map((l: any) => (
+              <div
+                key={l.parent_id}
+                className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/8 via-card to-card p-4 shadow-[0_10px_28px_-20px_rgba(139,92,246,0.7)] transition-transform hover:-translate-y-0.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <Link to={`/parent-profile/${l.parent_id}`} className="font-semibold text-foreground hover:text-violet-600 hover:underline">
+                    {l.parent?.full_name ?? 'Unnamed'}
+                  </Link>
+                  <Badge variant="outline" className="border-teal-500/40 bg-teal-500/10 text-[10px] uppercase text-teal-600">
+                    {l.relationship ?? 'guardian'}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Mail className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="truncate text-foreground">{l.parent?.email ?? '—'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5 text-teal-500" />
+                    <span className="truncate text-foreground">{l.parent?.whatsapp_number ?? '—'}</span>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </InfoCard>
+
+      <InfoCard icon={GraduationCap} title="Enrolled subjects & teachers" tone="amber">
+        {teachers.length === 0 ? (
+          <EmptyState icon={GraduationCap} title="No active assignment" hint="Assign a teacher from the Assignments page." />
+        ) : (
+          <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {teachers.map((a: any) => (
+              <div
+                key={a.id}
+                className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-card to-card p-4 shadow-[0_10px_28px_-20px_rgba(245,158,11,0.7)] transition-transform hover:-translate-y-0.5"
+              >
+                <p className="text-sm font-semibold text-foreground">{a.subject?.name ?? 'Subject'}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{a.teacher?.full_name ?? 'Unassigned'}</p>
+                <p className="mt-2 text-[11px] font-medium text-amber-600">{fmtDate(a.start_date) ?? ''}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </InfoCard>
+
     </div>
   );
 }
