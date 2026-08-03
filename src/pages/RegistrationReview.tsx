@@ -158,11 +158,14 @@ export default function RegistrationReview() {
       <BackLink to="/people?view=registrations" label="Back to registrations" />
 
       <ProfileHero
-        name={isTeacher ? (applicant.full_name || reg.parent_name) : reg.parent_name}
+        name={isTeacher ? (applicant.full_name || reg.parent_name) : (studentName || reg.parent_name)}
+        avatarUrl={avatarUrl}
+        onAvatarSelect={handleAvatarSelect}
+        avatarUploading={avatarUploading}
         gradient={isTeacher ? 'from-violet-600 via-indigo-600 to-sky-500' : 'from-sky-600 via-cyan-600 to-teal-500'}
         badges={
           <>
-            <Badge variant="outline" className="capitalize">{isTeacher ? 'Teacher application' : 'Student / family'}</Badge>
+            <Badge variant="outline" className="capitalize">{isTeacher ? 'Teacher application' : 'Student registration'}</Badge>
             <Badge variant={reg.status === 'approved' ? 'default' : reg.status === 'rejected' ? 'destructive' : 'outline'} className="capitalize">{reg.status}</Badge>
           </>
         }
