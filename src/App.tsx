@@ -34,8 +34,6 @@ const Trust = lazy(() => import("./pages/Trust"));
 const Policies = lazy(() => import("./pages/Policies"));
 const PublicPolicies = lazy(() => import("./pages/PublicPolicies"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Teachers = lazy(() => import("./pages/Teachers"));
-const Students = lazy(() => import("./pages/Students"));
 const Schedules = lazy(() => import("./pages/Schedules"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Lessons = lazy(() => import("./pages/Lessons"));
