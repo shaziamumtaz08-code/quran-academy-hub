@@ -18,7 +18,7 @@ import {
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
   AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye, Wallet,
 } from 'lucide-react';
-import { LinkGuardianDialog } from './LinkGuardianDialog';
+import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { PaymentAccountsList } from '@/components/payment-accounts/PaymentAccountsList';
 import type { AppRole } from '@/contexts/AuthContext';
 
