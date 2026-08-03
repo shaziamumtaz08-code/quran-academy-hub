@@ -479,7 +479,7 @@ export default function UserManagement() {
   // Location filter states
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
-  const [filterRole, setFilterRole] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>(lockedRole || '');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterGender, setFilterGender] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
