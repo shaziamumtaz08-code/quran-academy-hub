@@ -267,12 +267,12 @@ export default function RegistrationReview() {
       )}
 
       {!isTeacher && (
-        <InfoCard icon={Baby} title={`Students (${children.length})`} tone="teal">
+        <InfoCard icon={Baby} title="Student details" tone="teal">
           <div className="space-y-4 p-5">
-            {children.length === 0 && <p className="text-sm text-muted-foreground">No students listed on this registration.</p>}
+            {children.length === 0 && <p className="text-sm text-muted-foreground">No student details on this registration.</p>}
             {children.map((child, index) => (
               <div key={index} className="rounded-xl border bg-muted/20 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-600">Student {index + 1}</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-600">{child.name || `Student ${index + 1}`}</p>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {([
                     ['Name', 'name'], ['Email', 'email'], ['Age', 'age'],
