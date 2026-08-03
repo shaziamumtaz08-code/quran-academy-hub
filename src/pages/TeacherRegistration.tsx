@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 const COUNTRIES = Country.getAllCountries();
 const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PAYOUT_METHODS = ['Bank account', 'Easypaisa', 'JazzCash', 'SadaPay', 'NayaPay', 'Wise', 'Payoneer'];
 
 type Form = {
   fullName: string; dob: string; gender: string;
@@ -25,6 +26,7 @@ type Form = {
   phone: string; whatsappSame: boolean; whatsapp: string; email: string;
   qualification: string; specialization: string; yearsExperience: string; previousInstitutes: string;
   subjects: string[]; languages: string; availability: string; expectedSalary: string;
+  payoutMethod: string; bankName: string; accountTitle: string; accountNumber: string; iban: string; branch: string;
   zoomEmail: string; hearAbout: string; about: string; consent: boolean;
 };
 
@@ -34,8 +36,10 @@ const initial: Form = {
   phone: '', whatsappSame: true, whatsapp: '', email: '',
   qualification: '', specialization: '', yearsExperience: '', previousInstitutes: '',
   subjects: [], languages: '', availability: '', expectedSalary: '',
+  payoutMethod: 'Bank account', bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '',
   zoomEmail: '', hearAbout: '', about: '', consent: false,
 };
+
 
 function Section({
   index, title, subtitle, icon: Icon, children,
