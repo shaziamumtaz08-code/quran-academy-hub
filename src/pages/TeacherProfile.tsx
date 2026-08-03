@@ -1,5 +1,6 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
