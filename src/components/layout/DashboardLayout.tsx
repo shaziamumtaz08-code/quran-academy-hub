@@ -255,6 +255,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Library", href: "/library", icon: FolderOpen },
+          { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
