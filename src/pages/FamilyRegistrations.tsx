@@ -141,7 +141,14 @@ export default function FamilyRegistrations() {
                         <p className="truncate max-w-[200px]">{row.email}</p>
                         <p className="text-xs text-muted-foreground">{row.phone}</p>
                       </TableCell>
-                      <TableCell className="py-3 text-sm tabular-nums">{isTeacher ? '—' : children.length}</TableCell>
+                      <TableCell className="py-3 text-sm">
+                        {isTeacher ? '—' : (
+                          <>
+                            <p className="truncate max-w-[180px]">{row.parent_name || '—'}</p>
+                            <p className="text-xs text-muted-foreground">{row.relationship || 'Guardian'}</p>
+                          </>
+                        )}
+                      </TableCell>
                       <TableCell className="py-3 text-sm text-muted-foreground">{[row.city, row.country].filter(Boolean).join(', ') || '—'}</TableCell>
                       <TableCell className="py-3 text-sm text-muted-foreground whitespace-nowrap">{format(new Date(row.created_at), 'dd MMM yyyy')}</TableCell>
                       <TableCell className="py-3">
