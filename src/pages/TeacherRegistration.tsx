@@ -143,6 +143,14 @@ export default function TeacherRegistration() {
           zoom_email: form.zoomEmail.trim() || null,
           heard_about: form.hearAbout.trim() || null,
           about: form.about.trim() || null,
+          banking: {
+            payout_method: form.payoutMethod,
+            bank_name: form.bankName.trim() || form.payoutMethod,
+            bank_account_title: form.accountTitle.trim(),
+            bank_account_number: form.accountNumber.trim(),
+            bank_iban: form.iban.trim() || null,
+            branch: form.branch.trim() || null,
+          },
         },
       });
       if (error) throw error;
