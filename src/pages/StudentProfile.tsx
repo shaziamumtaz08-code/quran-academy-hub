@@ -1,6 +1,7 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,12 @@ function monthsSince(iso?: string | null) {
 
 export default function StudentProfile() {
   const { studentId: paramId } = useParams<{ studentId: string }>();
-  const { profile: me, isLoading: authLoading } = useAuth();
+  const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const studentId = paramId ?? me?.id;
+  const queryClient = useQueryClient();
+  const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
+    queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] }));
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['student-profile-page', studentId],
@@ -100,6 +105,8 @@ export default function StudentProfile() {
       <ProfileHero
         name={p.full_name ?? 'Unnamed student'}
         avatarUrl={p.avatar_url}
+        onAvatarSelect={canEditPhoto ? onAvatarSelect : undefined}
+        avatarUploading={avatarUploading}
         gradient="from-primary via-sky-500 to-teal-500"
         badges={
           <>

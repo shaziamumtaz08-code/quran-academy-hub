@@ -123,7 +123,10 @@ export default function StudentRegistration() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('family_registrations').insert({
+      // One pending registration row per student. Siblings share a group id so the
+      // parent account is only created once at approval time.
+      const groupId = crypto.randomUUID();
+      const guardian = {
         parent_name: home.fatherName.trim() || home.motherName.trim(),
         relationship: 'Parent',
         email: (home.guardianEmail.trim() || studentEmail(students[0])),
@@ -141,7 +144,13 @@ export default function StudentRegistration() {
         ].filter(Boolean).join(' | ') || null,
         source_url: window.location.href,
         status: 'pending',
-        children: students.map(student => ({
+        family_group_id: groupId,
+      };
+
+      const rows = students.map((student) => ({
+        ...guardian,
+        student_name: student.fullName.trim(),
+        children: [{
           name: student.fullName.trim(),
           email: studentEmail(student),
           uses_parent_email: student.useGuardianEmail,
@@ -155,8 +164,10 @@ export default function StudentRegistration() {
           goals: student.goals || null,
           medical_notes: student.medicalNotes || null,
           preferred_language: student.language || null,
-        })),
-      });
+        }],
+      }));
+
+      const { error } = await supabase.from('family_registrations').insert(rows);
       if (error) throw error;
       await recordPolicyAcceptance({
         audience: 'student',
@@ -196,7 +207,7 @@ export default function StudentRegistration() {
           </p>
           <h1 className="mt-3 font-heading text-3xl font-semibold sm:text-4xl">Student enrolment</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-primary-foreground/75 sm:text-base">
-            One page, one submission — for a single student or for all the children in a family.
+            One page, one submission — for a single student, or for several siblings at once.
             Add as many students as you need at the bottom of the form.
           </p>
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-primary-foreground/70">
@@ -207,7 +218,7 @@ export default function StudentRegistration() {
       </header>
 
       <main className="mx-auto -mt-8 max-w-3xl space-y-6 px-4">
-        <Section index={1} title="Where the family lives" subtitle="Country first — it sets the timezone and phone code for you." icon={MapPin}>
+        <Section index={1} title="Where the student lives" subtitle="Country first — it sets the timezone and phone code for you." icon={MapPin}>
           <Field label="Country" required>
             <Select value={home.countryCode} onValueChange={chooseCountry}>
               <SelectTrigger className="h-11"><SelectValue placeholder="Select country" /></SelectTrigger>

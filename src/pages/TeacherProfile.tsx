@@ -1,5 +1,6 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,8 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
 import {
-  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, ChevronLeft, Clock, Download,
-  Eye, EyeOff, FileText, GraduationCap, Mail, MapPin, Pencil, Phone,
+  BadgeCheck, Banknote, BookOpen, Briefcase, Camera, CalendarDays, ChevronLeft, Clock, Download,
+  Eye, EyeOff, FileText, GraduationCap, Loader2, Mail, MapPin, Pencil, Phone,
   ShieldCheck, User, Video,
 } from 'lucide-react';
 
@@ -72,6 +73,9 @@ export default function TeacherProfile() {
   const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(teacherId, () =>
+    qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] }));
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['teacher-profile-page', teacherId],
@@ -203,15 +207,41 @@ export default function TeacherProfile() {
 
       {/* Hero header */}
       <header className="rounded-2xl border overflow-hidden bg-card shadow-sm">
-        <div className="h-20 bg-gradient-to-r from-primary via-primary/85 to-accent" />
+        <div className="h-24 sm:h-28 bg-gradient-to-r from-primary via-primary/85 to-accent" />
         <div className="px-6 pb-6">
-          <div className="-mt-12 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="-mt-11 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
-              <div className="h-24 w-24 rounded-2xl ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0 shadow-md">
-                {p.avatar_url ? (
-                  <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
-                ) : (
-                  <User className="h-10 w-10 text-muted-foreground" />
+              <div className="relative h-24 w-24 shrink-0">
+                <div className="h-24 w-24 rounded-2xl ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-md">
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-10 w-10 text-muted-foreground" />
+                  )}
+                </div>
+                {(isSelf || canAdmin) && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Change profile photo"
+                      disabled={avatarUploading}
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60"
+                    >
+                      {avatarUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (file) onAvatarSelect(file);
+                      }}
+                    />
+                  </>
                 )}
               </div>
               <div className="min-w-0 sm:pb-1">

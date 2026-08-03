@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
           bank_account_number: banking.bank_account_number || undefined,
           bank_iban: banking.bank_iban || undefined,
           joining_date: new Date().toISOString().slice(0, 10),
+          avatar_url: reg.avatar_url || undefined,
           account_status: "active",
         },
       });
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
         created: res.created,
       });
     } else {
-      // Family / student registration: parent (if email valid) + each child
+      // Student registration: guardian account (reused across siblings by email) + the student
       let parentId: string | null = null;
       const parentEmail = (reg.email || "").toLowerCase().trim();
       const children = Array.isArray(reg.children) ? (reg.children as any[]) : [];
@@ -199,6 +200,7 @@ Deno.serve(async (req) => {
             emergency_contact_name: applicant.emergency_name || undefined,
             emergency_contact_phone: applicant.emergency_phone || undefined,
             hear_about_us: applicant.hear_about || undefined,
+            avatar_url: reg.avatar_url || undefined,
             account_status: "active",
           },
         });

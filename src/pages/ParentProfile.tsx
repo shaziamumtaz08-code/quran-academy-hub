@@ -1,6 +1,7 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,12 @@ function monthsSince(iso?: string | null) {
 
 export default function ParentProfile() {
   const { parentId: paramId } = useParams<{ parentId: string }>();
-  const { profile: me, isLoading: authLoading } = useAuth();
+  const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const parentId = paramId ?? me?.id;
+  const queryClient = useQueryClient();
+  const canEditPhoto = !!(parentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(parentId, () =>
+    queryClient.invalidateQueries({ queryKey: ['parent-profile-page', parentId] }));
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['parent-profile-page', parentId],
@@ -94,6 +99,8 @@ export default function ParentProfile() {
       <ProfileHero
         name={p.full_name ?? 'Unnamed parent'}
         avatarUrl={p.avatar_url}
+        onAvatarSelect={canEditPhoto ? onAvatarSelect : undefined}
+        avatarUploading={avatarUploading}
         gradient="from-violet-600 via-violet-500 to-primary"
         badges={
           <>

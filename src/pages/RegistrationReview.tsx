@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
+import { uploadAvatar } from '@/lib/avatarUpload';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,24 @@ export default function RegistrationReview() {
   const [applicant, setApplicant] = useState<Record<string, any>>({});
   const [reviewNotes, setReviewNotes] = useState('');
   const [accounts, setAccounts] = useState<CreatedAccount[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarSelect = async (file: File) => {
+    if (!id) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(file, `registration-${id}`);
+      const { error } = await supabase.from('family_registrations').update({ avatar_url: url }).eq('id', id);
+      if (error) throw error;
+      setAvatarUrl(url);
+      toast({ title: 'Photo updated' });
+    } catch (e: any) {
+      toast({ title: 'Could not upload photo', description: e.message, variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const { data: reg, isLoading } = useQuery({
     queryKey: ['family-registration', id],
@@ -62,9 +81,11 @@ export default function RegistrationReview() {
     setChildren(Array.isArray(reg.children) ? (reg.children as any[]) : []);
     setApplicant((reg.applicant_data as any) ?? {});
     setReviewNotes(reg.review_notes ?? '');
+    setAvatarUrl((reg as any).avatar_url ?? null);
   }, [reg]);
 
   const isTeacher = reg?.registration_type === 'teacher';
+  const studentName = (reg as any)?.student_name || children[0]?.name || '';
   const banking = (applicant.banking ?? {}) as Record<string, any>;
 
   const save = useMutation({
@@ -122,11 +143,11 @@ export default function RegistrationReview() {
   });
 
   const stats = useMemo(() => ([
-    { label: 'Type', value: isTeacher ? 'Teacher' : 'Family', icon: isTeacher ? GraduationCap : Users, tone: (isTeacher ? 'violet' : 'sky') as any },
-    { label: isTeacher ? 'Experience' : 'Students', value: isTeacher ? `${applicant.years_experience ?? 0} yrs` : children.length, icon: isTeacher ? Briefcase : Baby, tone: 'teal' as any },
+    { label: 'Type', value: isTeacher ? 'Teacher' : 'Student', icon: isTeacher ? GraduationCap : Users, tone: (isTeacher ? 'violet' : 'sky') as any },
+    { label: isTeacher ? 'Experience' : 'Guardian', value: isTeacher ? `${applicant.years_experience ?? 0} yrs` : (form.parent_name || '—'), icon: isTeacher ? Briefcase : Baby, tone: 'teal' as any },
     { label: 'Status', value: (reg?.status ?? '—') as string, icon: Sparkles, tone: (reg?.status === 'approved' ? 'teal' : reg?.status === 'rejected' ? 'rose' : 'amber') as any },
     { label: 'Submitted', value: reg ? format(new Date(reg.created_at), 'dd MMM yyyy') : '—', icon: BookOpen, tone: 'primary' as any },
-  ]), [reg, isTeacher, applicant, children]);
+  ]), [reg, isTeacher, applicant, form.parent_name]);
 
   if (isLoading || !reg) return <div className="space-y-4"><Skeleton className="h-40 rounded-2xl" /><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -137,11 +158,14 @@ export default function RegistrationReview() {
       <BackLink to="/people?view=registrations" label="Back to registrations" />
 
       <ProfileHero
-        name={isTeacher ? (applicant.full_name || reg.parent_name) : reg.parent_name}
+        name={isTeacher ? (applicant.full_name || reg.parent_name) : (studentName || reg.parent_name)}
+        avatarUrl={avatarUrl}
+        onAvatarSelect={handleAvatarSelect}
+        avatarUploading={avatarUploading}
         gradient={isTeacher ? 'from-violet-600 via-indigo-600 to-sky-500' : 'from-sky-600 via-cyan-600 to-teal-500'}
         badges={
           <>
-            <Badge variant="outline" className="capitalize">{isTeacher ? 'Teacher application' : 'Student / family'}</Badge>
+            <Badge variant="outline" className="capitalize">{isTeacher ? 'Teacher application' : 'Student registration'}</Badge>
             <Badge variant={reg.status === 'approved' ? 'default' : reg.status === 'rejected' ? 'destructive' : 'outline'} className="capitalize">{reg.status}</Badge>
           </>
         }
@@ -217,10 +241,10 @@ export default function RegistrationReview() {
             </div>
           </InfoCard>
         ) : (
-          <InfoCard icon={Users} title="Family notes" tone="sky">
+          <InfoCard icon={Users} title="Registration notes" tone="sky">
             <div className="space-y-4 p-5">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Note from the family</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Note from the guardian</Label>
                 <Textarea rows={4} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
               <Field label="Preferred contact" value={reg.preferred_contact ?? ''} onChange={() => {}} />
@@ -243,12 +267,12 @@ export default function RegistrationReview() {
       )}
 
       {!isTeacher && (
-        <InfoCard icon={Baby} title={`Students (${children.length})`} tone="teal">
+        <InfoCard icon={Baby} title="Student details" tone="teal">
           <div className="space-y-4 p-5">
-            {children.length === 0 && <p className="text-sm text-muted-foreground">No students listed on this registration.</p>}
+            {children.length === 0 && <p className="text-sm text-muted-foreground">No student details on this registration.</p>}
             {children.map((child, index) => (
               <div key={index} className="rounded-xl border bg-muted/20 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-600">Student {index + 1}</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-600">{child.name || `Student ${index + 1}`}</p>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {([
                     ['Name', 'name'], ['Email', 'email'], ['Age', 'age'],

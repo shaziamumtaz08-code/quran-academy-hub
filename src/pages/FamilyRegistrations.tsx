@@ -99,7 +99,7 @@ export default function FamilyRegistrations() {
                   <TableHead className="text-[10px] uppercase tracking-wider">Applicant</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Category</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Contact</TableHead>
-                  <TableHead className="text-[10px] uppercase tracking-wider">Students</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Guardian</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Location</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Submitted</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
@@ -111,7 +111,8 @@ export default function FamilyRegistrations() {
                   const children = Array.isArray(row.children) ? (row.children as any[]) : [];
                   const isTeacher = row.registration_type === 'teacher';
                   const applicant = (row.applicant_data as any) ?? {};
-                  const name = isTeacher ? (applicant.full_name || row.parent_name) : row.parent_name;
+                  const studentName = (row as any).student_name || children[0]?.name || null;
+                  const name = isTeacher ? (applicant.full_name || row.parent_name) : (studentName || row.parent_name);
                   return (
                     <TableRow
                       key={row.id}
@@ -125,14 +126,14 @@ export default function FamilyRegistrations() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{row.relationship || (isTeacher ? 'Applicant' : 'Guardian')}</p>
+                            <p className="text-xs text-muted-foreground truncate">{isTeacher ? 'Teacher applicant' : 'Student'}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="py-3">
                         <Badge variant="outline" className={isTeacher ? 'border-violet-500/40 bg-violet-500/10 text-violet-600' : 'border-sky-500/40 bg-sky-500/10 text-sky-600'}>
                           {isTeacher ? <GraduationCap className="h-3 w-3 mr-1" /> : <Users className="h-3 w-3 mr-1" />}
-                          {isTeacher ? 'Teacher' : 'Student / family'}
+                          {isTeacher ? 'Teacher' : 'Student'}
                         </Badge>
                         {row.lead_id && <Badge variant="secondary" className="ml-1.5 gap-1"><Link2 className="h-3 w-3" />Enquiry</Badge>}
                       </TableCell>
@@ -140,7 +141,14 @@ export default function FamilyRegistrations() {
                         <p className="truncate max-w-[200px]">{row.email}</p>
                         <p className="text-xs text-muted-foreground">{row.phone}</p>
                       </TableCell>
-                      <TableCell className="py-3 text-sm tabular-nums">{isTeacher ? '—' : children.length}</TableCell>
+                      <TableCell className="py-3 text-sm">
+                        {isTeacher ? '—' : (
+                          <>
+                            <p className="truncate max-w-[180px]">{row.parent_name || '—'}</p>
+                            <p className="text-xs text-muted-foreground">{row.relationship || 'Guardian'}</p>
+                          </>
+                        )}
+                      </TableCell>
                       <TableCell className="py-3 text-sm text-muted-foreground">{[row.city, row.country].filter(Boolean).join(', ') || '—'}</TableCell>
                       <TableCell className="py-3 text-sm text-muted-foreground whitespace-nowrap">{format(new Date(row.created_at), 'dd MMM yyyy')}</TableCell>
                       <TableCell className="py-3">

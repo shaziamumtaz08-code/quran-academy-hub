@@ -4081,12 +4081,14 @@ export type Database = {
         Row: {
           address: string | null
           applicant_data: Json
+          avatar_url: string | null
           children: Json
           city: string | null
           country: string | null
           created_at: string
           created_profile_ids: string[]
           email: string
+          family_group_id: string | null
           id: string
           lead_id: string | null
           notes: string | null
@@ -4101,18 +4103,21 @@ export type Database = {
           reviewed_by: string | null
           source_url: string | null
           status: string
+          student_name: string | null
           timezone: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
           applicant_data?: Json
+          avatar_url?: string | null
           children?: Json
           city?: string | null
           country?: string | null
           created_at?: string
           created_profile_ids?: string[]
           email: string
+          family_group_id?: string | null
           id?: string
           lead_id?: string | null
           notes?: string | null
@@ -4127,18 +4132,21 @@ export type Database = {
           reviewed_by?: string | null
           source_url?: string | null
           status?: string
+          student_name?: string | null
           timezone?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
           applicant_data?: Json
+          avatar_url?: string | null
           children?: Json
           city?: string | null
           country?: string | null
           created_at?: string
           created_profile_ids?: string[]
           email?: string
+          family_group_id?: string | null
           id?: string
           lead_id?: string | null
           notes?: string | null
@@ -4153,6 +4161,7 @@ export type Database = {
           reviewed_by?: string | null
           source_url?: string | null
           status?: string
+          student_name?: string | null
           timezone?: string | null
           updated_at?: string
         }
