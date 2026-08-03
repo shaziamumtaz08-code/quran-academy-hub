@@ -155,6 +155,11 @@ export default function TeacherRegistration() {
         },
       });
       if (error) throw error;
+      await recordPolicyAcceptance({
+        audience: 'teacher',
+        name: form.fullName.trim(),
+        email: form.email.trim(),
+      });
     },
     onSuccess: () => setSubmitted(true),
     onError: (error: any) => toast({ title: 'Could not submit', description: error.message, variant: 'destructive' }),
