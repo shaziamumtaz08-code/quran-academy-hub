@@ -10,24 +10,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Check, Copy, Link2, Mail, Phone, Search, Users, X } from 'lucide-react';
+import { Check, Copy, KeyRound, Link2, Loader2, Mail, Phone, Search, Users, UserPlus, X } from 'lucide-react';
 
 type Status = 'pending' | 'approved' | 'rejected';
+type Kind = 'all' | 'parent' | 'teacher';
+type CreatedAccount = { name: string; email: string; password: string; role: string; created: boolean };
 
 export default function FamilyRegistrations() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>('pending');
+  const [kind, setKind] = useState<Kind>('all');
+  const [accounts, setAccounts] = useState<Record<string, CreatedAccount[]>>({});
   const [search, setSearch] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
-    queryKey: ['family-registrations', status],
+    queryKey: ['family-registrations', status, kind],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('family_registrations')
         .select('*')
-        .eq('status', status)
-        .order('created_at', { ascending: false });
+        .eq('status', status);
+      if (kind !== 'all') query = query.eq('registration_type', kind);
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -49,6 +54,23 @@ export default function FamilyRegistrations() {
       queryClient.invalidateQueries({ queryKey: ['family-registrations'] });
     },
     onError: (error: any) => toast({ title: 'Could not update', description: error.message, variant: 'destructive' }),
+  });
+
+  const approveAndCreate = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.functions.invoke('approve-registration', {
+        body: { registration_id: id, review_notes: notes[id] || null },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return { id, accounts: ((data as any)?.accounts ?? []) as CreatedAccount[] };
+    },
+    onSuccess: ({ id, accounts: created }) => {
+      setAccounts(current => ({ ...current, [id]: created }));
+      toast({ title: 'Approved', description: `${created.length} user account(s) ready.` });
+      queryClient.invalidateQueries({ queryKey: ['family-registrations'] });
+    },
+    onError: (error: any) => toast({ title: 'Could not create users', description: error.message, variant: 'destructive' }),
   });
 
   const rows = useMemo(() => {
@@ -81,6 +103,13 @@ export default function FamilyRegistrations() {
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
           </TabsList>
         </Tabs>
+        <Tabs value={kind} onValueChange={value => setKind(value as Kind)}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="parent">Students / families</TabsTrigger>
+            <TabsTrigger value="teacher">Teachers</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search name, email, child…" value={search} onChange={event => setSearch(event.target.value)} />
@@ -108,6 +137,7 @@ export default function FamilyRegistrations() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Badge variant="outline">{row.registration_type === 'teacher' ? 'Teacher application' : 'Student / family'}</Badge>
                 {row.lead_id && <Badge variant="secondary" className="gap-1"><Link2 className="h-3 w-3" />Linked to enquiry</Badge>}
                 <Badge variant={row.status === 'pending' ? 'outline' : row.status === 'approved' ? 'default' : 'destructive'}>{row.status}</Badge>
               </div>
@@ -147,11 +177,37 @@ export default function FamilyRegistrations() {
             {row.notes && <p className="text-sm"><span className="text-muted-foreground">Family note:</span> {row.notes}</p>}
             {row.review_notes && row.status !== 'pending' && <p className="text-sm"><span className="text-muted-foreground">Review note:</span> {row.review_notes}</p>}
 
+            {accounts[row.id]?.length ? (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 flex items-center gap-1">
+                  <KeyRound className="h-3.5 w-3.5" />Login credentials
+                </p>
+                {accounts[row.id].map(account => (
+                  <div key={account.email} className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant="outline" className="capitalize">{account.role}</Badge>
+                    <span className="font-medium">{account.name}</span>
+                    <code className="rounded bg-background px-2 py-0.5">{account.email}</code>
+                    <code className="rounded bg-background px-2 py-0.5">{account.created ? account.password : 'existing account'}</code>
+                    <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => {
+                      navigator.clipboard.writeText(`${account.email} / ${account.password}`);
+                      toast({ title: 'Copied' });
+                    }}><Copy className="h-3 w-3" /></Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             {row.status === 'pending' && (
               <div className="space-y-2">
                 <Textarea rows={2} placeholder="Review note (optional)" value={notes[row.id] ?? ''} onChange={event => setNotes(current => ({ ...current, [row.id]: event.target.value }))} />
-                <div className="flex gap-2">
-                  <Button size="sm" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, next: 'approved' })}><Check className="h-4 w-4 mr-1" />Approve</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={approveAndCreate.isPending} onClick={() => approveAndCreate.mutate(row.id)}>
+                    {approveAndCreate.isPending && approveAndCreate.variables === row.id
+                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      : <UserPlus className="h-4 w-4 mr-1" />}
+                    Approve &amp; create users
+                  </Button>
+                  <Button size="sm" variant="secondary" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, next: 'approved' })}><Check className="h-4 w-4 mr-1" />Approve only</Button>
                   <Button size="sm" variant="outline" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, next: 'rejected' })}><X className="h-4 w-4 mr-1" />Reject</Button>
                 </div>
               </div>
