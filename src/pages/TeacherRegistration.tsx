@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Country } from 'country-state-city';
 import {
-  BriefcaseBusiness, CheckCircle2, Loader2, MapPin, Send, ShieldCheck, User, Video,
+  BriefcaseBusiness, CheckCircle2, Landmark, Loader2, MapPin, Send, ShieldCheck, User, Video,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
