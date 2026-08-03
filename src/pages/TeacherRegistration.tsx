@@ -357,14 +357,13 @@ export default function TeacherRegistration() {
 
 
 
-        <section className="rounded-3xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
-          <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
-            <Checkbox checked={form.consent} onCheckedChange={value => set({ consent: Boolean(value) })} className="mt-0.5" />
-            <span>
-              I confirm the information above is correct and I agree to Al Quran Time Academy's hiring,
-              conduct and privacy policies.<span className="ml-1 text-accent">*</span>
-            </span>
-          </label>
+        <section className="rounded-3xl border border-border/70 bg-card p-6 sm:p-8">
+          <TermsAcceptance
+            audience="teacher"
+            checked={form.consent}
+            onChange={value => set({ consent: value })}
+            label="I confirm the information above is correct and I have read and accept Al Quran Time Academy's terms & conditions, teaching contract, hiring, conduct and privacy policies."
+          />
         </section>
       </main>
 
