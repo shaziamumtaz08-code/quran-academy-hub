@@ -17,8 +17,6 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const COUNTRIES = Country.getAllCountries();
-const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
-const DAY_SETS = ['Mon–Fri', 'Sat–Sun', 'Mon / Wed / Fri', 'Tue / Thu / Sat', 'Any day'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Household = {
@@ -33,8 +31,7 @@ type Student = {
   fullName: string; dob: string; gender: string; language: string;
   phone: string; whatsappSame: boolean; whatsapp: string; email: string; useGuardianEmail: boolean;
   schoolName: string; gradeLevel: string; currentLevel: string;
-  bloodGroup: string; medicalNotes: string;
-  subjects: string[]; goals: string; days: string; time1: string; time2: string;
+  medicalNotes: string; goals: string;
 };
 
 const emptyStudent = (): Student => ({
@@ -42,8 +39,7 @@ const emptyStudent = (): Student => ({
   fullName: '', dob: '', gender: '', language: '',
   phone: '', whatsappSame: true, whatsapp: '', email: '', useGuardianEmail: false,
   schoolName: '', gradeLevel: '', currentLevel: '',
-  bloodGroup: '', medicalNotes: '',
-  subjects: [], goals: '', days: '', time1: '', time2: '',
+  medicalNotes: '', goals: '',
 });
 
 const initialHousehold: Household = {
