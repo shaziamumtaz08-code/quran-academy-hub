@@ -31,6 +31,8 @@ function AppShellLoader() {
 const Login = lazy(() => import("./pages/Login"));
 const TenantLoginPage = lazy(() => import("./pages/TenantLogin"));
 const Trust = lazy(() => import("./pages/Trust"));
+const Policies = lazy(() => import("./pages/Policies"));
+const PublicPolicies = lazy(() => import("./pages/PublicPolicies"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Teachers = lazy(() => import("./pages/Teachers"));
 const Students = lazy(() => import("./pages/Students"));
@@ -400,6 +402,8 @@ function AppRoutes() {
       <Route path="/login/:slug" element={<TenantLoginPage />} />
       <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/trust" element={<Trust />} />
+      <Route path="/legal/policies" element={<PublicPolicies />} />
+      <Route path="/policies" element={<ProtectedRoute><DashboardLayout><Policies /></DashboardLayout></ProtectedRoute>} />
       <Route path="/impersonate" element={<Impersonate />} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />

@@ -6454,6 +6454,110 @@ export type Database = {
           },
         ]
       }
+      policy_acceptances: {
+        Row: {
+          acceptance_text: string | null
+          accepted_at: string
+          applicant_email: string | null
+          applicant_name: string | null
+          created_at: string
+          document_id: string | null
+          document_version: string | null
+          id: string
+          role_context: string
+          source_url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acceptance_text?: string | null
+          accepted_at?: string
+          applicant_email?: string | null
+          applicant_name?: string | null
+          created_at?: string
+          document_id?: string | null
+          document_version?: string | null
+          id?: string
+          role_context?: string
+          source_url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acceptance_text?: string | null
+          accepted_at?: string
+          applicant_email?: string | null
+          applicant_name?: string | null
+          created_at?: string
+          document_id?: string | null
+          document_version?: string | null
+          id?: string
+          role_context?: string
+          source_url?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_acceptances_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "policy_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_documents: {
+        Row: {
+          audience: string[]
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          external_url: string | null
+          file_path: string | null
+          id: string
+          is_active: boolean
+          language: string
+          requires_acceptance: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          audience?: string[]
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          external_url?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          requires_acceptance?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          audience?: string[]
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          external_url?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          requires_acceptance?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       poll_options: {
         Row: {
           created_at: string

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
 
 const COUNTRIES = Country.getAllCountries();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -157,6 +158,11 @@ export default function StudentRegistration() {
         })),
       });
       if (error) throw error;
+      await recordPolicyAcceptance({
+        audience: 'student',
+        name: home.fatherName.trim() || home.motherName.trim(),
+        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+      });
     },
     onSuccess: () => setSubmitted(true),
     onError: (error: any) => toast({ title: 'Could not submit', description: error.message, variant: 'destructive' }),
@@ -388,15 +394,12 @@ export default function StudentRegistration() {
           <Field label="How did you hear about us?" wide>
             <Input value={home.hearAbout} onChange={e => set({ hearAbout: e.target.value })} className="h-11" />
           </Field>
-          <div className="sm:col-span-2 rounded-2xl border border-accent/30 bg-accent/5 p-4">
-            <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
-              <Checkbox checked={home.consent} onCheckedChange={value => set({ consent: Boolean(value) })} className="mt-0.5" />
-              <span>
-                I confirm the information above is correct and I agree to Al Quran Time Academy's terms,
-                attendance policy and privacy policy.<span className="ml-1 text-accent">*</span>
-              </span>
-            </label>
-          </div>
+          <TermsAcceptance
+            audience="student"
+            checked={home.consent}
+            onChange={value => set({ consent: value })}
+            label="I confirm the information above is correct and I have read and accept Al Quran Time Academy's terms & conditions, enrolment contract, learning agreement, attendance policy and privacy policy."
+          />
         </Section>
       </main>
 
