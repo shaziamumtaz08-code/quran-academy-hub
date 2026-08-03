@@ -158,6 +158,11 @@ export default function StudentRegistration() {
         })),
       });
       if (error) throw error;
+      await recordPolicyAcceptance({
+        audience: 'student',
+        name: home.fatherName.trim() || home.motherName.trim(),
+        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+      });
     },
     onSuccess: () => setSubmitted(true),
     onError: (error: any) => toast({ title: 'Could not submit', description: error.message, variant: 'destructive' }),
