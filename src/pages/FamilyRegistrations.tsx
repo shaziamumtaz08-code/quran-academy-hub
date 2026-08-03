@@ -1,36 +1,38 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { Copy, Eye, GraduationCap, Link2, Search, Users } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-import { Check, Copy, KeyRound, Link2, Loader2, Mail, Phone, Search, Users, UserPlus, X } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type Status = 'pending' | 'approved' | 'rejected';
 type Kind = 'all' | 'parent' | 'teacher';
-type CreatedAccount = { name: string; email: string; password: string; role: string; created: boolean };
+
+const statusTone: Record<string, string> = {
+  pending: 'border-amber-500/40 bg-amber-500/10 text-amber-600',
+  approved: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600',
+  rejected: 'border-rose-500/40 bg-rose-500/10 text-rose-600',
+};
 
 export default function FamilyRegistrations() {
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<Status>('pending');
   const [kind, setKind] = useState<Kind>('all');
-  const [accounts, setAccounts] = useState<Record<string, CreatedAccount[]>>({});
   const [search, setSearch] = useState('');
-  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['family-registrations', status, kind],
     queryFn: async () => {
-      let query = supabase
-        .from('family_registrations')
-        .select('*')
-        .eq('status', status);
+      let query = supabase.from('family_registrations').select('*').eq('status', status);
       if (kind !== 'all') query = query.eq('registration_type', kind);
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
@@ -38,72 +40,37 @@ export default function FamilyRegistrations() {
     },
   });
 
-  const review = useMutation({
-    mutationFn: async ({ id, next }: { id: string; next: Status }) => {
-      const { data: session } = await supabase.auth.getUser();
-      const { error } = await supabase.from('family_registrations').update({
-        status: next,
-        review_notes: notes[id] || null,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: session.user?.id ?? null,
-      }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: (_result, variables) => {
-      toast({ title: variables.next === 'approved' ? 'Registration approved' : 'Registration rejected' });
-      queryClient.invalidateQueries({ queryKey: ['family-registrations'] });
-    },
-    onError: (error: any) => toast({ title: 'Could not update', description: error.message, variant: 'destructive' }),
-  });
-
-  const approveAndCreate = useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase.functions.invoke('approve-registration', {
-        body: { registration_id: id, review_notes: notes[id] || null },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      return { id, accounts: ((data as any)?.accounts ?? []) as CreatedAccount[] };
-    },
-    onSuccess: ({ id, accounts: created }) => {
-      setAccounts(current => ({ ...current, [id]: created }));
-      toast({ title: 'Approved', description: `${created.length} user account(s) ready.` });
-      queryClient.invalidateQueries({ queryKey: ['family-registrations'] });
-    },
-    onError: (error: any) => toast({ title: 'Could not create users', description: error.message, variant: 'destructive' }),
-  });
-
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return data ?? [];
-    return (data ?? []).filter(row =>
+    return (data ?? []).filter((row) =>
       `${row.parent_name} ${row.email} ${row.phone}`.toLowerCase().includes(term) ||
       JSON.stringify(row.children ?? []).toLowerCase().includes(term));
   }, [data, search]);
 
-  const publicLink = `${window.location.origin}/register/family`;
+  const publicLink = `${window.location.origin}/register/student`;
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Family registrations</h1>
-          <p className="text-sm text-muted-foreground">Registrations submitted through the public family form. Nothing is created until you approve.</p>
+          <h1 className="text-2xl font-bold">Applications &amp; registrations</h1>
+          <p className="text-sm text-muted-foreground">Every submitted student and teacher form. Open a row to review the full profile before approving.</p>
         </div>
         <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Link copied', description: publicLink }); }}>
-          <Copy className="h-4 w-4 mr-1" />Copy public form link
+          <Copy className="h-4 w-4 mr-1" />Copy student form link
         </Button>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={status} onValueChange={value => setStatus(value as Status)}>
+        <Tabs value={status} onValueChange={(value) => setStatus(value as Status)}>
           <TabsList>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="approved">Approved</TabsTrigger>
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Tabs value={kind} onValueChange={value => setKind(value as Kind)}>
+        <Tabs value={kind} onValueChange={(value) => setKind(value as Kind)}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="parent">Students / families</TabsTrigger>
@@ -112,109 +79,86 @@ export default function FamilyRegistrations() {
         </Tabs>
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Search name, email, child…" value={search} onChange={event => setSearch(event.target.value)} />
+          <Input className="pl-8" placeholder="Search name, email, student…" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
       </div>
 
-      {isLoading ? <Skeleton className="h-40 w-full" /> : rows.length === 0 ? (
-        <Card className="p-10 text-center text-muted-foreground">
+      {isLoading ? (
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : rows.length === 0 ? (
+        <Card className="p-12 text-center text-muted-foreground">
           <Users className="h-8 w-8 mx-auto mb-2 opacity-60" />
-          No {status} registrations yet. Share the public form link with families to get started.
+          No {status} applications. Share the registration links with families and applicants to get started.
         </Card>
-      ) : rows.map(row => {
-        const children = Array.isArray(row.children) ? (row.children as any[]) : [];
-        return (
-          <Card key={row.id} className="p-4 space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{row.parent_name} <span className="text-xs text-muted-foreground">· {row.relationship}</span></p>
-                <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{row.email}</span>
-                  <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{row.phone}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {[row.city, row.country, row.timezone].filter(Boolean).join(' · ')} · submitted {format(new Date(row.created_at), 'dd MMM yyyy, HH:mm')}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{row.registration_type === 'teacher' ? 'Teacher application' : 'Student / family'}</Badge>
-                {row.lead_id && <Badge variant="secondary" className="gap-1"><Link2 className="h-3 w-3" />Linked to enquiry</Badge>}
-                <Badge variant={row.status === 'pending' ? 'outline' : row.status === 'approved' ? 'default' : 'destructive'}>{row.status}</Badge>
-              </div>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              {children.map((child, index) => (
-                <div key={index} className="rounded-lg border border-border p-3 text-sm">
-                  <p className="font-medium">{child.name}{child.age ? `, ${child.age}` : ''} {child.gender ? <span className="text-xs text-muted-foreground">({child.gender})</span> : null}</p>
-                  <p className="text-muted-foreground text-xs">{(child.subjects ?? []).join(', ')}</p>
-                  <p className="text-muted-foreground text-xs">{[child.preferred_time_1, child.preferred_time_2].filter(Boolean).join(' / ')} {child.preferred_days ?? ''}</p>
-                  <p className="text-muted-foreground text-xs">{child.email}{child.uses_parent_email ? ' (parent email)' : ''}</p>
-                  {child.level && <p className="text-muted-foreground text-xs">Level: {child.level}</p>}
-                  {child.goals && <p className="text-muted-foreground text-xs">Goals: {child.goals}</p>}
-                </div>
-              ))}
-            </div>
-
-            {(() => {
-              const bank = (row.applicant_data as any)?.banking;
-              if (!bank) return null;
-              return (
-                <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Salary account (self-declared)</p>
-                  <div className="mt-1 grid gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2">
-                    <span>Method: <span className="text-foreground">{bank.payout_method ?? '—'}</span></span>
-                    <span>Bank / wallet: <span className="text-foreground">{bank.bank_name ?? '—'}</span></span>
-                    <span>Title: <span className="text-foreground">{bank.bank_account_title ?? '—'}</span></span>
-                    <span>Account: <span className="font-mono text-foreground">{bank.bank_account_number ?? '—'}</span></span>
-                    <span>IBAN: <span className="font-mono text-foreground">{bank.bank_iban ?? '—'}</span></span>
-                    <span>Branch: <span className="text-foreground">{bank.branch ?? '—'}</span></span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {row.notes && <p className="text-sm"><span className="text-muted-foreground">Family note:</span> {row.notes}</p>}
-            {row.review_notes && row.status !== 'pending' && <p className="text-sm"><span className="text-muted-foreground">Review note:</span> {row.review_notes}</p>}
-
-            {accounts[row.id]?.length ? (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 flex items-center gap-1">
-                  <KeyRound className="h-3.5 w-3.5" />Login credentials
-                </p>
-                {accounts[row.id].map(account => (
-                  <div key={account.email} className="flex flex-wrap items-center gap-2 text-xs">
-                    <Badge variant="outline" className="capitalize">{account.role}</Badge>
-                    <span className="font-medium">{account.name}</span>
-                    <code className="rounded bg-background px-2 py-0.5">{account.email}</code>
-                    <code className="rounded bg-background px-2 py-0.5">{account.created ? account.password : 'existing account'}</code>
-                    <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => {
-                      navigator.clipboard.writeText(`${account.email} / ${account.password}`);
-                      toast({ title: 'Copied' });
-                    }}><Copy className="h-3 w-3" /></Button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {row.status === 'pending' && (
-              <div className="space-y-2">
-                <Textarea rows={2} placeholder="Review note (optional)" value={notes[row.id] ?? ''} onChange={event => setNotes(current => ({ ...current, [row.id]: event.target.value }))} />
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" disabled={approveAndCreate.isPending} onClick={() => approveAndCreate.mutate(row.id)}>
-                    {approveAndCreate.isPending && approveAndCreate.variables === row.id
-                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      : <UserPlus className="h-4 w-4 mr-1" />}
-                    Approve &amp; create users
-                  </Button>
-                  <Button size="sm" variant="secondary" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, next: 'approved' })}><Check className="h-4 w-4 mr-1" />Approve only</Button>
-                  <Button size="sm" variant="outline" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, next: 'rejected' })}><X className="h-4 w-4 mr-1" />Reject</Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        );
-      })}
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-[10px] uppercase tracking-wider">Applicant</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Category</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Contact</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Students</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Location</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Submitted</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-right text-[10px] uppercase tracking-wider">Review</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => {
+                  const children = Array.isArray(row.children) ? (row.children as any[]) : [];
+                  const isTeacher = row.registration_type === 'teacher';
+                  const applicant = (row.applicant_data as any) ?? {};
+                  const name = isTeacher ? (applicant.full_name || row.parent_name) : row.parent_name;
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/people/registrations/${row.id}`)}
+                    >
+                      <TableCell className="py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${isTeacher ? 'bg-violet-500/15 text-violet-600' : 'bg-sky-500/15 text-sky-600'}`}>
+                            {(name || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{row.relationship || (isTeacher ? 'Applicant' : 'Guardian')}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <Badge variant="outline" className={isTeacher ? 'border-violet-500/40 bg-violet-500/10 text-violet-600' : 'border-sky-500/40 bg-sky-500/10 text-sky-600'}>
+                          {isTeacher ? <GraduationCap className="h-3 w-3 mr-1" /> : <Users className="h-3 w-3 mr-1" />}
+                          {isTeacher ? 'Teacher' : 'Student / family'}
+                        </Badge>
+                        {row.lead_id && <Badge variant="secondary" className="ml-1.5 gap-1"><Link2 className="h-3 w-3" />Enquiry</Badge>}
+                      </TableCell>
+                      <TableCell className="py-3 text-sm">
+                        <p className="truncate max-w-[200px]">{row.email}</p>
+                        <p className="text-xs text-muted-foreground">{row.phone}</p>
+                      </TableCell>
+                      <TableCell className="py-3 text-sm tabular-nums">{isTeacher ? '—' : children.length}</TableCell>
+                      <TableCell className="py-3 text-sm text-muted-foreground">{[row.city, row.country].filter(Boolean).join(', ') || '—'}</TableCell>
+                      <TableCell className="py-3 text-sm text-muted-foreground whitespace-nowrap">{format(new Date(row.created_at), 'dd MMM yyyy')}</TableCell>
+                      <TableCell className="py-3">
+                        <Badge variant="outline" className={`capitalize ${statusTone[row.status] ?? ''}`}>{row.status}</Badge>
+                      </TableCell>
+                      <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="ghost" title="Open full review" onClick={() => navigate(`/people/registrations/${row.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -93,6 +93,7 @@ const EnrollmentForm = lazy(() => import("./pages/EnrollmentForm"));
 const PublicInquiryForm = lazy(() => import("./pages/PublicInquiryForm"));
 const ParentRegistration = lazy(() => import("./pages/ParentRegistration"));
 const FamilyRegistrations = lazy(() => import("./pages/FamilyRegistrations"));
+const RegistrationReview = lazy(() => import("./pages/RegistrationReview"));
 const StudentCourseView = lazy(() => import("./pages/StudentCourseView"));
 const MyCourses = lazy(() => import("./pages/MyCourses"));
 const Recordings = lazy(() => import("./pages/Recordings"));
@@ -447,6 +448,7 @@ function AppRoutes() {
       <Route path="/parent" element={<ProtectedRoute><RouteGuard moduleId="parent_portal"><ParentDashboard /></RouteGuard></ProtectedRoute>} />
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><RouteGuard moduleId="parent_portal"><ParentDashboard /></RouteGuard></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><RouteGuard moduleId="people"><DashboardLayout><PeopleLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/people/registrations/:id" element={<ProtectedRoute><RouteGuard moduleId="people"><DashboardLayout><RegistrationReview /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><RouteGuard moduleId="finance"><DashboardLayout><FinanceLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
