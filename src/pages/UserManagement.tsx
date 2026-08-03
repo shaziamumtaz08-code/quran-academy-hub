@@ -1819,6 +1819,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                 </div>
 
                 {/* Role */}
+                {!lockedRole && (
                 <Select value={filterRole || 'all'} onValueChange={(v) => { const newRole = v === 'all' ? '' : v; setFilterRole(newRole); const map: Record<string, string[]> = { student: ['active','on_hold','completed','left','inactive'], teacher: ['active','inactive','left'], parent: ['active','inactive'], __admins__: ['active','inactive'], examiner: ['active','inactive'] }; if (filterStatus && newRole && map[newRole] && !map[newRole].includes(filterStatus)) setFilterStatus(''); }}>
                   <SelectTrigger className="w-[130px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Role" />
@@ -1832,6 +1833,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                     <SelectItem value="examiner"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> Examiners</span></SelectItem>
                   </SelectContent>
                 </Select>
+                )}
 
                 {/* Status — role-aware options */}
                 {(() => {
