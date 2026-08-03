@@ -324,6 +324,39 @@ export default function TeacherRegistration() {
           </Field>
         </Section>
 
+        <Section
+          index={5}
+          title="Salary account details"
+          subtitle="Where your salary is credited. Kept private — visible only to the finance admin."
+          icon={Landmark}
+        >
+          <Field label="Payout method" required>
+            <Select value={form.payoutMethod} onValueChange={value => set({ payoutMethod: value })}>
+              <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                {PAYOUT_METHODS.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Bank / wallet name" hint="e.g. Meezan Bank, Easypaisa">
+            <Input value={form.bankName} onChange={e => set({ bankName: e.target.value })} className="h-11" />
+          </Field>
+          <Field label="Account title" required hint="Exactly as registered with the bank / wallet.">
+            <Input value={form.accountTitle} onChange={e => set({ accountTitle: e.target.value })} className="h-11" />
+          </Field>
+          <Field label="Account / wallet number" required>
+            <Input value={form.accountNumber} onChange={e => set({ accountNumber: e.target.value })} className="h-11 font-mono" />
+          </Field>
+          <Field label="IBAN" hint="Required for local bank transfers in Pakistan.">
+            <Input value={form.iban} onChange={e => set({ iban: e.target.value })} placeholder="PK00XXXX0000000000000000" className="h-11 font-mono uppercase" />
+          </Field>
+          <Field label="Branch / city">
+            <Input value={form.branch} onChange={e => set({ branch: e.target.value })} className="h-11" />
+          </Field>
+        </Section>
+
+
+
         <section className="rounded-3xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
           <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
             <Checkbox checked={form.consent} onCheckedChange={value => set({ consent: Boolean(value) })} className="mt-0.5" />
