@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +18,7 @@ import {
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
   AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye, Wallet,
 } from 'lucide-react';
-import { LinkGuardianDialog } from './LinkGuardianDialog';
+import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { PaymentAccountsList } from '@/components/payment-accounts/PaymentAccountsList';
 import type { AppRole } from '@/contexts/AuthContext';
 
@@ -45,8 +44,6 @@ function tabAccessFor(role: AppRole | null | undefined, key: TabKey): TabAccess 
 }
 
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   userId: string | null;
 }
 
@@ -69,7 +66,7 @@ function pct(profile: any): number {
   return Math.round((filled / fields.length) * 100);
 }
 
-export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props) {
+export function ProfileEditorPanel({ userId }: Props) {
   const { isSuperAdmin: isSA, user: currentUser, activeRole } = useAuth();
   const isSuperAdmin = isSA || activeRole === 'admin_division' || activeRole === 'admin';
   const { toast } = useToast();
@@ -97,7 +94,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .maybeSingle();
       return { ...(data as any), ...(sensitive || {}) };
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Roles
@@ -108,7 +105,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
       const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId);
       return (data || []).map((r: any) => r.role);
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Linked parent (for guardian tab)
@@ -125,7 +122,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .maybeSingle();
       return data as any;
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Sibling check (shared email)
@@ -140,7 +137,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .neq('id', userId);
       return data || [];
     },
-    enabled: !!userId && !!profile?.email && open,
+    enabled: !!userId && !!profile?.email,
   });
 
   // Enrollments
@@ -154,7 +151,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .eq('student_id', userId);
       return data || [];
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Assignments
@@ -168,7 +165,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .eq('student_id', userId);
       return data || [];
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Attendance summary
@@ -187,7 +184,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         absent: rows.filter((r: any) => r.status === 'absent').length,
       };
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   // Activity logs
@@ -203,7 +200,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         .limit(50);
       return data || [];
     },
-    enabled: !!userId && open,
+    enabled: !!userId,
   });
 
   useEffect(() => {
@@ -365,34 +362,29 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     parentLink.profile.email.trim().toLowerCase() === profile.email.trim().toLowerCase());
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-[80vw] sm:w-[80vw] overflow-y-auto p-0">
-        <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
-          <SheetHeader>
-            <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14">
-                <AvatarImage src={form.avatar_url} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <SheetTitle className="text-xl truncate">{form.full_name || 'User Profile'}</SheetTitle>
-                <SheetDescription className="flex items-center gap-2 flex-wrap">
-                  {roles.map((r: string) => <Badge key={r} variant="secondary">{r}</Badge>)}
-                  {profile?.registration_id && <span className="text-xs font-mono">{profile.registration_id}</span>}
-                  <Badge variant="outline" className="text-xs">{completion}% complete</Badge>
-                </SheetDescription>
-              </div>
-              <Button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || !canSaveCurrentTab}
-                className="gap-2"
-                title={!canSaveCurrentTab ? 'Read-only — your role cannot edit this tab' : undefined}
-              >
-                {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+    <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+        <div className="flex items-center gap-4 border-b bg-muted/40 px-5 py-4">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={form.avatar_url} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-serif text-lg font-bold truncate">{form.full_name || 'User profile'}</h2>
+            <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+              {roles.map((r: string) => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}
+              {profile?.registration_id && <span className="font-mono">{profile.registration_id}</span>}
+              <Badge variant="outline" className="text-[10px]">{completion}% complete</Badge>
             </div>
-          </SheetHeader>
+          </div>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !canSaveCurrentTab}
+            className="gap-2"
+            title={!canSaveCurrentTab ? 'Read-only — your role cannot edit this section' : undefined}
+          >
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save
+          </Button>
         </div>
 
         {isLoading ? (
@@ -409,7 +401,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
             </p>
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-6 py-4">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-5 py-4">
             <TabsList
               className="mb-4 h-auto grid"
               style={{ gridTemplateColumns: `repeat(${Math.min(visibleTabs.length, 8)}, minmax(0, 1fr))` }}
@@ -783,7 +775,6 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
             </fieldset>
           </Tabs>
         )}
-      </SheetContent>
       {userId && (
         <LinkGuardianDialog
           open={guardianDialogOpen}
@@ -792,7 +783,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
           studentName={form.full_name || profile?.full_name || 'Student'}
         />
       )}
-    </Sheet>
+    </div>
   );
 }
 

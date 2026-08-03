@@ -1,5 +1,5 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,17 +10,20 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
+import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import {
-  BadgeCheck, Banknote, BookOpen, Briefcase, Camera, CalendarDays, ChevronLeft, Clock, Download,
-  Eye, EyeOff, FileText, GraduationCap, Loader2, Mail, MapPin, Pencil, Phone,
-  ShieldCheck, User, Video,
+  BackLink, ProfileHero, StatTiles, InfoCard, InfoRow, StatusBadge, EmptyState,
+} from '@/components/profile/ProfileKit';
+import {
+  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, Clock, Download,
+  Eye, EyeOff, FileText, GraduationCap, IdCard, Languages, Mail, MapPin, Pencil, Phone,
+  Settings2, ShieldCheck, User, Users, Video,
 } from 'lucide-react';
 
 const mask = (v?: string | null) => (v ? `••••${v.slice(-4)}` : null);
-const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString() : '—');
+const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null);
 
 function StatusPill({ status, kind }: { status?: string | null; kind: 'banking' | 'cv' }) {
   const s = status ?? 'not_provided';
@@ -36,35 +39,9 @@ function StatusPill({ status, kind }: { status?: string | null; kind: 'banking' 
   return <span className={`text-[10px] rounded-full border px-2 py-0.5 ${cls}`}>{label}</span>;
 }
 
-function Card({ icon: Icon, title, action, children }: any) {
-  return (
-    <section className="rounded-xl border bg-card overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-5 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Icon className="h-4 w-4 text-primary" />
-          </div>
-          <h2 className="font-semibold text-foreground">{title}</h2>
-        </div>
-        {action}
-      </div>
-      <div className="p-5 space-y-4">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, value }: { label: string; value?: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground break-words">{value || <span className="text-muted-foreground font-normal">—</span>}</p>
-    </div>
-  );
-}
-
-
-export default function TeacherProfile() {
-  const { teacherId: paramId } = useParams<{ teacherId: string }>();
+export default function TeacherProfile({ staffMode = false }: { staffMode?: boolean } = {}) {
+  const params = useParams<{ teacherId?: string; staffId?: string }>();
+  const paramId = params.teacherId ?? params.staffId;
   const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const teacherId = paramId ?? me?.id;
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
@@ -73,9 +50,12 @@ export default function TeacherProfile() {
   const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(teacherId, () =>
     qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] }));
+
+  const backTo = staffMode ? '/user-management?mode=staff' : '/teachers';
+  const backLabel = staffMode ? 'Back to staff' : 'Back to all teachers';
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['teacher-profile-page', teacherId],
@@ -84,7 +64,6 @@ export default function TeacherProfile() {
       let profile: any = null;
       const full = await supabase.from('profiles').select(PROFILE_SAFE_COLUMNS).eq('id', teacherId!).maybeSingle();
       if (full.error) {
-        console.error('[TeacherProfile] profiles select * failed', full.error);
         const basic = await supabase
           .from('profiles')
           .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id')
@@ -116,7 +95,9 @@ export default function TeacherProfile() {
         .eq('teacher_id', teacherId!)
         .eq('status', 'active');
 
-      return { profile, sensitive, salary, assignments: assignments ?? [] };
+      const { data: roleRows } = await supabase.from('user_roles').select('role').eq('user_id', teacherId!);
+
+      return { profile, sensitive, salary, assignments: assignments ?? [], roles: (roleRows ?? []).map((r: any) => r.role) };
     },
   });
 
@@ -133,21 +114,18 @@ export default function TeacherProfile() {
   }, [p]);
 
   const setVerification = async (patch: { banking?: string; cv?: string }) => {
-    const { error } = await (supabase as any).rpc('admin_set_teacher_verification', {
+    const { error: rpcError } = await (supabase as any).rpc('admin_set_teacher_verification', {
       _teacher_id: teacherId,
       _banking: patch.banking ?? null,
       _cv: patch.cv ?? null,
     });
-    if (error) {
-      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+    if (rpcError) {
+      toast({ title: 'Action failed', description: rpcError.message, variant: 'destructive' });
       return;
     }
     toast({ title: 'Updated' });
     qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] });
   };
-
-  // Onboarding links are generated from User Management (admin), not the profile.
-
 
   const openCv = async () => {
     if (!p?.cv_url) return;
@@ -168,186 +146,134 @@ export default function TeacherProfile() {
     );
   }
 
-  if (error) {
+  if (error || !p) {
     return (
       <div className="rounded-xl border bg-card p-6 space-y-3">
-        <h1 className="font-serif text-xl font-bold text-foreground">Could not load this profile</h1>
-        <p className="text-sm text-muted-foreground">{(error as any)?.message ?? 'Unknown error'}</p>
-        <Button asChild variant="outline" size="sm"><Link to="/teachers">Back to teachers</Link></Button>
-      </div>
-    );
-  }
-
-  if (!p) {
-    return (
-      <div className="rounded-xl border bg-card p-6 space-y-3">
-        <h1 className="font-serif text-xl font-bold text-foreground">Teacher profile not found</h1>
+        <h1 className="font-serif text-xl font-bold text-foreground">
+          {error ? 'Could not load this profile' : staffMode ? 'Staff profile not found' : 'Teacher profile not found'}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          {teacherId
-            ? 'No profile record exists for this teacher, or you do not have permission to view it.'
-            : 'No teacher selected. Open a teacher from the Teachers list.'}
+          {(error as any)?.message ?? 'No profile record exists, or you do not have permission to view it.'}
         </p>
-        <Button asChild variant="outline" size="sm"><Link to="/teachers">Back to teachers</Link></Button>
+        <Button asChild variant="outline" size="sm"><Link to={backTo}>{backLabel}</Link></Button>
       </div>
     );
   }
 
-  const stats = [
-    { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase, tone: 'border-l-primary', bg: 'bg-primary/10', fg: 'text-primary' },
-    { label: 'Students assigned', value: `${data?.assignments.length ?? 0}`, icon: BookOpen, tone: 'border-l-teal-500', bg: 'bg-teal-500/10', fg: 'text-teal-600' },
-    { label: 'Time with us', value: timeWithUs, icon: Clock, tone: 'border-l-amber-500', bg: 'bg-amber-500/10', fg: 'text-amber-600' },
-    { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap, tone: 'border-l-violet-500', bg: 'bg-violet-500/10', fg: 'text-violet-600' },
-  ];
+  const assignments = data?.assignments ?? [];
+  const roles: string[] = data?.roles ?? [];
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <Button asChild variant="ghost" size="sm" className="h-7 -ml-2 text-xs gap-1">
-        <Link to="/teachers"><ChevronLeft className="h-3.5 w-3.5" /> Back to all teachers</Link>
-      </Button>
+      <BackLink to={backTo} label={backLabel} />
 
-      {/* Hero header */}
-      <header className="rounded-2xl border overflow-hidden bg-card shadow-sm">
-        <div className="h-24 sm:h-28 bg-gradient-to-r from-primary via-primary/85 to-accent" />
-        <div className="px-6 pb-6">
-          <div className="-mt-11 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
-              <div className="relative h-24 w-24 shrink-0">
-                <div className="h-24 w-24 rounded-2xl ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-md">
-                  {p.avatar_url ? (
-                    <img src={p.avatar_url} alt={`${p.full_name} profile photo`} className="h-full w-full object-cover" />
-                  ) : (
-                    <User className="h-10 w-10 text-muted-foreground" />
-                  )}
-                </div>
-                {(isSelf || canAdmin) && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="Change profile photo"
-                      disabled={avatarUploading}
-                      onClick={() => avatarInputRef.current?.click()}
-                      className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60"
-                    >
-                      {avatarUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                    </button>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = '';
-                        if (file) onAvatarSelect(file);
-                      }}
-                    />
-                  </>
-                )}
-              </div>
-              <div className="min-w-0 sm:pb-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-foreground">{p.full_name}</h1>
-                  {p.gov_id_verified && (
-                    <Badge variant="secondary" className="gap-1 text-[10px]">
-                      <BadgeCheck className="h-3 w-3" /> Verified
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
-                </div>
-                {(p.designation || p.department) && (
-                  <p className="mt-0.5 text-sm font-medium text-primary">
-                    {[p.designation, p.department].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  {p.registration_id && <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />{p.registration_id}</span>}
-                  {p.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
-                  {p.whatsapp_number && <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
-                  {(p.city || p.country) && <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(isSelf || canAdmin) && (
-                <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit profile
-                </Button>
-              )}
-              {p.email && (
-                <Button asChild size="sm" variant="outline" className="gap-1.5">
-                  <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <ProfileHero
+        name={p.full_name ?? 'Unnamed user'}
+        avatarUrl={p.avatar_url}
+        onAvatarSelect={isSelf || canAdmin ? onAvatarSelect : undefined}
+        avatarUploading={avatarUploading}
+        gradient={staffMode ? 'from-violet-600 via-primary to-sky-500' : 'from-primary via-sky-500 to-teal-500'}
+        badges={
+          <>
+            {p.gov_id_verified && (
+              <Badge variant="secondary" className="gap-1 text-[10px]"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
+            )}
+            <Badge variant="outline" className="text-[10px] capitalize">{p.account_status ?? 'active'}</Badge>
+            {roles.map((r) => (
+              <Badge key={r} variant="secondary" className="text-[10px] capitalize">{r.replace(/_/g, ' ')}</Badge>
+            ))}
+          </>
+        }
+        meta={
+          <>
+            {p.registration_id && <span className="flex items-center gap-1"><IdCard className="h-3.5 w-3.5" />{p.registration_id}</span>}
+            {p.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{p.email}</span>}
+            {p.whatsapp_number && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{p.whatsapp_number}</span>}
+            {(p.city || p.country) && (
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[p.city, p.country].filter(Boolean).join(', ')}</span>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {(isSelf || canAdmin) && (
+              <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit profile
+              </Button>
+            )}
+            {canAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}
+              </Button>
+            )}
+            {p.email && (
+              <Button asChild size="sm" variant="outline" className="gap-1.5">
+                <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      {/* Stat cards */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className={`rounded-xl border border-l-4 ${s.tone} bg-card p-4 shadow-sm`}>
-            <div className={`h-8 w-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
-              <s.icon className={`h-4 w-4 ${s.fg}`} />
-            </div>
-            <p className="text-xl font-black text-foreground truncate">{s.value}</p>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      <StatTiles
+        stats={[
+          { label: 'Years experience', value: p.years_experience ? `${p.years_experience}` : '—', icon: Briefcase, tone: 'primary' },
+          staffMode
+            ? { label: 'Role', value: roles[0]?.replace(/_/g, ' ') ?? '—', icon: ShieldCheck, tone: 'teal' as const }
+            : { label: 'Students assigned', value: `${assignments.length}`, icon: BookOpen, tone: 'teal' as const },
+          { label: 'Time with us', value: timeWithUs, icon: Clock, tone: 'amber' },
+          { label: 'Qualification', value: p.qualification || '—', icon: GraduationCap, tone: 'violet' },
+        ]}
+      />
+
+      {advancedOpen && canAdmin && teacherId && <ProfileEditorPanel userId={teacherId} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card icon={User} title="Personal information">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Full name" value={p.full_name} />
-            <Row label="Email" value={p.email} />
-            <Row label="Phone" value={p.whatsapp_number} />
-            <Row label="Gender" value={p.gender} />
-            <Row label="Date of birth" value={p.date_of_birth ? fmtDate(p.date_of_birth) : '—'} />
-            <Row label="Address" value={[p.address, p.city, p.country].filter(Boolean).join(', ')} />
-          </div>
-        </Card>
+        <InfoCard icon={User} title="Personal information" tone="primary">
+          <InfoRow icon={User} label="Full name" value={p.full_name} />
+          <InfoRow icon={Mail} label="Email" value={p.email ? <a href={`mailto:${p.email}`} className="font-medium text-sky-600 hover:underline">{p.email}</a> : null} />
+          <InfoRow icon={Phone} label="Phone" value={p.whatsapp_number ? <span className="font-medium text-teal-600">{p.whatsapp_number}</span> : null} />
+          <InfoRow icon={User} label="Gender" value={p.gender ? <span className="capitalize">{p.gender}</span> : null} />
+          <InfoRow icon={CalendarDays} label="Date of birth" value={fmtDate(p.date_of_birth)} />
+          <InfoRow icon={MapPin} label="Address" value={[p.address, p.city, p.country].filter(Boolean).join(', ')} />
+        </InfoCard>
 
-        <Card icon={GraduationCap} title="Professional & education">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Highest qualification" value={p.qualification} />
-            <Row label="Specialization" value={p.specialization} />
-            <Row label="Years of experience" value={p.years_experience ? `${p.years_experience} years` : '—'} />
-            <Row label="Arabic / Quran level" value={p.arabic_level} />
-            <Row label="Languages" value={[p.preferred_language, p.first_language].filter(Boolean).join(', ')} />
-            <Row label="Teaching language" value={p.teaching_os_language} />
-          </div>
-          <p className="text-[10px] text-muted-foreground">Education & experience — entered by the teacher during onboarding.</p>
-        </Card>
+        <InfoCard icon={GraduationCap} title="Professional & education" tone="teal">
+          <InfoRow icon={GraduationCap} label="Highest qualification" value={p.qualification} />
+          <InfoRow icon={BookOpen} label="Specialization" value={p.specialization} />
+          <InfoRow icon={Briefcase} label="Years of experience" value={p.years_experience ? `${p.years_experience} years` : null} />
+          <InfoRow icon={Languages} label="Arabic / Quran level" value={p.arabic_level} />
+          <InfoRow icon={Languages} label="Languages" value={[p.preferred_language, p.first_language].filter(Boolean).join(', ')} />
+          <InfoRow icon={Languages} label="Teaching language" value={p.teaching_os_language} />
+        </InfoCard>
 
-        <Card icon={CalendarDays} title="Employment details">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Employee / teacher ID" value={p.registration_id} />
-            <Row label="Designation" value={p.designation} />
-            <Row label="Department" value={p.department} />
-            <Row label="Employment type" value={p.employment_type} />
-            <Row label="Joining date" value={p.joining_date ? fmtDate(p.joining_date) : fmtDate(p.created_at)} />
-            <Row label="Employment status" value={p.archived_at ? 'Archived' : 'Active'} />
-            {canAdmin && (
-              <>
-                <Row
-                  label="Monthly salary"
-                  value={data?.salary?.monthly_amount != null ? `PKR ${Number(data.salary.monthly_amount).toLocaleString()}` : '—'}
-                />
-                <Row
-                  label="Default payout rate"
-                  value={p.default_payout_rate != null ? `PKR ${Number(p.default_payout_rate).toLocaleString()}` : '—'}
-                />
-              </>
-            )}
-            <Row label="Account status" value={p.account_status} />
-          </div>
-          <p className="text-[10px] text-muted-foreground">Assigned by the admin — read-only for teachers.</p>
-        </Card>
+        <InfoCard icon={CalendarDays} title="Employment details" tone="amber">
+          <InfoRow icon={IdCard} label="Employee ID" value={p.registration_id ? <span className="font-semibold text-amber-600">{p.registration_id}</span> : null} />
+          <InfoRow icon={Briefcase} label="Designation" value={p.designation} />
+          <InfoRow icon={Briefcase} label="Department" value={p.department} />
+          <InfoRow icon={Briefcase} label="Employment type" value={p.employment_type} />
+          <InfoRow icon={CalendarDays} label="Joining date" value={fmtDate(p.joining_date) ?? fmtDate(p.created_at)} />
+          <InfoRow icon={ShieldCheck} label="Employment status" value={<StatusBadge ok={!p.archived_at} label={p.archived_at ? 'Archived' : 'Active'} />} />
+          {canAdmin && (
+            <InfoRow
+              icon={Banknote}
+              label="Monthly salary"
+              value={data?.salary?.monthly_amount != null ? `PKR ${Number(data.salary.monthly_amount).toLocaleString()}` : null}
+            />
+          )}
+          {canAdmin && (
+            <InfoRow
+              icon={Banknote}
+              label="Default payout rate"
+              value={p.default_payout_rate != null ? `PKR ${Number(p.default_payout_rate).toLocaleString()}` : null}
+            />
+          )}
+        </InfoCard>
 
-        <Card
+        <InfoCard
           icon={Banknote}
           title="Banking information"
+          tone="violet"
           action={
             <div className="flex items-center gap-2">
               <StatusPill status={p.banking_status} kind="banking" />
@@ -359,58 +285,57 @@ export default function TeacherProfile() {
             </div>
           }
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Bank name" value={data?.sensitive?.bank_name} />
-            <Row label="Account title" value={data?.sensitive?.bank_account_title} />
-            <Row
-              label="Account number"
-              value={
-                data?.sensitive?.bank_account_number ? (
-                  canAdmin ? (
-                    <span className="font-mono tabular-nums">{data.sensitive.bank_account_number}</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2 font-mono">
-                      {reveal ? data.sensitive.bank_account_number : mask(data.sensitive.bank_account_number)}
-                      <button type="button" onClick={() => setReveal((v) => !v)} className="text-muted-foreground">
-                        {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </button>
-                    </span>
-                  )
-                ) : null
-              }
-            />
-            <Row
-              label="IBAN"
-              value={
-                data?.sensitive?.bank_iban
-                  ? <span className="font-mono">{canAdmin || reveal ? data.sensitive.bank_iban : mask(data.sensitive.bank_iban)}</span>
-                  : null
-              }
-            />
-          </div>
+          <InfoRow icon={Banknote} label="Bank name" value={data?.sensitive?.bank_name} />
+          <InfoRow icon={User} label="Account title" value={data?.sensitive?.bank_account_title} />
+          <InfoRow
+            icon={IdCard}
+            label="Account number"
+            value={
+              data?.sensitive?.bank_account_number ? (
+                canAdmin ? (
+                  <span className="font-mono tabular-nums">{data.sensitive.bank_account_number}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 font-mono">
+                    {reveal ? data.sensitive.bank_account_number : mask(data.sensitive.bank_account_number)}
+                    <button type="button" onClick={() => setReveal((v) => !v)} className="text-muted-foreground">
+                      {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </span>
+                )
+              ) : null
+            }
+          />
+          <InfoRow
+            icon={IdCard}
+            label="IBAN"
+            value={
+              data?.sensitive?.bank_iban
+                ? <span className="font-mono">{canAdmin || reveal ? data.sensitive.bank_iban : mask(data.sensitive.bank_iban)}</span>
+                : null
+            }
+          />
           {!data?.sensitive?.bank_account_number && !data?.sensitive?.bank_iban && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-              <p className="text-xs text-amber-700">
-                {isSelf
-                  ? 'No salary account on file. Add your bank or wallet details so payroll can credit your salary — nobody else can fill this in for you.'
-                  : 'This teacher has not submitted salary account details yet. Ask them to complete the banking step in their profile.'}
-              </p>
-              {isSelf && (
-                <Button size="sm" className="mt-2 h-7 text-xs" onClick={() => setWizardOpen(true)}>
-                  Add salary account
-                </Button>
-              )}
+            <div className="p-4">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <p className="text-xs text-amber-700">
+                  {isSelf
+                    ? 'No salary account on file. Add your bank or wallet details so payroll can credit your salary — nobody else can fill this in for you.'
+                    : 'No salary account details submitted yet. Ask them to complete the banking step in their profile.'}
+                </p>
+                {isSelf && (
+                  <Button size="sm" className="mt-2 h-7 text-xs" onClick={() => setWizardOpen(true)}>
+                    Add salary account
+                  </Button>
+                )}
+              </div>
             </div>
           )}
-          {canAdmin && (
-            <p className="text-[10px] text-muted-foreground">Self-declared by the teacher · visible in full to admins for salary disbursement.</p>
-          )}
-        </Card>
+        </InfoCard>
 
-
-        <Card
+        <InfoCard
           icon={FileText}
           title="CV / Resume"
+          tone="sky"
           action={
             <div className="flex items-center gap-2">
               <StatusPill status={p.cv_status} kind="cv" />
@@ -423,74 +348,66 @@ export default function TeacherProfile() {
           }
         >
           {p.cv_url ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 px-5 py-4">
               <FileText className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm truncate">{p.cv_file_name || 'CV document'}</p>
-                <p className="text-[11px] text-muted-foreground">Uploaded {fmtDate(p.cv_uploaded_at)}</p>
+                <p className="text-[11px] text-muted-foreground">Uploaded {fmtDate(p.cv_uploaded_at) ?? '—'}</p>
               </div>
               <Button size="sm" variant="outline" className="ml-auto h-7 text-xs gap-1" onClick={openCv}>
                 <Download className="h-3 w-3" /> View
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No CV uploaded yet.</p>
+            <EmptyState icon={FileText} title="No CV uploaded yet" hint={isSelf ? 'Upload your CV from Edit profile.' : undefined} />
           )}
-          {(isSelf || canAdmin) && (
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setWizardOpen(true)}>
-              {p.cv_url ? 'Re-upload CV' : 'Upload CV'}
-            </Button>
-          )}
-        </Card>
+        </InfoCard>
 
-        <Card icon={Video} title="Communication">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Zoom personal meeting ID" value={p.zoom_personal_id} />
-            <Row label="Zoom email" value={p.zoom_email || p.email} />
-            <Row label="WhatsApp number" value={p.whatsapp_number} />
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            Reference only — live classes are hosted through the academy Zoom licence pool.
-          </p>
-        </Card>
+        <InfoCard icon={Video} title="Communication" tone="rose">
+          <InfoRow icon={Video} label="Zoom personal meeting ID" value={p.zoom_personal_id} />
+          <InfoRow icon={Mail} label="Zoom email" value={p.zoom_email || p.email} />
+          <InfoRow icon={Phone} label="WhatsApp number" value={p.whatsapp_number} />
+        </InfoCard>
       </div>
 
-      <Card icon={BookOpen} title={`Assigned students & subjects (${data?.assignments.length ?? 0})`}>
-        {data?.assignments.length ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {data.assignments.map((a: any) => (
-              <Link
-                key={a.id}
-                to={a.student?.id ? `/student-profile/${a.student.id}` : '#'}
-                className="group flex items-start gap-3 rounded-xl border bg-card p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-              >
-                <div className="h-9 w-9 shrink-0 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
-                    {a.student?.full_name ?? 'Unknown student'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {[a.student?.age ? `Age ${a.student.age}` : null, a.student?.gender].filter(Boolean).join(' • ') || '—'}
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <BookOpen className="h-3 w-3 text-primary" />
-                    {a.subject?.name ?? 'No subject'}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No active assignments.</p>
-        )}
-      </Card>
+      {!staffMode && (
+        <InfoCard icon={Users} title={`Assigned students & subjects (${assignments.length})`} tone="teal">
+          {assignments.length === 0 ? (
+            <EmptyState icon={Users} title="No active assignments" hint="Assign students from the Assignments page." />
+          ) : (
+            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              {assignments.map((a: any) => (
+                <Link
+                  key={a.id}
+                  to={a.student?.id ? `/student-profile/${a.student.id}` : '#'}
+                  className="group flex items-start gap-3 rounded-2xl border border-teal-500/25 bg-gradient-to-br from-teal-500/10 via-card to-card p-4 shadow-[0_10px_28px_-20px_rgba(20,184,166,0.7)] transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="h-9 w-9 shrink-0 rounded-full bg-secondary flex items-center justify-center">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground group-hover:text-teal-600">
+                      {a.student?.full_name ?? 'Unknown student'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {[a.student?.age ? `Age ${a.student.age}` : null, a.student?.gender].filter(Boolean).join(' • ') || '—'}
+                    </p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <BookOpen className="h-3 w-3 text-teal-600" />
+                      {a.subject?.name ?? 'No subject'}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </InfoCard>
+      )}
 
       <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif">Update teacher profile</DialogTitle>
+            <DialogTitle className="font-serif">Update profile</DialogTitle>
           </DialogHeader>
           <Separator />
           <TeacherOnboardingWizard
