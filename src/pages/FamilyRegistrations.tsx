@@ -126,6 +126,24 @@ export default function FamilyRegistrations() {
               ))}
             </div>
 
+            {(() => {
+              const bank = (row.applicant_data as any)?.banking;
+              if (!bank) return null;
+              return (
+                <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Salary account (self-declared)</p>
+                  <div className="mt-1 grid gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2">
+                    <span>Method: <span className="text-foreground">{bank.payout_method ?? '—'}</span></span>
+                    <span>Bank / wallet: <span className="text-foreground">{bank.bank_name ?? '—'}</span></span>
+                    <span>Title: <span className="text-foreground">{bank.bank_account_title ?? '—'}</span></span>
+                    <span>Account: <span className="font-mono text-foreground">{bank.bank_account_number ?? '—'}</span></span>
+                    <span>IBAN: <span className="font-mono text-foreground">{bank.bank_iban ?? '—'}</span></span>
+                    <span>Branch: <span className="text-foreground">{bank.branch ?? '—'}</span></span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {row.notes && <p className="text-sm"><span className="text-muted-foreground">Family note:</span> {row.notes}</p>}
             {row.review_notes && row.status !== 'pending' && <p className="text-sm"><span className="text-muted-foreground">Review note:</span> {row.review_notes}</p>}
 

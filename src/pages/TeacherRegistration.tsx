@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Country } from 'country-state-city';
 import {
-  BriefcaseBusiness, CheckCircle2, Loader2, MapPin, Send, ShieldCheck, User, Video,
+  BriefcaseBusiness, CheckCircle2, Landmark, Loader2, MapPin, Send, ShieldCheck, User, Video,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 const COUNTRIES = Country.getAllCountries();
 const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PAYOUT_METHODS = ['Bank account', 'Easypaisa', 'JazzCash', 'SadaPay', 'NayaPay', 'Wise', 'Payoneer'];
 
 type Form = {
   fullName: string; dob: string; gender: string;
@@ -25,6 +26,7 @@ type Form = {
   phone: string; whatsappSame: boolean; whatsapp: string; email: string;
   qualification: string; specialization: string; yearsExperience: string; previousInstitutes: string;
   subjects: string[]; languages: string; availability: string; expectedSalary: string;
+  payoutMethod: string; bankName: string; accountTitle: string; accountNumber: string; iban: string; branch: string;
   zoomEmail: string; hearAbout: string; about: string; consent: boolean;
 };
 
@@ -34,8 +36,10 @@ const initial: Form = {
   phone: '', whatsappSame: true, whatsapp: '', email: '',
   qualification: '', specialization: '', yearsExperience: '', previousInstitutes: '',
   subjects: [], languages: '', availability: '', expectedSalary: '',
+  payoutMethod: 'Bank account', bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '',
   zoomEmail: '', hearAbout: '', about: '', consent: false,
 };
+
 
 function Section({
   index, title, subtitle, icon: Icon, children,
@@ -92,10 +96,12 @@ export default function TeacherRegistration() {
   const withDial = (value: string) => (value.trim() ? `${form.dialCode} ${value.trim()}`.trim() : '');
   const locationDone = Boolean(form.country && form.timezone);
 
+  const payoutDone = Boolean(form.payoutMethod && form.accountTitle.trim() && form.accountNumber.trim());
+
   const valid = useMemo(() => Boolean(
     form.fullName.trim() && EMAIL_RE.test(form.email.trim()) && form.phone.trim() && locationDone &&
-    form.qualification.trim() && form.yearsExperience.trim() && form.subjects.length && form.consent,
-  ), [form, locationDone]);
+    form.qualification.trim() && form.yearsExperience.trim() && form.subjects.length && payoutDone && form.consent,
+  ), [form, locationDone, payoutDone]);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -137,6 +143,14 @@ export default function TeacherRegistration() {
           zoom_email: form.zoomEmail.trim() || null,
           heard_about: form.hearAbout.trim() || null,
           about: form.about.trim() || null,
+          banking: {
+            payout_method: form.payoutMethod,
+            bank_name: form.bankName.trim() || form.payoutMethod,
+            bank_account_title: form.accountTitle.trim(),
+            bank_account_number: form.accountNumber.trim(),
+            bank_iban: form.iban.trim() || null,
+            branch: form.branch.trim() || null,
+          },
         },
       });
       if (error) throw error;
@@ -309,6 +323,39 @@ export default function TeacherRegistration() {
             <Input value={form.hearAbout} onChange={e => set({ hearAbout: e.target.value })} className="h-11" />
           </Field>
         </Section>
+
+        <Section
+          index={5}
+          title="Salary account details"
+          subtitle="Where your salary is credited. Kept private — visible only to the finance admin."
+          icon={Landmark}
+        >
+          <Field label="Payout method" required>
+            <Select value={form.payoutMethod} onValueChange={value => set({ payoutMethod: value })}>
+              <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                {PAYOUT_METHODS.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Bank / wallet name" hint="e.g. Meezan Bank, Easypaisa">
+            <Input value={form.bankName} onChange={e => set({ bankName: e.target.value })} className="h-11" />
+          </Field>
+          <Field label="Account title" required hint="Exactly as registered with the bank / wallet.">
+            <Input value={form.accountTitle} onChange={e => set({ accountTitle: e.target.value })} className="h-11" />
+          </Field>
+          <Field label="Account / wallet number" required>
+            <Input value={form.accountNumber} onChange={e => set({ accountNumber: e.target.value })} className="h-11 font-mono" />
+          </Field>
+          <Field label="IBAN" hint="Required for local bank transfers in Pakistan.">
+            <Input value={form.iban} onChange={e => set({ iban: e.target.value })} placeholder="PK00XXXX0000000000000000" className="h-11 font-mono uppercase" />
+          </Field>
+          <Field label="Branch / city">
+            <Input value={form.branch} onChange={e => set({ branch: e.target.value })} className="h-11" />
+          </Field>
+        </Section>
+
+
 
         <section className="rounded-3xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
           <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
