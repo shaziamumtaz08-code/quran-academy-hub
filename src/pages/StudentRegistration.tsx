@@ -388,15 +388,12 @@ export default function StudentRegistration() {
           <Field label="How did you hear about us?" wide>
             <Input value={home.hearAbout} onChange={e => set({ hearAbout: e.target.value })} className="h-11" />
           </Field>
-          <div className="sm:col-span-2 rounded-2xl border border-accent/30 bg-accent/5 p-4">
-            <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
-              <Checkbox checked={home.consent} onCheckedChange={value => set({ consent: Boolean(value) })} className="mt-0.5" />
-              <span>
-                I confirm the information above is correct and I agree to Al Quran Time Academy's terms,
-                attendance policy and privacy policy.<span className="ml-1 text-accent">*</span>
-              </span>
-            </label>
-          </div>
+          <TermsAcceptance
+            audience="student"
+            checked={home.consent}
+            onChange={value => set({ consent: value })}
+            label="I confirm the information above is correct and I have read and accept Al Quran Time Academy's terms & conditions, enrolment contract, learning agreement, attendance policy and privacy policy."
+          />
         </Section>
       </main>
 
