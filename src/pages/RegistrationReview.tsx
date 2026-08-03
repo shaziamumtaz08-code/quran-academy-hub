@@ -81,9 +81,11 @@ export default function RegistrationReview() {
     setChildren(Array.isArray(reg.children) ? (reg.children as any[]) : []);
     setApplicant((reg.applicant_data as any) ?? {});
     setReviewNotes(reg.review_notes ?? '');
+    setAvatarUrl((reg as any).avatar_url ?? null);
   }, [reg]);
 
   const isTeacher = reg?.registration_type === 'teacher';
+  const studentName = (reg as any)?.student_name || children[0]?.name || '';
   const banking = (applicant.banking ?? {}) as Record<string, any>;
 
   const save = useMutation({
