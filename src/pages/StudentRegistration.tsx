@@ -207,7 +207,7 @@ export default function StudentRegistration() {
           </p>
           <h1 className="mt-3 font-heading text-3xl font-semibold sm:text-4xl">Student enrolment</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-primary-foreground/75 sm:text-base">
-            One page, one submission — for a single student or for all the children in a family.
+            One page, one submission — for a single student, or for several siblings at once.
             Add as many students as you need at the bottom of the form.
           </p>
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-primary-foreground/70">
