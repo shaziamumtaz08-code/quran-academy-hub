@@ -1,5 +1,7 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +14,7 @@ import {
 } from '@/components/profile/ProfileKit';
 import {
   BadgeCheck, CalendarDays, Clock, Globe, GraduationCap, IdCard, Mail, MapPin,
-  MessageSquare, Phone, ShieldCheck, User, Users,
+  MessageSquare, Phone, Settings2, ShieldCheck, User, Users,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
@@ -33,6 +35,8 @@ export default function ParentProfile() {
   const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const parentId = paramId ?? me?.id;
   const queryClient = useQueryClient();
+  const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const canEditPhoto = !!(parentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(parentId, () =>
     queryClient.invalidateQueries({ queryKey: ['parent-profile-page', parentId] }));
@@ -122,6 +126,11 @@ export default function ParentProfile() {
         }
         actions={
           <>
+            {canAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}
+              </Button>
+            )}
             {p.email && (
               <Button asChild size="sm" variant="outline" className="gap-1.5">
                 <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
@@ -142,6 +151,8 @@ export default function ParentProfile() {
           { label: 'Account', value: <span className="capitalize">{p.account_status ?? 'active'}</span>, icon: ShieldCheck, tone: 'amber' },
         ]}
       />
+
+      {advancedOpen && canAdmin && parentId && <ProfileEditorPanel userId={parentId} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InfoCard icon={User} title="Personal information" tone="violet">
