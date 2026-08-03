@@ -46,7 +46,7 @@ function greeting(hour: number) {
 }
 
 export default function SelectDivision() {
-  const { profile, activeRole, isLoading: authLoading } = useAuth();
+  const { profile, activeRole, isLoading: authLoading, logout } = useAuth();
   const { setActiveDivisionId } = useDivision();
   const navigate = useNavigate();
   const { toast } = useToast();
