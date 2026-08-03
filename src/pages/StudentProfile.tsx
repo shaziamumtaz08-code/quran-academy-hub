@@ -105,6 +105,8 @@ export default function StudentProfile() {
       <ProfileHero
         name={p.full_name ?? 'Unnamed student'}
         avatarUrl={p.avatar_url}
+        onAvatarSelect={canEditPhoto ? onAvatarSelect : undefined}
+        avatarUploading={avatarUploading}
         gradient="from-primary via-sky-500 to-teal-500"
         badges={
           <>
