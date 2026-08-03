@@ -360,8 +360,22 @@ export default function TeacherProfile() {
               }
             />
           </div>
+          {!data?.sensitive?.bank_account_number && !data?.sensitive?.bank_iban && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-xs text-amber-700">
+                {isSelf
+                  ? 'No salary account on file. Add your bank or wallet details so payroll can credit your salary — nobody else can fill this in for you.'
+                  : 'This teacher has not submitted salary account details yet. Ask them to complete the banking step in their profile.'}
+              </p>
+              {isSelf && (
+                <Button size="sm" className="mt-2 h-7 text-xs" onClick={() => setWizardOpen(true)}>
+                  Add salary account
+                </Button>
+              )}
+            </div>
+          )}
           {canAdmin && (
-            <p className="text-[10px] text-muted-foreground">Visible in full to admins for salary disbursement.</p>
+            <p className="text-[10px] text-muted-foreground">Self-declared by the teacher · visible in full to admins for salary disbursement.</p>
           )}
         </Card>
 
