@@ -173,11 +173,14 @@ export default function TeacherRegistration() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/15 text-accent ring-1 ring-accent/30">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">Application received</h1>
+            <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">Teaching application submitted</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              JazakAllah Khair, {form.fullName.split(' ')[0]}. Our academic team will review your application
-              and contact you on <span className="font-medium text-foreground">{form.email}</span> for the demo lesson.
+              JazakAllah Khair, {form.fullName.split(' ')[0]}. Our academic team will review your teaching profile,
+              qualifications and availability. If shortlisted, we will write to you at{' '}
+              <span className="font-medium text-foreground">{form.email}</span> to arrange a short interview and
+              a sample teaching session. Please allow a few working days for a response.
             </p>
+
           </section>
         </main>
       </div>
