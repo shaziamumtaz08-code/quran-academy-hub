@@ -218,7 +218,7 @@ export default function StudentRegistration() {
       </header>
 
       <main className="mx-auto -mt-8 max-w-3xl space-y-6 px-4">
-        <Section index={1} title="Where the family lives" subtitle="Country first — it sets the timezone and phone code for you." icon={MapPin}>
+        <Section index={1} title="Where the student lives" subtitle="Country first — it sets the timezone and phone code for you." icon={MapPin}>
           <Field label="Country" required>
             <Select value={home.countryCode} onValueChange={chooseCountry}>
               <SelectTrigger className="h-11"><SelectValue placeholder="Select country" /></SelectTrigger>
