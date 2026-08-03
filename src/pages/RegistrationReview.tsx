@@ -40,6 +40,24 @@ export default function RegistrationReview() {
   const [applicant, setApplicant] = useState<Record<string, any>>({});
   const [reviewNotes, setReviewNotes] = useState('');
   const [accounts, setAccounts] = useState<CreatedAccount[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarSelect = async (file: File) => {
+    if (!id) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(file, `registration-${id}`);
+      const { error } = await supabase.from('family_registrations').update({ avatar_url: url }).eq('id', id);
+      if (error) throw error;
+      setAvatarUrl(url);
+      toast({ title: 'Photo updated' });
+    } catch (e: any) {
+      toast({ title: 'Could not upload photo', description: e.message, variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const { data: reg, isLoading } = useQuery({
     queryKey: ['family-registration', id],
