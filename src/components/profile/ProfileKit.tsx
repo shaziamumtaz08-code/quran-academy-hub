@@ -75,6 +75,8 @@ export function ProfileHero({
   meta,
   actions,
   gradient = 'from-primary via-primary/80 to-accent',
+  onAvatarSelect,
+  avatarUploading,
 }: {
   name: string;
   avatarUrl?: string | null;
@@ -82,32 +84,71 @@ export function ProfileHero({
   meta?: React.ReactNode;
   actions?: React.ReactNode;
   gradient?: string;
+  onAvatarSelect?: (file: File) => void;
+  avatarUploading?: boolean;
 }) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
   return (
     <header className="rounded-2xl border bg-card overflow-hidden shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
-      <div className={`relative h-32 bg-gradient-to-br ${gradient}`}>
+      <div className={`relative h-24 sm:h-28 bg-gradient-to-br ${gradient}`}>
         <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
         <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/15 to-transparent" />
       </div>
-      <div className="px-5 pb-5 -mt-12">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={`${name} profile photo`} className="h-full w-full object-cover" />
-            ) : (
-              <UserIcon className="h-9 w-9 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-serif font-bold text-foreground">{name}</h1>
-              {badges}
+
+      <div className="px-5 pb-5">
+        <div className="-mt-11 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
+            <div className="relative h-24 w-24 shrink-0">
+              <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-lg">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={`${name} profile photo`} className="h-full w-full object-cover" />
+                ) : (
+                  <UserIcon className="h-9 w-9 text-muted-foreground" />
+                )}
+              </div>
+              {onAvatarSelect && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Change profile photo"
+                    disabled={avatarUploading}
+                    onClick={() => inputRef.current?.click()}
+                    className="absolute -bottom-0.5 -right-0.5 grid h-8 w-8 place-items-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60"
+                  >
+                    {avatarUploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) onAvatarSelect(file);
+                    }}
+                  />
+                </>
+              )}
             </div>
-            {meta && (
-              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{meta}</div>
-            )}
+
+            <div className="min-w-0 sm:pb-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-serif font-bold text-foreground break-words">{name}</h1>
+                {badges}
+              </div>
+              {meta && (
+                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{meta}</div>
+              )}
+            </div>
           </div>
-          {actions && <div className="flex flex-wrap gap-2 pb-1">{actions}</div>}
+
+          {actions && <div className="flex flex-wrap gap-2 lg:pb-1">{actions}</div>}
         </div>
       </div>
     </header>
