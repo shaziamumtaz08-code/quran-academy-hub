@@ -1,5 +1,7 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +14,7 @@ import {
 } from '@/components/profile/ProfileKit';
 import {
   BadgeCheck, BookOpen, CalendarDays, Clock, Droplet, GraduationCap, Globe, HeartPulse,
-  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages,
+  Mail, MapPin, Phone, School, ShieldCheck, Siren, Settings2, Target, User, Users, IdCard, Languages,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
@@ -33,6 +35,8 @@ export default function StudentProfile() {
   const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const studentId = paramId ?? me?.id;
   const queryClient = useQueryClient();
+  const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
     queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] }));
@@ -128,6 +132,11 @@ export default function StudentProfile() {
         }
         actions={
           <>
+            {canAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}
+              </Button>
+            )}
             {p.email && (
               <Button asChild size="sm" variant="outline" className="gap-1.5">
                 <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
@@ -148,6 +157,8 @@ export default function StudentProfile() {
           { label: 'Blood group', value: p.blood_group ?? 'Not provided', icon: Droplet, tone: 'amber' },
         ]}
       />
+
+      {advancedOpen && canAdmin && studentId && <ProfileEditorPanel userId={studentId} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InfoCard icon={User} title="Personal information" tone="primary">
