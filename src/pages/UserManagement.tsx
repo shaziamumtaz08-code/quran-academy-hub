@@ -1409,8 +1409,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
-            <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">{lockedRole === 'teacher' ? 'Teachers' : lockedRole === 'student' ? 'Students' : staffMode ? 'Staff' : 'User Management'}</h1>
+            <p className="text-muted-foreground">{lockedRole === 'teacher' ? 'All teachers — same records as User Management, filtered to the teacher role' : lockedRole === 'student' ? 'All students — same records as User Management, filtered to the student role' : staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
            {/* Header button gating by role */}
            <div className="flex gap-2">
