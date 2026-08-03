@@ -96,10 +96,12 @@ export default function TeacherRegistration() {
   const withDial = (value: string) => (value.trim() ? `${form.dialCode} ${value.trim()}`.trim() : '');
   const locationDone = Boolean(form.country && form.timezone);
 
+  const payoutDone = Boolean(form.payoutMethod && form.accountTitle.trim() && form.accountNumber.trim());
+
   const valid = useMemo(() => Boolean(
     form.fullName.trim() && EMAIL_RE.test(form.email.trim()) && form.phone.trim() && locationDone &&
-    form.qualification.trim() && form.yearsExperience.trim() && form.subjects.length && form.consent,
-  ), [form, locationDone]);
+    form.qualification.trim() && form.yearsExperience.trim() && form.subjects.length && payoutDone && form.consent,
+  ), [form, locationDone, payoutDone]);
 
   const submit = useMutation({
     mutationFn: async () => {
