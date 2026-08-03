@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
 
 const COUNTRIES = Country.getAllCountries();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
