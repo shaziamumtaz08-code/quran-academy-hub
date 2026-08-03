@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
           bank_account_number: banking.bank_account_number || undefined,
           bank_iban: banking.bank_iban || undefined,
           joining_date: new Date().toISOString().slice(0, 10),
+          avatar_url: reg.avatar_url || undefined,
           account_status: "active",
         },
       });
