@@ -99,7 +99,7 @@ export default function FamilyRegistrations() {
                   <TableHead className="text-[10px] uppercase tracking-wider">Applicant</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Category</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Contact</TableHead>
-                  <TableHead className="text-[10px] uppercase tracking-wider">Students</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Guardian</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Location</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Submitted</TableHead>
                   <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
