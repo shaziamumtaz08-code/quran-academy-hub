@@ -2409,6 +2409,27 @@ export default function UserManagement() {
                                 </Button>
                               )}
 
+                              {/* View → read-only profile page (student / teacher / parent) */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="View profile"
+                                onClick={() => {
+                                  const roles = user.roles ?? [];
+                                  const path = roles.includes('student')
+                                    ? `/student-profile/${user.id}`
+                                    : roles.includes('teacher')
+                                      ? `/teacher-profile/${user.id}`
+                                      : roles.includes('parent')
+                                        ? `/parent-profile/${user.id}`
+                                        : null;
+                                  if (path) navigate(path);
+                                  else openProfileDrawer(user.id);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+
                               {/* Edit → opens 8-tab holistic profile (the profile drawer enforces tab-level access per role) */}
                               {activeRole !== 'admin_fees' && (
                                 <Button
