@@ -99,6 +99,8 @@ export default function ParentProfile() {
       <ProfileHero
         name={p.full_name ?? 'Unnamed parent'}
         avatarUrl={p.avatar_url}
+        onAvatarSelect={canEditPhoto ? onAvatarSelect : undefined}
+        avatarUploading={avatarUploading}
         gradient="from-violet-600 via-violet-500 to-primary"
         badges={
           <>
