@@ -5,7 +5,15 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Globe, MapPin, Users, User, Building2, Wifi, ChevronRight, AlertTriangle, CalendarCheck, Wallet } from 'lucide-react';
+import { Globe, MapPin, Users, User, Building2, Wifi, ChevronRight, AlertTriangle, CalendarCheck, Wallet, LogOut } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import logoLight from '@/assets/logo-light.png';
 import { useSuperAdminOverview } from '@/hooks/useSuperAdminOverview';
