@@ -72,6 +72,9 @@ export default function TeacherProfile() {
   const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(teacherId, () =>
+    qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] }));
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['teacher-profile-page', teacherId],
