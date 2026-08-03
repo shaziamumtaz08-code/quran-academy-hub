@@ -635,7 +635,7 @@ export default function Teachers() {
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <EntityLink to="#" variant="name" className="text-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDrawerStudentId(student.id); }}>{student.full_name}</EntityLink>
+                                    <EntityLink to={`/student-profile/${student.id}`} variant="name" className="text-sm" onClick={(e) => e.stopPropagation()}>{student.full_name}</EntityLink>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
