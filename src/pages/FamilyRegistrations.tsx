@@ -111,7 +111,8 @@ export default function FamilyRegistrations() {
                   const children = Array.isArray(row.children) ? (row.children as any[]) : [];
                   const isTeacher = row.registration_type === 'teacher';
                   const applicant = (row.applicant_data as any) ?? {};
-                  const name = isTeacher ? (applicant.full_name || row.parent_name) : row.parent_name;
+                  const studentName = (row as any).student_name || children[0]?.name || null;
+                  const name = isTeacher ? (applicant.full_name || row.parent_name) : (studentName || row.parent_name);
                   return (
                     <TableRow
                       key={row.id}
