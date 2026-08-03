@@ -241,10 +241,10 @@ export default function RegistrationReview() {
             </div>
           </InfoCard>
         ) : (
-          <InfoCard icon={Users} title="Family notes" tone="sky">
+          <InfoCard icon={Users} title="Registration notes" tone="sky">
             <div className="space-y-4 p-5">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Note from the family</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Note from the guardian</Label>
                 <Textarea rows={4} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
               <Field label="Preferred contact" value={reg.preferred_contact ?? ''} onChange={() => {}} />
