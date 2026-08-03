@@ -133,7 +133,7 @@ export default function FamilyRegistrations() {
                       <TableCell className="py-3">
                         <Badge variant="outline" className={isTeacher ? 'border-violet-500/40 bg-violet-500/10 text-violet-600' : 'border-sky-500/40 bg-sky-500/10 text-sky-600'}>
                           {isTeacher ? <GraduationCap className="h-3 w-3 mr-1" /> : <Users className="h-3 w-3 mr-1" />}
-                          {isTeacher ? 'Teacher' : 'Student / family'}
+                          {isTeacher ? 'Teacher' : 'Student'}
                         </Badge>
                         {row.lead_id && <Badge variant="secondary" className="ml-1.5 gap-1"><Link2 className="h-3 w-3" />Enquiry</Badge>}
                       </TableCell>
