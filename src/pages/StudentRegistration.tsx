@@ -115,8 +115,7 @@ export default function StudentRegistration() {
     (student.useGuardianEmail ? home.guardianEmail : student.email).trim();
 
   const studentValid = (student: Student) => Boolean(
-    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)) &&
-    student.schoolName.trim() && student.gradeLevel.trim() && student.subjects.length,
+    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)),
   );
 
   const valid = useMemo(() => Boolean(
