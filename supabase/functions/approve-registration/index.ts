@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
         created: res.created,
       });
     } else {
-      // Family / student registration: parent (if email valid) + each child
+      // Student registration: guardian account (reused across siblings by email) + the student
       let parentId: string | null = null;
       const parentEmail = (reg.email || "").toLowerCase().trim();
       const children = Array.isArray(reg.children) ? (reg.children as any[]) : [];
