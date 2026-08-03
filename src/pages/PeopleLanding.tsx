@@ -8,8 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const Teachers = lazy(() => import('./Teachers'));
-const Students = lazy(() => import('./Students'));
 const UserManagement = lazy(() => import('./UserManagement'));
 const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
 const Parents = lazy(() => import('./Parents'));
@@ -110,8 +108,8 @@ export default function PeopleLanding() {
   });
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
-    teachers: <Suspense fallback={<Loading />}><Teachers /></Suspense>,
-    students: <Suspense fallback={<Loading />}><Students /></Suspense>,
+    teachers: <Suspense fallback={<Loading />}><UserManagement lockedRole="teacher" /></Suspense>,
+    students: <Suspense fallback={<Loading />}><UserManagement lockedRole="student" /></Suspense>,
     staff: <Suspense fallback={<Loading />}><UserManagement /></Suspense>,
     leads: <Suspense fallback={<Loading />}><LeadsPipeline /></Suspense>,
     parents: <Suspense fallback={<Loading />}><Parents /></Suspense>,

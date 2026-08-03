@@ -9,9 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from '@/components/ui/accordion';
+
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
 import {
@@ -110,7 +108,7 @@ export default function TeacherProfile() {
 
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
+        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age), subject:subjects(name)')
         .eq('teacher_id', teacherId!)
         .eq('status', 'active');
 
@@ -429,23 +427,31 @@ export default function TeacherProfile() {
 
       <Card icon={BookOpen} title={`Assigned students & subjects (${data?.assignments.length ?? 0})`}>
         {data?.assignments.length ? (
-          <Accordion type="single" collapsible>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.assignments.map((a: any) => (
-              <AccordionItem key={a.id} value={a.id}>
-                <AccordionTrigger className="text-sm">
-                  {a.student?.full_name ?? 'Unknown student'}
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Badge variant="secondary" className="text-[10px]">{a.subject?.name ?? 'No subject'}</Badge>
-                    <Link to={`/students?search=${encodeURIComponent(a.student?.full_name ?? '')}`} className="text-primary hover:underline text-xs">
-                      Open student
-                    </Link>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+              <Link
+                key={a.id}
+                to={a.student?.id ? `/student-profile/${a.student.id}` : '#'}
+                className="group flex items-start gap-3 rounded-xl border bg-card p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+              >
+                <div className="h-9 w-9 shrink-0 rounded-full bg-secondary flex items-center justify-center">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
+                    {a.student?.full_name ?? 'Unknown student'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {[a.student?.age ? `Age ${a.student.age}` : null, a.student?.gender].filter(Boolean).join(' • ') || '—'}
+                  </p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <BookOpen className="h-3 w-3 text-primary" />
+                    {a.subject?.name ?? 'No subject'}
+                  </p>
+                </div>
+              </Link>
             ))}
-          </Accordion>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No active assignments.</p>
         )}

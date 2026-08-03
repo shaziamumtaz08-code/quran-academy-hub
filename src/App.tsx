@@ -34,8 +34,6 @@ const Trust = lazy(() => import("./pages/Trust"));
 const Policies = lazy(() => import("./pages/Policies"));
 const PublicPolicies = lazy(() => import("./pages/PublicPolicies"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Teachers = lazy(() => import("./pages/Teachers"));
-const Students = lazy(() => import("./pages/Students"));
 const Schedules = lazy(() => import("./pages/Schedules"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Lessons = lazy(() => import("./pages/Lessons"));
@@ -463,7 +461,7 @@ function AppRoutes() {
       <Route path="/user-management" element={<ProtectedRoute><RouteGuard moduleId="user_management"><UserManagement /></RouteGuard></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><RouteGuard moduleId="assignments"><Assignments /></RouteGuard></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><RouteGuard moduleId="subjects"><Subjects /></RouteGuard></ProtectedRoute>} />
-      <Route path="/teachers" element={<ProtectedRoute><RouteGuard moduleId="teachers"><Teachers /></RouteGuard></ProtectedRoute>} />
+      <Route path="/teachers" element={<ProtectedRoute><RouteGuard moduleId="teachers"><UserManagement lockedRole="teacher" /></RouteGuard></ProtectedRoute>} />
       <Route path="/teacher-profile" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teacher-profile/:teacherId" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/register/student" element={<StudentRegistration />} />
@@ -471,7 +469,7 @@ function AppRoutes() {
       <Route path="/register/teacher" element={<TeacherRegistration />} />
       <Route path="/onboard/:token" element={<TeacherOnboarding />} />
 
-      <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><Students /></RouteGuard></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><UserManagement lockedRole="student" /></RouteGuard></ProtectedRoute>} />
       <Route path="/student-profile" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/student-profile/:studentId" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/parent-profile" element={<ProtectedRoute><DashboardLayout><ParentProfile /></DashboardLayout></ProtectedRoute>} />

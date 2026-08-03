@@ -413,7 +413,7 @@ interface UserWithRoles {
 
 export type RoleStatus = 'active' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
-export default function UserManagement() {
+export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' | 'student' } = {}) {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
   const { activeDivision, switcherOptions } = useDivision();
   const { toast } = useToast();
@@ -479,7 +479,7 @@ export default function UserManagement() {
   // Location filter states
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
-  const [filterRole, setFilterRole] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>(lockedRole || '');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterGender, setFilterGender] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
@@ -1337,7 +1337,7 @@ export default function UserManagement() {
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
-    setFilterRole('');
+    setFilterRole(lockedRole || '');
     setFilterStatus('');
     setFilterGender('');
     setFilterDivision('');
@@ -1409,8 +1409,8 @@ export default function UserManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
-            <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">{lockedRole === 'teacher' ? 'Teachers' : lockedRole === 'student' ? 'Students' : staffMode ? 'Staff' : 'User Management'}</h1>
+            <p className="text-muted-foreground">{lockedRole === 'teacher' ? 'All teachers — same records as User Management, filtered to the teacher role' : lockedRole === 'student' ? 'All students — same records as User Management, filtered to the student role' : staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
            {/* Header button gating by role */}
            <div className="flex gap-2">
@@ -1819,6 +1819,7 @@ export default function UserManagement() {
                 </div>
 
                 {/* Role */}
+                {!lockedRole && (
                 <Select value={filterRole || 'all'} onValueChange={(v) => { const newRole = v === 'all' ? '' : v; setFilterRole(newRole); const map: Record<string, string[]> = { student: ['active','on_hold','completed','left','inactive'], teacher: ['active','inactive','left'], parent: ['active','inactive'], __admins__: ['active','inactive'], examiner: ['active','inactive'] }; if (filterStatus && newRole && map[newRole] && !map[newRole].includes(filterStatus)) setFilterStatus(''); }}>
                   <SelectTrigger className="w-[130px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Role" />
@@ -1832,6 +1833,7 @@ export default function UserManagement() {
                     <SelectItem value="examiner"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> Examiners</span></SelectItem>
                   </SelectContent>
                 </Select>
+                )}
 
                 {/* Status — role-aware options */}
                 {(() => {
