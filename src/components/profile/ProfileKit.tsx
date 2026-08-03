@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, User as UserIcon } from 'lucide-react';
+import { Camera, ChevronLeft, Loader2, User as UserIcon } from 'lucide-react';
 
 export const toneMap: Record<
   string,
