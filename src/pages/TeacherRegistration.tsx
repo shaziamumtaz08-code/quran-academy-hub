@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
 
 const COUNTRIES = Country.getAllCountries();
 const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
