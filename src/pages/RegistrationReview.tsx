@@ -143,11 +143,11 @@ export default function RegistrationReview() {
   });
 
   const stats = useMemo(() => ([
-    { label: 'Type', value: isTeacher ? 'Teacher' : 'Family', icon: isTeacher ? GraduationCap : Users, tone: (isTeacher ? 'violet' : 'sky') as any },
-    { label: isTeacher ? 'Experience' : 'Students', value: isTeacher ? `${applicant.years_experience ?? 0} yrs` : children.length, icon: isTeacher ? Briefcase : Baby, tone: 'teal' as any },
+    { label: 'Type', value: isTeacher ? 'Teacher' : 'Student', icon: isTeacher ? GraduationCap : Users, tone: (isTeacher ? 'violet' : 'sky') as any },
+    { label: isTeacher ? 'Experience' : 'Guardian', value: isTeacher ? `${applicant.years_experience ?? 0} yrs` : (form.parent_name || '—'), icon: isTeacher ? Briefcase : Baby, tone: 'teal' as any },
     { label: 'Status', value: (reg?.status ?? '—') as string, icon: Sparkles, tone: (reg?.status === 'approved' ? 'teal' : reg?.status === 'rejected' ? 'rose' : 'amber') as any },
     { label: 'Submitted', value: reg ? format(new Date(reg.created_at), 'dd MMM yyyy') : '—', icon: BookOpen, tone: 'primary' as any },
-  ]), [reg, isTeacher, applicant, children]);
+  ]), [reg, isTeacher, applicant, form.parent_name]);
 
   if (isLoading || !reg) return <div className="space-y-4"><Skeleton className="h-40 rounded-2xl" /><Skeleton className="h-64 rounded-2xl" /></div>;
 
