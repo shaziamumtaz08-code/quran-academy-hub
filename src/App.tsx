@@ -464,6 +464,7 @@ function AppRoutes() {
       <Route path="/teachers" element={<ProtectedRoute><RouteGuard moduleId="teachers"><UserManagement lockedRole="teacher" /></RouteGuard></ProtectedRoute>} />
       <Route path="/teacher-profile" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teacher-profile/:teacherId" element={<ProtectedRoute><DashboardLayout><TeacherProfile /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/staff-profile/:staffId" element={<ProtectedRoute><DashboardLayout><TeacherProfile staffMode /></DashboardLayout></ProtectedRoute>} />
       <Route path="/register/student" element={<StudentRegistration />} />
       <Route path="/register/student/:token" element={<StudentRegistration />} />
       <Route path="/register/teacher" element={<TeacherRegistration />} />
