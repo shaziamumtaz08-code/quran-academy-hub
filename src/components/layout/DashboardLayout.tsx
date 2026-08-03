@@ -19,6 +19,7 @@ import {
   Menu,
   MessageCircle,
   MessageSquare,
+  ScrollText,
   UserCog,
   Users,
   Target,
