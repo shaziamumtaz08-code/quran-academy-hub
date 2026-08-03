@@ -1,12 +1,18 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { PolicyLibrary } from "@/components/policies/PolicyLibrary";
 
 /**
  * Public-facing policy centre so applicants can read the terms they accept
  * on the registration forms before signing up.
+ * `?for=teacher` / `?for=student` scopes the list to that audience.
  */
 export default function PublicPolicies() {
+  const [params] = useSearchParams();
+  const forParam = params.get("for");
+  const audience =
+    forParam === "teacher" || forParam === "student" || forParam === "parent" ? forParam : undefined;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -19,13 +25,18 @@ export default function PublicPolicies() {
               Al Quran Time Academy — Policies &amp; Terms
             </h1>
             <p className="text-xs text-muted-foreground">
-              Contracts, learning agreements and academy policies for students, parents and teachers.
+              {audience === "teacher"
+                ? "Teaching agreement and academy policies for teachers."
+                : audience
+                  ? "Enrolment contract, learning agreement and academy policies for students and parents."
+                  : "Contracts, learning agreements and academy policies for students, parents and teachers."}
             </p>
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <PolicyLibrary />
+        <PolicyLibrary audience={audience} />
+
         <div className="mt-8">
           <Link
             to="/"
