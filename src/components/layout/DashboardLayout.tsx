@@ -274,6 +274,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
+      { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
       { label: "Work Hub", href: "/hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
@@ -294,6 +295,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
+      { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
       { label: "Work Hub", href: "/hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
@@ -309,6 +311,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Exam Center", href: "/report-card-templates", icon: Award },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Library", href: "/library", icon: FolderOpen },
+          { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
