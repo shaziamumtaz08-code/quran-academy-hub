@@ -1337,7 +1337,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
-    setFilterRole('');
+    setFilterRole(lockedRole || '');
     setFilterStatus('');
     setFilterGender('');
     setFilterDivision('');
