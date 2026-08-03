@@ -110,7 +110,7 @@ export default function TeacherProfile() {
 
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
+        .select('id, days_of_week, start_time, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age), subject:subjects(name)')
         .eq('teacher_id', teacherId!)
         .eq('status', 'active');
 
