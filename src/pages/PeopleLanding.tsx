@@ -8,8 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const Teachers = lazy(() => import('./Teachers'));
-const Students = lazy(() => import('./Students'));
 const UserManagement = lazy(() => import('./UserManagement'));
 const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
 const Parents = lazy(() => import('./Parents'));
