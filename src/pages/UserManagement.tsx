@@ -94,7 +94,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
-import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
@@ -430,7 +429,9 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [holisticUserId, setHolisticUserId] = useState<string | null>(null);
+  // Students / Teachers / Staff are scoped views of User Management — they show
+  // the table only; creation, import and export live in User Management itself.
+  const scopedView = !!lockedRole || staffMode;
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<UserWithRoles | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
@@ -510,8 +511,17 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
   // Check access permission
   const canAccessPage = isSuperAdmin || hasPermission('users.view');
 
-  // Open profile drawer with permission check (prevents blank-page bug for unauthorized roles)
-  const openProfileDrawer = (userId: string) => {
+  // Route to the role-specific full profile page (the side drawer has been retired)
+  const profilePathFor = (roles?: string[] | null, userId?: string) => {
+    const r = roles ?? [];
+    if (!userId) return null;
+    if (r.includes('student')) return `/student-profile/${userId}`;
+    if (r.includes('teacher')) return `/teacher-profile/${userId}`;
+    if (r.includes('parent')) return `/parent-profile/${userId}`;
+    return `/staff-profile/${userId}`;
+  };
+
+  const openProfilePage = (user: { id: string; roles?: string[] | null }) => {
     const ADMIN_VIEWERS: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_academic'];
     const role = activeRole as AppRole | null;
     const allowed = isSuperAdmin || (role && ADMIN_VIEWERS.includes(role));
@@ -519,7 +529,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
       toast({ title: 'Access denied', description: 'You do not have permission to view user profiles.', variant: 'destructive' });
       return;
     }
-    setHolisticUserId(userId);
+    const path = profilePathFor(user.roles as string[], user.id);
+    if (path) navigate(path);
   };
 
   // Fetch users with profiles and ALL roles
@@ -1412,7 +1423,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
             <h1 className="text-2xl font-serif font-bold text-foreground">{lockedRole === 'teacher' ? 'Teachers' : lockedRole === 'student' ? 'Students' : staffMode ? 'Staff' : 'User Management'}</h1>
             <p className="text-muted-foreground">{lockedRole === 'teacher' ? 'All teachers — same records as User Management, filtered to the teacher role' : lockedRole === 'student' ? 'All students — same records as User Management, filtered to the student role' : staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
-           {/* Header button gating by role */}
+           {/* Header button gating by role — hidden on scoped views (Students / Teachers / Staff) */}
+           {!scopedView && (
            <div className="flex gap-2">
              <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -1717,6 +1729,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
              )}
            </div>
+           )}
         </div>
 
         {/* Error state */}
@@ -1771,7 +1784,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
           </Card>
         )}
 
-        <RegistrationLinksCard />
+        {!scopedView && <RegistrationLinksCard />}
 
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
@@ -2060,7 +2073,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                       {unassignedUsers.map((user, idx) => (
                         <TableRow
                           key={`unassigned-${user.id}`}
-                          onClick={() => openProfileDrawer(user.id)}
+                          onClick={() => openProfilePage(user)}
                           className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
                         >
                           <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
@@ -2118,7 +2131,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openProfileDrawer(user.id)}
+                                onClick={() => openProfilePage(user)}
                                 title="Open full profile"
                               >
                                 <Edit className="h-4 w-4" />
@@ -2199,7 +2212,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                       {filteredUsers.map((user, idx) => (
                         <TableRow
                           key={user.id}
-                          onClick={() => openProfileDrawer(user.id)}
+                          onClick={() => openProfilePage(user)}
                           className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
                         >
                           {isSuperAdmin && (
@@ -2416,18 +2429,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                                 variant="ghost"
                                 size="sm"
                                 title="View profile"
-                                onClick={() => {
-                                  const roles = user.roles ?? [];
-                                  const path = roles.includes('student')
-                                    ? `/student-profile/${user.id}`
-                                    : roles.includes('teacher')
-                                      ? `/teacher-profile/${user.id}`
-                                      : roles.includes('parent')
-                                        ? `/parent-profile/${user.id}`
-                                        : null;
-                                  if (path) navigate(path);
-                                  else openProfileDrawer(user.id);
-                                }}
+                                onClick={() => openProfilePage(user)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -2437,7 +2439,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => openProfileDrawer(user.id)}
+                                  onClick={() => openProfilePage(user)}
                                   title="Open full profile"
                                 >
                                   <Edit className="h-4 w-4" />
@@ -3224,12 +3226,6 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
           filteredCount={filteredUsers?.length || 0}
         />
 
-        {/* Holistic User Profile Drawer */}
-        <HolisticUserProfileDrawer
-          open={!!holisticUserId}
-          onOpenChange={(o) => !o && setHolisticUserId(null)}
-          userId={holisticUserId}
-        />
 
         {/* Status Change — Effective Date Dialog */}
         <Dialog open={!!pendingStatusChange} onOpenChange={(o) => !o && setPendingStatusChange(null)}>
