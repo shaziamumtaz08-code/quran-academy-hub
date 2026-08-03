@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-} from '@/components/ui/accordion';
+
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
 import {
