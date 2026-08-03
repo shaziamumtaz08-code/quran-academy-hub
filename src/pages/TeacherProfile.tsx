@@ -14,8 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { TeacherOnboardingWizard } from '@/components/teachers/TeacherOnboardingWizard';
 import {
-  BadgeCheck, Banknote, BookOpen, Briefcase, CalendarDays, ChevronLeft, Clock, Download,
-  Eye, EyeOff, FileText, GraduationCap, Mail, MapPin, Pencil, Phone,
+  BadgeCheck, Banknote, BookOpen, Briefcase, Camera, CalendarDays, ChevronLeft, Clock, Download,
+  Eye, EyeOff, FileText, GraduationCap, Loader2, Mail, MapPin, Pencil, Phone,
   ShieldCheck, User, Video,
 } from 'lucide-react';
 
