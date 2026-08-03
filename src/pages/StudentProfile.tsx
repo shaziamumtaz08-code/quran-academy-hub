@@ -29,8 +29,12 @@ function monthsSince(iso?: string | null) {
 
 export default function StudentProfile() {
   const { studentId: paramId } = useParams<{ studentId: string }>();
-  const { profile: me, isLoading: authLoading } = useAuth();
+  const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const studentId = paramId ?? me?.id;
+  const queryClient = useQueryClient();
+  const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
+    queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] }));
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['student-profile-page', studentId],
