@@ -402,6 +402,8 @@ function AppRoutes() {
       <Route path="/login/:slug" element={<TenantLoginPage />} />
       <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/trust" element={<Trust />} />
+      <Route path="/legal/policies" element={<PublicPolicies />} />
+      <Route path="/policies" element={<ProtectedRoute><DashboardLayout><Policies /></DashboardLayout></ProtectedRoute>} />
       <Route path="/impersonate" element={<Impersonate />} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
