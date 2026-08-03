@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
             emergency_contact_name: applicant.emergency_name || undefined,
             emergency_contact_phone: applicant.emergency_phone || undefined,
             hear_about_us: applicant.hear_about || undefined,
+            avatar_url: reg.avatar_url || undefined,
             account_status: "active",
           },
         });
