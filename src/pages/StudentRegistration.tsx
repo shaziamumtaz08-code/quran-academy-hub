@@ -129,7 +129,8 @@ export default function StudentRegistration() {
       const guardian = {
         parent_name: home.fatherName.trim() || home.motherName.trim(),
         relationship: 'Parent',
-        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+        email: home.guardianEmail.trim(),
+
         phone: withDial(home.fatherPhone || home.motherPhone),
         country: home.country || null,
         city: home.city || null,
@@ -152,8 +153,8 @@ export default function StudentRegistration() {
         student_name: student.fullName.trim(),
         children: [{
           name: student.fullName.trim(),
-          email: studentEmail(student),
-          uses_parent_email: student.useGuardianEmail,
+          email: null,
+
           date_of_birth: student.dob || null,
           gender: student.gender || null,
           phone: withDial(student.phone),
@@ -177,7 +178,7 @@ export default function StudentRegistration() {
       await recordPolicyAcceptance({
         audience: 'student',
         name: home.fatherName.trim() || home.motherName.trim(),
-        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+        email: home.guardianEmail.trim(),
       });
     },
     onSuccess: () => setSubmitted(true),
