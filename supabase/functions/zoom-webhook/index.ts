@@ -139,7 +139,13 @@ function isHostParticipant(
   participantEmail: string,
   hostEmail?: string | null,
   hostName?: string | null,
+  participantZoomUserId?: string | null,
+  meetingHostId?: string | null,
 ): boolean {
+  const participantId = normalizeParticipantValue(participantZoomUserId);
+  const hostId = normalizeParticipantValue(meetingHostId);
+  if (participantId && hostId) return participantId === hostId;
+
   // Zoom reports the *account owner's* email for every guest who joins without
   // signing in, so "email == account email" alone is NOT proof of being the host.
   // Treat the participant as the host only when the display name also matches the
@@ -176,8 +182,17 @@ async function resolveParticipantIdentity(
   participantEmail: string,
   hostEmail?: string | null,
   hostName?: string | null,
+  participantZoomUserId?: string | null,
+  meetingHostId?: string | null,
 ): Promise<{ matchedUserId: string | null; matchedRole: string }> {
-  if (isHostParticipant(participantName, participantEmail, hostEmail, hostName)) {
+  if (isHostParticipant(
+    participantName,
+    participantEmail,
+    hostEmail,
+    hostName,
+    participantZoomUserId,
+    meetingHostId,
+  )) {
     return { matchedUserId: null, matchedRole: "host" };
   }
 
@@ -558,33 +573,32 @@ async function handleDedicatedAccountEvent(
           .from("live_sessions")
           .update({ status: "completed", actual_end: endedAt, recording_status: "not_recorded" })
           .eq("id", s.id);
-        // Close any open host join log
-        const { data: openHost } = await supabase
+        // Zoom's meeting-ended event is authoritative: close every participant
+        // still shown inside so stale rows can never keep a room blinking live.
+        const { data: openParticipants } = await supabase
           .from("zoom_attendance_logs")
-          .select("id, join_time")
+          .select("id, user_id, join_time, participant_name, participant_email, role")
           .eq("session_id", s.id)
-          .eq("role", "host")
           .eq("action", "join_intent")
-          .is("leave_time", null)
-          .maybeSingle();
-        if (openHost?.id) {
-          const join = openHost.join_time ? new Date(openHost.join_time) : new Date(endedAt);
+          .is("leave_time", null);
+        for (const openParticipant of openParticipants || []) {
+          const join = openParticipant.join_time ? new Date(openParticipant.join_time) : new Date(endedAt);
           const totalMin = Math.max(1, Math.ceil((new Date(endedAt).getTime() - join.getTime()) / 60_000));
           await supabase.from("zoom_attendance_logs").update({
             leave_time: endedAt,
             total_duration_minutes: totalMin,
-          }).eq("id", openHost.id);
+          }).eq("id", openParticipant.id);
           await insertZoomLog(supabase, {
             session_id: s.id,
-            user_id: account.teacher_id,
+            user_id: openParticipant.user_id,
             action: "leave",
-            join_time: openHost.join_time,
+            join_time: openParticipant.join_time,
             leave_time: endedAt,
             timestamp: endedAt,
             total_duration_minutes: totalMin,
-            participant_name: hostName,
-            participant_email: hostEmail,
-            role: "host",
+            participant_name: openParticipant.participant_name,
+            participant_email: openParticipant.participant_email,
+            role: openParticipant.role,
             zoom_host_id: hostId,
             zoom_meeting_uuid: meetingUuid,
             zoom_meeting_id: meetingId,
@@ -622,7 +636,14 @@ async function handleDedicatedAccountEvent(
       if (dup) return;
       // Identity resolution — same routine as pooled path
       const { matchedUserId, matchedRole } = await resolveParticipantIdentity(
-        supabase, session, pName, pEmail, account.zoom_account_email, hostName,
+        supabase,
+        session,
+        pName,
+        pEmail,
+        account.zoom_account_email,
+        hostName,
+        participant?.user_id,
+        hostId,
       );
       await insertZoomLog(supabase, {
         session_id: session.id,
@@ -1453,6 +1474,9 @@ Deno.serve(async (req) => {
           pName,
           pEmail,
           license.zoom_email,
+          undefined,
+          participant?.user_id,
+          hostId,
         );
 
         let isLate = false;

@@ -147,14 +147,15 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, assignment_id, zoom_meeting_uuid, session_source')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, recording_status, license_id, schedule_id, assignment_id, zoom_meeting_uuid, session_source, zoom_account_id')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
+      const realZoomSessions = data.filter((session: any) => Boolean(session.zoom_meeting_uuid));
       const uniqueSessions = Array.from(
-        data.reduce((map: Map<string, any>, session: any) => {
+        realZoomSessions.reduce((map: Map<string, any>, session: any) => {
           const key = session.zoom_meeting_uuid || session.id;
           const existing = map.get(key);
           if (!existing) {
@@ -200,7 +201,10 @@ export default function ZoomManagement() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const uniqueLogs = data.filter((log: any, index: number, rows: any[]) => {
+      const zoomRows = data.filter((log: any) =>
+        ['meeting.started', 'meeting.ended', 'meeting.participant_joined', 'meeting.participant_left'].includes(log.zoom_event_type),
+      );
+      const uniqueLogs = zoomRows.filter((log: any, index: number, rows: any[]) => {
         const eventMinute = log.timestamp ? new Date(log.timestamp).toISOString().slice(0, 16) : '';
         const participantKey = (log.participant_email || log.participant_name || log.user_id || '').toLowerCase();
         const meetingKey = log.zoom_meeting_uuid || log.session_id || log.zoom_license_id || '';
@@ -245,6 +249,7 @@ export default function ZoomManagement() {
     const map = new Map<string, Set<string>>();
     visibleAttendanceLogs.forEach((log: any) => {
       if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
+      if (!['meeting.started', 'meeting.participant_joined'].includes(log.zoom_event_type)) return;
       const label = log.participant_name || log.userName;
       if (!label) return;
       const existing = map.get(log.session_id) || new Set<string>();
@@ -653,8 +658,19 @@ export default function ZoomManagement() {
                         {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
                       </span>
                     </div>
+                    {(() => {
+                      const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
+                      const license = licenses?.find((item: any) => item.id === session.license_id);
+                      const roomEmail = account?.zoom_account_email || license?.zoom_email;
+                      return roomEmail ? (
+                        <div className="flex items-center justify-between gap-2 text-xs mt-1">
+                          <span className="text-muted-foreground">Zoom room</span>
+                          <span className="truncate text-muted-foreground" title={roomEmail}>{roomEmail}</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
-                      {session.license_id && (
+                      {(session.license_id || session.zoom_account_id) && (
                         <>
                           <Button
                             variant="outline"
@@ -662,7 +678,9 @@ export default function ZoomManagement() {
                             className="flex-1 gap-1 text-[10px] h-7"
                             onClick={() => {
                               const lic = licenses?.find(l => l.id === session.license_id);
-                              if (lic?.meeting_link) window.open(lic.meeting_link, '_blank');
+                              const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
+                              const meetingLink = account?.meeting_link || lic?.meeting_link;
+                              if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
                             }}
                           >
                             <UserPlus className="h-3 w-3" /> Join

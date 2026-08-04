@@ -47,9 +47,12 @@ export function useLiveSessionsMonitor() {
           group_id,
           schedule_id,
           assignment_id,
+          zoom_meeting_uuid,
+          session_source,
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
-        .in('status', ['live'])
+        .eq('status', 'live')
+        .not('zoom_meeting_uuid', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -67,8 +70,9 @@ export function useLiveSessionsMonitor() {
       const sessionIds = sessions.map((s) => s.id);
       const { data: attendanceLogs } = await supabase
         .from('zoom_attendance_logs')
-        .select('session_id, user_id, action, leave_time, participant_name, role')
-        .in('session_id', sessionIds);
+        .select('session_id, user_id, action, leave_time, participant_name, role, zoom_event_type')
+        .in('session_id', sessionIds)
+        .in('zoom_event_type', ['meeting.participant_joined', 'meeting.started']);
 
       const activeParticipants =
         attendanceLogs?.filter((log) => log.action === 'join_intent' && !log.leave_time) || [];
@@ -76,32 +80,19 @@ export function useLiveSessionsMonitor() {
       const participantsMap = new Map<string, SessionParticipant[]>();
 
       sessions.forEach((session: any) => {
-        const participants: SessionParticipant[] = [
-          {
-            userId: session.teacher_id,
-            userName: profileMap.get(session.teacher_id) || 'Teacher',
-            isTeacher: true,
-          },
-        ];
-
+        const participants: SessionParticipant[] = [];
         const studentId = session.student_id;
-        if (studentId) {
-          participants.push({
-            userId: studentId,
-            userName: profileMap.get(studentId) || 'Student',
-            isTeacher: false,
-          });
-        }
 
         activeParticipants
           .filter((log) => log.session_id === session.id)
           .forEach((log: any) => {
             const uid = log.user_id;
-            if (uid && uid !== session.teacher_id && uid !== studentId && !participants.some((p) => p.userId === uid)) {
+            const participantKey = uid || `${session.id}:${log.participant_name || 'zoom-participant'}`;
+            if (!participants.some((p) => p.userId === participantKey)) {
               participants.push({
-                userId: uid,
+                userId: participantKey,
                 userName: profileMap.get(uid) || log.participant_name || 'Participant',
-                isTeacher: false,
+                isTeacher: log.role === 'host' || uid === session.teacher_id,
               });
             }
           });
@@ -114,7 +105,7 @@ export function useLiveSessionsMonitor() {
         teacherName: profileMap.get(session.teacher_id) || 'Unknown',
         studentName: session.student_id ? profileMap.get(session.student_id) || 'Student' : null,
         participants: participantsMap.get(session.id) || [],
-        activeCount: participantsMap.get(session.id)?.length || 1,
+        activeCount: participantsMap.get(session.id)?.length || 0,
       }));
     },
     refetchInterval: 5000,
@@ -127,8 +118,9 @@ export function useRecentJoinLogs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('zoom_attendance_logs')
-        .select('id, user_id, action, timestamp, session_id, participant_name, participant_email, role')
+        .select('id, user_id, action, timestamp, session_id, participant_name, participant_email, role, zoom_event_type')
         .eq('action', 'join_intent')
+        .in('zoom_event_type', ['meeting.participant_joined', 'meeting.started'])
         .order('timestamp', { ascending: false })
         .limit(20);
 
