@@ -2,6 +2,7 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import logoDark from '@/assets/logo-dark.jpg';
 import { useSignedUrl } from '@/lib/signedUrl';
+import { InvoicePaymentInstructions } from '@/components/payment-accounts/InvoicePaymentInstructions';
 
 function ProofButton({ url }: { url: string }) {
   const signed = useSignedUrl(url);
@@ -66,6 +67,8 @@ interface InvoiceTemplateProps {
   invoiceNumber: string;
   orgName?: string;
   orgLogo?: string | null;
+  paymentAccounts?: Array<Partial<any>>;
+  studentAccountSnapshot?: any;
 }
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -86,7 +89,7 @@ const getStatusLabel = (status: string) => {
   }
 };
 
-export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo }: InvoiceTemplateProps) {
+export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo, paymentAccounts, studentAccountSnapshot }: InvoiceTemplateProps) {
   const status = getStatusLabel(invoice.status);
   const outstanding = invoice.amount - invoice.amount_paid - invoice.forgiven_amount;
   const logoSrc = orgLogo || logoDark;
@@ -257,6 +260,9 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
           <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{invoice.remark}</p>
         </div>
       )}
+
+      {/* Payment Instructions */}
+      <InvoicePaymentInstructions accounts={paymentAccounts || []} studentAccountSnapshot={studentAccountSnapshot} />
 
       {/* Footer */}
       <div style={{ padding: '16px 48px', borderTop: '1px solid #e5e7eb', textAlign: 'center', background: '#fafbfc' }}>

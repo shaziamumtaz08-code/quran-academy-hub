@@ -10,15 +10,64 @@ const WALLET_TYPES: PaymentAccountType[] = ['easypaisa', 'jazzcash', 'sadapay', 
 const NAVY = '#0a192f';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function BankIcon() {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '3px 0' }}>
-      <span style={{ fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700, width: 62, flexShrink: 0 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 11, color: '#1e293b', fontWeight: mono ? 700 : 600, fontFamily: mono ? MONO : undefined, letterSpacing: mono ? '0.02em' : undefined }}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={NAVY} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21h18" />
+      <path d="M5 21V7l8-4 8 4v14" />
+      <path d="M9 21v-6h6v6" />
+      <path d="M10 9h4" />
+      <path d="M10 13h4" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={NAVY} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" />
+      <path d="M16 12h.01" />
+      <path d="M18 12h.01" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function AccountNumber({ value, label }: { value: string; label?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+      <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: '#0f172a', letterSpacing: '0.04em' }}>
         {value}
       </span>
+      <button
+        type="button"
+        aria-label={`Copy ${label || 'account number'}`}
+        className="print:hidden"
+        onClick={() => navigator.clipboard.writeText(value.replace(/\s/g, ''))}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          border: '1px solid #e2e8f0',
+          background: '#fff',
+          color: '#64748b',
+          cursor: 'pointer',
+        }}
+      >
+        <CopyIcon />
+      </button>
     </div>
   );
 }
@@ -33,50 +82,70 @@ export function InvoicePaymentInstructions({ accounts, studentAccountSnapshot }:
 
   const wallets = active.filter(a => WALLET_TYPES.includes(a.account_type as PaymentAccountType));
   const banks = active.filter(a => !WALLET_TYPES.includes(a.account_type as PaymentAccountType));
+  const currency = active[0]?.currency || 'PKR';
 
   return (
-    <div style={{ padding: '0 48px 28px' }}>
+    <div style={{ padding: '28px 48px 32px', background: '#f4f7fb', borderTop: '1px solid #e2e8f0' }}>
       {/* Section heading */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: NAVY, fontWeight: 800 }}>
-          How to Pay
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0' }}>
+          <BankIcon />
+        </div>
+        <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY, fontWeight: 800 }}>
+          Payment Methods — {currency}
         </span>
         <span style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #cbd5e1, transparent)' }} />
       </div>
 
-      <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Bank accounts */}
         {banks.map((a, i) => (
           <div
             key={`b-${i}`}
             style={{
               display: 'flex',
-              gap: 16,
-              padding: '14px 16px',
-              borderTop: i === 0 ? 'none' : '1px solid #eef2f7',
+              alignItems: 'flex-start',
+              gap: 14,
+              padding: '16px 18px',
+              borderRadius: 12,
               background: '#fff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
             }}
           >
-            <div style={{ width: 3, borderRadius: 3, background: NAVY, flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 11.5, fontWeight: 800, color: NAVY, margin: '0 0 6px', letterSpacing: '0.01em' }}>
-                {a.bank_name || a.display_label || ACCOUNT_TYPE_LABELS[a.account_type as PaymentAccountType]}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, background: '#f1f5f9', flexShrink: 0 }}>
+              <BankIcon />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <p style={{ fontSize: 12.5, fontWeight: 800, color: NAVY, margin: 0, letterSpacing: '0.01em' }}>
+                  {a.bank_name || a.display_label || ACCOUNT_TYPE_LABELS[a.account_type as PaymentAccountType]}
+                </p>
                 {a.currency ? (
-                  <span style={{ marginLeft: 8, fontSize: 8.5, fontWeight: 700, color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 999, padding: '1px 7px', letterSpacing: '0.1em' }}>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 999, padding: '2px 8px', letterSpacing: '0.1em' }}>
                     {a.currency}
                   </span>
                 ) : null}
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 20 }}>
-                <div>
-                  {a.account_title && <Row label="Title" value={a.account_title} />}
-                  {a.account_number && <Row label="Account" value={a.account_number} mono />}
-                  {a.bank_branch && <Row label="Branch" value={a.bank_branch} />}
-                </div>
-                <div>
-                  {a.iban && <Row label="IBAN" value={a.iban} mono />}
-                  {a.bank_swift && <Row label="SWIFT" value={a.bank_swift} mono />}
-                </div>
+              </div>
+              <div style={{ marginTop: 6 }}>
+                {a.account_title && (
+                  <p style={{ fontSize: 10.5, color: '#64748b', margin: '0 0 4px', fontWeight: 600 }}>
+                    {a.account_title}
+                    {a.bank_branch ? ` · ${a.bank_branch}` : ''}
+                  </p>
+                )}
+                {a.account_number && <AccountNumber value={a.account_number} label="account number" />}
+                {a.iban && (
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase' }}>IBAN</span>
+                    <AccountNumber value={a.iban} label="IBAN" />
+                  </div>
+                )}
+                {a.bank_swift && (
+                  <p style={{ fontSize: 10, color: '#64748b', margin: '6px 0 0', fontFamily: MONO, letterSpacing: '0.02em' }}>
+                    SWIFT: {a.bank_swift}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -84,34 +153,47 @@ export function InvoicePaymentInstructions({ accounts, studentAccountSnapshot }:
 
         {/* Mobile wallets */}
         {wallets.length > 0 && (
-          <div style={{ background: '#f8fafc', borderTop: banks.length ? '1px solid #eef2f7' : 'none', padding: '12px 16px' }}>
-            <p style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#94a3b8', fontWeight: 700, margin: '0 0 8px' }}>
-              Mobile Wallets
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: wallets.length > 1 ? '1fr 1fr' : '1fr', gap: 10 }}>
-              {wallets.map((a, i) => (
-                <div key={`w-${i}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px' }}>
-                  <p style={{ fontSize: 10, fontWeight: 800, color: NAVY, margin: 0, letterSpacing: '0.02em' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: wallets.length > 1 ? 'repeat(2, 1fr)' : '1fr',
+              gap: 12,
+            }}
+          >
+            {wallets.map((a, i) => (
+              <div
+                key={`w-${i}`}
+                style={{
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <WalletIcon />
+                  <p style={{ fontSize: 11, fontWeight: 800, color: NAVY, margin: 0, letterSpacing: '0.01em' }}>
                     {a.display_label || ACCOUNT_TYPE_LABELS[a.account_type as PaymentAccountType]}
                   </p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: MONO, margin: '3px 0 1px', letterSpacing: '0.03em' }}>
-                    {a.account_number || a.iban || '—'}
-                  </p>
-                  <p style={{ fontSize: 9.5, color: '#64748b', margin: 0 }}>{a.account_title}</p>
                 </div>
-              ))}
-            </div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: MONO, margin: '0 0 3px', letterSpacing: '0.03em' }}>
+                  {a.account_number || a.iban || '—'}
+                </p>
+                <p style={{ fontSize: 10, color: '#64748b', margin: 0, fontWeight: 600 }}>{a.account_title}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Reference note */}
-      <p style={{ fontSize: 9, color: '#94a3b8', margin: '8px 2px 0', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 9.5, color: '#64748b', margin: '16px 2px 0', lineHeight: 1.5, fontWeight: 500 }}>
         Please quote the invoice number as the payment reference and share the transfer receipt with the academy office.
       </p>
 
       {studentAccountSnapshot && (
-        <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9 }}>
+        <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
           <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 3, background: '#f59e0b' }} />
           <div>
             <p style={{ fontSize: 8.5, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0 }}>
