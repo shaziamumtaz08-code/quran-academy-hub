@@ -254,24 +254,30 @@ export default function Attendance() {
           subject_id: d.subject?.id || null
         })).filter(Boolean) as Profile[];
       } else if (isAdmin) {
-        // Admin can see all students with active assignments only (excludes paused/left)
-        const { data: activeAssignments } = await supabase
+        // Admin sees all actively-assigned students WITH their subject + teacher,
+        // so the unified form renders the correct subject-specific fields (Qaida/Hifz/Nazra/Academic).
+        const { data, error } = await supabase
           .from('student_teacher_assignments')
-          .select('student_id')
+          .select('student_id, teacher_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
           .eq('status', 'active');
 
-        const activeStudentIds = [...new Set((activeAssignments || []).map(a => a.student_id))];
-        if (activeStudentIds.length === 0) return [];
-
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount')
-          .in('id', activeStudentIds)
-          .order('full_name');
-        
         if (error) throw error;
-        return (data || []) as Profile[];
+
+        const seen = new Set<string>();
+        const rows: Profile[] = [];
+        for (const d of (data || [])) {
+          if (!d.student || seen.has(d.student_id)) continue;
+          seen.add(d.student_id);
+          rows.push({
+            ...(d.student as any),
+            subject_name: (d as any).subject?.name || null,
+            subject_id: (d as any).subject_id || null,
+            teacher_id: d.teacher_id,
+          } as Profile);
+        }
+        return rows.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
       }
+
       
       return [];
     },
