@@ -379,6 +379,11 @@ export default function StudentRegistration() {
                 )}
               </Field>
 
+              <div className="sm:col-span-2 mt-1 flex items-center gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Academic details</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
               <Field label="School / institute">
                 <Input value={student.schoolName} onChange={e => setStudent(student.key, { schoolName: e.target.value })} className="h-11" />
               </Field>
@@ -388,6 +393,38 @@ export default function StudentRegistration() {
               <Field label="Current Quran / Arabic level" wide hint="e.g. Qaida page 12, Juz 3 memorised, complete beginner.">
                 <Input value={student.currentLevel} onChange={e => setStudent(student.key, { currentLevel: e.target.value })} className="h-11" />
               </Field>
+              <Field label="Qaida / reading stage">
+                <Select value={student.qaidaStatus} onValueChange={value => setStudent(student.key, { qaidaStatus: value })}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Complete beginner">Complete beginner</SelectItem>
+                    <SelectItem value="Learning Qaida">Learning Qaida</SelectItem>
+                    <SelectItem value="Qaida completed">Qaida completed</SelectItem>
+                    <SelectItem value="Reading Quran (Nazra)">Reading Quran (Nazra)</SelectItem>
+                    <SelectItem value="Nazra completed">Nazra completed</SelectItem>
+                    <SelectItem value="Memorising (Hifz)">Memorising (Hifz)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Course of interest">
+                <Select value={student.interest} onValueChange={value => setStudent(student.key, { interest: value })}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Noorani Qaida">Noorani Qaida</SelectItem>
+                    <SelectItem value="Nazra Quran">Nazra Quran</SelectItem>
+                    <SelectItem value="Tajweed">Tajweed</SelectItem>
+                    <SelectItem value="Hifz">Hifz (Memorisation)</SelectItem>
+                    <SelectItem value="Arabic Language">Arabic Language</SelectItem>
+                    <SelectItem value="Islamic Studies">Islamic Studies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Memorisation so far" hint="e.g. Juz Amma, 3 Juz, last 10 surahs.">
+                <Input value={student.memorization} onChange={e => setStudent(student.key, { memorization: e.target.value })} className="h-11" />
+              </Field>
+              <Field label="Previous Quran learning experience" hint="Previous tutor, madrasah or online academy.">
+                <Input value={student.priorLearning} onChange={e => setStudent(student.key, { priorLearning: e.target.value })} className="h-11" />
+              </Field>
 
               <Field label="Medical conditions or special needs" wide>
                 <Input value={student.medicalNotes} onChange={e => setStudent(student.key, { medicalNotes: e.target.value })} placeholder="Anything the teacher should know" className="h-11" />
@@ -396,6 +433,7 @@ export default function StudentRegistration() {
               <Field label="Learning goals" wide>
                 <Textarea value={student.goals} onChange={e => setStudent(student.key, { goals: e.target.value })} rows={2} placeholder="What should the student achieve in the next 6 months?" />
               </Field>
+
             </div>
           </section>
         ))}
