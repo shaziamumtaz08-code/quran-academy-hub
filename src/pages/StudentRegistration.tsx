@@ -32,6 +32,7 @@ type Student = {
   fullName: string; dob: string; gender: string; language: string;
   phone: string; whatsappSame: boolean; whatsapp: string; email: string; useGuardianEmail: boolean;
   schoolName: string; gradeLevel: string; currentLevel: string;
+  priorLearning: string; memorization: string; qaidaStatus: string; interest: string;
   medicalNotes: string; goals: string;
 };
 
@@ -40,8 +41,10 @@ const emptyStudent = (): Student => ({
   fullName: '', dob: '', gender: '', language: '',
   phone: '', whatsappSame: true, whatsapp: '', email: '', useGuardianEmail: false,
   schoolName: '', gradeLevel: '', currentLevel: '',
+  priorLearning: '', memorization: '', qaidaStatus: '', interest: '',
   medicalNotes: '', goals: '',
 });
+
 
 const initialHousehold: Household = {
   countryCode: '', country: '', city: '', timezone: '', address: '', dialCode: '',
