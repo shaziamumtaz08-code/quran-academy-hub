@@ -127,7 +127,7 @@ export default function RegistrationReview() {
     mutationFn: async () => {
       await save.mutateAsync();
       const { data, error } = await supabase.functions.invoke('approve-registration', {
-        body: { registration_id: id, review_notes: reviewNotes || null },
+        body: { registration_id: id, review_notes: reviewNotes || null, division_id: activeDivision?.id ?? null },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
