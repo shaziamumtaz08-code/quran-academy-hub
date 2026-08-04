@@ -658,8 +658,19 @@ export default function ZoomManagement() {
                         {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
                       </span>
                     </div>
+                    {(() => {
+                      const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
+                      const license = licenses?.find((item: any) => item.id === session.license_id);
+                      const roomEmail = account?.zoom_account_email || license?.zoom_email;
+                      return roomEmail ? (
+                        <div className="flex items-center justify-between gap-2 text-xs mt-1">
+                          <span className="text-muted-foreground">Zoom room</span>
+                          <span className="truncate text-muted-foreground" title={roomEmail}>{roomEmail}</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
-                      {session.license_id && (
+                      {(session.license_id || session.zoom_account_id) && (
                         <>
                           <Button
                             variant="outline"
@@ -667,7 +678,9 @@ export default function ZoomManagement() {
                             className="flex-1 gap-1 text-[10px] h-7"
                             onClick={() => {
                               const lic = licenses?.find(l => l.id === session.license_id);
-                              if (lic?.meeting_link) window.open(lic.meeting_link, '_blank');
+                              const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
+                              const meetingLink = account?.meeting_link || lic?.meeting_link;
+                              if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
                             }}
                           >
                             <UserPlus className="h-3 w-3" /> Join
