@@ -25,6 +25,9 @@ import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import { Download } from 'lucide-react';
+
 
 
 import { AlertTriangle } from 'lucide-react';
@@ -50,6 +53,9 @@ export default function ZoomManagement() {
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'shared' | 'vault' | 'pool'>('live');
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
+  const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
+  const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
+
 
   const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
   const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
@@ -400,7 +406,46 @@ export default function ZoomManagement() {
   const busyCount = liveSessionsList.length;
   const availableCount = Math.max(0, unclaimedLegacy.length + accountsCount - busyCount);
 
+  const sessionExportRows = React.useMemo(() => (liveSessions || []).map((s: any) => {
+    const duration = s.actual_start && s.actual_end
+      ? differenceInMinutes(new Date(s.actual_end), new Date(s.actual_start))
+      : s.actual_start && s.status === 'live'
+        ? differenceInMinutes(new Date(), new Date(s.actual_start))
+        : 0;
+    return {
+      session: getSessionPrimaryLabel(s),
+      teacher: s.teacherName || '',
+      status: s.status || '',
+      scheduled_start: s.scheduled_start ? format(new Date(s.scheduled_start), 'yyyy-MM-dd HH:mm') : '',
+      actual_start: s.actual_start ? format(new Date(s.actual_start), 'yyyy-MM-dd HH:mm') : '',
+      actual_end: s.actual_end ? format(new Date(s.actual_end), 'yyyy-MM-dd HH:mm') : '',
+      duration_minutes: duration || '',
+      recording_status: s.recording_status || '',
+      recording_link: s.recording_link || '',
+      session_id: s.id,
+    };
+  }), [liveSessions, getSessionPrimaryLabel]);
+
+  const logExportRows = React.useMemo(() => visibleAttendanceLogs.map((log: any) => {
+    const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
+    const durationMin = (log.join_time && log.leave_time)
+      ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
+      : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : '');
+    return {
+      participant: log.userName || '',
+      email: log.participant_email || '',
+      role: log.role || '',
+      action: isLeave ? 'Left' : 'Joined',
+      timestamp: log.timestamp ? format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss') : '',
+      join_time: log.join_time ? format(new Date(log.join_time), 'yyyy-MM-dd HH:mm:ss') : '',
+      leave_time: log.leave_time ? format(new Date(log.leave_time), 'yyyy-MM-dd HH:mm:ss') : '',
+      duration_minutes: durationMin,
+      session_id: log.session_id || '',
+    };
+  }), [visibleAttendanceLogs]);
+
   const sectionButtons = [
+
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
     { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: unclaimedLegacy.length },
 
@@ -935,9 +980,15 @@ export default function ZoomManagement() {
                 <CardTitle className="font-serif">Session History</CardTitle>
                 <CardDescription>All live sessions with duration and recording</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
-                <RefreshCw className="h-4 w-4" /> Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
+                  <Download className="h-4 w-4" /> Download CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </Button>
+              </div>
+
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px]">
@@ -1039,10 +1090,16 @@ export default function ZoomManagement() {
         {/* Join Logs Section */}
         {activeSection === 'logs' && (
           <Card>
-            <CardHeader>
-              <CardTitle className="font-serif">Join & Leave Logs</CardTitle>
-              <CardDescription>Real-time tracking of participant activity</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-serif">Join &amp; Leave Logs</CardTitle>
+                <CardDescription>Real-time tracking of participant activity</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
+                <Download className="h-4 w-4" /> Download CSV
+              </Button>
             </CardHeader>
+
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
@@ -1101,7 +1158,47 @@ export default function ZoomManagement() {
           </Card>
         )}
         </>)}
+
+        <ExportDialog
+          open={exportSessionsOpen}
+          onOpenChange={setExportSessionsOpen}
+          title="Zoom Sessions"
+          filename="zoom-sessions"
+          data={sessionExportRows}
+          fields={[
+            { key: 'session', label: 'Session' },
+            { key: 'teacher', label: 'Teacher / Room owner' },
+            { key: 'status', label: 'Status' },
+            { key: 'scheduled_start', label: 'Scheduled start' },
+            { key: 'actual_start', label: 'Actual start' },
+            { key: 'actual_end', label: 'Actual end' },
+            { key: 'duration_minutes', label: 'Duration (min)' },
+            { key: 'recording_status', label: 'Recording status' },
+            { key: 'recording_link', label: 'Recording link', defaultChecked: false },
+            { key: 'session_id', label: 'Session ID', defaultChecked: false },
+          ]}
+        />
+
+        <ExportDialog
+          open={exportLogsOpen}
+          onOpenChange={setExportLogsOpen}
+          title="Zoom Join Logs"
+          filename="zoom-join-logs"
+          data={logExportRows}
+          fields={[
+            { key: 'participant', label: 'Participant' },
+            { key: 'email', label: 'Email' },
+            { key: 'role', label: 'Role' },
+            { key: 'action', label: 'Action' },
+            { key: 'timestamp', label: 'Event time' },
+            { key: 'join_time', label: 'Join time' },
+            { key: 'leave_time', label: 'Leave time' },
+            { key: 'duration_minutes', label: 'Duration (min)' },
+            { key: 'session_id', label: 'Session ID', defaultChecked: false },
+          ]}
+        />
       </div>
+
 
     </DashboardLayout>
   );
