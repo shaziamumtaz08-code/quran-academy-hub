@@ -111,18 +111,15 @@ export default function StudentRegistration() {
   const locationDone = Boolean(home.country && home.timezone);
   const dial = home.dialCode || '+—';
   const withDial = (value: string) => (value.trim() ? `${home.dialCode} ${value.trim()}`.trim() : '');
-  const studentEmail = (student: Student) =>
-    (student.useGuardianEmail ? home.guardianEmail : student.email).trim();
 
-  const studentValid = (student: Student) => Boolean(
-    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)),
-  );
+  const studentValid = (student: Student) => Boolean(student.fullName.trim() && student.dob);
 
   const valid = useMemo(() => Boolean(
-    locationDone && home.address.trim() &&
+    locationDone && home.address.trim() && EMAIL_RE.test(home.guardianEmail.trim()) &&
     home.fatherName.trim() && home.fatherPhone.trim() && home.motherName.trim() && home.motherPhone.trim() &&
     home.emergencyPhone.trim() && home.consent && students.length && students.every(studentValid),
   ), [home, students, locationDone]);
+
 
   const submit = useMutation({
     mutationFn: async () => {
