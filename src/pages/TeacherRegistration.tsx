@@ -239,8 +239,9 @@ export default function TeacherRegistration() {
           <Field label="Full name" required>
             <Input value={form.fullName} onChange={e => set({ fullName: e.target.value })} className="h-11" />
           </Field>
-          <Field label="Date of birth">
+          <Field label="Date of birth" required>
             <Input type="date" value={form.dob} onChange={e => set({ dob: e.target.value })} className="h-11" />
+
           </Field>
           <Field label="Gender">
             <Select value={form.gender} onValueChange={value => set({ gender: value })}>
