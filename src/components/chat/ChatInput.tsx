@@ -10,9 +10,11 @@ interface ChatInputProps {
   sending: boolean;
   replyTo: any | null;
   onCancelReply: () => void;
+  /** Conversation this input posts into — attachments are stored under this folder. */
+  groupId?: string;
 }
 
-export function ChatInput({ onSend, sending, replyTo, onCancelReply }: ChatInputProps) {
+export function ChatInput({ onSend, sending, replyTo, onCancelReply, groupId }: ChatInputProps) {
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
