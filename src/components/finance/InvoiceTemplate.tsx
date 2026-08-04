@@ -2,6 +2,7 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import logoDark from '@/assets/logo-dark.jpg';
 import { useSignedUrl } from '@/lib/signedUrl';
+import { InvoicePaymentInstructions } from '@/components/payment-accounts/InvoicePaymentInstructions';
 
 function ProofButton({ url }: { url: string }) {
   const signed = useSignedUrl(url);
