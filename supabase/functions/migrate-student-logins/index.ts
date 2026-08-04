@@ -2,6 +2,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { generateAqtEmail, generateInitialPassword, isAqtLogin } from "../_shared/aqt-email.ts";
+import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
 
     for (const student of targets) {
       const newEmail = await generateAqtEmail(admin, student.full_name || "Student", reserved);
-      const password = generateInitialPassword();
+      const password = defaultPasswordFor(student.full_name || "Student");
 
       if (dryRun) {
         results.push({

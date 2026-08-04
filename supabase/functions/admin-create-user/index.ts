@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { getCorsHeaders, corsHeaders } from "../_shared/cors.ts";
+import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 type AppRole =
   | "admin"
@@ -291,9 +292,7 @@ serve(async (req) => {
     // ---------- CREATE NEW USER ----------
     let finalPassword = password;
     if (!finalPassword) {
-      const rawFirst = fullName.split(/\s+/)[0] || "User";
-      const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
-      finalPassword = firstName + "1234";
+      finalPassword = defaultPasswordFor(fullName);
     }
     if (!isValidPassword(finalPassword)) {
       return json(400, { error: "Password must be 6-100 characters" }, requestOrigin);
@@ -402,8 +401,7 @@ serve(async (req) => {
           parentNotice = "Parent account not found with that email; student created without parent link";
         } else {
           // Create parent account
-          const parentPassword = (parentName?.split(/\s+/)[0] || "Parent")
-            .replace(/[^a-zA-Z]/g, "") + "1234";
+          const parentPassword = defaultPasswordFor(parentName || "Parent");
           const { data: parentAuth, error: pAuthErr } = await adminClient.auth.admin.createUser({
             email: parentEmail,
             password: parentPassword,

@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { corsHeaders, getCorsHeaders } from "../_shared/cors.ts";
+import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown, origin?: string | null) {
   const headers = origin ? getCorsHeaders(origin) : corsHeaders;
@@ -51,9 +52,7 @@ serve(async (req) => {
   if (!profile.email) return json(400, { error: "Profile has no email" }, origin);
 
   const email = profile.email.toLowerCase();
-  const firstName = (profile.full_name || "User").split(/\s+/)[0];
-  const cleanFirst = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase().replace(/[^a-z]/g, "");
-  const tempPassword = `${cleanFirst}@AQT2025`;
+  const tempPassword = defaultPasswordFor(profile.full_name || "Parent");
 
   try {
     // Check if auth user already exists by email
