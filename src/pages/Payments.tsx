@@ -1095,7 +1095,17 @@ export default function Payments() {
     if (divisionId) aq = aq.eq('division_id', divisionId);
     const { data: assignments } = await aq;
     const planStudentIds = new Set([...(plans || []).map((p: any) => p.student_id)]);
+    const assignStudentIds = Array.from(new Set((assignments || []).map((a: any) => a.student_id).filter(Boolean)));
+    if (assignStudentIds.length > 0) {
+      const { data: archivedAssignRows } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', assignStudentIds)
+        .not('archived_at', 'is', null);
+      (archivedAssignRows || []).forEach((r: any) => archivedStudentIds.add(r.id));
+    }
     (assignments || []).forEach((a: any) => {
+      if (archivedStudentIds.has(a.student_id)) return;
       if (a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
         const startDate = a.effective_from_date || null;
         const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
