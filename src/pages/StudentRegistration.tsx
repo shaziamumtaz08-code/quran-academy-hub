@@ -343,25 +343,12 @@ export default function StudentRegistration() {
                 </Select>
               </Field>
 
-              <Field label="Email address" required hint="Portal login and reports are sent here.">
-                <div className="space-y-2">
-                  <Input
-                    type="email"
-                    value={student.useGuardianEmail ? home.guardianEmail : student.email}
-                    disabled={student.useGuardianEmail}
-                    onChange={e => setStudent(student.key, { email: e.target.value })}
-                    placeholder="name@email.com"
-                    className="h-11"
-                  />
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                    <Checkbox
-                      checked={student.useGuardianEmail}
-                      onCheckedChange={value => setStudent(student.key, { useGuardianEmail: Boolean(value) })}
-                    />
-                    Use the parent / guardian email
-                  </label>
+              <Field label="Student login" hint="The academy issues an AQT login (name@alqurantimeacademy.com) after approval — no email needed here.">
+                <div className="flex h-11 items-center rounded-md border border-dashed border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                  Assigned by the academy
                 </div>
               </Field>
+
               <Field label="Phone number">
                 <div className="flex gap-2">
                   <span className="inline-flex h-11 min-w-[4.5rem] items-center justify-center rounded-md border border-input bg-muted px-3 text-sm font-medium text-muted-foreground">{dial}</span>
