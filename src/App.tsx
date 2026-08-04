@@ -534,6 +534,7 @@ function AppRoutes() {
       <Route path="/demo/:token" element={<PublicDemoView />} />
       <Route path="/courses-catalog" element={<CourseCatalog />} />
       <Route path="/recorded-courses" element={<RecordedCourses />} />
+      <Route path="/invoice-preview" element={<InvoicePreview />} />
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
       <Route path="/quiz-engine" element={<ProtectedRoute><RouteGuard moduleId="quiz_engine"><QuizEngine /></RouteGuard></ProtectedRoute>} />
       <Route path="/my-quizzes" element={<ProtectedRoute><RouteGuard moduleId="my_quizzes"><StudentQuizView /></RouteGuard></ProtectedRoute>} />
