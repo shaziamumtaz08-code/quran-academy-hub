@@ -1067,6 +1067,7 @@ export default function Payments() {
     };
 
     (plans || []).forEach((p: any) => {
+      if (archivedStudentIds.has(p.student_id)) return;
       if (p.net_recurring_fee > 0) {
         const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
         if (assign && !['active'].includes(assign.status)) return;
