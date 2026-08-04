@@ -181,7 +181,7 @@ export function UnifiedAttendanceForm({
     return found || { id: '', full_name: '', subject_name: null, last_lesson: null };
   }, [presetStudent, students, pickedStudentId]);
 
-  const effectiveTeacherId = teacherId || user?.id;
+  const effectiveTeacherId = teacherId || student.teacher_id || user?.id;
   // Profile timezone not in type yet, use fallback
   const effectiveTeacherTz = teacherTimezone || 'Asia/Karachi';
 
