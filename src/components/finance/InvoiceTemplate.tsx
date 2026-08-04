@@ -261,6 +261,9 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
         </div>
       )}
 
+      {/* Payment Instructions */}
+      <InvoicePaymentInstructions accounts={paymentAccounts || []} studentAccountSnapshot={studentAccountSnapshot} />
+
       {/* Footer */}
       <div style={{ padding: '16px 48px', borderTop: '1px solid #e5e7eb', textAlign: 'center', background: '#fafbfc' }}>
         <p style={{ fontSize: 9, color: '#9ca3af', margin: 0 }}>This is a system-generated invoice. No signature required.</p>
