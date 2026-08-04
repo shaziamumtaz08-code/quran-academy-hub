@@ -980,9 +980,15 @@ export default function ZoomManagement() {
                 <CardTitle className="font-serif">Session History</CardTitle>
                 <CardDescription>All live sessions with duration and recording</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
-                <RefreshCw className="h-4 w-4" /> Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
+                  <Download className="h-4 w-4" /> Download CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </Button>
+              </div>
+
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px]">
