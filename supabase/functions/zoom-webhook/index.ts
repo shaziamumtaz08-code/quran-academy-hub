@@ -139,7 +139,13 @@ function isHostParticipant(
   participantEmail: string,
   hostEmail?: string | null,
   hostName?: string | null,
+  participantZoomUserId?: string | null,
+  meetingHostId?: string | null,
 ): boolean {
+  const participantId = normalizeParticipantValue(participantZoomUserId);
+  const hostId = normalizeParticipantValue(meetingHostId);
+  if (participantId && hostId) return participantId === hostId;
+
   // Zoom reports the *account owner's* email for every guest who joins without
   // signing in, so "email == account email" alone is NOT proof of being the host.
   // Treat the participant as the host only when the display name also matches the
@@ -176,8 +182,17 @@ async function resolveParticipantIdentity(
   participantEmail: string,
   hostEmail?: string | null,
   hostName?: string | null,
+  participantZoomUserId?: string | null,
+  meetingHostId?: string | null,
 ): Promise<{ matchedUserId: string | null; matchedRole: string }> {
-  if (isHostParticipant(participantName, participantEmail, hostEmail, hostName)) {
+  if (isHostParticipant(
+    participantName,
+    participantEmail,
+    hostEmail,
+    hostName,
+    participantZoomUserId,
+    meetingHostId,
+  )) {
     return { matchedUserId: null, matchedRole: "host" };
   }
 
@@ -621,7 +636,14 @@ async function handleDedicatedAccountEvent(
       if (dup) return;
       // Identity resolution — same routine as pooled path
       const { matchedUserId, matchedRole } = await resolveParticipantIdentity(
-        supabase, session, pName, pEmail, account.zoom_account_email, hostName,
+        supabase,
+        session,
+        pName,
+        pEmail,
+        account.zoom_account_email,
+        hostName,
+        participant?.user_id,
+        hostId,
       );
       await insertZoomLog(supabase, {
         session_id: session.id,
@@ -1452,6 +1474,9 @@ Deno.serve(async (req) => {
           pName,
           pEmail,
           license.zoom_email,
+          undefined,
+          participant?.user_id,
+          hostId,
         );
 
         let isLate = false;
