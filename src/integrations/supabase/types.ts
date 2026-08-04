@@ -483,9 +483,12 @@ export type Database = {
           manzil_notes: string | null
           page_number: number | null
           progress_marker: string | null
+          qaida_baab_id: string | null
           qaida_page_id: string | null
           qaida_unit_from: number | null
           qaida_unit_to: number | null
+          qaida_word_from_id: string | null
+          qaida_word_to_id: string | null
           raw_input_amount: number | null
           reason: string | null
           reason_category: string | null
@@ -549,9 +552,12 @@ export type Database = {
           manzil_notes?: string | null
           page_number?: number | null
           progress_marker?: string | null
+          qaida_baab_id?: string | null
           qaida_page_id?: string | null
           qaida_unit_from?: number | null
           qaida_unit_to?: number | null
+          qaida_word_from_id?: string | null
+          qaida_word_to_id?: string | null
           raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
@@ -615,9 +621,12 @@ export type Database = {
           manzil_notes?: string | null
           page_number?: number | null
           progress_marker?: string | null
+          qaida_baab_id?: string | null
           qaida_page_id?: string | null
           qaida_unit_from?: number | null
           qaida_unit_to?: number | null
+          qaida_word_from_id?: string | null
+          qaida_word_to_id?: string | null
           raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
@@ -679,10 +688,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_qaida_baab_id_fkey"
+            columns: ["qaida_baab_id"]
+            isOneToOne: false
+            referencedRelation: "noorani_qaida_baabs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attendance_qaida_page_id_fkey"
             columns: ["qaida_page_id"]
             isOneToOne: false
             referencedRelation: "noorani_qaida_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_qaida_word_from_id_fkey"
+            columns: ["qaida_word_from_id"]
+            isOneToOne: false
+            referencedRelation: "noorani_qaida_words"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_qaida_word_to_id_fkey"
+            columns: ["qaida_word_to_id"]
+            isOneToOne: false
+            referencedRelation: "noorani_qaida_words"
             referencedColumns: ["id"]
           },
           {
@@ -5591,8 +5621,10 @@ export type Database = {
           id: string
           name_english: string
           name_urdu: string
+          picker_mode: string
           start_page: number
           total_units: number
+          unit_label: string
           unit_type: string
           updated_at: string
         }
@@ -5603,8 +5635,10 @@ export type Database = {
           id?: string
           name_english: string
           name_urdu: string
+          picker_mode?: string
           start_page: number
           total_units: number
+          unit_label?: string
           unit_type: string
           updated_at?: string
         }
@@ -5615,8 +5649,10 @@ export type Database = {
           id?: string
           name_english?: string
           name_urdu?: string
+          picker_mode?: string
           start_page?: number
           total_units?: number
+          unit_label?: string
           unit_type?: string
           updated_at?: string
         }
@@ -5644,6 +5680,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "noorani_qaida_pages_baab_id_fkey"
+            columns: ["baab_id"]
+            isOneToOne: false
+            referencedRelation: "noorani_qaida_baabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      noorani_qaida_words: {
+        Row: {
+          baab_id: string
+          created_at: string
+          id: string
+          line_number: number
+          page_number: number
+          updated_at: string
+          word_position: number
+          word_text: string
+        }
+        Insert: {
+          baab_id: string
+          created_at?: string
+          id?: string
+          line_number: number
+          page_number: number
+          updated_at?: string
+          word_position: number
+          word_text: string
+        }
+        Update: {
+          baab_id?: string
+          created_at?: string
+          id?: string
+          line_number?: number
+          page_number?: number
+          updated_at?: string
+          word_position?: number
+          word_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noorani_qaida_words_baab_id_fkey"
             columns: ["baab_id"]
             isOneToOne: false
             referencedRelation: "noorani_qaida_baabs"
