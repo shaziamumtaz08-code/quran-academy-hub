@@ -207,6 +207,7 @@ export function UnifiedAttendanceForm({
 
   // Subject-specific fields
   const [lessonNumber, setLessonNumber] = useState('');
+  const { data: qaidaRef } = useQaidaReference();
   const [pageNumber, setPageNumber] = useState('');
   const [qaidaPageId, setQaidaPageId] = useState('');
   const [qaidaBaabId, setQaidaBaabId] = useState('');
