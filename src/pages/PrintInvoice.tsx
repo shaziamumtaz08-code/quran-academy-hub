@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceTemplate } from '@/components/finance/InvoiceTemplate';
 import { ReceiptTemplate } from '@/components/finance/ReceiptTemplate';
-import { InvoicePaymentInstructions } from '@/components/payment-accounts/InvoicePaymentInstructions';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
