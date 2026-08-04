@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
+import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -65,8 +66,7 @@ Deno.serve(async (req) => {
 
     studentName = fullName;
     loginEmail = email;
-    const firstName = (fullName.split(/\s+/)[0] || "User");
-    tempPassword = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + "1234";
+    tempPassword = defaultPasswordFor(fullName);
 
     // ── PRE-CHECK: gov_id duplicate detection (before any writes) ──
     // gov_id is the permanent identity anchor. If a profile already owns this

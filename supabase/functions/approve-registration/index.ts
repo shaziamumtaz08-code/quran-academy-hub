@@ -2,6 +2,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { generateAqtEmail, generateInitialPassword } from "../_shared/aqt-email.ts";
+import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -13,8 +14,7 @@ function json(status: number, body: unknown) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function tempPasswordFor(fullName: string) {
-  const first = (fullName || "User").split(/\s+/)[0] || "User";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() + "1234";
+  return defaultPasswordFor(fullName);
 }
 
 
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         const res = await upsertUser(admin, {
           email: childEmail,
           fullName: childName,
-          password: generateInitialPassword(),
+          password: tempPasswordFor(fullName),
 
 
           role: "student",
