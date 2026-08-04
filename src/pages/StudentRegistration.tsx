@@ -111,18 +111,15 @@ export default function StudentRegistration() {
   const locationDone = Boolean(home.country && home.timezone);
   const dial = home.dialCode || '+—';
   const withDial = (value: string) => (value.trim() ? `${home.dialCode} ${value.trim()}`.trim() : '');
-  const studentEmail = (student: Student) =>
-    (student.useGuardianEmail ? home.guardianEmail : student.email).trim();
 
-  const studentValid = (student: Student) => Boolean(
-    student.fullName.trim() && student.dob && EMAIL_RE.test(studentEmail(student)),
-  );
+  const studentValid = (student: Student) => Boolean(student.fullName.trim() && student.dob);
 
   const valid = useMemo(() => Boolean(
-    locationDone && home.address.trim() &&
+    locationDone && home.address.trim() && EMAIL_RE.test(home.guardianEmail.trim()) &&
     home.fatherName.trim() && home.fatherPhone.trim() && home.motherName.trim() && home.motherPhone.trim() &&
     home.emergencyPhone.trim() && home.consent && students.length && students.every(studentValid),
   ), [home, students, locationDone]);
+
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -132,7 +129,8 @@ export default function StudentRegistration() {
       const guardian = {
         parent_name: home.fatherName.trim() || home.motherName.trim(),
         relationship: 'Parent',
-        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+        email: home.guardianEmail.trim(),
+
         phone: withDial(home.fatherPhone || home.motherPhone),
         country: home.country || null,
         city: home.city || null,
@@ -155,8 +153,8 @@ export default function StudentRegistration() {
         student_name: student.fullName.trim(),
         children: [{
           name: student.fullName.trim(),
-          email: studentEmail(student),
-          uses_parent_email: student.useGuardianEmail,
+          email: null,
+
           date_of_birth: student.dob || null,
           gender: student.gender || null,
           phone: withDial(student.phone),
@@ -180,7 +178,7 @@ export default function StudentRegistration() {
       await recordPolicyAcceptance({
         audience: 'student',
         name: home.fatherName.trim() || home.motherName.trim(),
-        email: (home.guardianEmail.trim() || studentEmail(students[0])),
+        email: home.guardianEmail.trim(),
       });
     },
     onSuccess: () => setSubmitted(true),
@@ -343,25 +341,12 @@ export default function StudentRegistration() {
                 </Select>
               </Field>
 
-              <Field label="Email address" required hint="Portal login and reports are sent here.">
-                <div className="space-y-2">
-                  <Input
-                    type="email"
-                    value={student.useGuardianEmail ? home.guardianEmail : student.email}
-                    disabled={student.useGuardianEmail}
-                    onChange={e => setStudent(student.key, { email: e.target.value })}
-                    placeholder="name@email.com"
-                    className="h-11"
-                  />
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                    <Checkbox
-                      checked={student.useGuardianEmail}
-                      onCheckedChange={value => setStudent(student.key, { useGuardianEmail: Boolean(value) })}
-                    />
-                    Use the parent / guardian email
-                  </label>
+              <Field label="Student login" hint="The academy issues an AQT login (name@alqurantimeacademy.com) after approval — no email needed here.">
+                <div className="flex h-11 items-center rounded-md border border-dashed border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                  Assigned by the academy
                 </div>
               </Field>
+
               <Field label="Phone number">
                 <div className="flex gap-2">
                   <span className="inline-flex h-11 min-w-[4.5rem] items-center justify-center rounded-md border border-input bg-muted px-3 text-sm font-medium text-muted-foreground">{dial}</span>

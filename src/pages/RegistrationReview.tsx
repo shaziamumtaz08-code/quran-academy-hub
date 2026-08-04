@@ -318,8 +318,12 @@ export default function RegistrationReview() {
                     ['Preferred language', 'preferred_language'],
                   ])}
                   {group('Contact', [
-                    ['Email', 'email'], ['Phone', 'phone'], ['WhatsApp', 'whatsapp'],
+                    ['Phone', 'phone'], ['WhatsApp', 'whatsapp'],
                   ])}
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Login id is issued automatically on approval (name@alqurantimeacademy.com).
+                  </p>
+
                   {group('Academic details', [
                     ['School / institute', 'school_name'], ['Grade / class', 'grade_level'],
                     ['Current level', 'level'], ['Qaida / reading stage', 'qaida_status'],
