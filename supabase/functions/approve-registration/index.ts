@@ -29,11 +29,12 @@ async function findAuthUserByEmail(admin: any, email: string): Promise<string | 
 /** Create (or reuse) an auth user + profile + role. Returns the profile id. */
 async function upsertUser(
   admin: any,
-  opts: { email: string; fullName: string; role: string; profile: Record<string, unknown> },
+  opts: { email: string; fullName: string; role: string; profile: Record<string, unknown>; password?: string },
 ): Promise<{ id: string; created: boolean; password: string }> {
   const email = opts.email.toLowerCase().trim();
-  const password = tempPasswordFor(opts.fullName);
+  const password = opts.password || tempPasswordFor(opts.fullName);
   let created = false;
+
   let userId: string | null = null;
 
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
@@ -141,15 +142,14 @@ Deno.serve(async (req) => {
         created: res.created,
       });
     } else {
-      // Student registration: guardian account (reused across siblings by email) + the student
+      // Student registration: guardian account (reused across siblings by email) + the student.
+      // Students never inherit the parent's inbox — the academy issues each one an
+      // AQT-branded, login-only address.
       let parentId: string | null = null;
       const parentEmail = (reg.email || "").toLowerCase().trim();
       const children = Array.isArray(reg.children) ? (reg.children as any[]) : [];
-      const parentIsAlsoStudent = children.some(
-        (c) => (c.email || "").toLowerCase().trim() === parentEmail,
-      );
 
-      if (EMAIL_RE.test(parentEmail) && !parentIsAlsoStudent) {
+      if (EMAIL_RE.test(parentEmail)) {
         const res = await upsertUser(admin, {
           email: parentEmail,
           fullName: reg.parent_name,
@@ -175,48 +175,37 @@ Deno.serve(async (req) => {
         });
       }
 
-      const usedEmails = new Set<string>();
-      if (parentId) usedEmails.add(parentEmail);
+      const reserved = new Set<string>();
 
       for (const child of children) {
         const childName = child.name || child.full_name || "Student";
-        const childEmail = (child.email || "").toLowerCase().trim();
-        if (!EMAIL_RE.test(childEmail)) {
-          return json(400, {
-            error: `${childName} has no valid email. Every account needs its own unique email — add one in the review form before approving.`,
-          });
-        }
-        // Hard rule: every account owns a unique, authentic email. Never reuse the
-        // parent's inbox or a sibling's address for a student account.
-        if (childEmail === parentEmail) {
-          return json(400, {
-            error: `${childName} is using the parent's email (${parentEmail}). Assign a unique email to this student in the review form before approving.`,
-          });
-        }
-        if (usedEmails.has(childEmail)) {
-          return json(400, {
-            error: `The email ${childEmail} is used by more than one student in this registration. Each student needs a unique email.`,
-          });
-        }
-        const { data: existingByEmail } = await admin
-          .from("profiles")
-          .select("id, full_name")
-          .ilike("email", childEmail)
-          .maybeSingle();
-        if (
-          existingByEmail &&
-          (existingByEmail.full_name || "").trim().toLowerCase() !== childName.trim().toLowerCase()
-        ) {
-          return json(400, {
-            error: `The email ${childEmail} already belongs to ${existingByEmail.full_name}. Assign a unique email to ${childName} before approving.`,
-          });
-        }
-        usedEmails.add(childEmail);
 
+        // Reuse an already-issued AQT login if this exact student was created before,
+        // otherwise mint a fresh one.
+        let childEmail: string;
+        const { data: existingProfile } = await admin
+          .from("profiles")
+          .select("id, email")
+          .ilike("full_name", childName.trim())
+          .ilike("email", `%@alqurantimeacademy.com`)
+          .maybeSingle();
+
+        if (existingProfile?.email) {
+          childEmail = String(existingProfile.email).toLowerCase();
+          reserved.add(childEmail);
+        } else {
+          try {
+            childEmail = await generateAqtEmail(admin, childName, reserved);
+          } catch (e: any) {
+            return json(400, { error: e?.message || `Could not create a login for ${childName}` });
+          }
+        }
 
         const res = await upsertUser(admin, {
           email: childEmail,
           fullName: childName,
+          password: generateInitialPassword(),
+
 
           role: "student",
           profile: {
