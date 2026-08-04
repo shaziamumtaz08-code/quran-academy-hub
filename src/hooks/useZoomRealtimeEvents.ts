@@ -59,6 +59,9 @@ export function useZoomRealtimeEvents(options: UseZoomRealtimeEventsOptions = {}
     eventType: 'INSERT' | 'UPDATE';
   }) => {
     const log = payload.new;
+    if (!['meeting.participant_joined', 'meeting.participant_left', 'meeting.started', 'meeting.ended'].includes((log as any).zoom_event_type || '')) {
+      return;
+    }
     const action = log.action === 'join_intent' ? 'join' : 'leave';
     
     // Fetch user name

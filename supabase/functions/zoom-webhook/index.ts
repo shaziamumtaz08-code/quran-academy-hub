@@ -558,33 +558,32 @@ async function handleDedicatedAccountEvent(
           .from("live_sessions")
           .update({ status: "completed", actual_end: endedAt, recording_status: "not_recorded" })
           .eq("id", s.id);
-        // Close any open host join log
-        const { data: openHost } = await supabase
+        // Zoom's meeting-ended event is authoritative: close every participant
+        // still shown inside so stale rows can never keep a room blinking live.
+        const { data: openParticipants } = await supabase
           .from("zoom_attendance_logs")
-          .select("id, join_time")
+          .select("id, user_id, join_time, participant_name, participant_email, role")
           .eq("session_id", s.id)
-          .eq("role", "host")
           .eq("action", "join_intent")
-          .is("leave_time", null)
-          .maybeSingle();
-        if (openHost?.id) {
-          const join = openHost.join_time ? new Date(openHost.join_time) : new Date(endedAt);
+          .is("leave_time", null);
+        for (const openParticipant of openParticipants || []) {
+          const join = openParticipant.join_time ? new Date(openParticipant.join_time) : new Date(endedAt);
           const totalMin = Math.max(1, Math.ceil((new Date(endedAt).getTime() - join.getTime()) / 60_000));
           await supabase.from("zoom_attendance_logs").update({
             leave_time: endedAt,
             total_duration_minutes: totalMin,
-          }).eq("id", openHost.id);
+          }).eq("id", openParticipant.id);
           await insertZoomLog(supabase, {
             session_id: s.id,
-            user_id: account.teacher_id,
+            user_id: openParticipant.user_id,
             action: "leave",
-            join_time: openHost.join_time,
+            join_time: openParticipant.join_time,
             leave_time: endedAt,
             timestamp: endedAt,
             total_duration_minutes: totalMin,
-            participant_name: hostName,
-            participant_email: hostEmail,
-            role: "host",
+            participant_name: openParticipant.participant_name,
+            participant_email: openParticipant.participant_email,
+            role: openParticipant.role,
             zoom_host_id: hostId,
             zoom_meeting_uuid: meetingUuid,
             zoom_meeting_id: meetingId,

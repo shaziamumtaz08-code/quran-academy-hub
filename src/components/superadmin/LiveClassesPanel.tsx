@@ -120,7 +120,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
     () =>
       rows.map((r) => {
         const inWindow = now >= r.startMs - JOIN_LEAD_MS && now <= r.startMs + r.durationMin * 60_000 + JOIN_TAIL_MS;
-        return { ...r, live: r.isLive || inWindow };
+        return { ...r, live: r.isLive, joinAvailable: inWindow };
       }),
     [rows, now],
   );
@@ -205,11 +205,11 @@ export function LiveClassesPanel({ divisionNames }: Props) {
                 </span>
                 <Button
                   size="sm"
-                  disabled={!row.live || joiningKey === row.key}
+                  disabled={!row.joinAvailable || joiningKey === row.key}
                   onClick={() => handleJoin(row)}
                   className={cn(
                     'ml-auto',
-                    row.live && 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    row.joinAvailable && 'bg-emerald-600 hover:bg-emerald-700 text-primary-foreground'
                   )}
                 >
                   {joiningKey === row.key ? (
