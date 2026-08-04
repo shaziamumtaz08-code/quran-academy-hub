@@ -227,7 +227,7 @@ serve(async (req) => {
       const { error: roleErr } = await adminClient
         .from("user_roles")
         .upsert({ user_id: existingUserId, role }, { onConflict: "user_id,role" });
-      if (roleErr) return json(500, { error: "Failed to assign role" }, requestOrigin);
+      if (roleErr) return json(500, { error: "Failed to assign role: " + roleErr.message }, requestOrigin);
 
       if (role === "admin_division") {
         await ensureUserContext(adminClient, existingUserId, branchId, divisionId, role);
