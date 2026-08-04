@@ -145,9 +145,9 @@ export function useQaidaProgress(studentId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('qaida_page_id, qaida_unit_to, class_date')
+        .select('qaida_baab_id, qaida_page_id, qaida_unit_to, class_date')
         .eq('student_id', studentId!)
-        .not('qaida_page_id', 'is', null)
+        .or('qaida_page_id.not.is.null,qaida_baab_id.not.is.null')
         .order('class_date', { ascending: true });
       if (error) throw error;
       return (data || []) as any[];
@@ -170,9 +170,9 @@ export function useQaidaProgressForStudents(studentIds: string[]) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('student_id, qaida_page_id, qaida_unit_to, class_date')
+        .select('student_id, qaida_baab_id, qaida_page_id, qaida_unit_to, class_date')
         .in('student_id', studentIds)
-        .not('qaida_page_id', 'is', null);
+        .or('qaida_page_id.not.is.null,qaida_baab_id.not.is.null');
       if (error) throw error;
       return (data || []) as any[];
     },
@@ -194,4 +194,30 @@ export function useQaidaProgressForStudents(studentIds: string[]) {
   }, [ref, rows, studentIds]);
 
   return { progressByStudent: map, baabs: ref?.baabs || [], isLoading };
+}
+
+/** Words / phrases belonging to a word_dropdown baab, ordered by line then position. */
+export function useQaidaWords(baabId?: string | null) {
+  return useQuery({
+    queryKey: ['qaida-words', baabId],
+    enabled: !!baabId,
+    staleTime: 1000 * 60 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('noorani_qaida_words' as any)
+        .select('*')
+        .eq('baab_id', baabId!)
+        .order('line_number')
+        .order('word_position');
+      if (error) throw error;
+      return (data || []) as unknown as QaidaWord[];
+    },
+  });
+}
+
+/** Continuous 1-based ordinal of each word inside its baab. */
+export function wordOrdinals(words: QaidaWord[]) {
+  const map = new Map<string, number>();
+  words.forEach((w, i) => map.set(w.id, i + 1));
+  return map;
 }
