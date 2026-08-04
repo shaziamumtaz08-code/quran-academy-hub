@@ -64,9 +64,10 @@ export function QaidaProgressInput({
   const wordList = words || [];
   const hasWordData = isWordMode && wordList.length > 0;
 
-  // Baabs 1 & 3 are a single short page — flat list, no line grouping.
+  // Baabs 1 & 3 are a single short page, Baab 13 stores one full phrase per line —
+  // all three use a flat list instead of Line → Word drill-down.
   const flatWordList = selectedBaab
-    ? [1, 3].includes(selectedBaab.baab_number)
+    ? [1, 3, 13].includes(selectedBaab.baab_number)
     : false;
 
   const lines = useMemo(() => {
