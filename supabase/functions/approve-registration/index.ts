@@ -246,6 +246,11 @@ Deno.serve(async (req) => {
             account_status: "active",
           },
         });
+        if (parentId && res.id === parentId) {
+          return json(400, {
+            error: `Account collision: ${childName}'s login resolved to the parent account. Approval aborted.`,
+          });
+        }
         createdIds.push(res.id);
         accounts.push({
           name: child.name || "Student",
