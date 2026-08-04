@@ -254,8 +254,13 @@ export function QaidaProgressInput({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Pick a single {uLabel.toLowerCase()} (from = to) or a range within the line.
+            Pick a single {uLabel.toLowerCase()} (from = to) or a range{flatWordList ? '' : ' within the line'}.
           </p>
+          {invalidRange && (
+            <p className="text-xs text-destructive">
+              "{uLabel} to" cannot come before "{uLabel} from".
+            </p>
+          )}
         </div>
       ) : (
         <>
