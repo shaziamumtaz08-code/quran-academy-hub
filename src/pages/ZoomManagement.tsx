@@ -406,7 +406,46 @@ export default function ZoomManagement() {
   const busyCount = liveSessionsList.length;
   const availableCount = Math.max(0, unclaimedLegacy.length + accountsCount - busyCount);
 
+  const sessionExportRows = React.useMemo(() => (liveSessions || []).map((s: any) => {
+    const duration = s.actual_start && s.actual_end
+      ? differenceInMinutes(new Date(s.actual_end), new Date(s.actual_start))
+      : s.actual_start && s.status === 'live'
+        ? differenceInMinutes(new Date(), new Date(s.actual_start))
+        : 0;
+    return {
+      session: getSessionPrimaryLabel(s),
+      teacher: s.teacherName || '',
+      status: s.status || '',
+      scheduled_start: s.scheduled_start ? format(new Date(s.scheduled_start), 'yyyy-MM-dd HH:mm') : '',
+      actual_start: s.actual_start ? format(new Date(s.actual_start), 'yyyy-MM-dd HH:mm') : '',
+      actual_end: s.actual_end ? format(new Date(s.actual_end), 'yyyy-MM-dd HH:mm') : '',
+      duration_minutes: duration || '',
+      recording_status: s.recording_status || '',
+      recording_link: s.recording_link || '',
+      session_id: s.id,
+    };
+  }), [liveSessions, getSessionPrimaryLabel]);
+
+  const logExportRows = React.useMemo(() => visibleAttendanceLogs.map((log: any) => {
+    const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
+    const durationMin = (log.join_time && log.leave_time)
+      ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
+      : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : '');
+    return {
+      participant: log.userName || '',
+      email: log.participant_email || '',
+      role: log.role || '',
+      action: isLeave ? 'Left' : 'Joined',
+      timestamp: log.timestamp ? format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss') : '',
+      join_time: log.join_time ? format(new Date(log.join_time), 'yyyy-MM-dd HH:mm:ss') : '',
+      leave_time: log.leave_time ? format(new Date(log.leave_time), 'yyyy-MM-dd HH:mm:ss') : '',
+      duration_minutes: durationMin,
+      session_id: log.session_id || '',
+    };
+  }), [visibleAttendanceLogs]);
+
   const sectionButtons = [
+
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
     { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: unclaimedLegacy.length },
 
