@@ -24,6 +24,7 @@ import { type MarkerType } from './SabaqSection';
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { useQaidaReference } from '@/hooks/useQaidaProgress';
 
 // Unified status options - comprehensive list
 export type AttendanceStatus = 
