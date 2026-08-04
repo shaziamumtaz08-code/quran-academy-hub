@@ -108,8 +108,10 @@ export function ActivateApplicantDialog({ open, onOpenChange, applicant, courseI
     setTimeout(reset, 200);
   }
 
-  const firstName = (applicant?.full_name || 'User').split(/\s+/)[0];
-  const expectedPassword = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + '1234';
+  // Default scheme: <Lastname>@1234! (first letter capitalised)
+  const nameParts = (applicant?.full_name || 'User').split(/\s+/).filter(Boolean);
+  const lastName = (nameParts[nameParts.length - 1] || 'Aqt').replace(/[^a-zA-Z]/g, '') || 'Aqt';
+  const expectedPassword = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase() + '@1234!';
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
