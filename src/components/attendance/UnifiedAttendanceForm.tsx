@@ -84,7 +84,10 @@ export interface StudentInfo {
   preferred_unit?: string;
   timezone?: string;
   gender?: string | null;
+  /** Teacher assigned to this student (used when an admin marks on a teacher's behalf). */
+  teacher_id?: string | null;
 }
+
 
 /** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
 export interface ExistingAttendanceRecord {
@@ -178,7 +181,7 @@ export function UnifiedAttendanceForm({
     return found || { id: '', full_name: '', subject_name: null, last_lesson: null };
   }, [presetStudent, students, pickedStudentId]);
 
-  const effectiveTeacherId = teacherId || user?.id;
+  const effectiveTeacherId = teacherId || student.teacher_id || user?.id;
   // Profile timezone not in type yet, use fallback
   const effectiveTeacherTz = teacherTimezone || 'Asia/Karachi';
 
