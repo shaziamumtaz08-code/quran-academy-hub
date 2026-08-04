@@ -104,6 +104,8 @@ interface Profile {
   daily_target_amount?: number;
   subject_name?: string | null;
   subject_id?: string | null;
+  teacher_id?: string | null;
+
 }
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
