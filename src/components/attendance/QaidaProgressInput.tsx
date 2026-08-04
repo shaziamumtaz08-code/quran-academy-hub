@@ -64,9 +64,10 @@ export function QaidaProgressInput({
   const wordList = words || [];
   const hasWordData = isWordMode && wordList.length > 0;
 
-  // Baabs 1 & 3 are a single short page — flat list, no line grouping.
+  // Baabs 1 & 3 are a single short page, Baab 13 stores one full phrase per line —
+  // all three use a flat list instead of Line → Word drill-down.
   const flatWordList = selectedBaab
-    ? [1, 3].includes(selectedBaab.baab_number)
+    ? [1, 3, 13].includes(selectedBaab.baab_number)
     : false;
 
   const lines = useMemo(() => {
@@ -95,9 +96,18 @@ export function QaidaProgressInput({
     if (!hasWordData) return;
     const from = wordFromId ? ordinal.get(wordFromId) : undefined;
     const to = wordToId ? ordinal.get(wordToId) : undefined;
+    // "New Lesson" prefills a numeric start position — resolve it to the matching word.
+    if (!wordFromId && unitFrom) {
+      const target = wordList[Number(unitFrom) - 1];
+      if (target) {
+        onWordFromIdChange?.(target.id);
+        return;
+      }
+    }
     onUnitFromChange?.(from ? String(from) : '');
     onUnitToChange?.(to ? String(to) : '');
-  }, [hasWordData, wordFromId, wordToId, ordinal]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasWordData, wordFromId, wordToId, ordinal, unitFrom]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   if (isPlanning && onLessonNumberToChange && onPageNumberToChange) {
     return (
@@ -244,8 +254,13 @@ export function QaidaProgressInput({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Pick a single {uLabel.toLowerCase()} (from = to) or a range within the line.
+            Pick a single {uLabel.toLowerCase()} (from = to) or a range{flatWordList ? '' : ' within the line'}.
           </p>
+          {invalidRange && (
+            <p className="text-xs text-destructive">
+              "{uLabel} to" cannot come before "{uLabel} from".
+            </p>
+          )}
         </div>
       ) : (
         <>

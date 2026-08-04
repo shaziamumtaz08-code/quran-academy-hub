@@ -24,6 +24,7 @@ import { type MarkerType } from './SabaqSection';
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { useQaidaReference } from '@/hooks/useQaidaProgress';
 
 // Unified status options - comprehensive list
 export type AttendanceStatus = 
@@ -206,6 +207,7 @@ export function UnifiedAttendanceForm({
 
   // Subject-specific fields
   const [lessonNumber, setLessonNumber] = useState('');
+  const { data: qaidaRef } = useQaidaReference();
   const [pageNumber, setPageNumber] = useState('');
   const [qaidaPageId, setQaidaPageId] = useState('');
   const [qaidaBaabId, setQaidaBaabId] = useState('');
@@ -383,9 +385,40 @@ export function UnifiedAttendanceForm({
     }
   };
 
+  // "New Lesson" for Qaida: continue right after wherever the last entry stopped,
+  // leaving the "to" side empty for the teacher to fill in.
+  const applyNextQaidaLesson = () => {
+    const p: any = previousLesson;
+    if (!p || currentSubjectType !== 'qaida') return;
+    const baabs = qaidaRef?.baabs || [];
+    const lastBaab = baabs.find(b => b.id === p.qaida_baab_id)
+      || (p.lesson_number != null ? baabs.find(b => b.baab_number === Number(p.lesson_number)) : undefined);
+    if (!lastBaab) return;
+
+    const lastTo = Number(p.qaida_unit_to || 0);
+    let nextBaab = lastBaab;
+    let nextFrom = lastTo + 1;
+    if (lastTo >= (lastBaab.total_units || 0)) {
+      const following = baabs.find(b => b.baab_number === lastBaab.baab_number + 1);
+      if (!following) return; // book finished — leave fields as-is
+      nextBaab = following;
+      nextFrom = 1;
+    }
+
+    setQaidaBaabId(nextBaab.id);
+    setLessonNumber(String(nextBaab.baab_number));
+    setPageNumber(String(nextBaab.start_page));
+    setQaidaPageId(qaidaRef?.pages.find(pg => pg.page_number === nextBaab.start_page)?.id || '');
+    setQaidaWordFromId('');
+    setQaidaWordToId('');
+    setQaidaUnitFrom(String(nextFrom));
+    setQaidaUnitTo('');
+  };
+
   const handleLessonTypeChange = (v: LessonType) => {
     setLessonType(v);
     if (v === 'repeat') applyPreviousLesson();
+    if (v === 'new') applyNextQaidaLesson();
   };
 
   // Auto-detect: if entered Sabaq range matches previous, suggest switching to "repeat"
