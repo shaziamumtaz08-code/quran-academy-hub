@@ -1090,10 +1090,16 @@ export default function ZoomManagement() {
         {/* Join Logs Section */}
         {activeSection === 'logs' && (
           <Card>
-            <CardHeader>
-              <CardTitle className="font-serif">Join & Leave Logs</CardTitle>
-              <CardDescription>Real-time tracking of participant activity</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-serif">Join &amp; Leave Logs</CardTitle>
+                <CardDescription>Real-time tracking of participant activity</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
+                <Download className="h-4 w-4" /> Download CSV
+              </Button>
             </CardHeader>
+
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
