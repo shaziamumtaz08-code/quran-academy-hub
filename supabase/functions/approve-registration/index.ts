@@ -88,8 +88,9 @@ Deno.serve(async (req) => {
     if (!auth.ok) return json(auth.status, { error: auth.error });
     const admin = auth.adminClient as any;
 
-    const { registration_id, review_notes } = await req.json();
+    const { registration_id, review_notes, division_id } = await req.json();
     if (!registration_id) return json(400, { error: "registration_id is required" });
+
 
     const { data: reg, error: regErr } = await admin
       .from("family_registrations")
