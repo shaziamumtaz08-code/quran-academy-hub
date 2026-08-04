@@ -173,12 +173,39 @@ Deno.serve(async (req) => {
         });
       }
 
+      const usedEmails = new Set<string>();
+      if (parentId) usedEmails.add(parentEmail);
+
       for (const child of children) {
-        const childEmail = (child.email || "").toLowerCase().trim();
+        const childName = child.name || child.full_name || "Student";
+        let childEmail = (child.email || "").toLowerCase().trim();
         if (!EMAIL_RE.test(childEmail)) continue;
+        // Siblings often share the parent's inbox (also across separate registration
+        // rows). Auth requires a unique email per account, so derive a plus-alias
+        // (parent+firstname@domain) whenever the address already belongs to someone else.
+        const { data: existingByEmail } = await admin
+          .from("profiles")
+          .select("id, full_name")
+          .ilike("email", childEmail)
+          .maybeSingle();
+        const takenByOther =
+          !!existingByEmail &&
+          (existingByEmail.full_name || "").trim().toLowerCase() !== childName.trim().toLowerCase();
+        if (usedEmails.has(childEmail) || takenByOther) {
+          const [local, domain] = childEmail.split("@");
+          const base = local.split("+")[0];
+          const slug = childName.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20) || "student";
+          let candidate = `${base}+${slug}@${domain}`;
+          let n = 2;
+          while (usedEmails.has(candidate)) candidate = `${base}+${slug}${n++}@${domain}`;
+          childEmail = candidate;
+        }
+        usedEmails.add(childEmail);
+
         const res = await upsertUser(admin, {
           email: childEmail,
-          fullName: child.name || child.full_name || "Student",
+          fullName: childName,
+
           role: "student",
           profile: {
             whatsapp_number: child.whatsapp || child.phone || undefined,
