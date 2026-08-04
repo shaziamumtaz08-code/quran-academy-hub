@@ -178,29 +178,39 @@ Deno.serve(async (req) => {
 
       for (const child of children) {
         const childName = child.name || child.full_name || "Student";
-        let childEmail = (child.email || "").toLowerCase().trim();
-        if (!EMAIL_RE.test(childEmail)) continue;
-        // Siblings often share the parent's inbox (also across separate registration
-        // rows). Auth requires a unique email per account, so derive a plus-alias
-        // (parent+firstname@domain) whenever the address already belongs to someone else.
+        const childEmail = (child.email || "").toLowerCase().trim();
+        if (!EMAIL_RE.test(childEmail)) {
+          return json(400, {
+            error: `${childName} has no valid email. Every account needs its own unique email — add one in the review form before approving.`,
+          });
+        }
+        // Hard rule: every account owns a unique, authentic email. Never reuse the
+        // parent's inbox or a sibling's address for a student account.
+        if (childEmail === parentEmail) {
+          return json(400, {
+            error: `${childName} is using the parent's email (${parentEmail}). Assign a unique email to this student in the review form before approving.`,
+          });
+        }
+        if (usedEmails.has(childEmail)) {
+          return json(400, {
+            error: `The email ${childEmail} is used by more than one student in this registration. Each student needs a unique email.`,
+          });
+        }
         const { data: existingByEmail } = await admin
           .from("profiles")
           .select("id, full_name")
           .ilike("email", childEmail)
           .maybeSingle();
-        const takenByOther =
-          !!existingByEmail &&
-          (existingByEmail.full_name || "").trim().toLowerCase() !== childName.trim().toLowerCase();
-        if (usedEmails.has(childEmail) || takenByOther) {
-          const [local, domain] = childEmail.split("@");
-          const base = local.split("+")[0];
-          const slug = childName.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20) || "student";
-          let candidate = `${base}+${slug}@${domain}`;
-          let n = 2;
-          while (usedEmails.has(candidate)) candidate = `${base}+${slug}${n++}@${domain}`;
-          childEmail = candidate;
+        if (
+          existingByEmail &&
+          (existingByEmail.full_name || "").trim().toLowerCase() !== childName.trim().toLowerCase()
+        ) {
+          return json(400, {
+            error: `The email ${childEmail} already belongs to ${existingByEmail.full_name}. Assign a unique email to ${childName} before approving.`,
+          });
         }
         usedEmails.add(childEmail);
+
 
         const res = await upsertUser(admin, {
           email: childEmail,
