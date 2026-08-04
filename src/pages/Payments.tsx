@@ -1033,6 +1033,18 @@ export default function Payments() {
     if (divisionId) pq = pq.eq('division_id', divisionId);
     const { data: plans } = await pq;
 
+    // Never bill archived students (ghost invoices)
+    const archivedStudentIds = new Set<string>();
+    const planStudentIdList = Array.from(new Set((plans || []).map((p: any) => p.student_id).filter(Boolean)));
+    if (planStudentIdList.length > 0) {
+      const { data: archivedRows } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', planStudentIdList)
+        .not('archived_at', 'is', null);
+      (archivedRows || []).forEach((r: any) => archivedStudentIds.add(r.id));
+    }
+
     const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
     let planAssignmentMap: Record<string, any> = {};
     if (planAssignmentIds.length > 0) {
