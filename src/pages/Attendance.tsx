@@ -1543,7 +1543,9 @@ export default function Attendance() {
             last_lesson: null,
             daily_target_lines: (s as any).daily_target_lines,
             preferred_unit: (s as any).preferred_unit,
+            teacher_id: (s as any).teacher_id ?? (isTeacher ? user?.id : null),
           }))}
+
           initialStatus={unifiedInitialStatus}
         />
 
