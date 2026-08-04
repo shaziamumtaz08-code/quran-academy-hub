@@ -12609,6 +12609,10 @@ export type Database = {
         Args: { _effective_from: string; _student_id: string }
         Returns: Json
       }
+      quiz_session_is_open: {
+        Args: { _bank_id: string; _session_id: string }
+        Returns: boolean
+      }
       reject_payment_proof: {
         Args: { _invoice_id: string; _reason: string }
         Returns: undefined
@@ -12652,6 +12656,7 @@ export type Database = {
         }
         Returns: Json
       }
+      safe_uuid: { Args: { _txt: string }; Returns: string }
       send_demo_chat: { Args: { _body: string; _token: string }; Returns: Json }
       set_vault_password: {
         Args: { _account_id: string; _field: string; _password: string }
