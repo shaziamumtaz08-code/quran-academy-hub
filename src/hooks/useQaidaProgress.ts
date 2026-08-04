@@ -10,7 +10,18 @@ export interface QaidaBaab {
   start_page: number;
   end_page: number;
   unit_type: 'word' | 'line';
+  picker_mode: 'word_dropdown' | 'line_range';
+  unit_label: 'word' | 'line' | 'phrase';
   total_units: number;
+}
+
+export interface QaidaWord {
+  id: string;
+  baab_id: string;
+  page_number: number;
+  line_number: number;
+  word_position: number;
+  word_text: string;
 }
 
 export interface QaidaPage {
@@ -18,6 +29,7 @@ export interface QaidaPage {
   page_number: number;
   baab_id: string | null;
 }
+
 
 export interface BaabProgress extends QaidaBaab {
   unitsReached: number;
