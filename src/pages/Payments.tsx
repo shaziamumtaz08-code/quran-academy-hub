@@ -1033,6 +1033,18 @@ export default function Payments() {
     if (divisionId) pq = pq.eq('division_id', divisionId);
     const { data: plans } = await pq;
 
+    // Never bill archived students (ghost invoices)
+    const archivedStudentIds = new Set<string>();
+    const planStudentIdList = Array.from(new Set((plans || []).map((p: any) => p.student_id).filter(Boolean)));
+    if (planStudentIdList.length > 0) {
+      const { data: archivedRows } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', planStudentIdList)
+        .not('archived_at', 'is', null);
+      (archivedRows || []).forEach((r: any) => archivedStudentIds.add(r.id));
+    }
+
     const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
     let planAssignmentMap: Record<string, any> = {};
     if (planAssignmentIds.length > 0) {
@@ -1055,6 +1067,7 @@ export default function Payments() {
     };
 
     (plans || []).forEach((p: any) => {
+      if (archivedStudentIds.has(p.student_id)) return;
       if (p.net_recurring_fee > 0) {
         const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
         if (assign && !['active'].includes(assign.status)) return;
@@ -1082,7 +1095,17 @@ export default function Payments() {
     if (divisionId) aq = aq.eq('division_id', divisionId);
     const { data: assignments } = await aq;
     const planStudentIds = new Set([...(plans || []).map((p: any) => p.student_id)]);
+    const assignStudentIds = Array.from(new Set((assignments || []).map((a: any) => a.student_id).filter(Boolean)));
+    if (assignStudentIds.length > 0) {
+      const { data: archivedAssignRows } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', assignStudentIds)
+        .not('archived_at', 'is', null);
+      (archivedAssignRows || []).forEach((r: any) => archivedStudentIds.add(r.id));
+    }
     (assignments || []).forEach((a: any) => {
+      if (archivedStudentIds.has(a.student_id)) return;
       if (a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
         const startDate = a.effective_from_date || null;
         const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
