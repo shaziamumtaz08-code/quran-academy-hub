@@ -100,7 +100,7 @@ export default function TeacherRegistration() {
   const payoutDone = Boolean(form.payoutMethod && form.accountTitle.trim() && form.accountNumber.trim());
 
   const valid = useMemo(() => Boolean(
-    form.fullName.trim() && EMAIL_RE.test(form.email.trim()) && form.phone.trim() && locationDone &&
+    form.fullName.trim() && form.dob && EMAIL_RE.test(form.email.trim()) && form.phone.trim() && locationDone &&
     form.qualification.trim() && form.yearsExperience.trim() && form.subjects.length && payoutDone && form.consent,
   ), [form, locationDone, payoutDone]);
 
@@ -239,8 +239,9 @@ export default function TeacherRegistration() {
           <Field label="Full name" required>
             <Input value={form.fullName} onChange={e => set({ fullName: e.target.value })} className="h-11" />
           </Field>
-          <Field label="Date of birth">
+          <Field label="Date of birth" required>
             <Input type="date" value={form.dob} onChange={e => set({ dob: e.target.value })} className="h-11" />
+
           </Field>
           <Field label="Gender">
             <Select value={form.gender} onValueChange={value => set({ gender: value })}>

@@ -232,12 +232,30 @@ export default function RegistrationReview() {
         {isTeacher ? (
           <InfoCard icon={Briefcase} title="Professional background" tone="violet">
             <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <Field label="Date of birth" type="date" value={applicant.date_of_birth ?? ''} onChange={(v) => setApplicant({ ...applicant, date_of_birth: v })} />
+              <Field label="Gender" value={applicant.gender ?? ''} onChange={(v) => setApplicant({ ...applicant, gender: v })} />
+              <Field label="WhatsApp" value={applicant.whatsapp ?? ''} onChange={(v) => setApplicant({ ...applicant, whatsapp: v })} />
               <Field label="Qualification" value={applicant.qualification ?? ''} onChange={(v) => setApplicant({ ...applicant, qualification: v })} />
               <Field label="Specialization" value={applicant.specialization ?? ''} onChange={(v) => setApplicant({ ...applicant, specialization: v })} />
               <Field label="Years of experience" type="number" value={String(applicant.years_experience ?? '')} onChange={(v) => setApplicant({ ...applicant, years_experience: v === '' ? null : Number(v) })} />
-              <Field label="Date of birth" type="date" value={applicant.date_of_birth ?? ''} onChange={(v) => setApplicant({ ...applicant, date_of_birth: v })} />
-              <Field label="Gender" value={applicant.gender ?? ''} onChange={(v) => setApplicant({ ...applicant, gender: v })} />
+              <Field label="Previous institutes" value={applicant.previous_institutes ?? ''} onChange={(v) => setApplicant({ ...applicant, previous_institutes: v })} />
+              <Field label="Languages spoken" value={applicant.languages ?? ''} onChange={(v) => setApplicant({ ...applicant, languages: v })} />
+              <Field label="Availability" value={applicant.availability ?? ''} onChange={(v) => setApplicant({ ...applicant, availability: v })} />
+              <Field label="Expected salary" value={applicant.expected_salary ?? ''} onChange={(v) => setApplicant({ ...applicant, expected_salary: v })} />
               <Field label="Zoom email" value={applicant.zoom_email ?? ''} onChange={(v) => setApplicant({ ...applicant, zoom_email: v })} />
+              <Field label="Heard about us" value={applicant.heard_about ?? ''} onChange={(v) => setApplicant({ ...applicant, heard_about: v })} />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">About / teaching approach</Label>
+                <Textarea rows={3} value={applicant.about ?? ''} onChange={(e) => setApplicant({ ...applicant, about: e.target.value })} />
+              </div>
+              {Array.isArray(applicant.subjects) && applicant.subjects.length > 0 && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Subjects</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {applicant.subjects.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
+                  </div>
+                </div>
+              )}
             </div>
           </InfoCard>
         ) : (
@@ -270,32 +288,59 @@ export default function RegistrationReview() {
         <InfoCard icon={Baby} title="Student details" tone="teal">
           <div className="space-y-4 p-5">
             {children.length === 0 && <p className="text-sm text-muted-foreground">No student details on this registration.</p>}
-            {children.map((child, index) => (
-              <div key={index} className="rounded-xl border bg-muted/20 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-teal-600">{child.name || `Student ${index + 1}`}</p>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {([
-                    ['Name', 'name'], ['Email', 'email'], ['Age', 'age'],
-                    ['Gender', 'gender'], ['Level', 'level'], ['Goals', 'goals'],
-                  ] as const).map(([label, key]) => (
-                    <Field
-                      key={key}
-                      label={label}
-                      value={String(child[key] ?? '')}
-                      onChange={(v) => setChildren(children.map((c, i) => (i === index ? { ...c, [key]: v } : c)))}
-                    />
-                  ))}
-                </div>
-                {Array.isArray(child.subjects) && child.subjects.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {child.subjects.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
+            {children.map((child, index) => {
+              const patch = (key: string, v: string) =>
+                setChildren(children.map((c, i) => (i === index ? { ...c, [key]: v } : c)));
+              const group = (title: string, fields: [string, string][]) => (
+                <div className="mt-4 first:mt-0">
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-600">{title}</span>
+                    <span className="h-px flex-1 bg-border" />
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {fields.map(([label, key]) => (
+                      <Field
+                        key={key}
+                        label={label}
+                        type={key === 'date_of_birth' ? 'date' : 'text'}
+                        value={String(child[key] ?? '')}
+                        onChange={(v) => patch(key, v)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+              return (
+                <div key={index} className="rounded-xl border bg-muted/20 p-4">
+                  <p className="mb-3 text-sm font-semibold text-foreground">{child.name || `Student ${index + 1}`}</p>
+                  {group('Personal', [
+                    ['Full name', 'name'], ['Date of birth', 'date_of_birth'], ['Gender', 'gender'],
+                    ['Preferred language', 'preferred_language'],
+                  ])}
+                  {group('Contact', [
+                    ['Email', 'email'], ['Phone', 'phone'], ['WhatsApp', 'whatsapp'],
+                  ])}
+                  {group('Academic details', [
+                    ['School / institute', 'school_name'], ['Grade / class', 'grade_level'],
+                    ['Current level', 'level'], ['Qaida / reading stage', 'qaida_status'],
+                    ['Course of interest', 'interest'], ['Memorisation so far', 'memorization'],
+                    ['Previous learning', 'prior_learning'],
+                  ])}
+                  {group('Wellbeing & goals', [
+                    ['Medical / special needs', 'medical_notes'], ['Learning goals', 'goals'],
+                  ])}
+                  {Array.isArray(child.subjects) && child.subjects.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {child.subjects.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </InfoCard>
       )}
+
 
       <InfoCard icon={Sparkles} title="Admin review" tone="rose">
         <div className="space-y-3 p-5">
