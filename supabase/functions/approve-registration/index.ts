@@ -62,10 +62,12 @@ async function upsertUser(
   const { error: pErr } = await admin.from("profiles").upsert(payload, { onConflict: "id" });
   if (pErr) throw pErr;
 
-  await admin.from("user_roles").upsert(
+  const { error: rErr } = await admin.from("user_roles").upsert(
     { user_id: userId, role: opts.role },
     { onConflict: "user_id,role" },
   );
+  if (rErr) throw new Error(`Failed to assign '${opts.role}' role: ${rErr.message}`);
+
 
   return { id: userId as string, created, password };
 }
