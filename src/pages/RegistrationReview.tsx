@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
+import { useDivision } from '@/contexts/DivisionContext';
 import { uploadAvatar } from '@/lib/avatarUpload';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ function Field({
 export default function RegistrationReview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { activeDivision } = useDivision();
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState<Record<string, any>>({});
@@ -127,7 +129,7 @@ export default function RegistrationReview() {
     mutationFn: async () => {
       await save.mutateAsync();
       const { data, error } = await supabase.functions.invoke('approve-registration', {
-        body: { registration_id: id, review_notes: reviewNotes || null },
+        body: { registration_id: id, review_notes: reviewNotes || null, division_id: activeDivision?.id ?? null },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);

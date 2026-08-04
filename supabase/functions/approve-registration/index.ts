@@ -88,8 +88,9 @@ Deno.serve(async (req) => {
     if (!auth.ok) return json(auth.status, { error: auth.error });
     const admin = auth.adminClient as any;
 
-    const { registration_id, review_notes } = await req.json();
+    const { registration_id, review_notes, division_id } = await req.json();
     if (!registration_id) return json(400, { error: "registration_id is required" });
+
 
     const { data: reg, error: regErr } = await admin
       .from("family_registrations")
@@ -260,6 +261,46 @@ Deno.serve(async (req) => {
     if (!accounts.length) {
       return json(400, { error: "No valid email addresses found in this registration" });
     }
+
+    // Place every new account in a division so it shows up in User Management.
+    // Falls back to the reviewing admin's own division, then to 1:1 Mentorship.
+    let targetDivisionId: string | null = division_id || null;
+    if (!targetDivisionId) {
+      const { data: adminCtx } = await admin
+        .from("user_context")
+        .select("division_id")
+        .eq("user_id", auth.userId)
+        .order("is_default", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      targetDivisionId = adminCtx?.division_id || "00000000-0000-0000-0000-000000000003";
+    }
+
+    if (targetDivisionId && createdIds.length) {
+      const { data: div } = await admin
+        .from("divisions")
+        .select("id, branch_id")
+        .eq("id", targetDivisionId)
+        .maybeSingle();
+
+      for (const pid of createdIds) {
+        const { data: existing } = await admin
+          .from("user_context")
+          .select("id")
+          .eq("user_id", pid)
+          .limit(1)
+          .maybeSingle();
+        if (existing) continue;
+        const { error: ctxErr } = await admin.from("user_context").insert({
+          user_id: pid,
+          division_id: targetDivisionId,
+          branch_id: div?.branch_id ?? null,
+          is_default: true,
+        });
+        if (ctxErr) console.error("user_context assign failed", pid, ctxErr.message);
+      }
+    }
+
 
     await admin
       .from("family_registrations")
