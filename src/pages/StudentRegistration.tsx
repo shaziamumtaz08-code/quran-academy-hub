@@ -164,10 +164,15 @@ export default function StudentRegistration() {
           school_name: student.schoolName.trim() || null,
           grade_level: student.gradeLevel.trim() || null,
           level: student.currentLevel || null,
+          prior_learning: student.priorLearning.trim() || null,
+          memorization: student.memorization.trim() || null,
+          qaida_status: student.qaidaStatus || null,
+          interest: student.interest || null,
           goals: student.goals || null,
           medical_notes: student.medicalNotes || null,
           preferred_language: student.language || null,
         }],
+
       }));
 
       const { error } = await supabase.from('family_registrations').insert(rows);
