@@ -89,7 +89,7 @@ const getStatusLabel = (status: string) => {
   }
 };
 
-export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo }: InvoiceTemplateProps) {
+export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo, paymentAccounts, studentAccountSnapshot }: InvoiceTemplateProps) {
   const status = getStatusLabel(invoice.status);
   const outstanding = invoice.amount - invoice.amount_paid - invoice.forgiven_amount;
   const logoSrc = orgLogo || logoDark;
