@@ -1158,7 +1158,47 @@ export default function ZoomManagement() {
           </Card>
         )}
         </>)}
+
+        <ExportDialog
+          open={exportSessionsOpen}
+          onOpenChange={setExportSessionsOpen}
+          title="Zoom Sessions"
+          filename="zoom-sessions"
+          data={sessionExportRows}
+          fields={[
+            { key: 'session', label: 'Session' },
+            { key: 'teacher', label: 'Teacher / Room owner' },
+            { key: 'status', label: 'Status' },
+            { key: 'scheduled_start', label: 'Scheduled start' },
+            { key: 'actual_start', label: 'Actual start' },
+            { key: 'actual_end', label: 'Actual end' },
+            { key: 'duration_minutes', label: 'Duration (min)' },
+            { key: 'recording_status', label: 'Recording status' },
+            { key: 'recording_link', label: 'Recording link', defaultChecked: false },
+            { key: 'session_id', label: 'Session ID', defaultChecked: false },
+          ]}
+        />
+
+        <ExportDialog
+          open={exportLogsOpen}
+          onOpenChange={setExportLogsOpen}
+          title="Zoom Join Logs"
+          filename="zoom-join-logs"
+          data={logExportRows}
+          fields={[
+            { key: 'participant', label: 'Participant' },
+            { key: 'email', label: 'Email' },
+            { key: 'role', label: 'Role' },
+            { key: 'action', label: 'Action' },
+            { key: 'timestamp', label: 'Event time' },
+            { key: 'join_time', label: 'Join time' },
+            { key: 'leave_time', label: 'Leave time' },
+            { key: 'duration_minutes', label: 'Duration (min)' },
+            { key: 'session_id', label: 'Session ID', defaultChecked: false },
+          ]}
+        />
       </div>
+
 
     </DashboardLayout>
   );
