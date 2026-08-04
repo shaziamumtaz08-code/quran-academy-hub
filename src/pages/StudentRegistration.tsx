@@ -138,6 +138,18 @@ export default function StudentRegistration() {
         address: home.address.trim() || null,
         preferred_contact: 'WhatsApp',
         registration_type: 'parent',
+        // Structured copy of the household details — approval reads these to fill the
+        // student's guardian / emergency contact fields.
+        applicant_data: {
+          father_name: home.fatherName.trim() || null,
+          father_phone: withDial(home.fatherPhone) || null,
+          mother_name: home.motherName.trim() || null,
+          mother_phone: withDial(home.motherPhone) || null,
+          emergency_name: home.emergencyName.trim() || null,
+          emergency_phone: withDial(home.emergencyPhone) || null,
+          hear_about: home.hearAbout || null,
+          guardian_email: home.guardianEmail.trim() || null,
+        },
         notes: [
           home.hearAbout && `Heard about us: ${home.hearAbout}`,
           home.emergencyName && `Emergency contact: ${home.emergencyName} ${withDial(home.emergencyPhone)}`,
@@ -147,6 +159,7 @@ export default function StudentRegistration() {
         status: 'pending',
         family_group_id: groupId,
       };
+
 
       const rows = students.map((student) => ({
         ...guardian,
