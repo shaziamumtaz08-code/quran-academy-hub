@@ -84,7 +84,10 @@ export interface StudentInfo {
   preferred_unit?: string;
   timezone?: string;
   gender?: string | null;
+  /** Teacher assigned to this student (used when an admin marks on a teacher's behalf). */
+  teacher_id?: string | null;
 }
+
 
 /** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
 export interface ExistingAttendanceRecord {
