@@ -97,6 +97,8 @@ import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
+import { MigrateStudentLoginsDialog } from '@/components/users/MigrateStudentLoginsDialog';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
@@ -1784,7 +1786,13 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
           </Card>
         )}
 
-        {!scopedView && <RegistrationLinksCard />}
+        {!scopedView && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <RegistrationLinksCard />
+            <MigrateStudentLoginsDialog />
+          </div>
+        )}
+
 
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
