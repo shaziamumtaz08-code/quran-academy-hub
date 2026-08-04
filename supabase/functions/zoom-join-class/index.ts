@@ -196,53 +196,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // POOLED FALLBACK — legacy path: allocate from Room 1/Room 2 pool.
-    if (!session.license_id) {
-      if (!(isTeacher || isAdmin)) {
-        return jsonResp({
-          ready: false,
-          sessionId: session.id,
-          message: "Waiting for teacher to open the class room.",
-        });
-      }
+    // DEDICATED-ONLY POLICY — the shared pool (Room 1/Room 2, owner account)
+    // is fully bypassed. No dedicated link = no join, for everyone.
+    const dedicatedMissingMsg = dedicatedAccount
+      ? "This teacher's dedicated Zoom account has no meeting link saved. Add it in Zoom Control Room."
+      : "No dedicated Zoom account is linked to this teacher. Ask an admin to link one in Zoom Control Room.";
 
-      const { data: reserved, error: rpcErr } = await service.rpc("get_and_reserve_license", {
-        _teacher_id: p.teacherId,
-        _session_id: session.id,
-      });
-      if (rpcErr || !reserved || (Array.isArray(reserved) && reserved.length === 0)) {
-        return jsonResp({
-          ready: false,
-          sessionId: session.id,
-          message: rpcErr?.message || "No Zoom room available. Ask an admin to link a dedicated Zoom account for this teacher in Zoom Control Room.",
-        });
-      }
-      const row = Array.isArray(reserved) ? reserved[0] : reserved;
-      return jsonResp({
-        ready: true,
-        sessionId: session.id,
-        licenseId: row.license_id || null,
-        joinUrl: appendUname(row.meeting_link),
-      });
-    }
-
-    const { data: license } = await service
-      .from("zoom_licenses")
-      .select("meeting_link")
-      .eq("id", session.license_id)
-      .maybeSingle();
-    if (!license?.meeting_link) {
-      return jsonResp({
-        ready: false,
-        sessionId: session.id,
-        message: "Meeting link not available yet.",
-      });
-    }
     return jsonResp({
-      ready: true,
+      ready: false,
       sessionId: session.id,
-      licenseId: session.license_id || null,
-      joinUrl: appendUname(license.meeting_link),
+      message: isTeacher || isAdmin ? dedicatedMissingMsg : "Class room is not ready yet. Please wait for your teacher.",
     });
   } catch (e) {
     return jsonResp({ error: e instanceof Error ? e.message : String(e) }, 500);
