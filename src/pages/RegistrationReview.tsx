@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
+import { useDivision } from '@/contexts/DivisionContext';
 import { uploadAvatar } from '@/lib/avatarUpload';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
