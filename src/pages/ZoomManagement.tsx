@@ -53,6 +53,9 @@ export default function ZoomManagement() {
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'shared' | 'vault' | 'pool'>('live');
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
+  const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
+  const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
+
 
   const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
   const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
