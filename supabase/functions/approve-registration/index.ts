@@ -182,13 +182,15 @@ Deno.serve(async (req) => {
         const childName = child.name || child.full_name || "Student";
 
         // Reuse an already-issued AQT login if this exact student was created before,
-        // otherwise mint a fresh one.
+        // otherwise mint a fresh one. Only ever reuse a profile that is a student —
+        // parent/teacher accounts must never be recycled as a student login.
         let childEmail: string;
         const { data: existingProfile } = await admin
           .from("profiles")
-          .select("id, email")
+          .select("id, email, user_roles!inner(role)")
           .ilike("full_name", childName.trim())
           .ilike("email", `%@alqurantimeacademy.com`)
+          .eq("user_roles.role", "student")
           .maybeSingle();
 
         if (existingProfile?.email) {
@@ -201,6 +203,15 @@ Deno.serve(async (req) => {
             return json(400, { error: e?.message || `Could not create a login for ${childName}` });
           }
         }
+
+        // Policy guard: a student login is always academy-issued and can never be
+        // the parent's (or any non-student's) address.
+        if (childEmail === parentEmail || !childEmail.endsWith("@alqurantimeacademy.com")) {
+          return json(400, {
+            error: `Login policy violation: ${childName} must get an academy-issued login, not a shared/parent email.`,
+          });
+        }
+
 
         const res = await upsertUser(admin, {
           email: childEmail,
