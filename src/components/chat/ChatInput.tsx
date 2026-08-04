@@ -10,9 +10,11 @@ interface ChatInputProps {
   sending: boolean;
   replyTo: any | null;
   onCancelReply: () => void;
+  /** Conversation this input posts into — attachments are stored under this folder. */
+  groupId?: string;
 }
 
-export function ChatInput({ onSend, sending, replyTo, onCancelReply }: ChatInputProps) {
+export function ChatInput({ onSend, sending, replyTo, onCancelReply, groupId }: ChatInputProps) {
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
@@ -33,7 +35,11 @@ export function ChatInput({ onSend, sending, replyTo, onCancelReply }: ChatInput
   const uploadFile = async (file: File | Blob, ext: string): Promise<string | null> => {
     setUploading(true);
     try {
-      const path = `chat/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!groupId || !userId) throw new Error('You must be in a conversation to attach files.');
+      // Storage layout is enforced by policy: <group_id>/<uploader_id>/<file>
+      const path = `${groupId}/${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
       const { error } = await supabase.storage.from('chat-attachments').upload(path, file);
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('chat-attachments').getPublicUrl(path);

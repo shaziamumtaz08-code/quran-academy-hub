@@ -484,6 +484,7 @@ function GroupChatInner() {
 
             {(activeGroup.channel_mode !== 'channel' || isGroupAdmin) ? (
               <ChatInput
+                groupId={activeGroup.id}
                 onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
                 sending={sendMessage.isPending}
                 replyTo={replyTo}
