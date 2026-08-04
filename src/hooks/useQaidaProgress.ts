@@ -60,14 +60,19 @@ export function baabsForPage(baabs: QaidaBaab[], page: number) {
   return baabs.filter(b => page >= b.start_page && page <= b.end_page);
 }
 
-export const unitLabel = (t?: string | null) => (t === 'line' ? 'Line' : 'Word');
+export const unitLabel = (t?: string | null) => {
+  if (t === 'line') return 'Line';
+  if (t === 'phrase') return 'Phrase';
+  return 'Word';
+};
 
 function buildProgress(
   baabs: QaidaBaab[],
   pages: QaidaPage[],
-  rows: { qaida_page_id: string | null; qaida_unit_to: number | null; class_date: string }[],
+  rows: { qaida_baab_id?: string | null; qaida_page_id: string | null; qaida_unit_to: number | null; class_date: string }[],
 ): QaidaStudentProgress {
   const pageById = new Map(pages.map(p => [p.id, p]));
+  const baabById = new Map(baabs.map(b => [b.id, b]));
   const reached = new Map<string, number>();
   let lastDate: string | null = null;
   let currentPage: number | null = null;
@@ -75,17 +80,19 @@ function buildProgress(
 
   const sorted = [...rows].sort((a, b) => a.class_date.localeCompare(b.class_date));
   sorted.forEach(r => {
-    if (!r.qaida_page_id) return;
-    const page = pageById.get(r.qaida_page_id);
-    if (!page?.baab_id) return;
+    const baabId = r.qaida_baab_id || (r.qaida_page_id ? pageById.get(r.qaida_page_id)?.baab_id : null);
+    if (!baabId || !baabById.has(baabId)) return;
+    const baab = baabById.get(baabId)!;
     const to = Number(r.qaida_unit_to || 0);
-    reached.set(page.baab_id, Math.max(reached.get(page.baab_id) || 0, to));
+    reached.set(baabId, Math.max(reached.get(baabId) || 0, to));
     lastDate = r.class_date;
-    if (currentPage === null || page.page_number >= currentPage) {
-      currentPage = page.page_number;
+    const page = r.qaida_page_id ? pageById.get(r.qaida_page_id)?.page_number ?? baab.start_page : baab.start_page;
+    if (currentPage === null || page >= currentPage) {
+      currentPage = page;
       currentUnit = to || currentUnit;
     }
   });
+
 
   const withProgress: BaabProgress[] = baabs.map(b => {
     const unitsReached = Math.min(reached.get(b.id) || 0, b.total_units);
