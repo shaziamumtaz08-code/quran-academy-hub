@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
+import { generateAqtEmail, generateInitialPassword } from "../_shared/aqt-email.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -15,6 +16,7 @@ function tempPasswordFor(fullName: string) {
   const first = (fullName || "User").split(/\s+/)[0] || "User";
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() + "1234";
 }
+
 
 type Admin = Awaited<ReturnType<typeof requireRole>> extends { adminClient: infer C } ? C : never;
 
