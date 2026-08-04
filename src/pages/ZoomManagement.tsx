@@ -25,6 +25,9 @@ import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import { Download } from 'lucide-react';
+
 
 
 import { AlertTriangle } from 'lucide-react';
