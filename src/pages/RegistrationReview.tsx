@@ -34,6 +34,7 @@ function Field({
 export default function RegistrationReview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { activeDivision } = useDivision();
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState<Record<string, any>>({});
