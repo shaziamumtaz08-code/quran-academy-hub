@@ -466,20 +466,38 @@ export function UnifiedAttendanceForm({
     return scheduledDays.includes(dayName);
   }, [classDate, scheduledDays, isOneToOne]);
 
-  // Get scheduled time for the selected day
+  // Get scheduled time for the selected day. Falls back to the student's usual slot
+  // (their other active schedule rows) so ad-hoc / make-up days still auto-fill and the
+  // teacher never has to type the time manually.
   const getScheduledInfoForDay = (date: string) => {
-    if (!scheduleData || !date) return null;
+    if (!scheduleData || scheduleData.length === 0 || !date) return null;
     const dayIndex = getDay(parseISO(date));
     const dayName = DAY_NAMES[dayIndex];
-    const schedule = scheduleData.find(s => s.day_of_week.toLowerCase() === dayName);
-    return schedule ? { 
-      time: schedule.teacher_local_time, 
+    const exact = scheduleData.find(s => s.day_of_week.toLowerCase() === dayName);
+    // Fallback: most frequent time across the student's active slots
+    const fallback = (() => {
+      const counts = new Map<string, { row: typeof scheduleData[number]; n: number }>();
+      for (const s of scheduleData) {
+        const key = (s.teacher_local_time || '').substring(0, 5);
+        if (!key) continue;
+        const prev = counts.get(key);
+        counts.set(key, { row: prev?.row ?? s, n: (prev?.n ?? 0) + 1 });
+      }
+      let best: { row: typeof scheduleData[number]; n: number } | null = null;
+      for (const v of counts.values()) if (!best || v.n > best.n) best = v;
+      return best?.row ?? null;
+    })();
+    const schedule = exact ?? fallback;
+    return schedule ? {
+      time: schedule.teacher_local_time,
       duration: schedule.duration_minutes,
-      studentTime: schedule.student_local_time 
+      studentTime: schedule.student_local_time,
+      isExactDay: !!exact,
     } : null;
   };
 
-  // Update time when date changes or modal opens (create mode only — edit preserves recorded values)
+  // Auto-fill time + duration from the schedule whenever the date changes or the modal
+  // opens (create mode only — edit preserves recorded values).
   useEffect(() => {
     if (isEdit) return;
     if (open && classDate && scheduleData) {
@@ -491,6 +509,12 @@ export function UnifiedAttendanceForm({
       }
     }
   }, [open, classDate, scheduleData, isEdit]);
+
+  const autoFilledSlot = useMemo(
+    () => (isEdit || !classDate ? null : getScheduledInfoForDay(classDate)),
+    [isEdit, classDate, scheduleData],
+  );
+
 
   const requiresReason = (status: AttendanceStatus) => 
     ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
@@ -1038,6 +1062,13 @@ export function UnifiedAttendanceForm({
                   placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
                   className="[&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+                {autoFilledSlot && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {autoFilledSlot.isExactDay
+                      ? 'Auto-filled from the weekly schedule. Edit only if the class ran at a different time.'
+                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
+                  </p>
+                )}
               </div>
             </div>
           ) : (
