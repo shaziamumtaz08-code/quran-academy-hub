@@ -291,7 +291,9 @@ export function UnifiedAttendanceForm({
     staleTime: 5 * 60 * 1000,
   });
 
-  const resolvedSubjectName = student.subject_name || resolvedAssignment?.subject?.name || null;
+  // The assignment is authoritative. A stale/null subject supplied by a caller
+  // must never force a Quran student into the generic academic form.
+  const resolvedSubjectName = resolvedAssignment?.subject?.name || student.subject_name || null;
   const resolvedAssignmentId = student.assignment_id || resolvedAssignment?.id || null;
   const resolvedTeacherId = student.teacher_id || resolvedAssignment?.teacher_id || teacherId || user?.id;
 
@@ -343,7 +345,7 @@ export function UnifiedAttendanceForm({
   // duplicate-guard trigger). Skipped in edit mode — the row being edited is itself
   // the match.
   const { data: existingAttendance } = useQuery({
-    queryKey: ['attendance-check-unified', student.id, classDate, classTime, effectiveTeacherId, isEdit],
+    queryKey: ['attendance-check-unified', student.id, classDate, classTime, resolvedTeacherId, isEdit],
     queryFn: async () => {
       let q = supabase
         .from('attendance')
@@ -351,7 +353,7 @@ export function UnifiedAttendanceForm({
         .eq('student_id', student.id)
         .eq('class_date', classDate);
       if (classTime) q = q.eq('class_time', classTime);
-      if (effectiveTeacherId) q = q.eq('teacher_id', effectiveTeacherId);
+      if (resolvedTeacherId) q = q.eq('teacher_id', resolvedTeacherId);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -656,7 +658,7 @@ export function UnifiedAttendanceForm({
 
   const markAttendance = useMutation({
     mutationFn: async () => {
-      if (!effectiveTeacherId) throw new Error('Missing teacher');
+      if (!resolvedTeacherId) throw new Error('Missing teacher');
 
       // For teacher-only / holiday statuses with no preset student, fall back to first
       // student in the picker list so the row still records (legacy behaviour).
@@ -797,7 +799,7 @@ export function UnifiedAttendanceForm({
             const info = getScheduledInfoForDay(d);
             return {
               student_id: resolvedStudentId,
-              teacher_id: effectiveTeacherId,
+              teacher_id: resolvedTeacherId,
               ...basePayload,
               ...phaseAPayload,
               class_date: d,
@@ -813,7 +815,7 @@ export function UnifiedAttendanceForm({
       } else {
         const insertPayload: any = {
           student_id: resolvedStudentId,
-          teacher_id: effectiveTeacherId,
+          teacher_id: resolvedTeacherId,
           ...basePayload,
           ...phaseAPayload,
         };
@@ -829,7 +831,7 @@ export function UnifiedAttendanceForm({
           await supabase.from('session_reschedules' as any).insert({
             attendance_id: savedId,
             student_id: resolvedStudentId,
-            teacher_id: effectiveTeacherId,
+            teacher_id: resolvedTeacherId,
             original_date: rescheduleDate,
             original_time: rescheduleTime || null,
             new_date: classDate,
@@ -1263,7 +1265,7 @@ export function UnifiedAttendanceForm({
           )}
 
           {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
-          {lessonRequired && (
+          {lessonRequired && (!needsStudent || !!student.id) && (
             <div className="space-y-4">
               {/* Lesson Today: New vs Same as last class + reason */}
               <LessonTypeSection
