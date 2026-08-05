@@ -1062,6 +1062,13 @@ export function UnifiedAttendanceForm({
                   placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
                   className="[&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+                {autoFilledSlot && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {autoFilledSlot.isExactDay
+                      ? 'Auto-filled from the weekly schedule. Edit only if the class ran at a different time.'
+                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
+                  </p>
+                )}
               </div>
             </div>
           ) : (
