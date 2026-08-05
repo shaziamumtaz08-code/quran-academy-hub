@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         const res = await upsertUser(admin, {
           email: childEmail,
           fullName: childName,
-          password: tempPasswordFor(fullName),
+          password: tempPasswordFor(childName),
 
 
           role: "student",
