@@ -254,9 +254,44 @@ export function UnifiedAttendanceForm({
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
   const [manzilAnswered, setManzilAnswered] = useState(false);
 
+  // Fallback: if the caller didn't pass a subject, resolve it from the student's
+  // active 1:1 assignment so Qaida/Hifz/Nazra forms always render (never generic).
+  const { data: resolvedSubjectName } = useQuery({
+    queryKey: ['attendance-subject-resolve', student.id, effectiveTeacherId],
+    queryFn: async () => {
+      if (!student.id) return null;
+      let q = supabase
+        .from('student_teacher_assignments')
+        .select('subject:subjects(name), status, created_at')
+        .eq('student_id', student.id)
+        .in('status', ['active', 'on_hold'])
+        .order('status', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (effectiveTeacherId) q = q.eq('teacher_id', effectiveTeacherId);
+      let { data } = await q;
+      if (!data?.length && effectiveTeacherId) {
+        // No row for this teacher (e.g. admin marking on behalf) — fall back to any active assignment.
+        const res = await supabase
+          .from('student_teacher_assignments')
+          .select('subject:subjects(name), status, created_at')
+          .eq('student_id', student.id)
+          .in('status', ['active', 'on_hold'])
+          .order('status', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(1);
+        data = res.data as any;
+      }
+      return (data?.[0] as any)?.subject?.name ?? null;
+    },
+    enabled: open && !!student.id && !student.subject_name,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const currentSubjectType: SubjectType = useMemo(() => {
-    return getSubjectType(student.subject_name);
-  }, [student.subject_name]);
+    return getSubjectType(student.subject_name || resolvedSubjectName);
+  }, [student.subject_name, resolvedSubjectName]);
+
 
   // Fetch student gender (for conditional reason options like Periods)
   const { data: studentProfile } = useQuery({
