@@ -105,6 +105,7 @@ interface Profile {
   subject_name?: string | null;
   subject_id?: string | null;
   teacher_id?: string | null;
+  assignment_id?: string | null;
 
 }
 
@@ -245,13 +246,14 @@ export default function Attendance() {
         // Teacher sees their assigned students with subject info
         const { data, error } = await supabase
           .from('student_teacher_assignments')
-          .select('student_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
+          .select('id, student_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
           .eq('teacher_id', user.id)
           .eq('status', 'active');
 
         if (error) throw error;
         return (data || []).map(d => ({
           ...d.student,
+          assignment_id: d.id,
           subject_name: d.subject?.name || null,
           subject_id: d.subject?.id || null
         })).filter(Boolean) as Profile[];
@@ -260,7 +262,7 @@ export default function Attendance() {
         // so the unified form renders the correct subject-specific fields (Qaida/Hifz/Nazra/Academic).
         const { data, error } = await supabase
           .from('student_teacher_assignments')
-          .select('student_id, teacher_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
+          .select('id, student_id, teacher_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
           .eq('status', 'active');
 
         if (error) throw error;
@@ -272,6 +274,7 @@ export default function Attendance() {
           seen.add(d.student_id);
           rows.push({
             ...(d.student as any),
+            assignment_id: d.id,
             subject_name: (d as any).subject?.name || null,
             subject_id: (d as any).subject_id || null,
             teacher_id: d.teacher_id,
@@ -1540,6 +1543,7 @@ export default function Attendance() {
             full_name: s.full_name,
             subject_name: (s as any).subject_name ?? null,
             subject_id: (s as any).subject_id ?? null,
+            assignment_id: (s as any).assignment_id ?? null,
             last_lesson: null,
             daily_target_lines: (s as any).daily_target_lines,
             preferred_unit: (s as any).preferred_unit,
