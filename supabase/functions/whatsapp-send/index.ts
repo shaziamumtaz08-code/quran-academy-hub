@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
         delivery_status: deliveryStatus,
         wa_message_id: waMessageId,
         template_name: template_name || null,
-        sent_by: user.id,
+        sent_by: senderId,
       })
       .select()
       .single();
