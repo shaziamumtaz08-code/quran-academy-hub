@@ -1376,8 +1376,6 @@ export function UnifiedAttendanceForm({
                   onLessonTopicChange={setAcademicLessonTopic}
                   lessonStatus={academicLessonStatus}
                   onLessonStatusChange={(v) => setAcademicLessonStatus(v)}
-                  homework={homework}
-                  onHomeworkChange={setHomework}
                   followupSuggestions={academicFollowups}
                   onFollowupSuggestionsChange={setAcademicFollowups}
                 />
