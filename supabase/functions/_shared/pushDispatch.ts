@@ -55,6 +55,39 @@ export interface PushRecipient {
   vars?: Record<string, string>;
 }
 
+/** Maps an event trigger to the matching column in notification_preferences. */
+const PREFERENCE_COLUMN: Record<string, string> = {
+  class_reminder: "class_reminders",
+  fee_reminder: "fee_reminders",
+  attendance_absent: "attendance_alerts",
+  announcement: "announcements",
+  new_message: "messages",
+};
+
+/**
+ * Returns the set of recipient ids that have opted OUT of this trigger.
+ * Missing rows mean "opted in" (defaults are on).
+ */
+async function loadOptOuts(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  eventTrigger: string,
+  ids: string[],
+): Promise<Set<string>> {
+  const column = PREFERENCE_COLUMN[eventTrigger];
+  if (!column || ids.length === 0) return new Set();
+  const { data } = await supabase
+    .from("notification_preferences")
+    .select(`user_id, ${column}`)
+    .in("user_id", ids);
+  const out = new Set<string>();
+  // deno-lint-ignore no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    if (row[column] === false) out.add(row.user_id);
+  }
+  return out;
+}
+
 /**
  * Queues + delivers a push notification to each recipient that has at least
  * one registered token. Never throws for a single recipient — failures are
@@ -87,11 +120,32 @@ export async function dispatchPush(
   }
 
   const title = template.name || "Notification";
+  const trigger = String(template.event_trigger || "");
+  const optedOut = await loadOptOuts(
+    supabase,
+    trigger,
+    recipients.map((r) => r.profile_id),
+  );
 
   for (const recipient of recipients) {
     try {
+      if (optedOut.has(recipient.profile_id)) continue;
+
       const vars = { ...basePayload, ...(recipient.vars || {}) };
       const rendered = renderTemplate(template.template_text || "", vars);
+
+      // Always mirror into the in-app inbox so the bell works even when the
+      // user has no device token (desktop without permission, iOS not installed).
+      await supabase.from("notification_queue").insert({
+        recipient_id: recipient.profile_id,
+        recipient_type: "user",
+        notification_type: trigger || "push",
+        title,
+        message: rendered,
+        metadata: vars,
+        status: "sent",
+        sent_at: new Date().toISOString(),
+      });
 
       const { data: tokens } = await supabase
         .from("push_tokens")
@@ -103,6 +157,7 @@ export async function dispatchPush(
         continue;
       }
       summary.tokens_found += tokens.length;
+
 
       const { data: event, error: insErr } = await supabase
         .from("notification_events")

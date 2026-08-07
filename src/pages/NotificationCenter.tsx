@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Bell, MessageSquare, Mail, Send, Plus, Clock, CheckCircle, XCircle, AlertCircle, Check, Smartphone, CalendarClock } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { NotificationPreferencesCard } from "@/components/notifications/NotificationPreferencesCard";
+
 
 const channelIcons: Record<string, React.ReactNode> = {
   whatsapp: <MessageSquare className="h-4 w-4 text-emerald-600" />,
@@ -228,10 +230,18 @@ export default function NotificationCenter() {
             <TabsTrigger value="my-notifications">
               My Notifications {unreadCount > 0 && <Badge variant="destructive" className="ml-1.5 text-[10px] h-4 min-w-4 px-1">{unreadCount}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
             {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
             {isAdmin && <TabsTrigger value="history">Send History</TabsTrigger>}
             {isAdmin && <TabsTrigger value="push">Push Notifications</TabsTrigger>}
           </TabsList>
+
+          <TabsContent value="preferences" className="space-y-4">
+            <div className="max-w-2xl">
+              <NotificationPreferencesCard />
+            </div>
+          </TabsContent>
+
 
           {/* My Notifications */}
           <TabsContent value="my-notifications" className="space-y-3">

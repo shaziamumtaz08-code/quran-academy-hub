@@ -5878,6 +5878,39 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          announcements: boolean
+          attendance_alerts: boolean
+          class_reminders: boolean
+          created_at: string
+          fee_reminders: boolean
+          messages: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          announcements?: boolean
+          attendance_alerts?: boolean
+          class_reminders?: boolean
+          created_at?: string
+          fee_reminders?: boolean
+          messages?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          announcements?: boolean
+          attendance_alerts?: boolean
+          class_reminders?: boolean
+          created_at?: string
+          fee_reminders?: boolean
+          messages?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_queue: {
         Row: {
           created_at: string
