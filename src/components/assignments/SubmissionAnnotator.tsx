@@ -59,7 +59,7 @@ export function SubmissionAnnotator({ fileUrl, fileName, value, onChange, disabl
       try {
         if (isPdf) {
           const { pdfjsLib } = await import('@/lib/pdfWorker');
-          const pdf = await pdfjsLib.getDocument(fileUrl).promise;
+          const pdf = await pdfjsLib.getDocument({ url: fileUrl }).promise;
           if (cancelled) return;
           setNumPages(pdf.numPages);
           const p = await pdf.getPage(Math.min(page, pdf.numPages));
