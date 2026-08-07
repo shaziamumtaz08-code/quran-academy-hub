@@ -153,6 +153,21 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Always mirror into the in-app inbox so the bell shows it even when
+        // device delivery fails or no token is registered.
+        await supabase.from("notification_queue").insert({
+          recipient_id: recipient.profile_id,
+          recipient_type: "user",
+          notification_type: String(template.event_trigger || "push"),
+          title,
+          message: rendered,
+          metadata: { ...payload, ...(recipient.vars || {}) },
+          status: "sent",
+          sent_at: new Date().toISOString(),
+        });
+
+
+
         const { data: tokens } = await supabase
           .from("push_tokens")
           .select("id, token")
