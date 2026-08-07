@@ -5281,6 +5281,7 @@ export type Database = {
           publication_year: number | null
           publisher: string | null
           share_token: string | null
+          share_token_expires_at: string | null
           status: string
           tags: string[]
           thumbnail: string | null
@@ -5316,6 +5317,7 @@ export type Database = {
           publication_year?: number | null
           publisher?: string | null
           share_token?: string | null
+          share_token_expires_at?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
@@ -5351,6 +5353,7 @@ export type Database = {
           publication_year?: number | null
           publisher?: string | null
           share_token?: string | null
+          share_token_expires_at?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
