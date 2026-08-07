@@ -1,6 +1,4 @@
 import React from 'react';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
@@ -40,10 +38,6 @@ interface NazraAttendanceFieldsProps {
   quarterToNumber: string;
   onQuarterToNumberChange: (value: string) => void;
   
-  // Manzil (Revision) - Yes/No only
-  manzilDone: boolean;
-  onManzilDoneChange: (value: boolean) => void;
-
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
 }
@@ -75,8 +69,6 @@ export function NazraAttendanceFields({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
-  manzilDone,
-  onManzilDoneChange,
   isRepeatLesson = false,
 }: NazraAttendanceFieldsProps) {
   return (
@@ -124,21 +116,6 @@ export function NazraAttendanceFields({
         onQuarterToNumberChange={onQuarterToNumberChange}
       />
       
-      {/* Manzil Section - Yes/No Only */}
-      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">📚 Manzil / Revision</Label>
-            <p className="text-xs text-muted-foreground">
-              Did the student complete their revision today?
-            </p>
-          </div>
-          <Switch
-            checked={manzilDone}
-            onCheckedChange={onManzilDoneChange}
-          />
-        </div>
-      </div>
     </div>
   );
 }
