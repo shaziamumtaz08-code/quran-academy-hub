@@ -59,6 +59,11 @@ export default function StudentProfile() {
         profile = full.data;
       }
 
+      // Medical / emergency contact fields are restricted; fetch via secure RPC
+      // (self, linked parents and admins only).
+      const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: studentId! });
+      if (profile && Array.isArray(wellbeing) && wellbeing[0]) profile = { ...profile, ...wellbeing[0] };
+
       const { data: links } = await supabase
         .from('student_parent_links')
         .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url, whatsapp_number)')

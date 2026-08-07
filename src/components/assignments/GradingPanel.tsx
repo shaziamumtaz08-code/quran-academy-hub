@@ -14,8 +14,10 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  Download, Check, Loader2, ChevronLeft, ChevronRight, FileText,
+  Download, Check, Loader2, ChevronLeft, ChevronRight, FileText, PenLine, Mic,
 } from 'lucide-react';
+import { SubmissionAnnotator, type Annotation } from './SubmissionAnnotator';
+import { VoiceNoteRecorder } from '@/components/attendance/VoiceNoteRecorder';
 
 interface GradingPanelProps {
   submissionId: string;
@@ -31,6 +33,9 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
   const [score, setScore] = useState('');
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState('graded');
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [showAnnotator, setShowAnnotator] = useState(false);
 
   // Fetch full submission with joins
   const { data: submission, isLoading } = useQuery({
@@ -38,7 +43,7 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
     queryFn: async () => {
       const { data, error } = await supabase
         .from('course_assignment_submissions')
-        .select('id, student_id, assignment_id, status, submitted_at, response_text, file_url, file_name, score, feedback, graded_at, graded_by')
+        .select('id, student_id, assignment_id, status, submitted_at, response_text, file_url, file_name, score, feedback, graded_at, graded_by, annotations, feedback_voice_url')
         .eq('id', submissionId)
         .single();
       if (error) throw error;
@@ -68,6 +73,9 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
       setScore(submission.score != null ? String(submission.score) : '');
       setFeedback(submission.feedback || '');
       setStatus(submission.status === 'submitted' ? 'graded' : submission.status);
+      setAnnotations(Array.isArray(submission.annotations) ? (submission.annotations as unknown as Annotation[]) : []);
+      setVoiceUrl(submission.feedback_voice_url || null);
+      setShowAnnotator(false);
     }
   }, [submission]);
 
@@ -79,6 +87,8 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
           score: score ? Number(score) : null,
           feedback: feedback || null,
           status,
+          annotations: annotations as any,
+          feedback_voice_url: voiceUrl,
           graded_by: user!.id,
           graded_at: new Date().toISOString(),
         })
@@ -165,6 +175,27 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
         )}
       </div>
 
+      {/* ─── ANNOTATION LAYER ─── */}
+      {submission.file_url && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Markup</p>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAnnotator(v => !v)}>
+              <PenLine className="h-3.5 w-3.5 mr-1" />
+              {showAnnotator ? 'Hide' : annotations.length ? `Review markup (${annotations.length})` : 'Annotate'}
+            </Button>
+          </div>
+          {showAnnotator && (
+            <SubmissionAnnotator
+              fileUrl={submission.file_url}
+              fileName={submission.file_name}
+              value={annotations}
+              onChange={setAnnotations}
+            />
+          )}
+        </div>
+      )}
+
       {/* ─── REFERENCE SECTION ─── */}
       <Accordion type="single" collapsible>
         <AccordionItem value="instructions" className="border rounded-lg px-3">
@@ -239,6 +270,21 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
             placeholder="Write feedback for the student..."
             className="mt-1"
           />
+        </div>
+
+        {/* Voice feedback */}
+        <div className="rounded-lg border bg-primary/5 p-3">
+          <VoiceNoteRecorder
+            uploadPath={`grading/${submissionId}`}
+            onUploadComplete={(url) => setVoiceUrl(url)}
+            className="[&_p]:text-muted-foreground"
+          />
+          {voiceUrl && (
+            <div className="mt-2 flex items-center gap-2">
+              <Mic className="h-3.5 w-3.5 text-emerald-600" />
+              <audio src={voiceUrl} controls className="h-8 flex-1" />
+            </div>
+          )}
         </div>
 
         {/* Status */}

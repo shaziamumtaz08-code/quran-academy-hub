@@ -1422,9 +1422,11 @@ export type Database = {
       }
       course_assignment_submissions: {
         Row: {
+          annotations: Json
           assignment_id: string
           created_at: string
           feedback: string | null
+          feedback_voice_url: string | null
           file_name: string | null
           file_url: string | null
           graded_at: string | null
@@ -1438,9 +1440,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annotations?: Json
           assignment_id: string
           created_at?: string
           feedback?: string | null
+          feedback_voice_url?: string | null
           file_name?: string | null
           file_url?: string | null
           graded_at?: string | null
@@ -1454,9 +1458,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annotations?: Json
           assignment_id?: string
           created_at?: string
           feedback?: string | null
+          feedback_voice_url?: string | null
           file_name?: string | null
           file_url?: string | null
           graded_at?: string | null
@@ -12587,6 +12593,18 @@ export type Database = {
           bookings: Json
           label: string
           vault_account_id: string
+        }[]
+      }
+      get_profile_wellbeing: {
+        Args: { _user_id: string }
+        Returns: {
+          blood_group: string
+          emergency_contact_phone: string
+          father_contact: string
+          medical_conditions: string
+          medical_notes: string
+          mother_contact: string
+          user_id: string
         }[]
       }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
