@@ -15,8 +15,7 @@ export const STUDENT_ALLOWED_ROUTES: readonly string[] = [
   '/my-quizzes',
   '/recordings',
   '/student-reports',
-  '/resources',          // student-accessible read view (assigned / shared)
-  '/my-resources',
+  '/library',            // student-accessible read view (assigned / shared)
   '/communication',
   '/chat',
   '/notifications',

@@ -29,7 +29,7 @@ export default function SettingsLanding() {
   const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
   // Legacy redirect: Resources Manager moved to top-level /resources
-  if (requested === 'resources') return <Navigate to="/resources" replace />;
+  if (requested === 'resources') return <Navigate to="/library" replace />;
   // Legacy redirect: Teaching Config (Zoom) moved to Communication → Zoom
   if (requested === 'teaching-config') return <Navigate to="/communication?view=zoom" replace />;
   const activeView = views.includes((requested || '') as (typeof views)[number]) ? requested! : null;

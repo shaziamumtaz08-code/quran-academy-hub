@@ -551,7 +551,7 @@ export function ChildrenDashboardView({
         {[
           { label: 'Message Teacher', icon: MessageSquare, onClick: messageTeacher },
           { label: 'Leave Request',   icon: Send,          onClick: requestLeave },
-          { label: 'My Files',        icon: FolderOpen,    onClick: () => navigate('/resources') },
+          { label: 'My Files',        icon: FolderOpen,    onClick: () => navigate('/library') },
           { label: 'My Network',      icon: Network,       onClick: () => navigate(`/connections/parent/${user?.id}`) },
           { label: 'Recordings',      icon: Video,         onClick: () => navigate('/my-courses?tab=recordings') },
           { label: 'Exam Results',    icon: Award,         onClick: () => navigate('/student-reports') },

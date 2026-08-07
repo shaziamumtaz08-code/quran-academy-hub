@@ -47,7 +47,7 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
       items: [
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'My Courses', href: '/my-courses' },
-        { label: 'Resources', href: '/resources' },
+        { label: 'Library', href: '/library' },
       ],
     };
   }
@@ -239,7 +239,7 @@ function getReportsSidebar(role?: string | null): { title: string; subtitle: str
 function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null, activeModelType?: string | null) {
   const isStudent = role === 'student';
   const isStudentOrParent = role === 'student' || role === 'parent';
-  if (isStudent && pathname.startsWith('/resources')) {
+  if (isStudent && pathname.startsWith('/library')) {
     return getHomeSidebar(isOneToOne, role, activeModelType);
   }
   // Students should never see Teaching sidebar

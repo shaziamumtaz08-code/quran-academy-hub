@@ -491,7 +491,7 @@ function AppRoutes() {
       <Route path="/courses" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><Courses /></RouteGuard></ProtectedRoute>} />
       <Route path="/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/academics/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
-      <Route path="/course-asset-library" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><CourseAssetLibrary /></RouteGuard></ProtectedRoute>} />
+      <Route path="/course-asset-library" element={<Navigate to="/library" replace />} />
       <Route path="/organization-settings" element={<ProtectedRoute><RouteGuard moduleId="org_settings"><OrganizationSettings /></RouteGuard></ProtectedRoute>} />
       <Route path="/finance-setup" element={<ProtectedRoute><RouteGuard moduleId="finance_setup"><FinanceSetup /></RouteGuard></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><RouteGuard moduleId="salary"><SalaryEngine /></RouteGuard></ProtectedRoute>} />
@@ -508,7 +508,7 @@ function AppRoutes() {
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
-      <Route path="/resources" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Resources /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/resources" element={<Navigate to="/library" replace />} />
       <Route path="/library" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Library /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/library/share/:token" element={<LibraryShare />} />
       <Route path="/leads" element={<ProtectedRoute><RouteGuard moduleId="leads"><DivisionModelGuard allowedModels={['one_to_one']}><LeadsPipeline /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
@@ -519,7 +519,7 @@ function AppRoutes() {
       <Route path="/work-hub" element={<ProtectedRoute><RouteGuard moduleId="work_hub"><WorkHub /></RouteGuard></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><RouteGuard moduleId="chat"><GroupChat /></RouteGuard></ProtectedRoute>} />
       <Route path="/whatsapp" element={<ProtectedRoute><RouteGuard moduleId="whatsapp"><WhatsAppInbox /></RouteGuard></ProtectedRoute>} />
-      <Route path="/my-resources" element={<Navigate to="/resources?tab=assigned" replace />} />
+      <Route path="/my-resources" element={<Navigate to="/library" replace />} />
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />

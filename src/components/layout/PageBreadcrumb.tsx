@@ -78,7 +78,7 @@ const VIEW_LABELS: Record<string, string> = {
   classroom: 'Classroom',
   'finance-setup': 'Finance Setup',
   'teaching-config': 'Teaching Config',
-  resources: 'Resources Manager',
+  resources: 'Library',
   integrity: 'Integrity Audit',
   schema: 'Schema Explorer',
 };
