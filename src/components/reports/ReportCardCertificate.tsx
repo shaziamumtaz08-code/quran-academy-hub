@@ -1,3 +1,4 @@
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -66,9 +67,10 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
         .gte('class_date', monthStart)
         .lte('class_date', monthEnd);
       if (error) return { present: 0, absent: 0, total: 0, percentage: 0 };
-      const present = (data || []).filter(a => a.status === 'present' || a.status === 'completed').length;
-      const absent = (data || []).filter(a => a.status === 'absent' || a.status === 'absent_teacher' || a.status === 'absent_student').length;
-      const total = (data || []).length;
+      const present = (data || []).filter(a => isPresentStatus(a.status) || a.status === 'completed').length;
+      const absent = (data || []).filter(a => isAbsentStatus(a.status)).length;
+      // Leave / holiday days are excused — they should not drag the percentage down
+      const total = (data || []).filter(a => !isLeaveStatus(a.status) && normalizeAttendanceStatus(a.status) !== 'holiday').length;
       const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
       return { present, absent, total, percentage };
     },

@@ -1,3 +1,4 @@
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 import React, { useState } from 'react';
 import { Clock, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -146,16 +147,17 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={cn(
       "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium",
-      status === 'present' && "bg-emerald-light/10 text-emerald-light",
-      status === 'absent' && "bg-destructive/10 text-destructive",
+      isPresentStatus(status) && "bg-emerald-light/10 text-emerald-light",
+      isAbsentStatus(status) && "bg-destructive/10 text-destructive",
+      isLeaveStatus(status) && "bg-amber-500/10 text-amber-600",
       status === 'late' && "bg-accent/10 text-accent",
       status === 'pending' && "bg-muted text-muted-foreground"
     )}>
-      {status === 'present' && <CheckCircle className="h-3 w-3" />}
-      {status === 'absent' && <XCircle className="h-3 w-3" />}
+      {isPresentStatus(status) && <CheckCircle className="h-3 w-3" />}
+      {isAbsentStatus(status) && <XCircle className="h-3 w-3" />}
       {status === 'late' && <AlertCircle className="h-3 w-3" />}
       {status === 'pending' && <Clock className="h-3 w-3" />}
-      <span className="capitalize">{status}</span>
+      <span className="capitalize">{attendanceStatusLabel(status)}</span>
     </span>
   );
 }

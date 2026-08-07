@@ -9,6 +9,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
 import { StatsRowCompact } from './shared/StatsRowCompact';
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 
 const ADMIN_TABS = [
   { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
@@ -83,7 +84,7 @@ export function AdminDashboard() {
       const classStaff = classStaffRes.data || [];
       const allAttendance = attendanceRes.data || [];
       const todayAttendance = allAttendance.filter(a => a.class_date === today);
-      const absentToday = todayAttendance.filter(a => a.status === 'absent');
+      const absentToday = todayAttendance.filter(a => isAbsentStatus(a.status));
 
       const studentIds = new Set<string>();
       const teacherIds = new Set<string>();

@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus } from '@/lib/attendanceStatus';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
@@ -408,10 +409,10 @@ export default function SalaryEngine() {
             const dateStr = format(d, 'yyyy-MM-dd');
             const attStatus = attendanceMap.get(dateStr);
             const dayName = format(d, 'EEEE').toLowerCase();
+            // Normalise role-qualified statuses (student_leave / teacher_absent / …)
+            const marked = normalizeAttendanceStatus(attStatus);
             let status = 'none';
-            if (attStatus === 'present' || attStatus === 'late') status = 'present';
-            else if (attStatus === 'absent') status = 'absent';
-            else if (attStatus === 'rescheduled') status = 'rescheduled';
+            if (marked !== 'none') status = marked;
             else if (leaveDateSet.has(dateStr)) status = 'leave';
             else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
             return { date: dateStr, status };
@@ -535,16 +536,29 @@ export default function SalaryEngine() {
   const teacherAttendance = useMemo(() => {
     if (!selectedTeacherId) return { present: 0, absent: 0, leave: 0, notMarked: 0 };
     const teacherAtt = attendance.filter((a: any) => a.teacher_id === selectedTeacherId);
-    const presentDates = new Set(teacherAtt.filter((a: any) => a.status === 'present' || a.status === 'late').map((a: any) => a.class_date));
-    const absentDates = new Set(teacherAtt.filter((a: any) => a.status === 'absent').map((a: any) => a.class_date));
-    const leaveDates = leaveEvents.filter((l: any) => l.teacher_id === selectedTeacherId).length;
+    const presentDates = new Set(teacherAtt.filter((a: any) => isPresentStatus(a.status)).map((a: any) => a.class_date));
+    const absentDates = new Set(teacherAtt.filter((a: any) => isAbsentStatus(a.status)).map((a: any) => a.class_date));
+    // Leave = admin-approved leave events + any day marked as leave on the register
+    const leaveDateSet = new Set<string>(
+      teacherAtt.filter((a: any) => isLeaveStatus(a.status)).map((a: any) => a.class_date as string),
+    );
+    leaveEvents
+      .filter((l: any) => l.teacher_id === selectedTeacherId)
+      .forEach((l: any) => {
+        try {
+          eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) })
+            .forEach(d => leaveDateSet.add(format(d, 'yyyy-MM-dd')));
+        } catch { /* ignore malformed ranges */ }
+      });
+    const leaveDates = [...leaveDateSet].filter(d => d >= monthStart && d <= monthEnd).length;
     return {
       present: presentDates.size,
       absent: absentDates.size,
       leave: leaveDates,
       notMarked: Math.max(0, daysInMonth - presentDates.size - absentDates.size - leaveDates),
     };
-  }, [selectedTeacherId, attendance, leaveEvents, daysInMonth]);
+  }, [selectedTeacherId, attendance, leaveEvents, daysInMonth, monthStart, monthEnd]);
+
 
   const selectedAdjustments = useMemo(() => {
     if (!selectedTeacherId) return [];

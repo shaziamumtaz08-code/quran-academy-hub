@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logo from "@/assets/logo-dark.jpg";
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 
 type AttRow = {
   id: string;
@@ -45,7 +46,9 @@ const statusPill = (status: string) => {
     return { bg: "#dbeafe", color: "#1d4ed8", label: "Rescheduled" };
   if (s === "cancelled" || s === "canceled")
     return { bg: "#e5e7eb", color: "#374151", label: "Cancelled" };
-  if (!s || s === "absent")
+  if (isLeaveStatus(s))
+    return { bg: "#fef3c7", color: "#b45309", label: attendanceStatusLabel(s) };
+  if (!s || isAbsentStatus(s))
     return { bg: "#fee2e2", color: "#b91c1c", label: "Absent" };
   // Unknown status — show raw label instead of misclassifying as Absent
   return { bg: "#e5e7eb", color: "#374151", label: status };
