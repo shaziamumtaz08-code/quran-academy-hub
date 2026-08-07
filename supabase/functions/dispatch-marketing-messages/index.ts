@@ -136,6 +136,9 @@ Deno.serve(async (req) => {
 
       const wantsWhatsApp = (post.channels ?? []).includes("whatsapp");
       let failed = 0;
+      let succeeded = 0;
+      let attempted = 0;
+      let lastError: string | null = null;
 
       if (wantsWhatsApp) {
         const { data: enrolls } = await supabase
@@ -157,6 +160,7 @@ Deno.serve(async (req) => {
           for (const r of list) {
             if (seen.has(r.phone)) continue;
             seen.add(r.phone);
+            attempted++;
             const res = await sendWhatsApp({
               phone: r.phone,
               name: r.name,
@@ -164,27 +168,46 @@ Deno.serve(async (req) => {
               attachment_url: post.attachment_url || undefined,
               attachment_type: post.attachment_url ? "document" : undefined,
             });
-            if (!res.ok) {
+            if (res.ok) {
+              succeeded++;
+            } else {
               failed++;
+              lastError = `[${res.status}] ${res.body}`.slice(0, 500);
               console.error(`promotional_post ${post.id} send failed [${res.status}]: ${res.body}`);
             }
           }
         }
+
+        if (!attempted) lastError = "No reachable WhatsApp recipients for this course.";
       }
 
-      // Mark as sent regardless of channel mix (social/lms are display-only channels).
+      // Only "sent" if at least one recipient succeeded (or the post has no
+      // delivery channel — social/lms are display-only). If every send failed
+      // (or nobody was reachable), mark "failed". Either way the post leaves the
+      // "scheduled" queue so it never retries forever.
+      const deliveryFailed = wantsWhatsApp && succeeded === 0;
+      const finalStatus = deliveryFailed ? "failed" : "sent";
+
       const { error: updErr } = await supabase
         .from("promotional_posts")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .update({
+          status: finalStatus,
+          sent_at: deliveryFailed ? null : new Date().toISOString(),
+          delivery_sent_count: succeeded,
+          delivery_failed_count: failed,
+          last_error: lastError,
+        })
         .eq("id", post.id);
       if (updErr) {
         summary.posts_failed++;
         console.error(`promotional_post ${post.id} status update failed: ${updErr.message}`);
+      } else if (deliveryFailed) {
+        summary.posts_failed++;
       } else {
         summary.posts_sent++;
       }
-      if (failed) summary.posts_failed += 0; // delivery failures logged, post still closed out
     }
+
 
     // ---------- 2. Course message sequences ----------
     const { data: seqs, error: seqErr } = await supabase

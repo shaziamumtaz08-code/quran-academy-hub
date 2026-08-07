@@ -7329,7 +7329,10 @@ export type Database = {
           course_id: string
           created_at: string
           created_by: string | null
+          delivery_failed_count: number
+          delivery_sent_count: number
           id: string
+          last_error: string | null
           scheduled_at: string | null
           sent_at: string | null
           status: string
@@ -7343,7 +7346,10 @@ export type Database = {
           course_id: string
           created_at?: string
           created_by?: string | null
+          delivery_failed_count?: number
+          delivery_sent_count?: number
           id?: string
+          last_error?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string
@@ -7357,7 +7363,10 @@ export type Database = {
           course_id?: string
           created_at?: string
           created_by?: string | null
+          delivery_failed_count?: number
+          delivery_sent_count?: number
           id?: string
+          last_error?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string

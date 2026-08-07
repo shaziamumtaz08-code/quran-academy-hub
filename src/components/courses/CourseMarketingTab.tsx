@@ -359,7 +359,8 @@ function PostsSection({ courseId, courseName, courseDescription }: { courseId: s
               <CardContent className="p-4 flex items-start gap-3">
                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                   post.status === 'scheduled' ? 'bg-amber-100 text-amber-600' :
-                  post.status === 'sent' ? 'bg-emerald-100 text-emerald-600' : 'bg-muted text-muted-foreground'
+                  post.status === 'sent' ? 'bg-emerald-100 text-emerald-600' :
+                  post.status === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
                 )}>
                   {post.status === 'scheduled' ? <Clock className="h-4 w-4" /> :
                    post.status === 'sent' ? <CheckCircle2 className="h-4 w-4" /> :
@@ -368,18 +369,29 @@ function PostsSection({ courseId, courseName, courseDescription }: { courseId: s
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{post.title}</p>
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{post.content}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <Badge variant="outline" className="text-[10px]">{post.status}</Badge>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <Badge variant={post.status === 'failed' ? 'destructive' : 'outline'} className="text-[10px]">{post.status}</Badge>
                     {(post.channels || []).map((ch: string) => (
                       <Badge key={ch} variant="secondary" className="text-[10px]">
-                        {ch} {post.sent_at ? '✓' : '⏳'}
+                        {ch} {post.sent_at ? '✓' : post.status === 'failed' ? '✕' : '⏳'}
                       </Badge>
                     ))}
+                    {(post.delivery_sent_count > 0 || post.delivery_failed_count > 0) && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {post.delivery_sent_count ?? 0} delivered · {post.delivery_failed_count ?? 0} failed
+                      </Badge>
+                    )}
                     <span className="text-[10px] text-muted-foreground ml-auto">
                       {format(new Date(post.created_at), 'MMM d, h:mm a')}
                     </span>
                   </div>
+                  {post.status === 'failed' && post.last_error && (
+                    <p className="text-[10px] text-destructive mt-1 line-clamp-2" title={post.last_error}>
+                      Delivery error: {post.last_error}
+                    </p>
+                  )}
                 </div>
+
                 <button onClick={() => deletePost.mutate(post.id)} className="p-1 text-muted-foreground hover:text-destructive shrink-0">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
