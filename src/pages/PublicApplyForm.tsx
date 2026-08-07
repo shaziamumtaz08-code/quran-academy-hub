@@ -62,14 +62,34 @@ export default function PublicApplyForm() {
   const { data: formInfo, isLoading } = useQuery({
     queryKey: ['public-apply-form', slug],
     queryFn: async () => {
-      const { data: form, error } = await supabase
+      let { data: form, error } = await supabase
         .from('registration_forms')
         .select('*')
         .eq('slug', slug!)
         .eq('is_active', true)
         .maybeSingle();
       if (error) throw error;
+
+      // Fallback: resolve via the course when the URL uses the course SEO slug or id
+      if (!form) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug || '');
+        const { data: matchedCourse } = await supabase
+          .from('courses')
+          .select('id')
+          .eq(isUuid ? 'id' : 'seo_slug', slug!)
+          .maybeSingle();
+        if (matchedCourse) {
+          const { data: byCourse } = await supabase
+            .from('registration_forms')
+            .select('*')
+            .eq('course_id', matchedCourse.id)
+            .eq('is_active', true)
+            .maybeSingle();
+          form = byCourse ?? null;
+        }
+      }
       if (!form) return null;
+
 
       const { data: course } = await supabase
         .from('courses')
