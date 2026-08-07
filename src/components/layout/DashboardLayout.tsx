@@ -186,9 +186,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         items: [
           { label: "Zoom", href: "/zoom-management", icon: Video },
           {
-            label: "Work Hub",
+            label: "Communication",
             icon: MessageSquare,
             children: [
+              { label: "Announcements", href: "/communication?view=announcements" },
               { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp Inbox", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
@@ -246,9 +247,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         items: [
           { label: "Salary", href: "/salary", icon: Wallet },
           {
-            label: "Work Hub",
+            label: "Communication",
             icon: MessageSquare,
             children: [
+              { label: "Announcements", href: "/communication?view=announcements" },
               { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
@@ -275,7 +277,14 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-      { label: "Tasks & Tickets", href: "/hub", icon: Briefcase },
+      {
+        label: "Communication",
+        icon: MessageSquare,
+        children: [
+          { label: "Announcements", href: "/announcements" },
+          { label: "Messages & Requests", href: "/hub" },
+        ],
+      },
     );
     return [{ label: "MENU", items }];
 
@@ -296,7 +305,14 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-      { label: "Tasks & Tickets", href: "/hub", icon: Briefcase },
+      {
+        label: "Communication",
+        icon: MessageSquare,
+        children: [
+          { label: "Announcements", href: "/announcements" },
+          { label: "Messages & Requests", href: "/hub" },
+        ],
+      },
     );
     return [{ label: "MENU", items }];
 
@@ -312,6 +328,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Library", href: "/library", icon: FolderOpen },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
+          { label: "Announcements", href: "/announcements", icon: MessageSquare },
           { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
         ],
       },

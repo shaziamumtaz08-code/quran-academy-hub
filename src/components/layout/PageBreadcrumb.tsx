@@ -30,9 +30,11 @@ const MODULE_LABELS: Record<string, string> = {
   '/reports': 'Reports',
   '/student-reports': 'Student Reports',
   '/progress-timeline': 'Progress Timeline',
-  '/communication': 'Work Hub',
+  '/communication': 'Communication',
   '/settings': 'Settings',
-  '/work-hub': 'Work Hub',
+  '/work-hub': 'Tasks & Tickets',
+  '/hub': 'Messages & Requests',
+  '/announcements': 'Announcements',
 };
 
 const VIEW_LABELS: Record<string, string> = {
@@ -94,7 +96,7 @@ export function PageBreadcrumb() {
   const moduleLabel = MODULE_LABELS[normalizedPath] || normalizedPath.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   const moduleHref = MODULE_DEFAULTS[normalizedPath] || normalizedPath;
   const currentLabel = pathname === '/work-hub'
-    ? 'Work Hub'
+    ? 'Communication'
     : view
       ? VIEW_LABELS[view] || view.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
       : moduleLabel;
@@ -188,7 +190,7 @@ export function PageBreadcrumb() {
                 </>
               ) : (
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="font-medium text-foreground">Work Hub</BreadcrumbPage>
+                  <BreadcrumbPage className="font-medium text-foreground">Communication</BreadcrumbPage>
                 </BreadcrumbItem>
               )}
             </>
