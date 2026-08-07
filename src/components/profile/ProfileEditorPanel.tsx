@@ -21,6 +21,7 @@ import {
 import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { PaymentAccountsList } from '@/components/payment-accounts/PaymentAccountsList';
 import type { AppRole } from '@/contexts/AuthContext';
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 
 /* ── Per-tab access matrix. V=view, C=create, E=edit, D=delete (we treat C/E/D collectively as "write"). ── */
 type TabAccess = 'none' | 'view' | 'write';
@@ -180,8 +181,9 @@ export function ProfileEditorPanel({ userId }: Props) {
       const rows = data || [];
       return {
         total: rows.length,
-        present: rows.filter((r: any) => r.status === 'present').length,
-        absent: rows.filter((r: any) => r.status === 'absent').length,
+        present: rows.filter((r: any) => isPresentStatus(r.status)).length,
+        absent: rows.filter((r: any) => isAbsentStatus(r.status)).length,
+        leave: rows.filter((r: any) => isLeaveStatus(r.status)).length,
       };
     },
     enabled: !!userId,

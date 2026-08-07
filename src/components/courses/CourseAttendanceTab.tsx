@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Calendar, CheckCircle2, XCircle, Clock, Users, Plus, Filter } from 'lucide-react';
 import { format } from 'date-fns';
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 
 interface CourseAttendanceTabProps {
   courseId: string;
@@ -98,8 +99,9 @@ export function CourseAttendanceTab({ courseId }: CourseAttendanceTabProps) {
 
   // Stats
   const totalRecords = attendanceRecords.length;
-  const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
-  const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+  const presentCount = attendanceRecords.filter(r => isPresentStatus(r.status)).length;
+  const absentCount = attendanceRecords.filter(r => isAbsentStatus(r.status)).length;
+  const leaveCount = attendanceRecords.filter(r => isLeaveStatus(r.status)).length;
   const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
 
   const openMarkDialog = (classId: string) => {
@@ -240,11 +242,11 @@ export function CourseAttendanceTab({ courseId }: CourseAttendanceTabProps) {
                           <TableCell className="text-sm font-medium">{(record as any).student?.full_name || 'Unknown'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{record.class_time}</TableCell>
                           <TableCell>
-                            <Badge variant={record.status === 'present' ? 'default' : record.status === 'absent' ? 'destructive' : 'secondary'} className="text-xs">
-                              {record.status === 'present' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                              {record.status === 'absent' && <XCircle className="h-3 w-3 mr-1" />}
+                            <Badge variant={isPresentStatus(record.status) ? 'default' : isAbsentStatus(record.status) ? 'destructive' : 'secondary'} className="text-xs">
+                              {isPresentStatus(record.status) && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                              {isAbsentStatus(record.status) && <XCircle className="h-3 w-3 mr-1" />}
                               {record.status === 'late' && <Clock className="h-3 w-3 mr-1" />}
-                              {record.status}
+                              {attendanceStatusLabel(record.status)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">
