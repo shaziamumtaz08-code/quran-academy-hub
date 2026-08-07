@@ -47,6 +47,8 @@ export default function AlertsAutomation() {
         .from("fee_invoices")
         .select("id, amount, amount_paid, forgiven_amount, billing_month, currency, student:profiles!fee_invoices_student_id_fkey(full_name)")
         .in("status", ["pending", "overdue"])
+        .is('voided_at', null)
+        .eq('is_archived', false)
         .lt("due_date", today)
         .order("due_date", { ascending: true })
         .limit(20);
