@@ -90,14 +90,14 @@ export function ProfileHero({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   return (
-    <header className="rounded-2xl border bg-card overflow-hidden shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
-      <div className={`relative h-24 sm:h-28 bg-gradient-to-br ${gradient}`}>
+    <header className="rounded-2xl border bg-card shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
+      <div className={`relative h-24 sm:h-28 rounded-t-2xl bg-gradient-to-br ${gradient}`}>
         <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
         <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/15 to-transparent" />
       </div>
 
       <div className="px-5 pb-5">
-        <div className="-mt-11 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="-mt-11 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
             <div className="relative h-24 w-24 shrink-0">
               <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-lg">
@@ -148,7 +148,7 @@ export function ProfileHero({
             </div>
           </div>
 
-          {actions && <div className="flex flex-wrap gap-2 lg:pb-1">{actions}</div>}
+          {actions && <div className="flex flex-wrap gap-2 min-w-0 xl:pb-1">{actions}</div>}
         </div>
       </div>
     </header>
