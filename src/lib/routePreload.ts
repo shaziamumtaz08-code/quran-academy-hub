@@ -1,7 +1,6 @@
 const routePreloaders: Record<string, () => Promise<unknown>> = {
   "/admin": () => import("@/pages/AdminCommandCenter"),
   "/communication": () => import("@/pages/CommunicationLanding"),
-  "/course-asset-library": () => import("@/pages/CourseAssetLibrary"),
   "/courses": () => import("@/pages/Courses"),
   "/dashboard": () => import("@/pages/Dashboard"),
   "/finance": () => import("@/pages/FinanceLanding"),
@@ -11,7 +10,7 @@ const routePreloaders: Record<string, () => Promise<unknown>> = {
   "/people": () => import("@/pages/PeopleLanding"),
   "/quiz-engine": () => import("@/pages/QuizEngine"),
   "/reports": () => import("@/pages/Reports"),
-  "/resources": () => import("@/pages/Resources"),
+  "/library": () => import("@/pages/Library"),
   "/salary": () => import("@/pages/SalaryEngine"),
   "/select-division": () => import("@/pages/SelectDivision"),
   "/settings": () => import("@/pages/SettingsLanding"),

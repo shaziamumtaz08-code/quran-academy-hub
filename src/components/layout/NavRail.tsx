@@ -91,7 +91,7 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
     '/live-classes': ['/live-classes', '/zoom-management'],
     '/settings': ['/settings', '/organization-settings', '/report-card-templates'],
 
-    '/resources': ['/resources', '/my-resources'],
+    '/library': ['/library', '/resources', '/my-resources'],
   };
 
   const isActive = (href: string) => {

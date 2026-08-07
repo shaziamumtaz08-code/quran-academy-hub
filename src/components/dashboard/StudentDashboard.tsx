@@ -631,7 +631,7 @@ export function StudentDashboard() {
   const quickLinks: Array<{ icon: any; label: string; iconBg: string; iconCol: string; to?: string; onClick?: () => void; disabled?: boolean }> = [
     { icon: MessageCircle, label: 'Message teacher', iconBg: 'bg-teal-50', iconCol: 'text-teal-600', onClick: handleMessageTeacher, disabled: openingDm },
     { icon: CalendarOff, label: 'Leave Request', iconBg: 'bg-amber-50', iconCol: 'text-amber-600', to: '/work-hub?new=1&category=leave_request' },
-    { icon: FolderOpen, label: 'My files', iconBg: 'bg-violet-50', iconCol: 'text-violet-600', to: '/resources' },
+    { icon: FolderOpen, label: 'My files', iconBg: 'bg-violet-50', iconCol: 'text-violet-600', to: '/library' },
     { icon: Users, label: 'My network', iconBg: 'bg-blue-50', iconCol: 'text-blue-600', to: user?.id ? `/connections/student/${user.id}` : '/dashboard' },
     { icon: Video, label: 'Recordings', iconBg: 'bg-rose-50', iconCol: 'text-rose-600', to: '/recordings' },
     { icon: ClipboardList, label: 'Exam results', iconBg: 'bg-emerald-50', iconCol: 'text-emerald-600', to: '/student-reports' },
