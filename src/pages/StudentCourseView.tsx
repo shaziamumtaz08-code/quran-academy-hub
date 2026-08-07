@@ -462,6 +462,8 @@ export default function StudentCourseView() {
       const { data } = await supabase.from('fee_invoices')
         .select('id, billing_month, amount, amount_paid, status, due_date, currency')
         .eq('student_id', user!.id)
+        .is('voided_at', null)
+        .eq('is_archived', false)
         .order('billing_month', { ascending: false });
       return data || [];
     },

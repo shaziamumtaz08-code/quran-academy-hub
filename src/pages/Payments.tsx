@@ -990,7 +990,7 @@ export default function Payments() {
     const targetLabel = MONTHS.find(m => m.value === targetMonth.slice(-2))?.label
       ? `${MONTHS.find(m => m.value === targetMonth.slice(-2))?.label} ${targetMonth.slice(0,4)}`
       : targetMonth;
-    const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, student_id, amount, currency, status, period_from, period_to').eq('billing_month', targetMonth);
+    const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, student_id, amount, currency, status, period_from, period_to, voided_at, is_archived').eq('billing_month', targetMonth);
     const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
     const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
     const newInvoices: any[] = [];
@@ -1011,6 +1011,7 @@ export default function Payments() {
     };
 
     const evaluateExisting = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
+      if (existingInv.voided_at || existingInv.is_archived) { lockedCount++; return; }
       if (existingInv.status === 'paid' || existingInv.status === 'partially_paid') { lockedCount++; return; }
       const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
       const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;

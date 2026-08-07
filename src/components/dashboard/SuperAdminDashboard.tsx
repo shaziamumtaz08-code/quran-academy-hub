@@ -67,7 +67,7 @@ export function SuperAdminDashboard() {
     queryFn: async () => {
       const [rolesWithCtx, feeRes, divisionsRes] = await Promise.all([
         supabase.from('user_roles').select('role, user_id'),
-        supabase.from('fee_invoices').select('amount, amount_paid, status, division_id').eq('billing_month', format(new Date(), 'yyyy-MM')),
+        supabase.from('fee_invoices').select('amount, amount_paid, status, division_id').is('voided_at', null).eq('is_archived', false).eq('billing_month', format(new Date(), 'yyyy-MM')),
         supabase.from('divisions').select('id, name').eq('is_active', true),
       ]);
 

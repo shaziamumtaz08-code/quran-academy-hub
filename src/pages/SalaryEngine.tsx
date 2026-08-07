@@ -303,6 +303,8 @@ export default function SalaryEngine() {
       const { data } = await supabase
         .from('fee_invoices')
         .select('id, student_id, assignment_id, status, paid_at')
+        .is('voided_at', null)
+        .eq('is_archived', false)
         .eq('billing_month', salaryMonth);
       return data || [];
     },
