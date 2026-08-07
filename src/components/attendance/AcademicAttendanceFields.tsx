@@ -36,8 +36,6 @@ interface AcademicAttendanceFieldsProps {
   onLessonTopicChange: (value: string) => void;
   lessonStatus: LessonStatus | '';
   onLessonStatusChange: (value: LessonStatus) => void;
-  homework: string;
-  onHomeworkChange: (value: string) => void;
   followupSuggestions: FollowupSuggestion[];
   onFollowupSuggestionsChange: (value: FollowupSuggestion[]) => void;
 }
@@ -47,8 +45,6 @@ export function AcademicAttendanceFields({
   onLessonTopicChange,
   lessonStatus,
   onLessonStatusChange,
-  homework,
-  onHomeworkChange,
   followupSuggestions,
   onFollowupSuggestionsChange,
 }: AcademicAttendanceFieldsProps) {
