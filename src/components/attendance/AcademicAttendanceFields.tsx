@@ -98,17 +98,6 @@ export function AcademicAttendanceFields({
         </Select>
       </div>
 
-      {/* Homework */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-200">Homework</Label>
-        <Textarea
-          placeholder="Enter homework or notes..."
-          value={homework}
-          onChange={(e) => onHomeworkChange(e.target.value)}
-          rows={3}
-          className="bg-white text-navy-900 border-0 placeholder:text-slate-400 resize-none"
-        />
-      </div>
 
       {/* Follow-up Suggestion Pills */}
       <div className="space-y-2">
