@@ -10,9 +10,11 @@ import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, use
 const GroupChat = lazy(() => import('./GroupChat'));
 const WhatsAppInbox = lazy(() => import('./WhatsAppInbox'));
 const NotificationCenter = lazy(() => import('./NotificationCenter'));
+const Announcements = lazy(() => import('./Announcements'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 const views = [
+  { label: 'Announcements', value: 'announcements' },
   { label: 'Academy Chat', value: 'academy-chat' },
   { label: 'WhatsApp', value: 'whatsapp' },
   { label: 'Notifications', value: 'notifications' },
@@ -111,13 +113,14 @@ function CommunicationLandingInner() {
     'academy-chat': <div className="space-y-4"><RecentActivityStrip /><Suspense fallback={<Loading />}><GroupChat /></Suspense></div>,
     whatsapp: <Suspense fallback={<Loading />}><WhatsAppInbox /></Suspense>,
     notifications: <Suspense fallback={<Loading />}><NotificationCenter /></Suspense>,
+    announcements: <Suspense fallback={<Loading />}><Announcements /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
 
   return (
     <div className="[&_h1]:!text-white [&_h1]:!bg-none [&_h1]:!bg-clip-border [&_p.text-muted-foreground]:!text-white/70">
-      <PageShell title="Communication" description="Chat, WhatsApp, and notification operations.">
+      <PageShell title="Work Hub" description="Announcements, chat, WhatsApp, and notifications.">
         <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
       </PageShell>
     </div>

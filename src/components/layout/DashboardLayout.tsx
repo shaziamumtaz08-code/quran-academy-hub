@@ -186,7 +186,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         items: [
           { label: "Zoom", href: "/zoom-management", icon: Video },
           {
-            label: "Communication",
+            label: "Work Hub",
             icon: MessageSquare,
             children: [
               { label: "Academy Chat", href: "/communication?view=academy-chat" },
@@ -197,7 +197,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Library", href: "/library", icon: FolderOpen },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
 
-          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
+          { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
           {
             label: "Settings",
             icon: Cog,
@@ -246,7 +246,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         items: [
           { label: "Salary", href: "/salary", icon: Wallet },
           {
-            label: "Communication",
+            label: "Work Hub",
             icon: MessageSquare,
             children: [
               { label: "Academy Chat", href: "/communication?view=academy-chat" },
@@ -256,7 +256,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           },
           { label: "Library", href: "/library", icon: FolderOpen },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
+          { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
@@ -275,7 +275,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-      { label: "Work Hub", href: "/hub", icon: Briefcase },
+      { label: "Tasks & Tickets", href: "/hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
 
@@ -296,7 +296,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-      { label: "Work Hub", href: "/hub", icon: Briefcase },
+      { label: "Tasks & Tickets", href: "/hub", icon: Briefcase },
     );
     return [{ label: "MENU", items }];
 
@@ -312,7 +312,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Library", href: "/library", icon: FolderOpen },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
-          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
+          { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];

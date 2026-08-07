@@ -154,23 +154,25 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
 
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   if (role === 'student' || role === 'parent') {
-    // Students/parents: hide chat/whatsapp/notifications/zoom, but keep Work Hub access.
-    return { title: 'Work Hub', subtitle: '', items: [{ label: 'Work Hub', href: '/hub' }] };
+    // Students/parents: hide chat/whatsapp/notifications/zoom, but keep announcements + tasks.
+    return { title: 'Work Hub', subtitle: '', items: [{ label: 'Announcements', href: '/announcements' }, { label: 'Tasks & Tickets', href: '/hub' }] };
   }
 
   const r = (role || 'student') as AppRole;
   const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
-    title: 'Communication',
+    title: 'Work Hub',
     subtitle: '',
     items: [
+      { label: 'Announcements', href: '/communication?view=announcements' },
       ...(can(r, 'chat', 'view') ? [{ label: 'Group Chat', href: '/chat' }] : []),
       ...(isStudentOrTeacher ? [{ label: 'Direct Messages', href: '/chat?filter=dm' }] : []),
       ...(can(r, 'whatsapp', 'view') ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       ...(can(r, 'notifications', 'view') ? [{ label: 'Notifications', href: '/notifications' }] : []),
-      ...(can(r, 'work_hub', 'view') ? [{ label: 'Work Hub', href: '/hub' }] : []),
+      ...(can(r, 'work_hub', 'view') ? [{ label: 'Tasks & Tickets', href: '/hub' }] : []),
     ],
   };
+
 }
 
 function getZoomSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {

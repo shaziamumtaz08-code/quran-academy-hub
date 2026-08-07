@@ -18,7 +18,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
       { label: 'People', href: '/people', icon: Users },
-      { label: 'Comms', href: '/communication', icon: MessageSquare },
+      { label: 'Work Hub', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'teacher') {
@@ -27,7 +27,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Classes', href: '/teaching?view=schedules', icon: BookOpen },
       { label: 'Students', href: '/teaching?view=one-to-one', icon: Users },
-      { label: 'Work Hub', href: '/hub', icon: Briefcase },
+      { label: 'Tasks', href: '/hub', icon: Briefcase },
       { label: 'Salary', href: '/salary', icon: Wallet },
     ];
   }
@@ -50,7 +50,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
   }
   return [
     { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Comms', href: '/communication', icon: MessageSquare },
+    { label: 'Work Hub', href: '/communication', icon: MessageSquare },
   ];
 }
 
@@ -61,7 +61,7 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Zoom', href: '/zoom-management', icon: Video },
-      { label: 'Work Hub', href: '/hub', icon: Briefcase },
+      { label: 'Tasks', href: '/hub', icon: Briefcase },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
   }

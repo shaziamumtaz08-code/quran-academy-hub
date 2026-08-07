@@ -174,6 +174,57 @@ export type Database = {
           },
         ]
       }
+      announcements: {
+        Row: {
+          audiences: string[]
+          body: string | null
+          created_at: string
+          created_by: string
+          division_id: string | null
+          expires_at: string | null
+          id: string
+          is_pinned: boolean
+          is_published: boolean
+          media_type: string
+          media_url: string | null
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audiences?: string[]
+          body?: string | null
+          created_at?: string
+          created_by?: string
+          division_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          is_published?: boolean
+          media_type?: string
+          media_url?: string | null
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audiences?: string[]
+          body?: string | null
+          created_at?: string
+          created_by?: string
+          division_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          is_published?: boolean
+          media_type?: string
+          media_url?: string | null
+          published_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
