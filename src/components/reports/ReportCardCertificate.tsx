@@ -1,3 +1,4 @@
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,6 @@ import { TemplateStructure, StoredCriteriaEntry, calculateSectionMaxScore } from
 import { supabase } from '@/integrations/supabase/client';
 import logoLight from '@/assets/logo-light.png';
 import {
-import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 

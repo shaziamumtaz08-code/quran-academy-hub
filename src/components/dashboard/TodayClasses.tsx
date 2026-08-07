@@ -1,10 +1,10 @@
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
 import React, { useState } from 'react';
 import { Clock, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus, attendanceStatusLabel } from '@/lib/attendanceStatus';
   UnifiedAttendanceForm,
   type AttendanceStatus,
   type StudentInfo,
