@@ -733,7 +733,7 @@ export function UnifiedAttendanceForm({
         sabaq_ayah_from: isHifzOrNazra && ayahFromNumber ? parseInt(ayahFromNumber) : null,
         sabaq_ayah_to: isHifzOrNazra && ayahToNumber ? parseInt(ayahToNumber) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
-        manzil_done: isHifzOrNazra ? manzilDone : null,
+        manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
         lesson_type: lessonRequired ? (lessonType || null) : null,
         // Free-text replaces the dropdown — keep `repeat_reason` set to 'other'
@@ -929,8 +929,7 @@ export function UnifiedAttendanceForm({
     if (lessonRequired && !lessonType) return false;
     // When repeating, a written explanation (reason + what was done) is required.
     if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) return false;
-    // Manzil Yes/No must be explicitly answered for Hifz/Nazra
-    if (lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered) return false;
+  
     return true;
   }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
@@ -1361,8 +1360,6 @@ export function UnifiedAttendanceForm({
                   onQuarterToJuzChange={setQuarterToJuz}
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
-                  manzilDone={manzilDone}
-                  onManzilDoneChange={(v) => { setManzilDone(v); setManzilAnswered(true); }}
                 />
               )}
 
@@ -1386,7 +1383,7 @@ export function UnifiedAttendanceForm({
               )}
 
               {/* Manzil must be explicitly answered for Hifz/Nazra */}
-              {lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered && (
+              {lessonRequired && currentSubjectType === 'hifz' && !manzilAnswered && (
                 <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Please answer Manzil / Revision (Yes or No) before saving.
