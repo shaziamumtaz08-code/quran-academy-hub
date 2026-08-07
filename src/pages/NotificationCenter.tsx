@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Bell, MessageSquare, Mail, Send, Plus, Clock, CheckCircle, XCircle, AlertCircle, Check, Smartphone, CalendarClock } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { NotificationPreferencesCard } from "@/components/notifications/NotificationPreferencesCard";
+
 
 const channelIcons: Record<string, React.ReactNode> = {
   whatsapp: <MessageSquare className="h-4 w-4 text-emerald-600" />,
