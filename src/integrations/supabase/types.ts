@@ -1422,9 +1422,11 @@ export type Database = {
       }
       course_assignment_submissions: {
         Row: {
+          annotations: Json
           assignment_id: string
           created_at: string
           feedback: string | null
+          feedback_voice_url: string | null
           file_name: string | null
           file_url: string | null
           graded_at: string | null
@@ -1438,9 +1440,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annotations?: Json
           assignment_id: string
           created_at?: string
           feedback?: string | null
+          feedback_voice_url?: string | null
           file_name?: string | null
           file_url?: string | null
           graded_at?: string | null
@@ -1454,9 +1458,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annotations?: Json
           assignment_id?: string
           created_at?: string
           feedback?: string | null
+          feedback_voice_url?: string | null
           file_name?: string | null
           file_url?: string | null
           graded_at?: string | null
