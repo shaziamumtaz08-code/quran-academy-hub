@@ -68,7 +68,6 @@ export default function TeacherNazraDashboard() {
   const [sabaq, setSabaq] = useState('');
   const [revisionDone, setRevisionDone] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState('');
-  const [homework, setHomework] = useState('');
   const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [classTime, setClassTime] = useState(format(new Date(), 'HH:mm'));
 
@@ -171,7 +170,6 @@ export default function TeacherNazraDashboard() {
         sabaq: sabaq || null,
         revision_done: revisionDone,
         revision_notes: revisionNotes || null,
-        homework: homework || null,
         lesson_covered: sabaq || null, // For backward compatibility
       });
 
@@ -199,7 +197,6 @@ export default function TeacherNazraDashboard() {
     setSabaq('');
     setRevisionDone(false);
     setRevisionNotes('');
-    setHomework('');
     setClassDate(format(new Date(), 'yyyy-MM-dd'));
     setClassTime(format(new Date(), 'HH:mm'));
   };
@@ -546,16 +543,6 @@ export default function TeacherNazraDashboard() {
                   </div>
                 )}
 
-                {/* Homework */}
-                <div className="space-y-2">
-                  <Label>Homework / Notes for Parent</Label>
-                  <Textarea
-                    value={homework}
-                    onChange={(e) => setHomework(e.target.value)}
-                    placeholder="Any homework or notes..."
-                    rows={2}
-                  />
-                </div>
 
                 {/* Submit Button - Large for Mobile */}
                 <Button 

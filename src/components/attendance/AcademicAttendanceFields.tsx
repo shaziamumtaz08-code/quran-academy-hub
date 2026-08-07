@@ -1,7 +1,6 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -36,8 +35,6 @@ interface AcademicAttendanceFieldsProps {
   onLessonTopicChange: (value: string) => void;
   lessonStatus: LessonStatus | '';
   onLessonStatusChange: (value: LessonStatus) => void;
-  homework: string;
-  onHomeworkChange: (value: string) => void;
   followupSuggestions: FollowupSuggestion[];
   onFollowupSuggestionsChange: (value: FollowupSuggestion[]) => void;
 }
@@ -47,8 +44,6 @@ export function AcademicAttendanceFields({
   onLessonTopicChange,
   lessonStatus,
   onLessonStatusChange,
-  homework,
-  onHomeworkChange,
   followupSuggestions,
   onFollowupSuggestionsChange,
 }: AcademicAttendanceFieldsProps) {
@@ -102,17 +97,6 @@ export function AcademicAttendanceFields({
         </Select>
       </div>
 
-      {/* Homework */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-200">Homework</Label>
-        <Textarea
-          placeholder="Enter homework or notes..."
-          value={homework}
-          onChange={(e) => onHomeworkChange(e.target.value)}
-          rows={3}
-          className="bg-white text-navy-900 border-0 placeholder:text-slate-400 resize-none"
-        />
-      </div>
 
       {/* Follow-up Suggestion Pills */}
       <div className="space-y-2">

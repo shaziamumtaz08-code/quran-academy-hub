@@ -191,7 +191,6 @@ export function UnifiedAttendanceForm({
   const [classTime, setClassTime] = useState('');
   const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [duration, setDuration] = useState('30');
-  const [homework, setHomework] = useState('');
   const [remarks, setRemarks] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);
   
@@ -562,7 +561,6 @@ export function UnifiedAttendanceForm({
       setClassTime('');
       setClassDate(format(new Date(), 'yyyy-MM-dd'));
       setDuration('30');
-      setHomework('');
       setRemarks('');
       setVoiceNoteUrl(null);
       setReasonCategory('');
@@ -608,7 +606,6 @@ export function UnifiedAttendanceForm({
       setClassDate(r.class_date);
       setClassTime(r.class_time ? r.class_time.substring(0, 5) : '');
       setDuration(String(r.duration_minutes ?? 30));
-      setHomework(r.homework ?? '');
       setRemarks(r.reason ?? '');
       setVoiceNoteUrl(r.voice_note_url ?? null);
       setReasonCategory((r.reason_category as ReasonCategory) || '');
@@ -716,7 +713,6 @@ export function UnifiedAttendanceForm({
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
-        homework: homework || null,
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
@@ -1376,8 +1372,6 @@ export function UnifiedAttendanceForm({
                   onLessonTopicChange={setAcademicLessonTopic}
                   lessonStatus={academicLessonStatus}
                   onLessonStatusChange={(v) => setAcademicLessonStatus(v)}
-                  homework={homework}
-                  onHomeworkChange={setHomework}
                   followupSuggestions={academicFollowups}
                   onFollowupSuggestionsChange={setAcademicFollowups}
                 />
@@ -1399,18 +1393,6 @@ export function UnifiedAttendanceForm({
                 </p>
               )}
 
-              {/* Homework - if not academic (academic includes it) */}
-              {currentSubjectType !== 'academic' && (
-                <div className="space-y-2">
-                  <Label className="text-foreground">Homework</Label>
-                  <Textarea 
-                    value={homework}
-                    onChange={(e) => setHomework(e.target.value)}
-                    placeholder="Enter homework assignment..."
-                    className=""
-                  />
-                </div>
-              )}
             </div>
           )}
 
