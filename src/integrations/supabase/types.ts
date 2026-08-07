@@ -2262,6 +2262,60 @@ export type Database = {
           },
         ]
       }
+      course_message_sequence_sends: {
+        Row: {
+          course_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_phone: string | null
+          recipient_profile_id: string | null
+          sent_at: string
+          sequence_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_phone?: string | null
+          recipient_profile_id?: string | null
+          sent_at?: string
+          sequence_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_phone?: string | null
+          recipient_profile_id?: string | null
+          sent_at?: string
+          sequence_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_message_sequence_sends_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_message_sequence_sends_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "course_message_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_message_sequences: {
         Row: {
           attachment_url: string | null
@@ -7277,6 +7331,7 @@ export type Database = {
           created_by: string | null
           id: string
           scheduled_at: string | null
+          sent_at: string | null
           status: string
           title: string
           updated_at: string
@@ -7290,6 +7345,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           scheduled_at?: string | null
+          sent_at?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -7303,6 +7359,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           scheduled_at?: string | null
+          sent_at?: string | null
           status?: string
           title?: string
           updated_at?: string
