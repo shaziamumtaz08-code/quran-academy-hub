@@ -904,12 +904,11 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
-        // Load current plan to pass full context to revise_billing_plan RPC.
-        // RPC handles: insert new history row, archive/replace affected month invoice
-        // with mid-month proration (old rate before effective_from, new rate from it),
-        // and reissue future pending invoices at the new rate. Paid invoices are never touched.
+        // Billing is independent from teaching assignments. The RPC creates a new
+        // version, archives the old plan and affected unpaid invoices, then generates
+        // replacement invoices from the plan's own effective date. Paid invoices stay locked.
         const { data: cur, error: curErr } = await supabase.from('student_billing_plans')
-          .select('student_id, assignment_id, branch_id, division_id, duration_surcharge')
+          .select('student_id, branch_id, division_id, duration_surcharge')
           .eq('id', editingPlanId).single();
         if (curErr) throw curErr;
 
@@ -923,7 +922,7 @@ export default function Payments() {
           _currency: planFields.currency,
           _effective_from: effectiveFrom,
           _change_reason: 'Edited via plan editor',
-          _assignment_id: (cur as any).assignment_id ?? null,
+          _assignment_id: null,
           _branch_id: (cur as any).branch_id ?? null,
           _division_id: (cur as any).division_id ?? null,
           _duration_surcharge: planFields.duration_surcharge ?? (cur as any).duration_surcharge ?? 0,
