@@ -318,7 +318,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
             <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-600" />
             <div>
               <div className="font-bold">{duplicateGroups.length} student{duplicateGroups.length === 1 ? '' : 's'} have duplicate billing plans</div>
-              <div className="text-sm text-red-700/80 mt-0.5">Duplicate plans cause inflated invoice counts. Review and remove extras below.</div>
+              <div className="text-sm text-red-700/80 mt-0.5">Two live plans are billing the same class. Multiple plans across different classes are fine — only same-class overlaps are shown here.</div>
             </div>
           </div>
           <Button
