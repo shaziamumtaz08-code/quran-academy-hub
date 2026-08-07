@@ -122,25 +122,27 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
   });
 
   const { duplicateGroups, activeCount } = useMemo(() => {
-    // Only consider plans whose assignment is currently billing.
-    // Plans linked to on_hold / completed / left assignments are legitimate
-    // historical records for prior classes and must NOT be flagged as duplicates.
+    // A student may legitimately have MULTIPLE plans — one per class/assignment.
+    // A true duplicate is two live plans billing the SAME assignment (or two
+    // legacy plans with no assignment link at all). Plans tied to on_hold /
+    // completed / left assignments are historical records and are never flagged.
     const isStillBilling = (p: PlanRow) => {
       const status = p.assignment?.status;
-      // No linked assignment → fall back to plan.is_active (legacy plans)
       if (!p.assignment_id || !status) return p.is_active;
-      return status === 'active';
+      return status === 'active' && p.is_active;
     };
 
-    const byStudent = new Map<string, PlanRow[]>();
+    // Key on the assignment so different classes never collide.
+    const byKey = new Map<string, PlanRow[]>();
     plans.forEach(p => {
       if (!isStillBilling(p)) return;
-      const arr = byStudent.get(p.student_id) || [];
+      const key = `${p.student_id}::${p.assignment_id || 'unlinked'}`;
+      const arr = byKey.get(key) || [];
       arr.push(p);
-      byStudent.set(p.student_id, arr);
+      byKey.set(key, arr);
     });
     const groups: { student_id: string; full_name: string; rows: (PlanRow & { isKeeper: boolean })[] }[] = [];
-    byStudent.forEach((rows, sid) => {
+    byKey.forEach(rows => {
       if (rows.length <= 1) return;
       const sorted = [...rows].sort((a, b) => {
         const aActive = a.is_active ? 1 : 0;
@@ -152,7 +154,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       });
       const keeperId = sorted[0].id;
       groups.push({
-        student_id: sid,
+        student_id: rows[0].student_id,
         full_name: rows[0].profiles?.full_name || 'Unknown',
         rows: rows
           .map(r => ({ ...r, isKeeper: r.id === keeperId }))
@@ -162,6 +164,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
     groups.sort((a, b) => a.full_name.localeCompare(b.full_name));
     return { duplicateGroups: groups, activeCount: plans.filter(p => p.is_active).length };
   }, [plans]);
+
 
   const allDupPlanIds = duplicateGroups.flatMap(g => g.rows.map(r => r.id));
   const { data: invoiceCounts = {} } = useQuery({
@@ -315,7 +318,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
             <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-600" />
             <div>
               <div className="font-bold">{duplicateGroups.length} student{duplicateGroups.length === 1 ? '' : 's'} have duplicate billing plans</div>
-              <div className="text-sm text-red-700/80 mt-0.5">Duplicate plans cause inflated invoice counts. Review and remove extras below.</div>
+              <div className="text-sm text-red-700/80 mt-0.5">Two live plans are billing the same class. Multiple plans across different classes are fine — only same-class overlaps are shown here.</div>
             </div>
           </div>
           <Button
