@@ -451,9 +451,16 @@ export default function Assignments() {
             payout_amount: newPayout,
             payout_type: newPayoutType,
             effective_from_date: newEffectiveFrom,
+            // Payout rate revision — not an accountability window change. Past
+            // paid sheets are archived/superseded, never dropped, and student
+            // fee plans are untouched. Reason is auto-stamped for the audit log.
+            status_change_reason:
+              `Payout rate revised ${oldPayout} → ${newPayout} (${newPayoutType}) effective ${newEffectiveFrom}. ` +
+              `Prior paid salary sheets archived as superseded; no fee/attendance records excluded.`,
           })
           .eq('id', id);
         if (upErr) throw upErr;
+
 
         // Close previous open history row
         const closeDate = new Date(newEffectiveFrom);
