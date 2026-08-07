@@ -12595,6 +12595,18 @@ export type Database = {
           vault_account_id: string
         }[]
       }
+      get_profile_wellbeing: {
+        Args: { _user_id: string }
+        Returns: {
+          blood_group: string
+          emergency_contact_phone: string
+          father_contact: string
+          medical_conditions: string
+          medical_notes: string
+          mother_contact: string
+          user_id: string
+        }[]
+      }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_safe_profiles: {
         Args: { p_ids: string[] }
