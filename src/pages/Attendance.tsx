@@ -725,7 +725,7 @@ export default function Attendance() {
         sabaq_ayah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahFrom ? parseInt(sabaqAyahFrom) : null,
         sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahTo ? parseInt(sabaqAyahTo) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
-        manzil_done: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? manzilDone : null,
+        manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         division_id: activeDivision?.id || null,
       });
 
