@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus } from '@/lib/attendanceStatus';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
@@ -408,10 +409,10 @@ export default function SalaryEngine() {
             const dateStr = format(d, 'yyyy-MM-dd');
             const attStatus = attendanceMap.get(dateStr);
             const dayName = format(d, 'EEEE').toLowerCase();
+            // Normalise role-qualified statuses (student_leave / teacher_absent / …)
+            const marked = normalizeAttendanceStatus(attStatus);
             let status = 'none';
-            if (attStatus === 'present' || attStatus === 'late') status = 'present';
-            else if (attStatus === 'absent') status = 'absent';
-            else if (attStatus === 'rescheduled') status = 'rescheduled';
+            if (marked !== 'none') status = marked;
             else if (leaveDateSet.has(dateStr)) status = 'leave';
             else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
             return { date: dateStr, status };
