@@ -5,7 +5,7 @@ import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
-const Resources = lazy(() => import('./Resources'));
+
 const SchemaExplorer = lazy(() => import('./SchemaExplorer'));
 const FinanceSetup = lazy(() => import('./FinanceSetup'));
 const IntegrityAudit = lazy(() => import('./IntegrityAudit'));
