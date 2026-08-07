@@ -190,6 +190,8 @@ export default function ParentDashboard() {
           .select('student_id, amount, amount_paid, forgiven_amount, currency, status, billing_month')
           .in('student_id', ids)
           .in('status', ['pending', 'partially_paid', 'overdue'])
+          .is('voided_at', null)
+          .eq('is_archived', false)
           .lte('billing_month', cbm),
       ]);
 

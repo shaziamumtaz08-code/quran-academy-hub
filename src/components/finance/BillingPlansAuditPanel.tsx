@@ -174,6 +174,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       const { data, error } = await supabase
         .from('fee_invoices')
         .select('plan_id, status')
+        .is('voided_at', null)
         .in('plan_id', allDupPlanIds);
       if (error) throw error;
       const map: Record<string, { total: number; pending: number }> = {};

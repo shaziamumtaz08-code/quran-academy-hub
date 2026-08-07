@@ -179,7 +179,9 @@ export default function UnifiedDashboard() {
       let query = supabase.from('fee_invoices')
         .select('amount, amount_paid, status, division_id, due_date, billing_month, currency')
         .eq('student_id', user!.id)
-        .in('status', ['pending', 'partially_paid', 'overdue']);
+        .in('status', ['pending', 'partially_paid', 'overdue'])
+        .is('voided_at', null)
+        .eq('is_archived', false);
       if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
       const { data } = await query;
       if (!data?.length) return { count: 0, total: 0, nextDueDate: null, nextDueAmount: 0, nextDueCurrency: '' };
@@ -287,6 +289,8 @@ export default function UnifiedDashboard() {
         const { data: fees } = await supabase.from('fee_invoices')
           .select('id')
           .eq('student_id', child.id)
+          .is('voided_at', null)
+          .eq('is_archived', false)
           .in('status', ['pending', 'overdue']);
 
         children.push({

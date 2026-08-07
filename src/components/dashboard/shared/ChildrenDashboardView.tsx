@@ -148,6 +148,8 @@ async function fetchChildData(studentId: string): Promise<ChildData> {
     .from('fee_invoices')
     .select('amount, currency, due_date')
     .eq('student_id', studentId)
+    .is('voided_at', null)
+    .eq('is_archived', false)
     .eq('status', 'pending')
     .order('billing_month', { ascending: true })
     .limit(1);

@@ -78,6 +78,8 @@ export default function CustomReportBuilder() {
         .from("fee_invoices")
         .select("student_id, status, amount, amount_paid, forgiven_amount")
         .in("student_id", studentIds)
+        .is('voided_at', null)
+        .eq('is_archived', false)
         .in("status", ["pending", "partially_paid", "overdue"]);
       if (divisionId) feeQuery = feeQuery.eq("division_id", divisionId);
       const { data: invoices } = await feeQuery;
