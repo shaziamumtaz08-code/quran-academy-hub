@@ -90,8 +90,8 @@ export function ProfileHero({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   return (
-    <header className="rounded-2xl border bg-card overflow-hidden shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
-      <div className={`relative h-24 sm:h-28 bg-gradient-to-br ${gradient}`}>
+    <header className="rounded-2xl border bg-card shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]">
+      <div className={`relative h-24 sm:h-28 rounded-t-2xl bg-gradient-to-br ${gradient}`}>
         <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
         <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/15 to-transparent" />
       </div>
