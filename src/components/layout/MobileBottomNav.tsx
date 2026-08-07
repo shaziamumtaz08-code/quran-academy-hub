@@ -18,7 +18,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
       { label: 'People', href: '/people', icon: Users },
-      { label: 'Work Hub', href: '/communication', icon: MessageSquare },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'teacher') {
@@ -50,7 +50,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
   }
   return [
     { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Work Hub', href: '/communication', icon: MessageSquare },
+    { label: 'Communication', href: '/communication', icon: MessageSquare },
   ];
 }
 

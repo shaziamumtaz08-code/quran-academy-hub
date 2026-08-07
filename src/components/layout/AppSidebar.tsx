@@ -155,13 +155,13 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   if (role === 'student' || role === 'parent') {
     // Students/parents: hide chat/whatsapp/notifications/zoom, but keep announcements + tasks.
-    return { title: 'Work Hub', subtitle: '', items: [{ label: 'Announcements', href: '/announcements' }, { label: 'Tasks & Tickets', href: '/hub' }] };
+    return { title: 'Communication', subtitle: '', items: [{ label: 'Announcements', href: '/announcements' }, { label: 'Tasks & Tickets', href: '/hub' }] };
   }
 
   const r = (role || 'student') as AppRole;
   const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
-    title: 'Work Hub',
+    title: 'Communication',
     subtitle: '',
     items: [
       { label: 'Announcements', href: '/communication?view=announcements' },
