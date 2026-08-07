@@ -46,7 +46,6 @@ const StudentReports = lazy(() => import("./pages/StudentReports"));
 const ProgressTimeline = lazy(() => import("./pages/ProgressTimeline"));
 
 const UserManagement = lazy(() => import("./pages/UserManagement"));
-const Resources = lazy(() => import("./pages/Resources"));
 const Library = lazy(() => import("./pages/Library"));
 const LibraryShare = lazy(() => import("./pages/LibraryShare"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
@@ -99,7 +98,6 @@ const TeacherCourseView = lazy(() => import("./pages/TeacherCourseView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const IdentityResolution = lazy(() => import("./pages/IdentityResolution"));
 const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
-const CourseAssetLibrary = lazy(() => import("./pages/CourseAssetLibrary"));
 const RecordedCourses = lazy(() => import("./pages/RecordedCourses"));
 const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 const GroupChat = lazy(() => import("./pages/GroupChat"));
