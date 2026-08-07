@@ -31,11 +31,8 @@ export const PROFILE_SAFE_COLUMNS = [
   'updated_at',
   'guardian_type',
   'father_name',
-  'father_contact',
   'mother_name',
-  'mother_contact',
   'emergency_contact_name',
-  'emergency_contact_phone',
   'preferred_contact_method',
   'preferred_language',
   'first_language',
@@ -73,9 +70,8 @@ export const PROFILE_SAFE_COLUMNS = [
   'bank_account_title',
   'onboarding_completed_at',
   // student detail fields
-  'blood_group',
-  'medical_conditions',
-  'medical_notes',
+  // NOTE: blood_group, medical_*, father/mother_contact and emergency_contact_phone
+  // are restricted — fetch them via the get_profile_wellbeing RPC (self / parent / admin only).
   'school_name',
   'grade_level',
 ].join(', ');
