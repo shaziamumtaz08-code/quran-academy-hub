@@ -36,9 +36,8 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Fees', href: '/payments', icon: CreditCard },
-      { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Updates', href: '/announcements', icon: MessageSquare },
     ];
   }
   if (role === 'parent') {
@@ -46,6 +45,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Family', href: '/parent', icon: Users },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
+      { label: 'Updates', href: '/announcements', icon: MessageSquare },
     ];
   }
   return [
@@ -63,6 +63,19 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
       { label: 'Zoom', href: '/zoom-management', icon: Video },
       { label: 'Tasks', href: '/hub', icon: Briefcase },
       { label: 'Settings', href: '/settings', icon: Cog },
+    ];
+  }
+  if (role === 'student' || role === 'parent') {
+    return [
+      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
+      { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Messages & Requests', href: '/hub', icon: Briefcase },
+    ];
+  }
+  if (role === 'teacher') {
+    return [
+      { label: 'Announcements', href: '/announcements', icon: MessageSquare },
+      { label: 'Library', href: '/library', icon: FolderOpen },
     ];
   }
   return [];

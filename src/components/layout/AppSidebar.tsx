@@ -155,7 +155,7 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   if (role === 'student' || role === 'parent') {
     // Students/parents: hide chat/whatsapp/notifications/zoom, but keep announcements + tasks.
-    return { title: 'Communication', subtitle: '', items: [{ label: 'Announcements', href: '/announcements' }, { label: 'Tasks & Tickets', href: '/hub' }] };
+    return { title: 'Communication', subtitle: '', items: [{ label: 'Announcements', href: '/announcements' }, { label: 'Messages & Requests', href: '/hub' }] };
   }
 
   const r = (role || 'student') as AppRole;
@@ -169,7 +169,7 @@ function getCommunicationSidebar(role?: string | null): { title: string; subtitl
       ...(isStudentOrTeacher ? [{ label: 'Direct Messages', href: '/chat?filter=dm' }] : []),
       ...(can(r, 'whatsapp', 'view') ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       ...(can(r, 'notifications', 'view') ? [{ label: 'Notifications', href: '/notifications' }] : []),
-      ...(can(r, 'work_hub', 'view') ? [{ label: 'Tasks & Tickets', href: '/hub' }] : []),
+      ...(can(r, 'work_hub', 'view') ? [{ label: 'Messages & Requests', href: '/hub' }] : []),
     ],
   };
 

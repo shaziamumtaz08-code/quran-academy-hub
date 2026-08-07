@@ -56,6 +56,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'My Courses', href: '/my-courses', icon: BookOpen },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Communication', href: '/announcements', icon: MessageSquare },
     ];
     if (role === 'parent') {
       items.push({ label: 'Family', href: '/parent', icon: Users });
@@ -67,6 +68,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Exam Center', href: '/report-card-templates', icon: Award },
       { label: 'Student Reports', href: '/student-reports', icon: FileText },
+      { label: 'Communication', href: '/announcements', icon: MessageSquare },
     ];
   }
   return [{ label: 'Home', href: '/dashboard', icon: LayoutDashboard }];
