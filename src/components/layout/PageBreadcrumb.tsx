@@ -30,7 +30,7 @@ const MODULE_LABELS: Record<string, string> = {
   '/reports': 'Reports',
   '/student-reports': 'Student Reports',
   '/progress-timeline': 'Progress Timeline',
-  '/communication': 'Communication',
+  '/communication': 'Work Hub',
   '/settings': 'Settings',
   '/work-hub': 'Work Hub',
 };

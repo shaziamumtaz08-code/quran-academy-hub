@@ -30,7 +30,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Zoom', href: '/zoom-management', icon: Video, divider: true },
-      { label: 'Communication', href: '/communication', icon: MessageSquare },
+      { label: 'Work Hub', href: '/communication', icon: MessageSquare },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
   }
@@ -44,7 +44,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Salary', href: '/salary', icon: DollarSign },
       { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Zoom', href: '/live-classes', icon: Video, divider: true },
-      { label: 'Communication', href: '/communication', icon: MessageSquare },
+      { label: 'Work Hub', href: '/communication', icon: MessageSquare },
     ];
   }
 
