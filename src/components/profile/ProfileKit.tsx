@@ -97,7 +97,7 @@ export function ProfileHero({
       </div>
 
       <div className="px-5 pb-5">
-        <div className="-mt-11 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="-mt-11 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
             <div className="relative h-24 w-24 shrink-0">
               <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-lg">
@@ -148,7 +148,7 @@ export function ProfileHero({
             </div>
           </div>
 
-          {actions && <div className="flex flex-wrap gap-2 lg:pb-1">{actions}</div>}
+          {actions && <div className="flex flex-wrap gap-2 min-w-0 xl:pb-1">{actions}</div>}
         </div>
       </div>
     </header>
