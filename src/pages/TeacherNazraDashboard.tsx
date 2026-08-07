@@ -197,7 +197,6 @@ export default function TeacherNazraDashboard() {
     setSabaq('');
     setRevisionDone(false);
     setRevisionNotes('');
-    setHomework('');
     setClassDate(format(new Date(), 'yyyy-MM-dd'));
     setClassTime(format(new Date(), 'HH:mm'));
   };

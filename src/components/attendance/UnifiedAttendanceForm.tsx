@@ -561,7 +561,6 @@ export function UnifiedAttendanceForm({
       setClassTime('');
       setClassDate(format(new Date(), 'yyyy-MM-dd'));
       setDuration('30');
-      setHomework('');
       setRemarks('');
       setVoiceNoteUrl(null);
       setReasonCategory('');
