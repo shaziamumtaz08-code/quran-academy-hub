@@ -80,3 +80,7 @@ verify_jwt = false
 
 [functions.student-onboarding]
 verify_jwt = false
+
+[functions.dispatch-marketing-messages]
+verify_jwt = false
+
