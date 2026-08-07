@@ -32,7 +32,9 @@ const MODULE_LABELS: Record<string, string> = {
   '/progress-timeline': 'Progress Timeline',
   '/communication': 'Communication',
   '/settings': 'Settings',
-  '/work-hub': 'Communication',
+  '/work-hub': 'Tasks & Tickets',
+  '/hub': 'Messages & Requests',
+  '/announcements': 'Announcements',
 };
 
 const VIEW_LABELS: Record<string, string> = {
