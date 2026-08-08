@@ -30,9 +30,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
-import { ClassChatTab } from '@/components/courses/ClassChatTab';
 import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 import { ClassmatesDirectory } from '@/components/courses/ClassmatesDirectory';
+import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ─── Helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -101,6 +102,51 @@ function useCountdown(target: Date | null) {
   return timeLeft;
 }
 
+// ─── Curriculum estimation helpers ───
+const LESSON_MINUTES: Record<string, number> = { video: 12, text: 8, file: 6 };
+const lessonMinutes = (type?: string) => LESSON_MINUTES[type || 'text'] ?? 8;
+const formatMinutes = (mins: number) => {
+  if (mins <= 0) return '—';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m ? `${m}m` : ''}`.trim() : `${m}m`;
+};
+
+// ─── Section navigation ───
+interface NavItem { value: string; label: string; icon: React.ElementType }
+const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Learn',
+    items: [
+      { value: 'today', label: 'Overview', icon: Radio },
+      { value: 'lessons', label: 'Syllabus', icon: BookOpen },
+      { value: 'assignments', label: 'Assignments', icon: ClipboardList },
+      { value: 'resources', label: 'Resources', icon: FileText },
+      { value: 'recordings', label: 'Recordings', icon: PlayCircle },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
+      { value: 'class-chat', label: 'Discussion', icon: MessageSquare },
+      { value: 'announcements', label: 'Announcements', icon: Bell },
+    ],
+  },
+  {
+    label: 'Achievement',
+    items: [
+      { value: 'progress', label: 'My Progress', icon: BarChart3 },
+      { value: 'results', label: 'Results', icon: GraduationCap },
+      { value: 'certificate', label: 'Certificate', icon: Award },
+      { value: 'fee', label: 'Fees', icon: Receipt },
+    ],
+  },
+];
+const NAV_LABELS: Record<string, string> = Object.fromEntries(
+  NAV_SECTIONS.flatMap(s => s.items.map(i => [i.value, i.label])),
+);
+
+
 // ═══════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════
@@ -130,7 +176,9 @@ export default function StudentCourseView() {
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [chatSubTab, setChatSubTab] = useState<'chat' | 'classmates'>('chat');
+  const [chatSubTab, setChatSubTab] = useState<'discussion' | 'classmates'>('discussion');
+  const [playingRecording, setPlayingRecording] = useState<any>(null);
+  const [openModules, setOpenModules] = useState<string[]>([]);
 
   // Flashcard state
   const [currentFlashcardIdx, setCurrentFlashcardIdx] = useState(0);
@@ -156,6 +204,19 @@ export default function StudentCourseView() {
     enabled: !!courseId && !!user?.id,
   });
 
+  // ─── Instructor profiles (student-facing "about your instructor") ───
+  const teacherIds = courseTeachers.map(t => t.userId);
+  const { data: instructorProfiles = [] } = useQuery({
+    queryKey: ['course-instructor-profiles', teacherIds.join(',')],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles')
+        .select('id, full_name, avatar_url, designation, qualification, specialization, years_experience')
+        .in('id', teacherIds);
+      return data || [];
+    },
+    enabled: teacherIds.length > 0,
+  });
+
   const handleMessageTeacher = async (teacher: { userId: string; name: string }) => {
     if (!user?.id || !courseId) return;
     setMessagingTeacher(true);
@@ -176,7 +237,7 @@ export default function StudentCourseView() {
     queryKey: ['student-course', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('courses')
-        .select('id, name, level, description, division_id, student_dm_mode, divisions:divisions(name)')
+        .select('id, name, level, description, division_id, student_dm_mode, hero_image_url, thumbnail_url, syllabus_text, divisions:divisions(name)')
         .eq('id', courseId!).single();
       return data;
     },
@@ -555,80 +616,208 @@ export default function StudentCourseView() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 rounded-xl" />
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+        <Skeleton className="h-56 rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
-      {/* ═══ HEADER ═══ */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
-          </Button>
-          {courseTeachers.length === 1 && (
-            <Button variant="outline" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
-              {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
-              Message {courseTeachers[0].name.split(' ')[0]}
-            </Button>
-          )}
-          {courseTeachers.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={messagingTeacher}>
-                  {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
-                  Message Teacher
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {courseTeachers.map(t => (
-                  <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
-                    {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+  const heroImage = (course as any)?.hero_image_url || (course as any)?.thumbnail_url || null;
 
-        {/* Banner */}
-        <div className="bg-gradient-to-r from-primary to-primary/60 rounded-xl p-5 text-primary-foreground">
-          <h1 className="text-xl font-bold">{course?.name}</h1>
-          <p className="text-sm text-primary-foreground/70 mt-0.5">
-            {(course?.divisions as any)?.name}
-            {course?.level && ` · ${course.level}`}
-          </p>
-          {enrollment && (
-            <Badge className="mt-2 bg-primary-foreground/20 text-primary-foreground text-[10px]">
-              Enrolled {format(new Date(enrollment.enrolled_at), 'MMM yyyy')}
-            </Badge>
-          )}
+  const messageTeacherButton = courseTeachers.length === 1 ? (
+    <Button variant="secondary" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
+      {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1.5" />}
+      Message {courseTeachers[0].name.split(' ')[0]}
+    </Button>
+  ) : courseTeachers.length > 1 ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="sm" disabled={messagingTeacher}>
+          {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1.5" />}
+          Message teacher
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {courseTeachers.map(t => (
+          <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
+            {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  // ─── Instructor panel (student-facing "about your instructor") ───
+  const instructorPanel = courseTeachers.length > 0 ? (
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+          Your instructor{courseTeachers.length > 1 ? 's' : ''}
+        </p>
+        <div className="space-y-5">
+          {courseTeachers.map(t => {
+            const p: any = instructorProfiles.find((ip: any) => ip.id === t.userId);
+            const bioParts = [
+              p?.designation,
+              p?.qualification,
+              p?.specialization && `Specialises in ${p.specialization}`,
+              p?.years_experience ? `${p.years_experience}+ years teaching experience` : null,
+            ].filter(Boolean);
+            return (
+              <div key={t.userId} className="flex items-start gap-4">
+                <Avatar className="h-14 w-14 border border-border">
+                  <AvatarImage src={p?.avatar_url || undefined} alt={t.name} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {t.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold leading-tight">{t.name}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">{t.role}</p>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    {bioParts.length ? bioParts.join(' · ') : 'Teaching this course at Al-Quran Time Academy.'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => handleMessageTeacher(t)}
+                    disabled={messagingTeacher}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1.5" /> Message teacher
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  ) : null;
+
+  return (
+    <div className="pb-12">
+      {/* ═══ HERO ═══ */}
+      <div className="relative overflow-hidden">
+        {heroImage ? (
+          <>
+            <img src={heroImage} alt={`${course?.name} course cover`} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/40" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-accent/10" />
+        )}
+        <div className="relative max-w-6xl mx-auto px-4 md:px-6 pt-4 pb-8">
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Dashboard
+            </Button>
+            {messageTeacherButton}
+          </div>
+
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {(course?.divisions as any)?.name && (
+                <Badge variant="secondary" className="text-xs">{(course?.divisions as any).name}</Badge>
+              )}
+              {course?.level && <Badge variant="outline" className="text-xs">{course.level}</Badge>}
+              {enrollment && (
+                <span className="text-xs text-muted-foreground">
+                  Enrolled {format(new Date(enrollment.enrolled_at), 'MMMM yyyy')}
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">{course?.name}</h1>
+            {course?.description && (
+              <p className="text-base text-muted-foreground mt-3 leading-relaxed line-clamp-3">{course.description}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-5 text-sm text-muted-foreground">
+              {classTeacher && (
+                <span className="flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> {classTeacher}</span>
+              )}
+              {myClass && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" />
+                  {(myClass.schedule_days as string[])?.join(', ')} · {formatTime12(myClass.schedule_time || '00:00')}
+                </span>
+              )}
+              {myClass?.session_duration && (
+                <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {myClass.session_duration} min sessions</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ═══ TABS ═══ */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full overflow-x-auto justify-start h-auto flex-nowrap sticky top-0 z-10 bg-background">
-          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Overview</TabsTrigger>
-          <TabsTrigger value="lessons" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-1 shrink-0"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
-          <TabsTrigger value="announcements" className="gap-1 shrink-0 relative">
-            <Bell className="h-3.5 w-3.5" /> Announcements
-            {hasUnreadAnnouncements && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive" />}
-          </TabsTrigger>
-          <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
-          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
-          <TabsTrigger value="resources" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Resources</TabsTrigger>
-          <TabsTrigger value="recordings" className="gap-1 shrink-0"><PlayCircle className="h-3.5 w-3.5" /> Recordings</TabsTrigger>
-          <TabsTrigger value="results" className="gap-1 shrink-0"><GraduationCap className="h-3.5 w-3.5" /> Results</TabsTrigger>
-          <TabsTrigger value="certificate" className="gap-1 shrink-0"><Award className="h-3.5 w-3.5" /> Certificate</TabsTrigger>
-          <TabsTrigger value="fee" className="gap-1 shrink-0"><Receipt className="h-3.5 w-3.5" /> Fee</TabsTrigger>
-        </TabsList>
+      {/* ═══ BODY ═══ */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="max-w-6xl mx-auto px-4 md:px-6 mt-6">
+        <div className="grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] items-start">
+          {/* Sidebar navigation */}
+          <aside className="lg:sticky lg:top-4 space-y-6">
+            {/* Mobile section picker */}
+            <div className="lg:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    {NAV_LABELS[activeTab] || 'Overview'}
+                    <ChevronRight className="h-4 w-4 rotate-90 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm">
+                  {NAV_SECTIONS.flatMap(s => s.items).map(item => (
+                    <DropdownMenuItem key={item.value} onClick={() => handleTabChange(item.value)}>
+                      <item.icon className="h-4 w-4 mr-2 opacity-70" /> {item.label}
+                      {item.value === 'announcements' && hasUnreadAnnouncements && (
+                        <span className="ml-2 h-2 w-2 rounded-full bg-destructive" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <nav className="hidden lg:block space-y-6">
+              {NAV_SECTIONS.map(section => (
+                <div key={section.label}>
+                  <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {section.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {section.items.map(item => {
+                      const active = activeTab === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          onClick={() => handleTabChange(item.value)}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors text-left',
+                            active
+                              ? 'bg-primary/10 text-primary font-semibold'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          )}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.value === 'announcements' && hasUnreadAnnouncements && (
+                            <span className="ml-auto h-2 w-2 rounded-full bg-destructive" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+            <div className="hidden lg:block">{instructorPanel}</div>
+          </aside>
+
+          {/* Content column */}
+          <div className="min-w-0">
+
 
         {/* ═══ TAB 1: TODAY ═══ */}
         <TabsContent value="today" className="space-y-4 mt-4">
@@ -728,40 +917,75 @@ export default function StudentCourseView() {
           })()}
         </TabsContent>
 
-        {/* ═══ TAB 2: LESSONS ═══ */}
-        <TabsContent value="lessons" className="space-y-2 mt-4">
+        {/* ═══ TAB 2: SYLLABUS ═══ */}
+        <TabsContent value="lessons" className="space-y-4 mt-0">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Course syllabus</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {modules.length} module{modules.length === 1 ? '' : 's'} · {lessons.length} lesson{lessons.length === 1 ? '' : 's'} ·
+                {' '}approx. {formatMinutes(lessons.reduce((s, l) => s + lessonMinutes(l.content_type), 0))} of learning
+              </p>
+            </div>
+            {modules.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setOpenModules(openModules.length ? [] : modules.map(m => m.id))}>
+                {openModules.length ? 'Collapse all' : 'Expand all'}
+              </Button>
+            )}
+          </div>
+
           {modules.length === 0 ? (
-            <Card><CardContent className="py-10 text-center">
-              <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No lessons available yet</p>
+            <Card><CardContent className="py-14 text-center">
+              <BookOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-base font-medium">Curriculum coming soon</p>
+              <p className="text-sm text-muted-foreground mt-1">Your teacher hasn't published the module outline yet.</p>
             </CardContent></Card>
           ) : (
-            <Accordion type="multiple" className="space-y-2">
-              {modules.map(mod => {
+            <Accordion type="multiple" value={openModules} onValueChange={setOpenModules} className="space-y-3">
+              {modules.map((mod, idx) => {
                 const modLessons = lessons.filter(l => l.module_id === mod.id);
+                const mins = modLessons.reduce((s, l) => s + lessonMinutes(l.content_type), 0);
+                const description = (mod as any).description
+                  || (modLessons.length
+                    ? `Covers ${modLessons.slice(0, 3).map(l => l.title).join(', ')}${modLessons.length > 3 ? ` and ${modLessons.length - 3} more` : ''}.`
+                    : 'Lessons for this module will be published soon.');
                 return (
-                  <AccordionItem key={mod.id} value={mod.id} className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                      {mod.title}
-                      <Badge variant="secondary" className="ml-2 text-[10px]">{modLessons.length} lessons</Badge>
+                  <AccordionItem key={mod.id} value={mod.id} className="border rounded-xl bg-card px-1">
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline text-left">
+                      <div className="flex items-start gap-4 w-full pr-2">
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                          {String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold leading-snug">{mod.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2 font-normal">{description}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-normal">
+                            <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> {modLessons.length} lesson{modLessons.length === 1 ? '' : 's'}</span>
+                            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {formatMinutes(mins)}</span>
+                          </div>
+                        </div>
+                      </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-2 pb-2">
+                    <AccordionContent className="px-4 pb-3">
                       {modLessons.length === 0 ? (
-                        <p className="text-xs text-muted-foreground px-3 py-2">No lessons in this module</p>
+                        <p className="text-sm text-muted-foreground py-2">No lessons published in this module yet.</p>
                       ) : (
-                        <div className="space-y-1">
-                          {modLessons.map(lesson => (
-                            <button
-                              key={lesson.id}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 text-left transition-colors"
-                              onClick={() => { setSelectedLesson(lesson); setLessonSheetOpen(true); }}
-                            >
-                              <span className="text-sm">
-                                {lesson.content_type === 'video' ? '🎬' : lesson.content_type === 'file' ? '📎' : '📄'}
-                              </span>
-                              <span className="text-sm text-foreground">{lesson.title}</span>
-                            </button>
-                          ))}
+                        <div className="border-t border-border pt-2 space-y-0.5">
+                          {modLessons.map((lesson, li) => {
+                            const Icon = lesson.content_type === 'video' ? PlayCircle : lesson.content_type === 'file' ? FileText : BookOpen;
+                            return (
+                              <button
+                                key={lesson.id}
+                                className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/60 text-left transition-colors group"
+                                onClick={() => { setSelectedLesson(lesson); setLessonSheetOpen(true); }}
+                              >
+                                <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <span className="text-sm flex-1 truncate">{li + 1}. {lesson.title}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{formatMinutes(lessonMinutes(lesson.content_type))}</span>
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </AccordionContent>
@@ -771,6 +995,7 @@ export default function StudentCourseView() {
             </Accordion>
           )}
         </TabsContent>
+
 
         {/* ═══ TAB 3: ASSIGNMENTS ═══ */}
         <TabsContent value="assignments" className="space-y-2 mt-4">
@@ -869,47 +1094,59 @@ export default function StudentCourseView() {
           )}
         </TabsContent>
 
-        {/* ═══ TAB 5: CLASS CHAT ═══ */}
-        <TabsContent value="class-chat" className="mt-4 space-y-3">
-          {!myClass ? (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <MessageSquare className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
-                  No class data for this enrollment.
-                </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Some features are only available in group courses.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Sub-tabs: Chat | Classmates */}
-              <div className="flex gap-2">
-                <Button size="sm" variant={chatSubTab === 'chat' ? 'default' : 'outline'} onClick={() => setChatSubTab('chat')}>
-                  <MessageSquare className="h-3.5 w-3.5 mr-1" /> Chat
-                </Button>
-                <Button size="sm" variant={chatSubTab === 'classmates' ? 'default' : 'outline'} onClick={() => setChatSubTab('classmates')}>
-                  <Users className="h-3.5 w-3.5 mr-1" /> Classmates
-                </Button>
-              </div>
+        {/* ═══ TAB 5: DISCUSSION ═══ */}
+        <TabsContent value="class-chat" className="mt-0 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ask questions, share notes and talk with your class.
+            </p>
+          </div>
 
-              {chatSubTab === 'chat' && <ClassChatTab courseId={courseId!} mode="student" />}
+          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+            {([
+              { key: 'discussion' as const, label: 'Discussion board', icon: MessageSquare },
+              { key: 'classmates' as const, label: 'Classmates', icon: Users },
+            ]).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setChatSubTab(t.key)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  chatSubTab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <t.icon className="h-4 w-4" /> {t.label}
+              </button>
+            ))}
+          </div>
 
-              {chatSubTab === 'classmates' && (
-                <ClassmatesDirectory
-                  courseId={courseId!}
-                  classId={myClass?.id || null}
-                  dmMode={(course as any)?.student_dm_mode || 'disabled'}
-                  userId={user?.id || ''}
-                  courseName={course?.name || ''}
-                  onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
-                />
-              )}
-            </>
+          {chatSubTab === 'discussion' && (
+            <CourseDiscussionBoard courseId={courseId!} currentUserId={user?.id || ''} />
+          )}
+
+          {chatSubTab === 'classmates' && (
+            myClass ? (
+              <ClassmatesDirectory
+                courseId={courseId!}
+                classId={myClass?.id || null}
+                dmMode={(course as any)?.student_dm_mode || 'disabled'}
+                userId={user?.id || ''}
+                courseName={course?.name || ''}
+                onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="text-base font-medium">No classmates to show yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">You are not assigned to a class group for this course.</p>
+                </CardContent>
+              </Card>
+            )
           )}
         </TabsContent>
+
 
         {/* ═══ TAB 6: MY PROGRESS ═══ */}
         <TabsContent value="progress" className="space-y-4 mt-4">
@@ -1010,40 +1247,74 @@ export default function StudentCourseView() {
         </TabsContent>
 
         {/* ═══ TAB 8: RECORDINGS ═══ */}
-        <TabsContent value="recordings" className="space-y-2 mt-4">
+        <TabsContent value="recordings" className="space-y-4 mt-0">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Class recordings</h2>
+            <p className="text-sm text-muted-foreground mt-1">Catch up on any class you missed.</p>
+          </div>
+
           {recordings.length === 0 ? (
-            <Card><CardContent className="py-12 text-center">
-              <Video className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-sm font-semibold">No recordings yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Recordings will appear here after live classes.</p>
+            <Card><CardContent className="py-14 text-center">
+              <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-base font-medium">No recordings yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Recordings appear here after each live class.</p>
             </CardContent></Card>
           ) : (
-            recordings.map((rec: any) => {
-              const startDate = rec.actual_start || rec.scheduled_start;
-              const durationMin = rec.actual_start && rec.actual_end
-                ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
-                : null;
-              return (
-                <Card key={rec.id}>
-                  <CardContent className="p-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold flex items-center gap-1.5">
-                        <PlayCircle className="h-4 w-4 text-primary" /> Class Recording
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
-                        {durationMin ? ` · ${durationMin} min` : ''}
-                      </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {recordings.map((rec: any) => {
+                const startDate = rec.actual_start || rec.scheduled_start;
+                const durationMin = rec.actual_start && rec.actual_end
+                  ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
+                  : null;
+                return (
+                  <Card key={rec.id} className="overflow-hidden group cursor-pointer hover:shadow-md transition-shadow" onClick={() => setPlayingRecording(rec)}>
+                    <div className="relative aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-background/90 shadow-sm group-hover:scale-105 transition-transform">
+                        <PlayCircle className="h-8 w-8 text-primary" />
+                      </span>
+                      {durationMin && (
+                        <span className="absolute bottom-2 right-2 rounded bg-foreground/80 px-1.5 py-0.5 text-xs font-medium text-background">
+                          {durationMin} min
+                        </span>
+                      )}
                     </div>
-                    <Button size="sm" onClick={() => window.open(rec.recording_link, '_blank')}>
-                      <PlayCircle className="h-3.5 w-3.5 mr-1" /> Watch
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })
+                    <CardContent className="p-4">
+                      <p className="text-sm font-semibold">Class recording</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
+
+          <Dialog open={!!playingRecording} onOpenChange={(o) => !o && setPlayingRecording(null)}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Class recording</DialogTitle>
+              </DialogHeader>
+              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                {playingRecording?.recording_link && (
+                  <iframe
+                    src={playingRecording.recording_link}
+                    title="Class recording player"
+                    className="h-full w-full"
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                  />
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => window.open(playingRecording?.recording_link, '_blank')}>
+                  <ExternalLink className="h-4 w-4 mr-1.5" /> Open in new tab
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
+
 
         {/* ═══ TAB 9: RESULTS ═══ */}
         <TabsContent value="results" className="space-y-4 mt-4">
@@ -1210,6 +1481,8 @@ export default function StudentCourseView() {
             );
           })()}
         </TabsContent>
+          </div>
+        </div>
       </Tabs>
 
       {/* ═══ DIALOGS ═══ */}
