@@ -812,6 +812,7 @@ export default function StudentCourseView() {
                 </div>
               ))}
             </nav>
+            <div className="hidden lg:block">{instructorPanel}</div>
           </aside>
 
           {/* Content column */}
