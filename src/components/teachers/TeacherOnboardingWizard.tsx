@@ -157,9 +157,12 @@ export function TeacherOnboardingWizard({ token, teacherId, onCompleted }: Props
             .select('bank_name, bank_account_title, bank_account_number, bank_iban')
             .eq('user_id', teacherId)
             .maybeSingle();
+          // date_of_birth is restricted on profiles — self / admin only.
+          const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: teacherId });
+          const dob = Array.isArray(wellbeing) ? wellbeing[0]?.date_of_birth ?? null : null;
           const mask = (v?: string | null) => (v ? `••••${v.slice(-4)}` : null);
           if (!cancelled) {
-            hydrate(p as unknown as WizardProfile, {
+            hydrate({ ...(p as any), date_of_birth: dob } as unknown as WizardProfile, {
               bank_name: s?.bank_name ?? null,
               bank_account_title: s?.bank_account_title ?? null,
               bank_account_number_masked: mask(s?.bank_account_number),

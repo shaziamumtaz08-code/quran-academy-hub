@@ -23,7 +23,8 @@ export const PROFILE_SAFE_COLUMNS = [
   'timezone',
   'gender',
   'age',
-  'date_of_birth',
+  // NOTE: date_of_birth is restricted — fetch it via the get_profile_wellbeing RPC
+  // (self / linked parent / assigned teacher / admin only).
   'account_status',
   'archived_at',
   'registration_id',
@@ -67,7 +68,8 @@ export const PROFILE_SAFE_COLUMNS = [
   'cv_status',
   'cv_uploaded_at',
   'banking_status',
-  'bank_account_title',
+  // NOTE: bank_account_title is restricted — read it from profile_sensitive_data
+  // (self / admin only), never from profiles.
   'onboarding_completed_at',
   // student detail fields
   // NOTE: blood_group, medical_*, father/mother_contact and emergency_contact_phone

@@ -75,6 +75,11 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
         profile = full.data;
       }
 
+      // Date of birth is restricted on profiles; only self / admin (and the
+      // student's own teacher) can read it through this RPC.
+      const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: teacherId! });
+      if (profile && Array.isArray(wellbeing) && wellbeing[0]) profile = { ...profile, ...wellbeing[0] };
+
       const { data: sensitive } = await (supabase as any)
         .from('profile_sensitive_data')
         .select('bank_name, bank_account_title, bank_account_number, bank_iban')
