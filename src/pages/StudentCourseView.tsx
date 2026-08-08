@@ -30,9 +30,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
-import { ClassChatTab } from '@/components/courses/ClassChatTab';
 import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 import { ClassmatesDirectory } from '@/components/courses/ClassmatesDirectory';
+import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ─── Helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
