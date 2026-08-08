@@ -23,6 +23,8 @@ import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsP
 import { SharedZoomAvailabilityPanel } from '@/components/zoom/SharedZoomAvailabilityPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
+import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
+
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
 import { ExportDialog } from '@/components/export/ExportDialog';
@@ -52,7 +54,7 @@ export default function ZoomManagement() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'shared' | 'vault' | 'pool'>('live');
-  const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
+  const [activeSection, setActiveSection] = React.useState<'accounts' | 'health' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
 
@@ -452,11 +454,13 @@ export default function ZoomManagement() {
   const sectionButtons = [
 
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
+    { id: 'health' as const, label: 'Webhook Health', icon: Shield, count: accountsCount },
     { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: unclaimedLegacy.length },
 
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
+
 
   return (
     <DashboardLayout>
@@ -726,6 +730,10 @@ export default function ZoomManagement() {
 
         {/* Teacher Zoom Accounts (dedicated) */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
+
+        {/* Per-seat webhook health */}
+        {activeSection === 'health' && <ZoomWebhookHealthPanel />}
+
 
         {/* Rooms Section (legacy shared pool) */}
         {activeSection === 'rooms' && (<>
