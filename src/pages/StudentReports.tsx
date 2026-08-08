@@ -15,6 +15,7 @@ import { Eye, Filter, FileText, AlertCircle, X, TrendingUp, Trash2, ArrowUpDown,
 import { useAuth } from '@/contexts/AuthContext';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemarks } from '@/lib/examinerRemarks';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';

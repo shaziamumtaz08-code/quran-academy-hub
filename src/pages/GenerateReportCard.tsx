@@ -15,6 +15,7 @@ import { FileText, User, Calendar, Loader2, Send, Upload, ArrowLeft } from 'luci
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemark } from '@/lib/examinerRemarks';
 import { ReportCardForm } from '@/components/reportCard/ReportCardForm';
 import { BulkReportCardDialog } from '@/components/reportCard/BulkReportCardDialog';
 import {

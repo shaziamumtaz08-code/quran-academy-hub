@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemarks } from '@/lib/examinerRemarks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKidContext } from '@/contexts/KidContext';
 import { Button } from '@/components/ui/button';
