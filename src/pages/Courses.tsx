@@ -88,6 +88,8 @@ export default function Courses() {
   const [formEndDate, setFormEndDate] = useState('');
   const [formLevel, setFormLevel] = useState('All Levels');
   const [formMaxStudents, setFormMaxStudents] = useState('30');
+  const [formRegistrationType, setFormRegistrationType] = useState('paid');
+
   const [formTags, setFormTags] = useState<string[]>([]);
   const [formWebsiteEnabled, setFormWebsiteEnabled] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
