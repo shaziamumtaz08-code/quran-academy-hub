@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
+import { AdminOverviewDashboard } from '@/components/dashboard/AdminOverviewDashboard';
 import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
 import { ParentDashboard } from '@/components/dashboard/ParentDashboard';
@@ -52,10 +53,9 @@ export default function Dashboard() {
 
   switch (displayRole) {
     case 'super_admin':
-      return <SuperAdminDashboard />;
     case 'admin':
     case 'admin_division':
-      return <AdminDashboard />;
+      return <AdminOverviewDashboard />;
     case 'admin_admissions':
       return <AdmissionsAdminDashboard />;
     case 'admin_fees':
