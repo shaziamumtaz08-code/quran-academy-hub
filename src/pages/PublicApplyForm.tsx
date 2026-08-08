@@ -555,6 +555,95 @@ export default function PublicApplyForm() {
               </Card>
             ))}
 
+            {/* Student login — the student's permanent identity on the platform */}
+            <Card className="shadow-sm border-border/60 overflow-hidden">
+              <div className="px-6 py-3 bg-muted/30 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm">Student Login</h3>
+                  {((formInfo.course as any)?.registration_type || 'paid') === 'free' && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 ml-auto">Required</Badge>
+                  )}
+                </div>
+              </div>
+              <CardContent className="space-y-5 p-6">
+                {((formInfo.course as any)?.registration_type || 'paid') === 'free' ? (
+                  <>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      The student signs in with their own email address. It becomes their permanent
+                      login and can't be shared with a parent or sibling.
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Student's email address</Label>
+                      <Input
+                        type="email"
+                        placeholder="student@example.com"
+                        value={formData.__student_email || ''}
+                        onChange={e => updateField('__student_email', e.target.value)}
+                        className={cn('h-11 rounded-lg', errors.__student_email && 'border-destructive')}
+                      />
+                      {errors.__student_email && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />{errors.__student_email}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      Every student gets their own login — two people can never share one account.
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Does the student have their own email?</Label>
+                      <div className="flex gap-2">
+                        {[{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }].map(o => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => updateField('__student_has_own_email', o.v)}
+                            className={cn(
+                              'flex-1 h-11 rounded-lg border text-sm font-medium transition-colors',
+                              formData.__student_has_own_email === o.v
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-input hover:bg-muted/50',
+                            )}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {formData.__student_has_own_email === 'yes' ? (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Student's email address</Label>
+                        <Input
+                          type="email"
+                          placeholder="student@example.com"
+                          value={formData.__student_email || ''}
+                          onChange={e => updateField('__student_email', e.target.value)}
+                          className={cn('h-11 rounded-lg', errors.__student_email && 'border-destructive')}
+                        />
+                        {errors.__student_email && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />{errors.__student_email}
+                          </p>
+                        )}
+                      </div>
+                    ) : formData.__student_has_own_email === 'no' ? (
+                      <p className="text-xs text-muted-foreground">
+                        No problem — the academy will issue the student a login address and share it with you.
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+
+
             {/* Identity Verification — fixed section, optional */}
             <Card className="shadow-sm border-border/60 overflow-hidden">
               <div className="px-6 py-3 bg-muted/30 border-b border-border/50">
