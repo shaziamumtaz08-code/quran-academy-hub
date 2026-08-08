@@ -1,5 +1,8 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
+import { loadIdentityConfig, normaliseRegistrationType } from "../_shared/org-identity.ts";
+import { isValidEmail, resolvePerson } from "../_shared/identity.ts";
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
