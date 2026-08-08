@@ -225,11 +225,20 @@ function useAdminOverview() {
 /* --------------------------------- component -------------------------------- */
 
 export function AdminOverviewDashboard() {
+  const { activeDivision } = useDivision();
+  if (activeDivision?.model_type !== 'one_to_one') {
+    return <GroupAcademyDashboard />;
+  }
+  return <OneToOneAdminDashboard />;
+}
+
+function OneToOneAdminDashboard() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState('Asia/Karachi');
+
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Admin';
   const { data: stats, isLoading } = useAdminOverview();
