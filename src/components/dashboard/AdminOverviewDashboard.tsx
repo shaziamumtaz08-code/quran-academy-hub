@@ -288,7 +288,7 @@ export function AdminOverviewDashboard() {
             <p className="text-[13px] font-bold truncate">{contextLabel || 'All divisions'}</p>
           </div>
           <span className="text-[10px] font-bold bg-primary-foreground/15 rounded-full px-2.5 py-1 shrink-0">
-            {isOneToOne ? '1:1 Mentorship' : activeDivision?.model_type === 'recorded' ? 'Recorded' : 'Group Academy'}
+            {isOneToOne ? '1:1 Mentorship' : 'Group Academy'}
           </span>
         </div>
 
