@@ -729,6 +729,10 @@ export default function ZoomManagement() {
         {/* Teacher Zoom Accounts (dedicated) */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
 
+        {/* Per-seat webhook health */}
+        {activeSection === 'health' && <ZoomWebhookHealthPanel />}
+
+
         {/* Rooms Section (legacy shared pool) */}
         {activeSection === 'rooms' && (<>
           {/* Allocation Mode Settings */}
