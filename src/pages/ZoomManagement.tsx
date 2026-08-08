@@ -23,6 +23,8 @@ import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsP
 import { SharedZoomAvailabilityPanel } from '@/components/zoom/SharedZoomAvailabilityPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
+import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
+
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
 import { ExportDialog } from '@/components/export/ExportDialog';
