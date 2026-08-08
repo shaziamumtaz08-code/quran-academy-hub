@@ -14,6 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { IslamicDateCard } from '@/components/dashboard/teacher/IslamicDateCard';
 import { AiInsightsWidget } from '@/components/dashboard/AiInsightsWidget';
+import { GroupAcademyDashboard } from '@/components/dashboard/GroupAcademyDashboard';
+
 import { isAbsentStatus, isPresentStatus, isLeaveStatus } from '@/lib/attendanceStatus';
 import type { IslamicDateData } from '@/lib/islamicDate';
 
