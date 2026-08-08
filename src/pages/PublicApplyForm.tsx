@@ -93,9 +93,10 @@ export default function PublicApplyForm() {
 
       const { data: course } = await supabase
         .from('courses')
-        .select('name, description, level, hero_image_url')
+        .select('name, description, level, hero_image_url, registration_type')
         .eq('id', form.course_id)
         .single();
+
 
       const { data: fields } = await supabase
         .from('registration_form_fields')
