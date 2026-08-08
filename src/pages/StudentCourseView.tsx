@@ -175,7 +175,9 @@ export default function StudentCourseView() {
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [chatSubTab, setChatSubTab] = useState<'chat' | 'classmates'>('chat');
+  const [chatSubTab, setChatSubTab] = useState<'discussion' | 'classmates'>('discussion');
+  const [playingRecording, setPlayingRecording] = useState<any>(null);
+  const [openModules, setOpenModules] = useState<string[]>([]);
 
   // Flashcard state
   const [currentFlashcardIdx, setCurrentFlashcardIdx] = useState(0);
