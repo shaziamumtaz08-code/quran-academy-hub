@@ -2101,6 +2101,13 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="truncate text-sm font-semibold text-foreground">{user.full_name}</span>
+                                  <DuplicateFlagBadge
+                                    userId={user.id}
+                                    reason={user.duplicate_flag_reason}
+                                    flaggedAt={user.duplicate_flagged_at}
+                                    reviewedAt={user.duplicate_reviewed_at}
+                                    onReviewed={() => refetch()}
+                                  />
                                 </div>
                                 {user.email && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
                               </div>
