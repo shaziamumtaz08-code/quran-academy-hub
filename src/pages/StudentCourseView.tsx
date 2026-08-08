@@ -929,47 +929,59 @@ export default function StudentCourseView() {
           )}
         </TabsContent>
 
-        {/* ═══ TAB 5: CLASS CHAT ═══ */}
-        <TabsContent value="class-chat" className="mt-4 space-y-3">
-          {!myClass ? (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <MessageSquare className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
-                  No class data for this enrollment.
-                </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Some features are only available in group courses.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Sub-tabs: Chat | Classmates */}
-              <div className="flex gap-2">
-                <Button size="sm" variant={chatSubTab === 'chat' ? 'default' : 'outline'} onClick={() => setChatSubTab('chat')}>
-                  <MessageSquare className="h-3.5 w-3.5 mr-1" /> Chat
-                </Button>
-                <Button size="sm" variant={chatSubTab === 'classmates' ? 'default' : 'outline'} onClick={() => setChatSubTab('classmates')}>
-                  <Users className="h-3.5 w-3.5 mr-1" /> Classmates
-                </Button>
-              </div>
+        {/* ═══ TAB 5: DISCUSSION ═══ */}
+        <TabsContent value="class-chat" className="mt-0 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ask questions, share notes and talk with your class.
+            </p>
+          </div>
 
-              {chatSubTab === 'chat' && <ClassChatTab courseId={courseId!} mode="student" />}
+          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+            {([
+              { key: 'discussion' as const, label: 'Discussion board', icon: MessageSquare },
+              { key: 'classmates' as const, label: 'Classmates', icon: Users },
+            ]).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setChatSubTab(t.key)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  chatSubTab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <t.icon className="h-4 w-4" /> {t.label}
+              </button>
+            ))}
+          </div>
 
-              {chatSubTab === 'classmates' && (
-                <ClassmatesDirectory
-                  courseId={courseId!}
-                  classId={myClass?.id || null}
-                  dmMode={(course as any)?.student_dm_mode || 'disabled'}
-                  userId={user?.id || ''}
-                  courseName={course?.name || ''}
-                  onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
-                />
-              )}
-            </>
+          {chatSubTab === 'discussion' && (
+            <CourseDiscussionBoard courseId={courseId!} currentUserId={user?.id || ''} />
+          )}
+
+          {chatSubTab === 'classmates' && (
+            myClass ? (
+              <ClassmatesDirectory
+                courseId={courseId!}
+                classId={myClass?.id || null}
+                dmMode={(course as any)?.student_dm_mode || 'disabled'}
+                userId={user?.id || ''}
+                courseName={course?.name || ''}
+                onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="text-base font-medium">No classmates to show yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">You are not assigned to a class group for this course.</p>
+                </CardContent>
+              </Card>
+            )
           )}
         </TabsContent>
+
 
         {/* ═══ TAB 6: MY PROGRESS ═══ */}
         <TabsContent value="progress" className="space-y-4 mt-4">
