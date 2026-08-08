@@ -37,6 +37,7 @@ export default function StudentProfile() {
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const canTeach = !!(canAdmin || hasRole('teacher'));
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
     queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] }));
@@ -264,6 +265,22 @@ export default function StudentProfile() {
                 <p className="text-sm font-semibold text-foreground">{a.subject?.name ?? 'Subject'}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{a.teacher?.full_name ?? 'Unassigned'}</p>
                 <p className="mt-2 text-[11px] font-medium text-amber-600">{fmtDate(a.start_date) ?? ''}</p>
+                {canTeach && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      to={`/teaching-os?assignment_id=${a.id}`}
+                      className="rounded-full border border-amber-500/40 bg-card px-3 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-500/10"
+                    >
+                      Teaching OS
+                    </Link>
+                    <Link
+                      to={`/quiz-engine?assignment_id=${a.id}`}
+                      className="rounded-full border border-amber-500/40 bg-card px-3 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-500/10"
+                    >
+                      Quiz
+                    </Link>
+                  </div>
+                )}
               </div>
             ))}
           </div>

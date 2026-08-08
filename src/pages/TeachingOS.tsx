@@ -152,6 +152,8 @@ export default function TeachingOS() {
   const { language, langClass } = useLanguage();
   const [searchParams] = useSearchParams();
   const requestedSyllabusId = searchParams.get('syllabus_id');
+  // One-to-one scope: when present, this syllabus belongs to a student assignment, not a course
+  const assignmentId = searchParams.get('assignment_id');
 
   // Course selection state
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -218,14 +220,35 @@ export default function TeachingOS() {
     enabled: !!selectedCourseId,
   });
 
-  // Fetch existing syllabi for selected course to avoid duplication
-  const { data: existingSyllabi = [] } = useQuery({
-    queryKey: ['teaching-os-existing-syllabi', selectedCourseId],
+  // One-to-one assignment context (only when opened from a student's page)
+  const { data: assignmentCtx } = useQuery({
+    queryKey: ['teaching-os-assignment', assignmentId],
     queryFn: async () => {
-      if (!selectedCourseId) return [];
-      const { data } = await (supabase.from('syllabi') as any)
-        .select('id, course_name, subject, level, created_at, status, duration_weeks, sessions_week')
-        .eq('course_id', selectedCourseId)
+      const { data } = await (supabase.from('student_teacher_assignments') as any)
+        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
+        .eq('id', assignmentId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!assignmentId,
+  });
+
+  // Prefill the input engine from the 1:1 assignment
+  useEffect(() => {
+    if (!assignmentCtx) return;
+    setCourseName(prev => prev || `${assignmentCtx.student?.full_name ?? 'Student'} — ${assignmentCtx.subject?.name ?? 'One-to-one'}`);
+    setSubject(prev => prev || (assignmentCtx.subject?.name ?? ''));
+  }, [assignmentCtx]);
+
+  // Fetch existing syllabi for selected course (or 1:1 assignment) to avoid duplication
+  const { data: existingSyllabi = [] } = useQuery({
+    queryKey: ['teaching-os-existing-syllabi', selectedCourseId, assignmentId],
+    queryFn: async () => {
+      if (!selectedCourseId && !assignmentId) return [];
+      let q = (supabase.from('syllabi') as any)
+        .select('id, course_name, subject, level, created_at, status, duration_weeks, sessions_week');
+      q = assignmentId ? q.eq('assignment_id', assignmentId) : q.eq('course_id', selectedCourseId);
+      const { data } = await q
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -256,7 +279,7 @@ export default function TeachingOS() {
       );
       return enriched;
     },
-    enabled: !!selectedCourseId,
+    enabled: !!selectedCourseId || !!assignmentId,
   });
 
   // Close course dropdown on outside click
@@ -339,7 +362,8 @@ export default function TeachingOS() {
       const payload = {
         user_id: user.id,
         course_name: courseName || 'Untitled',
-        course_id: selectedCourseId || null,
+        course_id: assignmentId ? null : (selectedCourseId || null),
+        assignment_id: assignmentId || null,
         subject, level,
         duration_weeks: durationWeeks,
         sessions_week: effectiveSessions,
@@ -357,7 +381,7 @@ export default function TeachingOS() {
       }
       setSaveStatus('saved');
     } catch { setSaveStatus('error'); }
-  }, [user, courseName, selectedCourseId, subject, level, durationWeeks, sessionsPerWeek, targetAudience, learningGoals, pdfText, pasteText, syllabusId]);
+  }, [user, courseName, selectedCourseId, assignmentId, subject, level, durationWeeks, sessionsPerWeek, targetAudience, learningGoals, pdfText, pasteText, syllabusId]);
 
   const debouncedSave = useCallback((currentRows: SyllabusRow[]) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -366,7 +390,7 @@ export default function TeachingOS() {
 
   // ─── Generate ───
   const handleGenerate = async () => {
-    if (!selectedCourseId || !courseName.trim()) { setNameError(true); return; }
+    if ((!selectedCourseId && !assignmentId) || !courseName.trim()) { setNameError(true); return; }
     setNameError(false);
     setGenerating(true);
     setCompleted(false);
@@ -568,7 +592,15 @@ export default function TeachingOS() {
         {/* ─── LEFT PANEL ─── */}
         <div className="w-[320px] min-w-[320px] bg-white border-r border-[#e8e9eb] flex flex-col overflow-hidden">
           <div className="px-[18px] pt-4 pb-[14px] border-b border-[#e8e9eb]">
-            {selectedCourseId && (
+            {assignmentId && (
+              <button
+                onClick={() => navigate(`/student-profile/${assignmentCtx?.student?.id ?? ''}`)}
+                className="text-[11px] text-[#1a56b0] hover:underline mb-2 block"
+              >
+                ← Back to student
+              </button>
+            )}
+            {!assignmentId && selectedCourseId && (
               <button
                 onClick={() => navigate(`/courses/${selectedCourseId}`)}
                 className="text-[11px] text-[#1a56b0] hover:underline mb-2 block"
@@ -581,8 +613,15 @@ export default function TeachingOS() {
             <LanguageSelector showLabel />
           </div>
           <div className="flex-1 overflow-y-auto px-[18px] py-4 flex flex-col gap-[14px]">
+            {assignmentId && (
+              <div className="bg-[#eef7f1] border border-[#a7d7bd] rounded-[9px] px-3 py-[8px]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1c7a4d]">One-to-one</p>
+                <p className="text-[12px] text-[#0f2044]">{assignmentCtx?.student?.full_name ?? 'Student'}</p>
+                <p className="text-[10px] text-[#4a5264]">{assignmentCtx?.subject?.name ?? 'Subject'}</p>
+              </div>
+            )}
             {/* Course selector */}
-            <div ref={courseDropdownRef} className="relative">
+            <div ref={courseDropdownRef} className={`relative ${assignmentId ? 'hidden' : ''}`}>
               <label className="text-[11px] font-medium text-[#4a5264] mb-[5px] flex items-center gap-1">Select course <span className="text-red-500">*</span></label>
               <button
                 type="button"
@@ -667,7 +706,7 @@ export default function TeachingOS() {
                   {existingSyllabi.map((s: any) => (
                     <div key={s.id} className={`relative w-full text-left bg-white border rounded-[7px] px-3 py-2 hover:bg-[#fefce8] transition-colors ${syllabusId === s.id ? 'border-[#1a56b0] bg-[#eef2fa]' : 'border-[#e5e7eb]'}`}>
                       <button
-                        onClick={() => navigate(`/teaching-os?syllabus_id=${s.id}`)}
+                        onClick={() => navigate(`/teaching-os?syllabus_id=${s.id}${assignmentId ? `&assignment_id=${assignmentId}` : ''}`)}
                         className="w-full text-left"
                       >
                         <div className="flex items-center justify-between pr-6">
@@ -910,6 +949,7 @@ export default function TeachingOS() {
                       if (!syllabusId) return;
                       const params = new URLSearchParams({ syllabus_id: syllabusId });
                       if (selectedCourseId) params.set('course_id', selectedCourseId);
+                      if (assignmentId) params.set('assignment_id', assignmentId);
                       navigate(`/teaching-os/planner?${params.toString()}`);
                     }}
                     disabled={!syllabusId}
