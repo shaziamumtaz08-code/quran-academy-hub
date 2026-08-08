@@ -203,6 +203,19 @@ export default function StudentCourseView() {
     enabled: !!courseId && !!user?.id,
   });
 
+  // ─── Instructor profiles (student-facing "about your instructor") ───
+  const teacherIds = courseTeachers.map(t => t.userId);
+  const { data: instructorProfiles = [] } = useQuery({
+    queryKey: ['course-instructor-profiles', teacherIds.join(',')],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles')
+        .select('id, full_name, avatar_url, designation, qualification, specialization, years_experience')
+        .in('id', teacherIds);
+      return data || [];
+    },
+    enabled: teacherIds.length > 0,
+  });
+
   const handleMessageTeacher = async (teacher: { userId: string; name: string }) => {
     if (!user?.id || !courseId) return;
     setMessagingTeacher(true);
