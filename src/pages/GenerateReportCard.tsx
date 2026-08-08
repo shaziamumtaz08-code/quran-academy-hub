@@ -15,6 +15,7 @@ import { FileText, User, Calendar, Loader2, Send, Upload, ArrowLeft } from 'luci
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemark } from '@/lib/examinerRemarks';
 import { ReportCardForm } from '@/components/reportCard/ReportCardForm';
 import { BulkReportCardDialog } from '@/components/reportCard/BulkReportCardDialog';
 import {
@@ -169,7 +170,7 @@ export default function GenerateReportCard() {
           student_id,
           exam_date,
           criteria_values_json,
-          examiner_remarks,
+          
           public_remarks,
           template:exam_templates!exams_template_id_fkey(
             id,
@@ -185,6 +186,7 @@ export default function GenerateReportCard() {
       if (error) throw error;
       return {
         ...data,
+        examiner_remarks: await fetchExaminerRemark(data.id),
         criteria_values_json: data.criteria_values_json as unknown as StoredCriteriaEntry[] | null,
         template: data.template ? {
           ...data.template,

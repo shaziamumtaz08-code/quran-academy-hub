@@ -12612,6 +12612,13 @@ export type Database = {
       }
       get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
       get_demo_chat: { Args: { _token: string }; Returns: Json }
+      get_exam_examiner_remarks: {
+        Args: { _exam_ids: string[] }
+        Returns: {
+          examiner_remarks: string
+          id: string
+        }[]
+      }
       get_kit_quiz_questions_for_student: {
         Args: { _kit_id: string }
         Returns: {

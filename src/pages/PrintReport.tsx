@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemark } from '@/lib/examinerRemarks';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate, ReportViewMode } from '@/components/reports/ReportCardCertificate';
 
@@ -26,7 +27,7 @@ export default function PrintReport() {
           max_total_marks,
           percentage,
           criteria_values_json,
-          examiner_remarks,
+          
           public_remarks,
           exam_date,
           created_at,
@@ -45,6 +46,7 @@ export default function PrintReport() {
       if (error) throw error;
       return {
         ...data,
+        examiner_remarks: await fetchExaminerRemark(data.id),
         criteria_values_json: data.criteria_values_json as unknown as StoredCriteriaEntry[] | null,
         template: data.template ? {
           ...data.template,

@@ -15,6 +15,7 @@ import { Eye, Filter, FileText, AlertCircle, X, TrendingUp, Trash2, ArrowUpDown,
 import { useAuth } from '@/contexts/AuthContext';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchExaminerRemarks } from '@/lib/examinerRemarks';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
@@ -129,7 +130,7 @@ export default function StudentReports() {
           max_total_marks,
           percentage,
           criteria_values_json,
-          examiner_remarks,
+          
           public_remarks,
           exam_date,
           created_at,
@@ -163,8 +164,10 @@ export default function StudentReports() {
 
       const { data, error } = await query;
       if (error) throw error;
+      const remarks = await fetchExaminerRemarks((data ?? []).map((d: any) => d.id));
       return (data ?? []).map(d => ({
         ...d,
+        examiner_remarks: remarks.get((d as any).id) ?? null,
         criteria_values_json: (d as any).criteria_values_json as unknown as StoredCriteriaEntry[] | null,
         template: d.template ? {
           ...d.template,
