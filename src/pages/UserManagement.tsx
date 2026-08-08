@@ -94,6 +94,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
+import { DuplicateFlagBadge } from '@/components/users/DuplicateFlagBadge';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
@@ -2264,6 +2265,13 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                                   {user.archived_at && (
                                     <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
                                   )}
+                                  <DuplicateFlagBadge
+                                    userId={user.id}
+                                    reason={user.duplicate_flag_reason}
+                                    flaggedAt={user.duplicate_flagged_at}
+                                    reviewedAt={user.duplicate_reviewed_at}
+                                    onReviewed={() => refetch()}
+                                  />
                                 </div>
                                  {user.email ? (
                                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
