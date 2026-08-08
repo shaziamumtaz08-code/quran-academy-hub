@@ -1246,40 +1246,74 @@ export default function StudentCourseView() {
         </TabsContent>
 
         {/* ═══ TAB 8: RECORDINGS ═══ */}
-        <TabsContent value="recordings" className="space-y-2 mt-4">
+        <TabsContent value="recordings" className="space-y-4 mt-0">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Class recordings</h2>
+            <p className="text-sm text-muted-foreground mt-1">Catch up on any class you missed.</p>
+          </div>
+
           {recordings.length === 0 ? (
-            <Card><CardContent className="py-12 text-center">
-              <Video className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-sm font-semibold">No recordings yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Recordings will appear here after live classes.</p>
+            <Card><CardContent className="py-14 text-center">
+              <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-base font-medium">No recordings yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Recordings appear here after each live class.</p>
             </CardContent></Card>
           ) : (
-            recordings.map((rec: any) => {
-              const startDate = rec.actual_start || rec.scheduled_start;
-              const durationMin = rec.actual_start && rec.actual_end
-                ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
-                : null;
-              return (
-                <Card key={rec.id}>
-                  <CardContent className="p-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold flex items-center gap-1.5">
-                        <PlayCircle className="h-4 w-4 text-primary" /> Class Recording
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
-                        {durationMin ? ` · ${durationMin} min` : ''}
-                      </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {recordings.map((rec: any) => {
+                const startDate = rec.actual_start || rec.scheduled_start;
+                const durationMin = rec.actual_start && rec.actual_end
+                  ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
+                  : null;
+                return (
+                  <Card key={rec.id} className="overflow-hidden group cursor-pointer hover:shadow-md transition-shadow" onClick={() => setPlayingRecording(rec)}>
+                    <div className="relative aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-background/90 shadow-sm group-hover:scale-105 transition-transform">
+                        <PlayCircle className="h-8 w-8 text-primary" />
+                      </span>
+                      {durationMin && (
+                        <span className="absolute bottom-2 right-2 rounded bg-foreground/80 px-1.5 py-0.5 text-xs font-medium text-background">
+                          {durationMin} min
+                        </span>
+                      )}
                     </div>
-                    <Button size="sm" onClick={() => window.open(rec.recording_link, '_blank')}>
-                      <PlayCircle className="h-3.5 w-3.5 mr-1" /> Watch
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })
+                    <CardContent className="p-4">
+                      <p className="text-sm font-semibold">Class recording</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
+
+          <Dialog open={!!playingRecording} onOpenChange={(o) => !o && setPlayingRecording(null)}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Class recording</DialogTitle>
+              </DialogHeader>
+              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                {playingRecording?.recording_link && (
+                  <iframe
+                    src={playingRecording.recording_link}
+                    title="Class recording player"
+                    className="h-full w-full"
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                  />
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => window.open(playingRecording?.recording_link, '_blank')}>
+                  <ExternalLink className="h-4 w-4 mr-1.5" /> Open in new tab
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
+
 
         {/* ═══ TAB 9: RESULTS ═══ */}
         <TabsContent value="results" className="space-y-4 mt-4">
