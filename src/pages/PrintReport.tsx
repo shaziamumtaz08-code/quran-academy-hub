@@ -46,6 +46,7 @@ export default function PrintReport() {
       if (error) throw error;
       return {
         ...data,
+        examiner_remarks: await fetchExaminerRemark(data.id),
         criteria_values_json: data.criteria_values_json as unknown as StoredCriteriaEntry[] | null,
         template: data.template ? {
           ...data.template,
