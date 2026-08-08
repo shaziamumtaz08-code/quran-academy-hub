@@ -59,6 +59,10 @@ export default function ParentProfile() {
         profile = full.data;
       }
 
+      // Date of birth is restricted on profiles — self / admin only via RPC.
+      const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: parentId! });
+      if (profile && Array.isArray(wellbeing) && wellbeing[0]) profile = { ...profile, ...wellbeing[0] };
+
       const { data: links } = await supabase
         .from('student_parent_links')
         .select('student_id, relationship, student:profiles!student_parent_links_student_id_fkey(id, full_name, email, avatar_url, registration_id)')
