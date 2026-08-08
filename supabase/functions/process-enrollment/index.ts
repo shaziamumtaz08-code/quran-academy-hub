@@ -47,33 +47,48 @@ Deno.serve(async (req) => {
     if (sub.status === "enrolled") return json(400, { error: "Already enrolled", already_enrolled: true });
 
     const d = (sub.data || {}) as Record<string, any>;
-    const email = (d.email || "").toLowerCase().trim();
+    const submittedEmail = (d.email || "").toLowerCase().trim();
+    // A student's own email, when the registrant confirmed they have one.
+    const ownStudentEmail = (d.student_email || "").toLowerCase().trim();
+    const hasOwnEmail = d.student_has_own_email === true || d.student_has_own_email === "yes";
     const phone = (d.phone || d.whatsapp_number || "").trim();
-    const fullName = d.full_name || email.split("@")[0] || "Student";
+    const fullName = d.full_name || submittedEmail.split("@")[0] || "Student";
     const city = d.city || null;
     const country = d.country || null;
     const rawGender = (d.gender || "").toLowerCase().trim();
     const gender = rawGender === "male" || rawGender === "female" ? rawGender : null;
 
-    // ── Identity (gov_id) — permanent identity anchor ──
+    // ── Identity (gov_id) — supporting evidence, reviewed by a human ──
     const identity = (d.identity || {}) as Record<string, any>;
     const govIdType = identity.gov_id_type || null;
     const govIdNumberRaw = (identity.gov_id_number || "").trim();
     const govIdNumber = govIdNumberRaw || null;
     const govIdDocPath = identity.gov_id_doc_path || null;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      return json(400, { error: "A valid email address is required before enrollment." });
-    }
-
     studentName = fullName;
-    loginEmail = email;
     tempPassword = defaultPasswordFor(fullName);
 
+    // ── Workflow: driven by the course's Registration Type ──
+    const { data: courseRow } = await supabaseAdmin
+      .from("courses")
+      .select("registration_type")
+      .eq("id", course_id)
+      .maybeSingle();
+    const workflow = normaliseRegistrationType(courseRow?.registration_type);
+    const config = await loadIdentityConfig(supabaseAdmin);
+
+    // Which email is the LOOKUP key for this person?
+    //  - free       → the student's own email (mandatory)
+    //  - paid / 1:1 → their own email if confirmed, otherwise an academy login
+    const lookupEmail = ownStudentEmail || submittedEmail;
+    const ownEmailConfirmed = workflow === "free" ? true : hasOwnEmail || Boolean(ownStudentEmail);
+
+    if (workflow === "free" && !isValidEmail(lookupEmail)) {
+      return json(400, { error: "Free course registration requires the student's own valid email address." });
+    }
+
     // ── PRE-CHECK: gov_id duplicate detection (before any writes) ──
-    // gov_id is the permanent identity anchor. If a profile already owns this
-    // gov_id and the email differs, halt and flag for admin review.
+    // Never auto-merges — halts for admin review.
     if (govIdNumber) {
       const { data: govMatches } = await supabaseAdmin
         .from("profiles")
@@ -82,8 +97,7 @@ Deno.serve(async (req) => {
         .limit(2);
 
       const govMatch = govMatches?.[0];
-      if (govMatch && (govMatch.email || "").toLowerCase() !== email) {
-        // Flag the submission for admin review — do NOT auto-merge.
+      if (govMatch && (govMatch.email || "").toLowerCase() !== lookupEmail) {
         await supabaseAdmin.from("registration_submissions").update({
           status: "needs_review",
           match_status: "duplicate_gov_id",
@@ -101,116 +115,46 @@ Deno.serve(async (req) => {
             email: govMatch.email,
             verified: govMatch.gov_id_verified,
           },
-          submitted_email: email,
+          submitted_email: lookupEmail,
         });
       }
     }
 
-    // ── STEP 1: Create / Find Profile ──
-    // Siblings share a parent email; only merge when the name matches too so
-    // each child keeps a separate profile and downstream pipeline.
-    try {
-      const normName = (n: string) => (n || "").toLowerCase().replace(/\s+/g, " ").trim();
-      const { data: existing } = await supabaseAdmin
-        .from("profiles")
-        .select("id, full_name")
-        .eq("email", email);
+    // ── STEPS 1-3: Resolve the permanent user id (profile + auth + role) ──
+    const resolved = await resolvePerson(supabaseAdmin, {
+      submittedEmail: lookupEmail,
+      fullName,
+      phone,
+      role: "student",
+      workflow,
+      ownEmailConfirmed,
+      config,
+      password: tempPassword,
+      profile: {
+        city,
+        country,
+        gender,
+        gov_id_type: govIdType || undefined,
+        gov_id_number: govIdNumber || undefined,
+        gov_id_doc_url: govIdDocPath || undefined,
+        gov_id_verified: govIdNumber ? false : undefined,
+      },
+    });
 
-      const nameMatch = (existing || []).find((p: any) => normName(p.full_name) === normName(fullName));
-      if (nameMatch) {
-        profileId = nameMatch.id;
-
-        // Backfill gov_id on existing profile if provided and not yet set
-        if (govIdNumber) {
-          const { data: ep } = await supabaseAdmin
-            .from("profiles").select("gov_id_number").eq("id", profileId).single();
-          if (!ep?.gov_id_number) {
-            await supabaseAdmin.from("profiles").update({
-              gov_id_type: govIdType,
-              gov_id_number: govIdNumber,
-              gov_id_doc_url: govIdDocPath,
-              gov_id_verified: false,
-            }).eq("id", profileId);
-          }
-        }
-      } else {
-        const newId = crypto.randomUUID();
-        const { error: insErr } = await supabaseAdmin.from("profiles").insert({
-          id: newId,
-          full_name: fullName,
-          email,
-          whatsapp_number: phone || null,
-          city,
-          country,
-          gender,
-          gov_id_type: govIdType,
-          gov_id_number: govIdNumber,
-          gov_id_doc_url: govIdDocPath,
-          gov_id_verified: false,
-        });
-        if (insErr) throw insErr;
-        profileId = newId;
-      }
-    } catch (e: any) {
-      failedSteps.push(`Step 1 (Profile): ${e.message}`);
-      console.error("Step 1 failed:", e.message);
+    if (!resolved.ok) {
+      await supabaseAdmin.from("registration_submissions").update({
+        status: "needs_review",
+        match_status: resolved.code,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", submission_id);
+      return json(resolved.status, { error: resolved.error, code: resolved.code, requires_admin_review: true });
     }
 
-    if (!profileId) {
-      return json(500, { error: "Cannot proceed without profile", failed_steps: failedSteps });
-    }
+    profileId = resolved.profileId;
+    loginEmail = resolved.loginEmail;
+    tempPassword = resolved.password;
+    authCreated = resolved.authCreated;
 
-    // ── STEP 2: Create Auth Account ──
-    try {
-      const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { full_name: fullName },
-      });
-
-      if (authErr) {
-        if (authErr.message?.includes("already been registered") || authErr.message?.includes("already exists")) {
-          // Auth exists — find via listUsers (getUserByEmail not available in this SDK version)
-          const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-          const existingAuth = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
-          if (existingAuth) {
-            const authUid = existingAuth.id;
-            if (authUid !== profileId) {
-              console.log(`Syncing profile ${profileId} → auth uid ${authUid}`);
-              await supabaseAdmin.from("profiles").update({ id: authUid }).eq("id", profileId);
-              profileId = authUid;
-            }
-          }
-          authCreated = false;
-        } else {
-          throw authErr;
-        }
-      } else {
-        authCreated = true;
-        // Sync profile id to match auth user id for RLS
-        if (authData?.user && authData.user.id !== profileId) {
-          const authUid = authData.user.id;
-          console.log(`Syncing new profile ${profileId} → auth uid ${authUid}`);
-          await supabaseAdmin.from("profiles").update({ id: authUid }).eq("id", profileId);
-          profileId = authUid;
-        }
-      }
-    } catch (e: any) {
-      failedSteps.push(`Step 2 (Auth): ${e.message}`);
-      console.error("Step 2 failed:", e.message);
-    }
-
-    // ── STEP 3: Assign Student Role ──
-    try {
-      await supabaseAdmin.from("user_roles").upsert(
-        { user_id: profileId, role: "student" },
-        { onConflict: "user_id,role" }
-      );
-    } catch (e: any) {
-      failedSteps.push(`Step 3 (Role): ${e.message}`);
-      console.error("Step 3 failed:", e.message);
-    }
 
     // ── STEP 4: Create Course Enrollment ──
     try {
