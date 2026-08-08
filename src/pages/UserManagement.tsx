@@ -407,6 +407,10 @@ interface UserWithRoles {
   created_at: string;
   archived_at: string | null;
   registration_id: string | null;
+  possible_duplicate_of: string | null;
+  duplicate_flag_reason: string | null;
+  duplicate_flagged_at: string | null;
+  duplicate_reviewed_at: string | null;
   roles: AppRole[];
   roleStatuses: Partial<Record<AppRole, 'active' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
@@ -541,7 +545,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, email, gender, age, country, city, created_at, archived_at, registration_id')
+        .select('id, full_name, email, gender, age, country, city, created_at, archived_at, registration_id, possible_duplicate_of, duplicate_flag_reason, duplicate_flagged_at, duplicate_reviewed_at')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
@@ -585,6 +589,10 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
+            possible_duplicate_of: (profile as any).possible_duplicate_of ?? null,
+            duplicate_flag_reason: (profile as any).duplicate_flag_reason ?? null,
+            duplicate_flagged_at: (profile as any).duplicate_flagged_at ?? null,
+            duplicate_reviewed_at: (profile as any).duplicate_reviewed_at ?? null,
             roles: (rolesData || []).map((r: any) => r.role as AppRole),
             roleStatuses,
             exceptions: exceptions || [],
