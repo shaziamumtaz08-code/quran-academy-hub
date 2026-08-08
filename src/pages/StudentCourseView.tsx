@@ -916,40 +916,75 @@ export default function StudentCourseView() {
           })()}
         </TabsContent>
 
-        {/* ═══ TAB 2: LESSONS ═══ */}
-        <TabsContent value="lessons" className="space-y-2 mt-4">
+        {/* ═══ TAB 2: SYLLABUS ═══ */}
+        <TabsContent value="lessons" className="space-y-4 mt-0">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Course syllabus</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {modules.length} module{modules.length === 1 ? '' : 's'} · {lessons.length} lesson{lessons.length === 1 ? '' : 's'} ·
+                {' '}approx. {formatMinutes(lessons.reduce((s, l) => s + lessonMinutes(l.content_type), 0))} of learning
+              </p>
+            </div>
+            {modules.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setOpenModules(openModules.length ? [] : modules.map(m => m.id))}>
+                {openModules.length ? 'Collapse all' : 'Expand all'}
+              </Button>
+            )}
+          </div>
+
           {modules.length === 0 ? (
-            <Card><CardContent className="py-10 text-center">
-              <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No lessons available yet</p>
+            <Card><CardContent className="py-14 text-center">
+              <BookOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-base font-medium">Curriculum coming soon</p>
+              <p className="text-sm text-muted-foreground mt-1">Your teacher hasn't published the module outline yet.</p>
             </CardContent></Card>
           ) : (
-            <Accordion type="multiple" className="space-y-2">
-              {modules.map(mod => {
+            <Accordion type="multiple" value={openModules} onValueChange={setOpenModules} className="space-y-3">
+              {modules.map((mod, idx) => {
                 const modLessons = lessons.filter(l => l.module_id === mod.id);
+                const mins = modLessons.reduce((s, l) => s + lessonMinutes(l.content_type), 0);
+                const description = (mod as any).description
+                  || (modLessons.length
+                    ? `Covers ${modLessons.slice(0, 3).map(l => l.title).join(', ')}${modLessons.length > 3 ? ` and ${modLessons.length - 3} more` : ''}.`
+                    : 'Lessons for this module will be published soon.');
                 return (
-                  <AccordionItem key={mod.id} value={mod.id} className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                      {mod.title}
-                      <Badge variant="secondary" className="ml-2 text-[10px]">{modLessons.length} lessons</Badge>
+                  <AccordionItem key={mod.id} value={mod.id} className="border rounded-xl bg-card px-1">
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline text-left">
+                      <div className="flex items-start gap-4 w-full pr-2">
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                          {String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold leading-snug">{mod.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2 font-normal">{description}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-normal">
+                            <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> {modLessons.length} lesson{modLessons.length === 1 ? '' : 's'}</span>
+                            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {formatMinutes(mins)}</span>
+                          </div>
+                        </div>
+                      </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-2 pb-2">
+                    <AccordionContent className="px-4 pb-3">
                       {modLessons.length === 0 ? (
-                        <p className="text-xs text-muted-foreground px-3 py-2">No lessons in this module</p>
+                        <p className="text-sm text-muted-foreground py-2">No lessons published in this module yet.</p>
                       ) : (
-                        <div className="space-y-1">
-                          {modLessons.map(lesson => (
-                            <button
-                              key={lesson.id}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 text-left transition-colors"
-                              onClick={() => { setSelectedLesson(lesson); setLessonSheetOpen(true); }}
-                            >
-                              <span className="text-sm">
-                                {lesson.content_type === 'video' ? '🎬' : lesson.content_type === 'file' ? '📎' : '📄'}
-                              </span>
-                              <span className="text-sm text-foreground">{lesson.title}</span>
-                            </button>
-                          ))}
+                        <div className="border-t border-border pt-2 space-y-0.5">
+                          {modLessons.map((lesson, li) => {
+                            const Icon = lesson.content_type === 'video' ? PlayCircle : lesson.content_type === 'file' ? FileText : BookOpen;
+                            return (
+                              <button
+                                key={lesson.id}
+                                className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/60 text-left transition-colors group"
+                                onClick={() => { setSelectedLesson(lesson); setLessonSheetOpen(true); }}
+                              >
+                                <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <span className="text-sm flex-1 truncate">{li + 1}. {lesson.title}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{formatMinutes(lessonMinutes(lesson.content_type))}</span>
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </AccordionContent>
@@ -959,6 +994,7 @@ export default function StudentCourseView() {
             </Accordion>
           )}
         </TabsContent>
+
 
         {/* ═══ TAB 3: ASSIGNMENTS ═══ */}
         <TabsContent value="assignments" className="space-y-2 mt-4">
