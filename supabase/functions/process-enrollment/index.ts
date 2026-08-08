@@ -329,7 +329,10 @@ Deno.serve(async (req) => {
       temp_password: tempPassword,
       enrollment_id: enrollmentId,
       student_name: studentName,
-      matched_existing: !authCreated && failedSteps.length === 0,
+      matched_existing: resolved.reusedExisting,
+      generated_login: resolved.generatedLogin,
+      duplicate_flagged_against: resolved.duplicateFlaggedAgainst ?? null,
+      registration_workflow: workflow,
       message: failedSteps.length === 0
         ? "Student fully onboarded"
         : "Partially onboarded — some steps failed",
