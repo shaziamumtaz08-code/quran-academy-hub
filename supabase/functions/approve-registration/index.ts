@@ -1,7 +1,9 @@
 /// <reference lib="deno.ns" />
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
-import { generateAqtEmail, generateInitialPassword } from "../_shared/aqt-email.ts";
+import { loadIdentityConfig } from "../_shared/org-identity.ts";
+import type { IdentityConfig, RegistrationType } from "../_shared/org-identity.ts";
+import { EMAIL_RE, resolvePerson } from "../_shared/identity.ts";
 import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown) {
@@ -11,69 +13,52 @@ function json(status: number, body: unknown) {
   });
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function tempPasswordFor(fullName: string) {
   return defaultPasswordFor(fullName);
 }
 
-
-type Admin = Awaited<ReturnType<typeof requireRole>> extends { adminClient: infer C } ? C : never;
-
-async function findAuthUserByEmail(admin: any, email: string): Promise<string | null> {
-  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const found = data?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
-  return found?.id ?? null;
-}
-
-/** Create (or reuse) an auth user + profile + role. Returns the profile id. */
+/**
+ * Create (or reuse) the permanent user id for a person.
+ * Thin wrapper over the shared identity resolver so every registration path
+ * (free / paid / one-to-one / teacher) follows the exact same rules.
+ */
 async function upsertUser(
   admin: any,
-  opts: { email: string; fullName: string; role: string; profile: Record<string, unknown>; password?: string },
-): Promise<{ id: string; created: boolean; password: string }> {
-  const email = opts.email.toLowerCase().trim();
-  const password = opts.password || tempPasswordFor(opts.fullName);
-  let created = false;
-
-  let userId: string | null = null;
-
-  const { data: authData, error: authErr } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: opts.fullName },
+  opts: {
+    email?: string | null;
+    fullName: string;
+    role: string;
+    profile: Record<string, unknown>;
+    password?: string;
+    config: IdentityConfig;
+    workflow: RegistrationType;
+    ownEmailConfirmed: boolean;
+    phone?: string | null;
+    reserved?: Set<string>;
+  },
+): Promise<{ id: string; created: boolean; password: string; email: string; generated: boolean }> {
+  const res = await resolvePerson(admin, {
+    submittedEmail: opts.email,
+    fullName: opts.fullName,
+    phone: opts.phone,
+    role: opts.role,
+    profile: opts.profile,
+    config: opts.config,
+    workflow: opts.workflow,
+    ownEmailConfirmed: opts.ownEmailConfirmed,
+    reserved: opts.reserved,
+    password: opts.password,
   });
-
-  if (authErr) {
-    if (/already/i.test(authErr.message || "")) {
-      userId = await findAuthUserByEmail(admin, email);
-    }
-    if (!userId) throw authErr;
-  } else {
-    userId = authData.user.id;
-    created = true;
-  }
-
-  const payload: Record<string, unknown> = {
-    id: userId,
-    full_name: opts.fullName,
-    email,
-    ...opts.profile,
+  if (!res.ok) throw new Error(res.error);
+  return {
+    id: res.profileId,
+    created: res.authCreated,
+    password: res.password,
+    email: res.loginEmail,
+    generated: res.generatedLogin,
   };
-  Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
-
-  const { error: pErr } = await admin.from("profiles").upsert(payload, { onConflict: "id" });
-  if (pErr) throw pErr;
-
-  const { error: rErr } = await admin.from("user_roles").upsert(
-    { user_id: userId, role: opts.role },
-    { onConflict: "user_id,role" },
-  );
-  if (rErr) throw new Error(`Failed to assign '${opts.role}' role: ${rErr.message}`);
-
-
-  return { id: userId as string, created, password };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
