@@ -886,7 +886,7 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      {MobileQuickLinksBar}
+      
 
       <DMChatSheet
         open={dmOpen}
