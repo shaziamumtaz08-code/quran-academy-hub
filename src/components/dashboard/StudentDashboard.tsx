@@ -860,7 +860,7 @@ export function StudentDashboard() {
   // Mobile bottom quick-links bar removed — the Quick Links card already covers these actions.
 
   return (
-    <div className="flex flex-col gap-3 p-3 lg:p-4 pb-24 lg:pb-4">
+    <div className="flex flex-col gap-3 p-3 lg:p-4 pb-6 lg:pb-4">
       {Header}
       {NextClassCard}
 
