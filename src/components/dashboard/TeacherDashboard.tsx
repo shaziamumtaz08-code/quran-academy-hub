@@ -48,7 +48,7 @@ export function TeacherDashboard() {
 
   return (
     <div className="relative font-sans">
-      <div className="p-3 md:p-4 pb-20 md:pb-6 space-y-2 max-w-[1100px] mx-auto">
+      <div className="p-3 md:p-4 pb-6 space-y-2 max-w-[1100px] mx-auto">
         {/* Prayer Bar — greeting + Islamic date + prayer pills + bell */}
         <PrayerBar
           firstName={firstName}
