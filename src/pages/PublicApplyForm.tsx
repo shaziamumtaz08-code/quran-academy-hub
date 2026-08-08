@@ -193,6 +193,18 @@ export default function PublicApplyForm() {
         newErrors.__gov_id_type = 'Select an ID type';
       }
 
+      // Student login identity — email is the permanent login, never shared.
+      const regType = (formInfo.course as any)?.registration_type || 'paid';
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const ownEmail = (formData.__student_email || '').trim().toLowerCase();
+      const hasOwn = regType === 'free' ? true : formData.__student_has_own_email === 'yes';
+      if (regType === 'free' && !emailRe.test(ownEmail)) {
+        newErrors.__student_email = "The student's own email address is required for this course";
+      }
+      if (regType !== 'free' && hasOwn && !emailRe.test(ownEmail)) {
+        newErrors.__student_email = "Enter the student's own email address";
+      }
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         throw new Error('Please fill in all required fields');
@@ -208,7 +220,12 @@ export default function PublicApplyForm() {
       delete submissionData.__gov_id_type;
       delete submissionData.__gov_id_number;
       delete submissionData.__gov_id_doc_path;
+      delete submissionData.__student_email;
+      delete submissionData.__student_has_own_email;
       if (identity.gov_id_number) submissionData.identity = identity;
+      submissionData.student_has_own_email = hasOwn;
+      if (hasOwn && ownEmail) submissionData.student_email = ownEmail;
+
 
       const { error } = await supabase.from('registration_submissions').insert({
         form_id: formInfo.form.id,
