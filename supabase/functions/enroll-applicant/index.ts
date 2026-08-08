@@ -1,5 +1,8 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
+import { loadIdentityConfig, normaliseRegistrationType } from "../_shared/org-identity.ts";
+import { isValidEmail, resolvePerson } from "../_shared/identity.ts";
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -41,103 +44,73 @@ Deno.serve(async (req) => {
     }
 
     const data = (sub.data || {}) as Record<string, any>;
-    const email = (data.email || "").toLowerCase().trim();
+    const submittedEmail = (data.email || "").toLowerCase().trim();
+    const ownStudentEmail = (data.student_email || "").toLowerCase().trim();
+    const hasOwnEmail = data.student_has_own_email === true || data.student_has_own_email === "yes";
     const phone = (data.phone || data.whatsapp_number || "").trim();
-    const fullName = data.full_name || email.split("@")[0] || "Student";
+    const fullName = data.full_name || submittedEmail.split("@")[0] || "Student";
     const city = data.city || null;
     const country = data.country || null;
     const rawGender = (data.gender || "").toLowerCase().trim();
     const gender = (rawGender === 'male' || rawGender === 'female') ? rawGender : null;
 
-    // Email is mandatory and must be valid format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      return new Response(JSON.stringify({ error: "A valid email address is required before enrollment." }), {
+    // Workflow comes from the course's Registration Type — no manual choice.
+    const { data: courseRow } = await supabaseAdmin
+      .from("courses")
+      .select("registration_type")
+      .eq("id", course_id)
+      .maybeSingle();
+    const workflow = normaliseRegistrationType(courseRow?.registration_type);
+    const config = await loadIdentityConfig(supabaseAdmin);
+
+    const lookupEmail = ownStudentEmail || submittedEmail;
+    const ownEmailConfirmed = workflow === "free" ? true : hasOwnEmail || Boolean(ownStudentEmail);
+
+    if (workflow === "free" && !isValidEmail(lookupEmail)) {
+      return new Response(JSON.stringify({ error: "Free course registration requires the student's own valid email address." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let profileId: string | null = null;
-    let matchedExisting = false;
+    // Identity resolution: email is the only uniqueness key; phone never merges.
+    const resolved = await resolvePerson(supabaseAdmin, {
+      submittedEmail: lookupEmail,
+      fullName,
+      phone,
+      role: "student",
+      workflow,
+      ownEmailConfirmed,
+      config,
+      profile: { city, country, gender },
+    });
 
-    // Siblings often share a parent email/phone. Only merge when the NAME also
-    // matches, so each child keeps its own profile + downstream pipeline.
-    const normName = (n: string) => (n || "").toLowerCase().replace(/\s+/g, " ").trim();
-    const targetName = normName(fullName);
-
-    // 1. Deduplicate by email + name
-    if (email) {
-      const { data: existing } = await supabaseAdmin
-        .from("profiles")
-        .select("id, full_name")
-        .eq("email", email);
-      const match = (existing || []).find((p: any) => normName(p.full_name) === targetName);
-      if (match) {
-        profileId = match.id;
-        matchedExisting = true;
-      }
-    }
-
-    // 2. Deduplicate by phone + name
-    if (!profileId && phone) {
-      const { data: existing } = await supabaseAdmin
-        .from("profiles")
-        .select("id, full_name")
-        .eq("whatsapp_number", phone);
-      const match = (existing || []).find((p: any) => normName(p.full_name) === targetName);
-      if (match) {
-        profileId = match.id;
-        matchedExisting = true;
-      }
-    }
-
-
-    // 3. Create new profile if not found
-    if (!profileId) {
-      const newId = crypto.randomUUID();
-      const { error: insertErr } = await supabaseAdmin
-        .from("profiles")
-        .insert({
-          id: newId,
-          full_name: fullName,
-          email: email || null,
-          whatsapp_number: phone || null,
-          city: city,
-          country: country,
-          gender: gender,
-        });
-
-      if (insertErr) {
-        return new Response(JSON.stringify({ error: "Failed to create profile: " + insertErr.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      profileId = newId;
-
-      // Add student role (trigger auto-generates URN)
-      await supabaseAdmin.from("user_roles").insert({
-        user_id: newId,
-        role: "student",
+    if (!resolved.ok) {
+      return new Response(JSON.stringify({ error: resolved.error, code: resolved.code }), {
+        status: resolved.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    } else if (matchedExisting) {
-      // Ensure existing matched profile has a URN
-      const { data: existingProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("registration_id")
-        .eq("id", profileId)
-        .single();
-      
-      if (!existingProfile?.registration_id) {
-        const { data: regId } = await supabaseAdmin.rpc("generate_registration_id", {
-          _org_code: "AQT",
-          _branch_code: "ONL",
-          _role_code: "STU",
-        });
-        if (regId) {
-          await supabaseAdmin.from("profiles").update({ registration_id: regId }).eq("id", profileId);
-        }
+    }
+
+    const profileId = resolved.profileId;
+    const matchedExisting = resolved.reusedExisting;
+
+    // Ensure the profile carries a URN
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("registration_id")
+      .eq("id", profileId)
+      .maybeSingle();
+
+    if (!existingProfile?.registration_id) {
+      const { data: regId } = await supabaseAdmin.rpc("generate_registration_id", {
+        _org_code: "AQT",
+        _branch_code: "ONL",
+        _role_code: "STU",
+      });
+      if (regId) {
+        await supabaseAdmin.from("profiles").update({ registration_id: regId }).eq("id", profileId);
       }
     }
+
 
     // 4. Create course enrollment (skip if exists)
     let enrollmentId: string | null = null;
@@ -187,8 +160,17 @@ Deno.serve(async (req) => {
       profile_id: profileId,
       enrollment_id: enrollmentId,
       matched_existing: matchedExisting,
+      login_email: resolved.loginEmail,
+      temp_password: resolved.authCreated ? resolved.password : undefined,
+      generated_login: resolved.generatedLogin,
+      duplicate_flagged_against: resolved.duplicateFlaggedAgainst ?? null,
+      registration_workflow: workflow,
       student_name: fullName,
     }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

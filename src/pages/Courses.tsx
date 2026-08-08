@@ -88,6 +88,8 @@ export default function Courses() {
   const [formEndDate, setFormEndDate] = useState('');
   const [formLevel, setFormLevel] = useState('All Levels');
   const [formMaxStudents, setFormMaxStudents] = useState('30');
+  const [formRegistrationType, setFormRegistrationType] = useState('paid');
+
   const [formTags, setFormTags] = useState<string[]>([]);
   const [formWebsiteEnabled, setFormWebsiteEnabled] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -220,7 +222,9 @@ export default function Courses() {
         start_date: formStartDate || format(new Date(), 'yyyy-MM-dd'),
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
+        registration_type: formRegistrationType,
         level: formLevel,
+
         tags: formTags.length ? formTags : null,
         website_enabled: formWebsiteEnabled,
         seo_slug: slug || null,
@@ -615,11 +619,30 @@ export default function Courses() {
                 </div>
               </div>
 
+              {/* Registration Type — drives the identity/registration workflow */}
+              <div className="space-y-1.5">
+                <Label>Registration Type</Label>
+                <Select value={formRegistrationType} onValueChange={setFormRegistrationType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free Course</SelectItem>
+                    <SelectItem value="paid">Paid Course</SelectItem>
+                    <SelectItem value="one_to_one">One-to-One</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {formRegistrationType === 'free' && 'Student must register with their own email — it becomes their permanent login.'}
+                  {formRegistrationType === 'paid' && 'A parent may register the child; if the child has no email, the academy issues one automatically.'}
+                  {formRegistrationType === 'one_to_one' && 'Each student gets their own login (real or academy-issued); siblings may share a phone number.'}
+                </p>
+              </div>
+
               {/* Max Students */}
               <div className="space-y-1.5">
                 <Label>Max Students</Label>
                 <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
               </div>
+
 
               {/* Start Date + End Date */}
               <div className="grid grid-cols-2 gap-3">

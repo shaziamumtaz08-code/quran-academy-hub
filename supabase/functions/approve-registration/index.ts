@@ -1,7 +1,9 @@
 /// <reference lib="deno.ns" />
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
-import { generateAqtEmail, generateInitialPassword } from "../_shared/aqt-email.ts";
+import { loadIdentityConfig } from "../_shared/org-identity.ts";
+import type { IdentityConfig, RegistrationType } from "../_shared/org-identity.ts";
+import { EMAIL_RE, resolvePerson } from "../_shared/identity.ts";
 import { defaultPasswordFor } from "../_shared/default-password.ts";
 
 function json(status: number, body: unknown) {
@@ -11,69 +13,52 @@ function json(status: number, body: unknown) {
   });
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function tempPasswordFor(fullName: string) {
   return defaultPasswordFor(fullName);
 }
 
-
-type Admin = Awaited<ReturnType<typeof requireRole>> extends { adminClient: infer C } ? C : never;
-
-async function findAuthUserByEmail(admin: any, email: string): Promise<string | null> {
-  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const found = data?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
-  return found?.id ?? null;
-}
-
-/** Create (or reuse) an auth user + profile + role. Returns the profile id. */
+/**
+ * Create (or reuse) the permanent user id for a person.
+ * Thin wrapper over the shared identity resolver so every registration path
+ * (free / paid / one-to-one / teacher) follows the exact same rules.
+ */
 async function upsertUser(
   admin: any,
-  opts: { email: string; fullName: string; role: string; profile: Record<string, unknown>; password?: string },
-): Promise<{ id: string; created: boolean; password: string }> {
-  const email = opts.email.toLowerCase().trim();
-  const password = opts.password || tempPasswordFor(opts.fullName);
-  let created = false;
-
-  let userId: string | null = null;
-
-  const { data: authData, error: authErr } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: opts.fullName },
+  opts: {
+    email?: string | null;
+    fullName: string;
+    role: string;
+    profile: Record<string, unknown>;
+    password?: string;
+    config: IdentityConfig;
+    workflow: RegistrationType;
+    ownEmailConfirmed: boolean;
+    phone?: string | null;
+    reserved?: Set<string>;
+  },
+): Promise<{ id: string; created: boolean; password: string; email: string; generated: boolean }> {
+  const res = await resolvePerson(admin, {
+    submittedEmail: opts.email,
+    fullName: opts.fullName,
+    phone: opts.phone,
+    role: opts.role,
+    profile: opts.profile,
+    config: opts.config,
+    workflow: opts.workflow,
+    ownEmailConfirmed: opts.ownEmailConfirmed,
+    reserved: opts.reserved,
+    password: opts.password,
   });
-
-  if (authErr) {
-    if (/already/i.test(authErr.message || "")) {
-      userId = await findAuthUserByEmail(admin, email);
-    }
-    if (!userId) throw authErr;
-  } else {
-    userId = authData.user.id;
-    created = true;
-  }
-
-  const payload: Record<string, unknown> = {
-    id: userId,
-    full_name: opts.fullName,
-    email,
-    ...opts.profile,
+  if (!res.ok) throw new Error(res.error);
+  return {
+    id: res.profileId,
+    created: res.authCreated,
+    password: res.password,
+    email: res.loginEmail,
+    generated: res.generatedLogin,
   };
-  Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
-
-  const { error: pErr } = await admin.from("profiles").upsert(payload, { onConflict: "id" });
-  if (pErr) throw pErr;
-
-  const { error: rErr } = await admin.from("user_roles").upsert(
-    { user_id: userId, role: opts.role },
-    { onConflict: "user_id,role" },
-  );
-  if (rErr) throw new Error(`Failed to assign '${opts.role}' role: ${rErr.message}`);
-
-
-  return { id: userId as string, created, password };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -102,7 +87,8 @@ Deno.serve(async (req) => {
 
     const applicant = (reg.applicant_data || {}) as Record<string, any>;
     const createdIds: string[] = [];
-    const accounts: { name: string; email: string; password: string; role: string; created: boolean }[] = [];
+    const accounts: { name: string; email: string; password: string; role: string; created: boolean; generated?: boolean }[] = [];
+    const config = await loadIdentityConfig(admin);
 
     if (reg.registration_type === "teacher") {
       const email = (applicant.email || reg.email || "").toLowerCase().trim();
@@ -110,6 +96,11 @@ Deno.serve(async (req) => {
       const banking = applicant.banking || {};
       const res = await upsertUser(admin, {
         email,
+        // The teacher registers themselves — their email is their own login.
+        ownEmailConfirmed: true,
+        workflow: "one_to_one",
+        config,
+        phone: applicant.whatsapp || reg.phone,
         fullName: applicant.full_name || reg.parent_name,
         role: "teacher",
         profile: {
@@ -137,15 +128,15 @@ Deno.serve(async (req) => {
       createdIds.push(res.id);
       accounts.push({
         name: applicant.full_name || reg.parent_name,
-        email,
+        email: res.email,
         password: res.password,
         role: "teacher",
         created: res.created,
       });
     } else {
-      // Student registration: guardian account (reused across siblings by email) + the student.
-      // Students never inherit the parent's inbox — the academy issues each one an
-      // AQT-branded, login-only address.
+      // Family registration: the guardian gets their own permanent user id, and
+      // every child gets a separate one. A child never logs in with the
+      // parent's address — two people can never share one auth account.
       let parentId: string | null = null;
       const parentEmail = (reg.email || "").toLowerCase().trim();
       const children = Array.isArray(reg.children) ? (reg.children as any[]) : [];
@@ -153,6 +144,10 @@ Deno.serve(async (req) => {
       if (EMAIL_RE.test(parentEmail)) {
         const res = await upsertUser(admin, {
           email: parentEmail,
+          ownEmailConfirmed: true,
+          workflow: "one_to_one",
+          config,
+          phone: reg.phone,
           fullName: reg.parent_name,
           role: "parent",
           profile: {
@@ -169,7 +164,7 @@ Deno.serve(async (req) => {
         createdIds.push(res.id);
         accounts.push({
           name: reg.parent_name,
-          email: parentEmail,
+          email: res.email,
           password: res.password,
           role: "parent",
           created: res.created,
@@ -181,71 +176,56 @@ Deno.serve(async (req) => {
       for (const child of children) {
         const childName = child.name || child.full_name || "Student";
 
-        // Reuse an already-issued AQT login if this exact student was created before,
-        // otherwise mint a fresh one. Only ever reuse a profile that is a student —
-        // parent/teacher accounts must never be recycled as a student login.
-        let childEmail: string;
-        const { data: existingProfile } = await admin
-          .from("profiles")
-          .select("id, email, user_roles!inner(role)")
-          .ilike("full_name", childName.trim())
-          .ilike("email", `%@alqurantimeacademy.com`)
-          .eq("user_roles.role", "student")
-          .maybeSingle();
+        // "Does the student have their own email?" — captured on the form.
+        const childOwnEmail = (child.email || child.student_email || "").toLowerCase().trim();
+        const hasOwnEmail =
+          EMAIL_RE.test(childOwnEmail) && childOwnEmail !== parentEmail;
 
-        if (existingProfile?.email) {
-          childEmail = String(existingProfile.email).toLowerCase();
-          reserved.add(childEmail);
-        } else {
-          try {
-            childEmail = await generateAqtEmail(admin, childName, reserved);
-          } catch (e: any) {
-            return json(400, { error: e?.message || `Could not create a login for ${childName}` });
-          }
-        }
-
-        // Policy guard: a student login is always academy-issued and can never be
-        // the parent's (or any non-student's) address.
-        if (childEmail === parentEmail || !childEmail.endsWith("@alqurantimeacademy.com")) {
-          return json(400, {
-            error: `Login policy violation: ${childName} must get an academy-issued login, not a shared/parent email.`,
+        let res;
+        try {
+          res = await upsertUser(admin, {
+            // Own email when confirmed; otherwise the resolver mints an
+            // academy-issued login on the organization's configured domain.
+            email: hasOwnEmail ? childOwnEmail : null,
+            ownEmailConfirmed: hasOwnEmail,
+            workflow: "one_to_one",
+            config,
+            reserved,
+            phone: child.whatsapp || child.phone || reg.phone,
+            fullName: childName,
+            password: tempPasswordFor(childName),
+            role: "student",
+            profile: {
+              whatsapp_number: child.whatsapp || child.phone || undefined,
+              city: reg.city,
+              country: reg.country,
+              timezone: reg.timezone,
+              address: reg.address,
+              date_of_birth: child.date_of_birth || undefined,
+              gender: ["male", "female"].includes((child.gender || "").toLowerCase())
+                ? (child.gender || "").toLowerCase()
+                : undefined,
+              school_name: child.school_name || undefined,
+              grade_level: child.grade_level || undefined,
+              learning_goals: child.goals || undefined,
+              medical_conditions: child.medical_conditions || undefined,
+              special_needs: child.special_needs || undefined,
+              father_name: applicant.father_name || undefined,
+              father_contact: applicant.father_phone || undefined,
+              mother_name: applicant.mother_name || undefined,
+              mother_contact: applicant.mother_phone || undefined,
+              emergency_contact_name: applicant.emergency_name || undefined,
+              emergency_contact_phone: applicant.emergency_phone || undefined,
+              hear_about_us: applicant.hear_about || undefined,
+              avatar_url: reg.avatar_url || undefined,
+              account_status: "active",
+            },
           });
+        } catch (e: any) {
+          return json(400, { error: e?.message || `Could not create a login for ${childName}` });
         }
 
-
-        const res = await upsertUser(admin, {
-          email: childEmail,
-          fullName: childName,
-          password: tempPasswordFor(childName),
-
-
-          role: "student",
-          profile: {
-            whatsapp_number: child.whatsapp || child.phone || undefined,
-            city: reg.city,
-            country: reg.country,
-            timezone: reg.timezone,
-            address: reg.address,
-            date_of_birth: child.date_of_birth || undefined,
-            gender: ["male", "female"].includes((child.gender || "").toLowerCase())
-              ? (child.gender || "").toLowerCase()
-              : undefined,
-            school_name: child.school_name || undefined,
-            grade_level: child.grade_level || undefined,
-            learning_goals: child.goals || undefined,
-            medical_conditions: child.medical_conditions || undefined,
-            special_needs: child.special_needs || undefined,
-            father_name: applicant.father_name || undefined,
-            father_contact: applicant.father_phone || undefined,
-            mother_name: applicant.mother_name || undefined,
-            mother_contact: applicant.mother_phone || undefined,
-            emergency_contact_name: applicant.emergency_name || undefined,
-            emergency_contact_phone: applicant.emergency_phone || undefined,
-            hear_about_us: applicant.hear_about || undefined,
-            avatar_url: reg.avatar_url || undefined,
-            account_status: "active",
-          },
-        });
+        // Hard guard: parent and child can never resolve to the same identity.
         if (parentId && res.id === parentId) {
           return json(400, {
             error: `Account collision: ${childName}'s login resolved to the parent account. Approval aborted.`,
@@ -253,11 +233,12 @@ Deno.serve(async (req) => {
         }
         createdIds.push(res.id);
         accounts.push({
-          name: child.name || "Student",
-          email: childEmail,
+          name: childName,
+          email: res.email,
           password: res.password,
           role: "student",
           created: res.created,
+          generated: res.generated,
         });
 
         if (parentId && parentId !== res.id) {
@@ -273,6 +254,7 @@ Deno.serve(async (req) => {
         }
       }
     }
+
 
     if (!accounts.length) {
       return json(400, { error: "No valid email addresses found in this registration" });
