@@ -222,7 +222,9 @@ export default function Courses() {
         start_date: formStartDate || format(new Date(), 'yyyy-MM-dd'),
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
+        registration_type: formRegistrationType,
         level: formLevel,
+
         tags: formTags.length ? formTags : null,
         website_enabled: formWebsiteEnabled,
         seo_slug: slug || null,
