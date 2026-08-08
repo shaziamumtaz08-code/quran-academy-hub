@@ -2,6 +2,9 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { defaultPasswordFor } from "../_shared/default-password.ts";
+import { loadIdentityConfig, normaliseRegistrationType } from "../_shared/org-identity.ts";
+import { isValidEmail, resolvePerson } from "../_shared/identity.ts";
+
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
