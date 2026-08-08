@@ -102,6 +102,9 @@ export default function QuizEngine() {
   const [sessionSetup, setSessionSetup] = useState<{ id: string; name: string } | null>(null);
   const [sessionIdentityMode, setSessionIdentityMode] = useState<'email' | 'name'>('email');
 
+  // One-to-one scope: quiz created from a student's assignment instead of a course
+  const quizAssignmentId = new URLSearchParams(window.location.search).get('assignment_id');
+
   const DRAFT_KEY = 'quiz-engine:create-draft';
   const emptyForm = {
     name: '', description: '', language: 'en',
@@ -266,7 +269,8 @@ export default function QuizEngine() {
         name: form.name,
         description: form.description || null,
         language: form.language,
-        course_id: form.course_id || null,
+        course_id: quizAssignmentId ? null : (form.course_id || null),
+        assignment_id: quizAssignmentId || null,
         mode: form.mode,
         question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
         difficulty_level: form.difficulty_level,
@@ -507,7 +511,8 @@ export default function QuizEngine() {
         name: form.name || 'Untitled quiz',
         description: form.description || null,
         language: form.language,
-        course_id: form.course_id || null,
+        course_id: quizAssignmentId ? null : (form.course_id || null),
+        assignment_id: quizAssignmentId || null,
         mode: form.mode,
         question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
         difficulty_level: form.difficulty_level,
