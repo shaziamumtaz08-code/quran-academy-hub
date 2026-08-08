@@ -452,11 +452,13 @@ export default function ZoomManagement() {
   const sectionButtons = [
 
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
+    { id: 'health' as const, label: 'Webhook Health', icon: Shield, count: accountsCount },
     { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: unclaimedLegacy.length },
 
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
+
 
   return (
     <DashboardLayout>
