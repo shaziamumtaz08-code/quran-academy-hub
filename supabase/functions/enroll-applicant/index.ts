@@ -160,8 +160,17 @@ Deno.serve(async (req) => {
       profile_id: profileId,
       enrollment_id: enrollmentId,
       matched_existing: matchedExisting,
+      login_email: resolved.loginEmail,
+      temp_password: resolved.authCreated ? resolved.password : undefined,
+      generated_login: resolved.generatedLogin,
+      duplicate_flagged_against: resolved.duplicateFlaggedAgainst ?? null,
+      registration_workflow: workflow,
       student_name: fullName,
     }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
