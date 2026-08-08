@@ -3082,6 +3082,7 @@ export type Database = {
           name: string
           outcomes: Json | null
           pricing: Json | null
+          registration_type: string
           seo_slug: string | null
           start_date: string
           status: string
@@ -3117,6 +3118,7 @@ export type Database = {
           name: string
           outcomes?: Json | null
           pricing?: Json | null
+          registration_type?: string
           seo_slug?: string | null
           start_date: string
           status?: string
@@ -3152,6 +3154,7 @@ export type Database = {
           name?: string
           outcomes?: Json | null
           pricing?: Json | null
+          registration_type?: string
           seo_slug?: string | null
           start_date?: string
           status?: string
@@ -6156,6 +6159,56 @@ export type Database = {
           },
         ]
       }
+      org_identity_config: {
+        Row: {
+          created_at: string
+          free_requires_own_email: boolean
+          id: string
+          is_default: boolean
+          login_domain: string
+          login_email_pattern: string
+          one_to_one_allows_generated_email: boolean
+          org_id: string | null
+          paid_allows_generated_email: boolean
+          phone_soft_duplicate_check: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          free_requires_own_email?: boolean
+          id?: string
+          is_default?: boolean
+          login_domain: string
+          login_email_pattern?: string
+          one_to_one_allows_generated_email?: boolean
+          org_id?: string | null
+          paid_allows_generated_email?: boolean
+          phone_soft_duplicate_check?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          free_requires_own_email?: boolean
+          id?: string
+          is_default?: boolean
+          login_domain?: string
+          login_email_pattern?: string
+          one_to_one_allows_generated_email?: boolean
+          org_id?: string | null
+          paid_allows_generated_email?: boolean
+          phone_soft_duplicate_check?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_identity_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_payment_accounts: {
         Row: {
           account_number: string | null
@@ -7192,6 +7245,10 @@ export type Database = {
           department: string | null
           designation: string | null
           display_name: string | null
+          duplicate_flag_reason: string | null
+          duplicate_flagged_at: string | null
+          duplicate_reviewed_at: string | null
+          duplicate_reviewed_by: string | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -7225,6 +7282,7 @@ export type Database = {
           nationality: string | null
           onboarding_completed_at: string | null
           onboarding_token: string | null
+          possible_duplicate_of: string | null
           preferred_contact_method: string | null
           preferred_language: string | null
           preferred_unit: string
@@ -7270,6 +7328,10 @@ export type Database = {
           department?: string | null
           designation?: string | null
           display_name?: string | null
+          duplicate_flag_reason?: string | null
+          duplicate_flagged_at?: string | null
+          duplicate_reviewed_at?: string | null
+          duplicate_reviewed_by?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -7303,6 +7365,7 @@ export type Database = {
           nationality?: string | null
           onboarding_completed_at?: string | null
           onboarding_token?: string | null
+          possible_duplicate_of?: string | null
           preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
@@ -7348,6 +7411,10 @@ export type Database = {
           department?: string | null
           designation?: string | null
           display_name?: string | null
+          duplicate_flag_reason?: string | null
+          duplicate_flagged_at?: string | null
+          duplicate_reviewed_at?: string | null
+          duplicate_reviewed_by?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -7381,6 +7448,7 @@ export type Database = {
           nationality?: string | null
           onboarding_completed_at?: string | null
           onboarding_token?: string | null
+          possible_duplicate_of?: string | null
           preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
