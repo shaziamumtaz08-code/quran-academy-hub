@@ -1410,6 +1410,8 @@ export default function StudentCourseView() {
             );
           })()}
         </TabsContent>
+          </div>
+        </div>
       </Tabs>
 
       {/* ═══ DIALOGS ═══ */}
