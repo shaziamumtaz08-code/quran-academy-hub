@@ -101,6 +101,51 @@ function useCountdown(target: Date | null) {
   return timeLeft;
 }
 
+// ─── Curriculum estimation helpers ───
+const LESSON_MINUTES: Record<string, number> = { video: 12, text: 8, file: 6 };
+const lessonMinutes = (type?: string) => LESSON_MINUTES[type || 'text'] ?? 8;
+const formatMinutes = (mins: number) => {
+  if (mins <= 0) return '—';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m ? `${m}m` : ''}`.trim() : `${m}m`;
+};
+
+// ─── Section navigation ───
+interface NavItem { value: string; label: string; icon: React.ElementType }
+const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Learn',
+    items: [
+      { value: 'today', label: 'Overview', icon: Radio },
+      { value: 'lessons', label: 'Syllabus', icon: BookOpen },
+      { value: 'assignments', label: 'Assignments', icon: ClipboardList },
+      { value: 'resources', label: 'Resources', icon: FileText },
+      { value: 'recordings', label: 'Recordings', icon: PlayCircle },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
+      { value: 'class-chat', label: 'Discussion', icon: MessageSquare },
+      { value: 'announcements', label: 'Announcements', icon: Bell },
+    ],
+  },
+  {
+    label: 'Achievement',
+    items: [
+      { value: 'progress', label: 'My Progress', icon: BarChart3 },
+      { value: 'results', label: 'Results', icon: GraduationCap },
+      { value: 'certificate', label: 'Certificate', icon: Award },
+      { value: 'fee', label: 'Fees', icon: Receipt },
+    ],
+  },
+];
+const NAV_LABELS: Record<string, string> = Object.fromEntries(
+  NAV_SECTIONS.flatMap(s => s.items.map(i => [i.value, i.label])),
+);
+
+
 // ═══════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════
