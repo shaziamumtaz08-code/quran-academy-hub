@@ -45,8 +45,10 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
       try {
         const [contextsRes, branchesRes, divisionsRes] = await Promise.all([
           supabase.from('user_context').select('*').eq('user_id', user.id),
-          supabase.from('branches').select('*').eq('is_active', true),
-          supabase.from('divisions').select('*').eq('is_active', true),
+          supabase.from('branches').select('*').eq('is_active', true).order('name'),
+          // Deterministic order — the fallback division must never depend on
+          // whatever order Postgres happens to return.
+          supabase.from('divisions').select('*').eq('is_active', true).order('name').order('id'),
         ]);
 
         const ctxs = contextsRes.data || [];
@@ -56,13 +58,21 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
         setBranches(brs);
         setDivisions(divs);
 
+        // Explicit fallback: the user's saved default, else the Group Academy
+        // (group model) division, else the first division in the stable order.
+        const fallbackDivisionId =
+          ctxs.find(c => c.is_default)?.division_id ||
+          divs.find(d => d.model_type === 'group')?.id ||
+          divs[0]?.id ||
+          null;
+
         let enriched: DivisionContextEntry[];
         if (isSuperAdmin) {
           enriched = divs.map(d => ({
             id: `sa-${d.id}`,
             branch_id: d.branch_id,
             division_id: d.id,
-            is_default: d.id === (ctxs.find(c => c.is_default)?.division_id || divs[0]?.id),
+            is_default: d.id === fallbackDivisionId,
             branch: brs.find(b => b.id === d.branch_id),
             division: d,
           }));
@@ -85,7 +95,11 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
         const hasAuthorizedStoredDivision = !!activeDivisionId && enriched.some(ctx => ctx.division_id === activeDivisionId);
 
         if (!hasAuthorizedStoredDivision) {
-          const defaultCtx = enriched.find(c => c.is_default) || enriched[0];
+          const defaultCtx =
+            enriched.find(c => c.is_default) ||
+            enriched.find(c => c.division_id === fallbackDivisionId) ||
+            enriched.find(c => c.division?.model_type === 'group') ||
+            enriched[0];
           if (defaultCtx) {
             setActiveDivisionIdState(defaultCtx.division_id);
             localStorage.setItem(DIVISION_STORAGE_KEY, defaultCtx.division_id);
