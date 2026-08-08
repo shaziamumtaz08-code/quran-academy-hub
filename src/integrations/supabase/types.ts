@@ -12838,6 +12838,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: {
           blood_group: string
+          date_of_birth: string
           emergency_contact_phone: string
           father_contact: string
           medical_conditions: string
