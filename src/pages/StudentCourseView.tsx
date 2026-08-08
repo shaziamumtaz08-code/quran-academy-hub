@@ -236,7 +236,7 @@ export default function StudentCourseView() {
     queryKey: ['student-course', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('courses')
-        .select('id, name, level, description, division_id, student_dm_mode, divisions:divisions(name)')
+        .select('id, name, level, description, division_id, student_dm_mode, hero_image_url, thumbnail_url, syllabus_text, divisions:divisions(name)')
         .eq('id', courseId!).single();
       return data;
     },
