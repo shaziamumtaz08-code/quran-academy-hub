@@ -26,7 +26,7 @@ export default function PrintReport() {
           max_total_marks,
           percentage,
           criteria_values_json,
-          examiner_remarks,
+          
           public_remarks,
           exam_date,
           created_at,

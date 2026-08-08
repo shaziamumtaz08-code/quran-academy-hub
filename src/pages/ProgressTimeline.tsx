@@ -122,7 +122,7 @@ export default function ProgressTimeline() {
       const { data, error } = await supabase
         .from('exams')
         .select(`
-          id, exam_date, percentage, criteria_values_json, public_remarks, examiner_remarks, remarks_status,
+          id, exam_date, percentage, criteria_values_json, public_remarks, remarks_status,
           student:profiles!exams_student_id_fkey(id, full_name),
           template:exam_templates!exams_template_id_fkey(id, name, tenure, subject:subjects(id, name))
         `)
@@ -131,7 +131,9 @@ export default function ProgressTimeline() {
         .is('deleted_at', null)
         .order('exam_date', { ascending: true });
       if (error) throw error;
-      return (data || []).filter((r: any) => r.template?.tenure === 'monthly');
+      const rows = (data || []).filter((r: any) => r.template?.tenure === 'monthly');
+      const remarks = await fetchExaminerRemarks(rows.map((r: any) => r.id));
+      return rows.map((r: any) => ({ ...r, examiner_remarks: remarks.get(r.id) ?? null }));
     },
   });
 

@@ -169,7 +169,7 @@ export default function GenerateReportCard() {
           student_id,
           exam_date,
           criteria_values_json,
-          examiner_remarks,
+          
           public_remarks,
           template:exam_templates!exams_template_id_fkey(
             id,
