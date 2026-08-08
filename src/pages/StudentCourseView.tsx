@@ -616,80 +616,207 @@ export default function StudentCourseView() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 rounded-xl" />
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+        <Skeleton className="h-56 rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
-      {/* ═══ HEADER ═══ */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
-          </Button>
-          {courseTeachers.length === 1 && (
-            <Button variant="outline" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
-              {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
-              Message {courseTeachers[0].name.split(' ')[0]}
-            </Button>
-          )}
-          {courseTeachers.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={messagingTeacher}>
-                  {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
-                  Message Teacher
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {courseTeachers.map(t => (
-                  <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
-                    {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+  const heroImage = (course as any)?.hero_image_url || (course as any)?.thumbnail_url || null;
 
-        {/* Banner */}
-        <div className="bg-gradient-to-r from-primary to-primary/60 rounded-xl p-5 text-primary-foreground">
-          <h1 className="text-xl font-bold">{course?.name}</h1>
-          <p className="text-sm text-primary-foreground/70 mt-0.5">
-            {(course?.divisions as any)?.name}
-            {course?.level && ` · ${course.level}`}
-          </p>
-          {enrollment && (
-            <Badge className="mt-2 bg-primary-foreground/20 text-primary-foreground text-[10px]">
-              Enrolled {format(new Date(enrollment.enrolled_at), 'MMM yyyy')}
-            </Badge>
-          )}
+  const messageTeacherButton = courseTeachers.length === 1 ? (
+    <Button variant="secondary" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
+      {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1.5" />}
+      Message {courseTeachers[0].name.split(' ')[0]}
+    </Button>
+  ) : courseTeachers.length > 1 ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="sm" disabled={messagingTeacher}>
+          {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1.5" />}
+          Message teacher
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {courseTeachers.map(t => (
+          <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
+            {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  // ─── Instructor panel (student-facing "about your instructor") ───
+  const instructorPanel = courseTeachers.length > 0 ? (
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+          Your instructor{courseTeachers.length > 1 ? 's' : ''}
+        </p>
+        <div className="space-y-5">
+          {courseTeachers.map(t => {
+            const p: any = instructorProfiles.find((ip: any) => ip.id === t.userId);
+            const bioParts = [
+              p?.designation,
+              p?.qualification,
+              p?.specialization && `Specialises in ${p.specialization}`,
+              p?.years_experience ? `${p.years_experience}+ years teaching experience` : null,
+            ].filter(Boolean);
+            return (
+              <div key={t.userId} className="flex items-start gap-4">
+                <Avatar className="h-14 w-14 border border-border">
+                  <AvatarImage src={p?.avatar_url || undefined} alt={t.name} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {t.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold leading-tight">{t.name}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">{t.role}</p>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    {bioParts.length ? bioParts.join(' · ') : 'Teaching this course at Al-Quran Time Academy.'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => handleMessageTeacher(t)}
+                    disabled={messagingTeacher}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1.5" /> Message teacher
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  ) : null;
+
+  return (
+    <div className="pb-12">
+      {/* ═══ HERO ═══ */}
+      <div className="relative overflow-hidden">
+        {heroImage ? (
+          <>
+            <img src={heroImage} alt={`${course?.name} course cover`} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/40" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-accent/10" />
+        )}
+        <div className="relative max-w-6xl mx-auto px-4 md:px-6 pt-4 pb-8">
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Dashboard
+            </Button>
+            {messageTeacherButton}
+          </div>
+
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {(course?.divisions as any)?.name && (
+                <Badge variant="secondary" className="text-xs">{(course?.divisions as any).name}</Badge>
+              )}
+              {course?.level && <Badge variant="outline" className="text-xs">{course.level}</Badge>}
+              {enrollment && (
+                <span className="text-xs text-muted-foreground">
+                  Enrolled {format(new Date(enrollment.enrolled_at), 'MMMM yyyy')}
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">{course?.name}</h1>
+            {course?.description && (
+              <p className="text-base text-muted-foreground mt-3 leading-relaxed line-clamp-3">{course.description}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-5 text-sm text-muted-foreground">
+              {classTeacher && (
+                <span className="flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> {classTeacher}</span>
+              )}
+              {myClass && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" />
+                  {(myClass.schedule_days as string[])?.join(', ')} · {formatTime12(myClass.schedule_time || '00:00')}
+                </span>
+              )}
+              {myClass?.session_duration && (
+                <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {myClass.session_duration} min sessions</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ═══ TABS ═══ */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full overflow-x-auto justify-start h-auto flex-nowrap sticky top-0 z-10 bg-background">
-          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Overview</TabsTrigger>
-          <TabsTrigger value="lessons" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-1 shrink-0"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
-          <TabsTrigger value="announcements" className="gap-1 shrink-0 relative">
-            <Bell className="h-3.5 w-3.5" /> Announcements
-            {hasUnreadAnnouncements && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive" />}
-          </TabsTrigger>
-          <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
-          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
-          <TabsTrigger value="resources" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Resources</TabsTrigger>
-          <TabsTrigger value="recordings" className="gap-1 shrink-0"><PlayCircle className="h-3.5 w-3.5" /> Recordings</TabsTrigger>
-          <TabsTrigger value="results" className="gap-1 shrink-0"><GraduationCap className="h-3.5 w-3.5" /> Results</TabsTrigger>
-          <TabsTrigger value="certificate" className="gap-1 shrink-0"><Award className="h-3.5 w-3.5" /> Certificate</TabsTrigger>
-          <TabsTrigger value="fee" className="gap-1 shrink-0"><Receipt className="h-3.5 w-3.5" /> Fee</TabsTrigger>
-        </TabsList>
+      {/* ═══ BODY ═══ */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="max-w-6xl mx-auto px-4 md:px-6 mt-6">
+        <div className="grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] items-start">
+          {/* Sidebar navigation */}
+          <aside className="lg:sticky lg:top-4 space-y-6">
+            {/* Mobile section picker */}
+            <div className="lg:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    {NAV_LABELS[activeTab] || 'Overview'}
+                    <ChevronRight className="h-4 w-4 rotate-90 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm">
+                  {NAV_SECTIONS.flatMap(s => s.items).map(item => (
+                    <DropdownMenuItem key={item.value} onClick={() => handleTabChange(item.value)}>
+                      <item.icon className="h-4 w-4 mr-2 opacity-70" /> {item.label}
+                      {item.value === 'announcements' && hasUnreadAnnouncements && (
+                        <span className="ml-2 h-2 w-2 rounded-full bg-destructive" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <nav className="hidden lg:block space-y-6">
+              {NAV_SECTIONS.map(section => (
+                <div key={section.label}>
+                  <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {section.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {section.items.map(item => {
+                      const active = activeTab === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          onClick={() => handleTabChange(item.value)}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors text-left',
+                            active
+                              ? 'bg-primary/10 text-primary font-semibold'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          )}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.value === 'announcements' && hasUnreadAnnouncements && (
+                            <span className="ml-auto h-2 w-2 rounded-full bg-destructive" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Content column */}
+          <div className="min-w-0">
+
 
         {/* ═══ TAB 1: TODAY ═══ */}
         <TabsContent value="today" className="space-y-4 mt-4">
