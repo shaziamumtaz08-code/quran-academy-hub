@@ -94,6 +94,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
+import { DuplicateFlagBadge } from '@/components/users/DuplicateFlagBadge';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
@@ -407,6 +408,10 @@ interface UserWithRoles {
   created_at: string;
   archived_at: string | null;
   registration_id: string | null;
+  possible_duplicate_of: string | null;
+  duplicate_flag_reason: string | null;
+  duplicate_flagged_at: string | null;
+  duplicate_reviewed_at: string | null;
   roles: AppRole[];
   roleStatuses: Partial<Record<AppRole, 'active' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
@@ -541,7 +546,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, email, gender, age, country, city, created_at, archived_at, registration_id')
+        .select('id, full_name, email, gender, age, country, city, created_at, archived_at, registration_id, possible_duplicate_of, duplicate_flag_reason, duplicate_flagged_at, duplicate_reviewed_at')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
@@ -585,6 +590,10 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
+            possible_duplicate_of: (profile as any).possible_duplicate_of ?? null,
+            duplicate_flag_reason: (profile as any).duplicate_flag_reason ?? null,
+            duplicate_flagged_at: (profile as any).duplicate_flagged_at ?? null,
+            duplicate_reviewed_at: (profile as any).duplicate_reviewed_at ?? null,
             roles: (rolesData || []).map((r: any) => r.role as AppRole),
             roleStatuses,
             exceptions: exceptions || [],
@@ -2093,6 +2102,13 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="truncate text-sm font-semibold text-foreground">{user.full_name}</span>
+                                  <DuplicateFlagBadge
+                                    userId={user.id}
+                                    reason={user.duplicate_flag_reason}
+                                    flaggedAt={user.duplicate_flagged_at}
+                                    reviewedAt={user.duplicate_reviewed_at}
+                                    onReviewed={() => refetch()}
+                                  />
                                 </div>
                                 {user.email && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
                               </div>
@@ -2249,6 +2265,13 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                                   {user.archived_at && (
                                     <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
                                   )}
+                                  <DuplicateFlagBadge
+                                    userId={user.id}
+                                    reason={user.duplicate_flag_reason}
+                                    flaggedAt={user.duplicate_flagged_at}
+                                    reviewedAt={user.duplicate_reviewed_at}
+                                    onReviewed={() => refetch()}
+                                  />
                                 </div>
                                  {user.email ? (
                                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
