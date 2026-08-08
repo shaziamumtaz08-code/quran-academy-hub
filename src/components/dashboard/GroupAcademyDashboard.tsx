@@ -476,7 +476,7 @@ export function GroupAcademyDashboard() {
               <Panel
                 title="Admissions desk"
                 icon={<Inbox className="h-4 w-4 text-teal" />}
-                action={<LinkAction label="Review" onClick={() => navigate('/registrations')} />}
+                action={<LinkAction label="Review" onClick={() => navigate("/people")} />}
               >
                 <div className="rounded-xl border border-border bg-secondary/40 p-3 text-center">
                   <p className="text-3xl font-black text-primary leading-none">{stats?.pendingApplications ?? 0}</p>
