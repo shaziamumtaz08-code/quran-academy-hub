@@ -1,0 +1,13 @@
+{
+  "tutorial_id": "e083bfa4-7a97-44f6-bc26-6d57f0ff69cc",
+  "slug": "payments",
+  "base_url": "http://localhost:8080",
+  "auth": "session",
+  "steps": [
+    { "step": 1, "label": "Open Fees from the Fee status card", "action": "goto", "route": "/payments", "target": "Invoices", "by": "text" },
+    { "step": 2, "label": "Each invoice shows Pending, Partial, Paid or Overdue", "action": "verify", "target": "Pending", "by": "text" },
+    { "step": 3, "label": "Open an invoice to see the academy payment details", "action": "verify", "target": "View", "by": "text" },
+    { "step": 4, "label": "After paying, tap Upload Payment Proof", "action": "verify", "target": "Upload Payment Proof", "by": "role:button" },
+    { "step": 5, "label": "Attach the screenshot and submit — admin verifies it", "action": "click", "target": "Upload Payment Proof", "by": "role:button" }
+  ]
+}
