@@ -226,7 +226,10 @@ async def run(flow: dict, out_dir: Path) -> dict:
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 900},
+            timezone_id="Asia/Karachi",
+        )
         page = await context.new_page()
 
         if flow.get("auth") == "capture":
