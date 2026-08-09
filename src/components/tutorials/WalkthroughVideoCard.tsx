@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface Props {
   videoPath: string;
+  fileName?: string;
   posterPath?: string | null;
   shareToken?: string | null;
   shareEnabled?: boolean | null;
@@ -21,12 +22,35 @@ interface Props {
  */
 export function WalkthroughVideoCard({
   videoPath,
+  fileName,
   posterPath,
   shareToken,
   shareEnabled,
   durationSeconds,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadVideo = async () => {
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.storage.from('tutorial-videos').download(videoPath);
+      if (error || !data) throw error || new Error('No file');
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (fileName || videoPath.split('/').pop() || 'walkthrough') .replace(/[^\w.-]+/g, '-');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast({ title: 'Download started', description: 'The MP4 is saving to your device.' });
+    } catch (err: any) {
+      toast({ title: 'Download failed', description: err?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['walkthrough-video', videoPath, posterPath],
@@ -84,10 +108,11 @@ export function WalkthroughVideoCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={!data?.video}
-            onClick={() => data?.video && window.open(data.video, '_blank')}
+            disabled={downloading}
+            onClick={downloadVideo}
           >
-            <Download className="mr-2 h-4 w-4" /> Download video
+            {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            {downloading ? 'Preparing…' : 'Download video (MP4)'}
           </Button>
           {shareUrl && (
             <Button size="sm" onClick={copyShare}>
