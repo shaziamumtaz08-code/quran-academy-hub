@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
     if (save && teacher_id) {
       const finalTier: "free" | "licensed" = tier || resolvedTier;
       const meetingLink = personal_meeting_link || personalMeetingUrl;
+      const nowIso = new Date().toISOString();
       const upsertPayload = {
         teacher_id,
         zoom_account_email: zoom_email,
@@ -173,15 +174,18 @@ Deno.serve(async (req) => {
         tier: finalTier,
         meeting_link: meetingLink,
         is_active: true,
-        last_validated_at: new Date().toISOString(),
+        last_validated_at: nowIso,
         zoom_account_id_cred: account_id,
         zoom_client_id: client_id,
         zoom_client_secret: client_secret,
+        credential_status: "verified",
+        credential_error: null,
+        credential_checked_at: nowIso,
       };
       const { data: upserted, error: upErr } = await adminClient
         .from("zoom_accounts")
         .upsert(upsertPayload, { onConflict: "teacher_id,tier" })
-        .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at")
+        .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, credential_status")
         .maybeSingle();
       if (upErr) {
         checks.push({ step: "save_account", ok: false, detail: upErr.message });
