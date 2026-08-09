@@ -48,6 +48,7 @@ const ProgressTimeline = lazy(() => import("./pages/ProgressTimeline"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Library = lazy(() => import("./pages/Library"));
 const LibraryShare = lazy(() => import("./pages/LibraryShare"));
+const WalkthroughShare = lazy(() => import("./pages/WalkthroughShare"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const Assignments = lazy(() => import("./pages/Assignments"));
@@ -515,6 +516,7 @@ function AppRoutes() {
       <Route path="/resources" element={<Navigate to="/library" replace />} />
       <Route path="/library" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Library /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/library/share/:token" element={<LibraryShare />} />
+      <Route path="/help/w/:token" element={<WalkthroughShare />} />
       <Route path="/leads" element={<ProtectedRoute><RouteGuard moduleId="leads"><DivisionModelGuard allowedModels={['one_to_one']}><LeadsPipeline /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><RouteGuard moduleId="identity"><IdentityResolution /></RouteGuard></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><RouteGuard moduleId="notifications"><NotificationCenter /></RouteGuard></ProtectedRoute>} />

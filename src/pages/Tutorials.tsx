@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { WalkthroughViewer, type WalkthroughFrame } from '@/components/tutorials/WalkthroughViewer';
+import { WalkthroughVideoCard } from '@/components/tutorials/WalkthroughVideoCard';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -49,6 +50,10 @@ interface TutorialRow {
   walkthrough_frames?: WalkthroughFrame[] | null;
   walkthrough_generated_at?: string | null;
   walkthrough_error?: string | null;
+  walkthrough_video_path?: string | null;
+  walkthrough_poster_path?: string | null;
+  share_token?: string | null;
+  share_enabled?: boolean | null;
 }
 
 const emptyForm = {
@@ -387,6 +392,16 @@ export default function Tutorials() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {active.walkthrough_video_path && (
+          <WalkthroughVideoCard
+            videoPath={active.walkthrough_video_path}
+            posterPath={active.walkthrough_poster_path}
+            shareToken={active.share_token}
+            shareEnabled={active.share_enabled}
+            durationSeconds={active.duration_seconds}
+          />
         )}
 
         {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
