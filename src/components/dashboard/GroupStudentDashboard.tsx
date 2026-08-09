@@ -9,8 +9,13 @@ import {
   CalendarOff,
   ChevronRight,
   ClipboardList,
+  Compass,
   FileText,
+  Megaphone,
+  Newspaper,
+  Pin,
   Radio,
+  Sparkles,
   Video,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UnifiedHeaderBanner } from '@/components/dashboard/shared/UnifiedHeaderBanner';
+import CourseThumbnailCard from '@/components/courses/CourseThumbnailCard';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -30,12 +36,15 @@ function formatTime12(time: string) {
   return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${suffix}`;
 }
 
-function isClassLive(time: string, duration: number) {
+function minutesUntil(time: string) {
   const [hour = 0, minute = 0] = time.split(':').map(Number);
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const startMinutes = hour * 60 + minute;
-  return currentMinutes >= startMinutes && currentMinutes < startMinutes + duration;
+  return hour * 60 + minute - (now.getHours() * 60 + now.getMinutes());
+}
+
+function isClassLive(time: string, duration: number) {
+  const diff = minutesUntil(time);
+  return diff <= 0 && diff > -duration;
 }
 
 export function GroupStudentDashboard() {
@@ -52,7 +61,7 @@ export function GroupStudentDashboard() {
 
       const { data: enrollments } = await supabase
         .from('course_enrollments')
-        .select('id, course_id, status, course:courses!inner(id, name, description, division_id)')
+        .select('id, course_id, status, course:courses!inner(id, name, description, division_id, level, thumbnail_url, hero_image_url, seo_slug, max_students, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name))')
         .eq('student_id', studentId)
         .eq('status', 'active')
         .eq('course.division_id', activeDivision.id);
@@ -121,7 +130,36 @@ export function GroupStudentDashboard() {
         };
       });
 
-      return { courseCards, todaySchedule, pendingAssignments, notifications };
+      return { courseCards, todaySchedule, pendingAssignments, notifications, courseIds };
+    },
+  });
+
+  const { data: news = [] } = useQuery({
+    queryKey: ['group-student-news'],
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('announcements' as any)
+        .select('*')
+        .order('is_pinned', { ascending: false })
+        .order('published_at', { ascending: false })
+        .limit(4);
+      return (rows || []) as any[];
+    },
+  });
+
+  const enrolledIds = data?.courseIds || [];
+  const { data: catalog = [] } = useQuery({
+    queryKey: ['group-student-catalog', activeDivision?.id, enrolledIds.join(',')],
+    enabled: Boolean(activeDivision?.id),
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('courses')
+        .select('id, name, level, seo_slug, thumbnail_url, hero_image_url, max_students, pricing, status, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name)')
+        .eq('website_enabled', true)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(12);
+      return (rows || []).filter((row: any) => !enrolledIds.includes(row.id)).slice(0, 4);
     },
   });
 
@@ -133,7 +171,7 @@ export function GroupStudentDashboard() {
     return (
       <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
         <Skeleton className="h-16 w-full rounded-md" />
-        <Skeleton className="h-8 w-52" />
+        <Skeleton className="h-28 w-full rounded-2xl" />
         <div className="grid gap-4 md:grid-cols-3">
           {[1, 2, 3].map((item) => <Skeleton key={item} className="h-64" />)}
         </div>
@@ -146,23 +184,67 @@ export function GroupStudentDashboard() {
   const pending = data?.pendingAssignments || [];
   const announcements = data?.notifications || [];
 
+  const liveClass = schedule.find((item: any) => isClassLive(item.schedule_time, item.session_duration || 45));
+  const upcomingClass = schedule.find((item: any) => minutesUntil(item.schedule_time) > 0);
+  const focusClass = liveClass || upcomingClass;
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-6">
       <UnifiedHeaderBanner />
 
-      <header className="space-y-1">
-        <p className="text-sm font-semibold text-accent">Group Academy</p>
-        <h1 className="font-serif text-3xl font-bold text-foreground">
-          Assalamu Alaikum, {profile?.full_name?.split(' ')[0] || 'Student'}
-        </h1>
-        <p className="text-base text-muted-foreground">Your classes, learning and updates in one place.</p>
-      </header>
+      {/* Hero + join bar */}
+      <section className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground">
+        <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-wide opacity-80">Group Academy</p>
+            <h1 className="font-serif text-3xl font-bold md:text-4xl">
+              Assalamu Alaikum, {profile?.full_name?.split(' ')[0] || 'Student'}
+            </h1>
+            <p className="text-sm opacity-90 md:text-base">
+              {courses.length} active course{courses.length === 1 ? '' : 's'} · {schedule.length} class{schedule.length === 1 ? '' : 'es'} today · {pending.length} task{pending.length === 1 ? '' : 's'} pending
+            </p>
+          </div>
 
+          <div className="w-full rounded-xl bg-background/95 p-4 text-foreground shadow-lg md:w-80">
+            {focusClass ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {liveClass ? 'Happening now' : 'Next class'}
+                  </p>
+                  {liveClass && <Badge variant="destructive" className="gap-1"><Radio className="h-3 w-3" /> Live</Badge>}
+                </div>
+                <p className="truncate font-serif text-lg font-bold">{courseNames.get(focusClass.course_id) || focusClass.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatTime12(focusClass.schedule_time)} · {focusClass.session_duration || 45} min
+                </p>
+                <Button
+                  className="w-full"
+                  disabled={!focusClass.meeting_link}
+                  onClick={() => focusClass.meeting_link && window.open(focusClass.meeting_link, '_blank', 'noopener')}
+                >
+                  <Video className="mr-2 h-4 w-4" /> {liveClass ? 'Join now' : 'Join when live'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 text-center">
+                <CalendarOff className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="font-semibold">No more classes today</p>
+                <p className="text-sm text-muted-foreground">Enjoy your lessons and revision.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Enrolled courses */}
       <section aria-labelledby="courses-heading">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="courses-heading" className="font-serif text-2xl font-bold text-foreground">Continue learning</h2>
-            <p className="text-sm text-muted-foreground">Open a course to access its lessons, discussion and class material.</p>
+            <h2 id="courses-heading" className="flex items-center gap-2 font-serif text-2xl font-bold text-foreground">
+              <BookOpen className="h-5 w-5 text-primary" /> My enrolled courses
+            </h2>
+            <p className="text-sm text-muted-foreground">Open a course for lessons, discussion and class material.</p>
           </div>
           <Badge variant="secondary">{courses.length} active</Badge>
         </div>
@@ -176,52 +258,33 @@ export function GroupStudentDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course: any, index: number) => {
-              const duration = course.nextClass?.session_duration || 45;
-              const live = course.nextClass?.schedule_time
-                ? isClassLive(course.nextClass.schedule_time, duration)
-                : false;
-              return (
-                <Card key={course.id} className="overflow-hidden border-border transition-shadow hover:shadow-md">
-                  <div className={index % 2 === 0 ? 'bg-primary px-5 py-6 text-primary-foreground' : 'bg-accent px-5 py-6 text-accent-foreground'}>
-                    <div className="mb-8 flex items-start justify-between gap-3">
-                      <BookOpen className="h-6 w-6" />
-                      {live && <Badge variant="destructive" className="gap-1"><Radio className="h-3 w-3" /> Live now</Badge>}
-                    </div>
-                    <h3 className="font-serif text-xl font-bold">{course.name}</h3>
-                  </div>
-                  <CardContent className="space-y-4 p-5">
-                    <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
-                      {course.description || 'Continue your lessons and class activities.'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {course.nextClass?.schedule_time && (
-                        <Badge variant="outline">
-                          <CalendarDays className="mr-1 h-3.5 w-3.5" /> {formatTime12(course.nextClass.schedule_time)}
-                        </Badge>
-                      )}
-                      {course.pendingCount > 0 && <Badge variant="outline">{course.pendingCount} due</Badge>}
-                      {course.announcementCount > 0 && <Badge variant="outline">{course.announcementCount} updates</Badge>}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button className="flex-1" onClick={() => navigate(`/my-courses/${course.id}`)}>
-                        Open course <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
-                      {live && course.nextClass?.meeting_link && (
-                        <Button variant="outline" size="icon" aria-label="Join live class" onClick={() => window.open(course.nextClass.meeting_link, '_blank', 'noopener')}>
-                          <Video className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course: any) => (
+              <CourseThumbnailCard
+                key={course.id}
+                course={{
+                  id: course.id,
+                  name: course.name,
+                  thumbnail_url: course.thumbnail_url,
+                  hero_image_url: course.hero_image_url,
+                  subject_name: course.subject?.name,
+                  teacher_name: course.teacher?.full_name || 'Instructor',
+                  level: course.level,
+                  schedule: course.nextClass?.schedule_time ? formatTime12(course.nextClass.schedule_time) : null,
+                  duration: course.nextClass?.session_duration ? `${course.nextClass.session_duration} min` : null,
+                  max_seats: course.max_students,
+                  status: 'open',
+                  seo_slug: course.seo_slug,
+                }}
+                ctaLabel="Continue learning"
+                onClick={() => navigate(`/my-courses/${course.id}`)}
+              />
+            ))}
           </div>
         )}
       </section>
 
+      {/* Schedule + pending work */}
       <div className="grid gap-6 lg:grid-cols-5">
         <section className="lg:col-span-3" aria-labelledby="schedule-heading">
           <h2 id="schedule-heading" className="mb-3 flex items-center gap-2 font-serif text-xl font-bold text-foreground">
@@ -262,7 +325,7 @@ export function GroupStudentDashboard() {
 
         <section className="lg:col-span-2" aria-labelledby="actions-heading">
           <h2 id="actions-heading" className="mb-3 flex items-center gap-2 font-serif text-xl font-bold text-foreground">
-            <ClipboardList className="h-5 w-5 text-primary" /> Pending work
+            <ClipboardList className="h-5 w-5 text-primary" /> Assignments due
           </h2>
           <Card>
             <CardContent className="p-0">
@@ -299,27 +362,103 @@ export function GroupStudentDashboard() {
         </section>
       </div>
 
-      <section aria-labelledby="announcements-heading">
-        <h2 id="announcements-heading" className="mb-3 flex items-center gap-2 font-serif text-xl font-bold text-foreground">
-          <Bell className="h-5 w-5 text-primary" /> Class announcements
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {announcements.length === 0 ? (
-            <Card className="md:col-span-2"><CardContent className="py-8 text-center text-sm text-muted-foreground">No new announcements.</CardContent></Card>
-          ) : announcements.map((announcement: any) => (
-            <Card key={announcement.id}>
-              <CardContent className="flex gap-3 p-4">
-                <Bell className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-                <div className="min-w-0">
-                  <p className="font-semibold text-foreground">{announcement.title || 'Course update'}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{announcement.body}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{format(new Date(announcement.created_at), 'd MMM yyyy')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      {/* Spotlight / browse courses */}
+      {catalog.length > 0 && (
+        <section aria-labelledby="spotlight-heading">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 id="spotlight-heading" className="flex items-center gap-2 font-serif text-2xl font-bold text-foreground">
+                <Sparkles className="h-5 w-5 text-accent" /> Spotlight — courses to explore
+              </h2>
+              <p className="text-sm text-muted-foreground">New and upcoming programmes at the academy.</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/courses')} className="shrink-0">
+              <Compass className="mr-2 h-4 w-4" /> Browse all
+            </Button>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {catalog.map((course: any) => (
+              <CourseThumbnailCard
+                key={course.id}
+                course={{
+                  id: course.id,
+                  name: course.name,
+                  thumbnail_url: course.thumbnail_url,
+                  hero_image_url: course.hero_image_url,
+                  subject_name: course.subject?.name,
+                  teacher_name: course.teacher?.full_name || 'Instructor',
+                  level: course.level,
+                  max_seats: course.max_students,
+                  status: 'open',
+                  pricing: course.pricing as any,
+                  seo_slug: course.seo_slug,
+                }}
+                ctaLabel="View course"
+                onClick={() => navigate(`/course/${course.seo_slug || course.id}`)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* News + announcements */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section aria-labelledby="news-heading">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 id="news-heading" className="flex items-center gap-2 font-serif text-xl font-bold text-foreground">
+              <Newspaper className="h-5 w-5 text-primary" /> Academy news
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/announcements')}>
+              All news <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {news.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No academy news yet.</CardContent></Card>
+            ) : news.map((item: any) => (
+              <Card key={item.id} className="transition-shadow hover:shadow-md">
+                <CardContent className="flex gap-3 p-4">
+                  <Megaphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-semibold text-foreground">{item.title || 'Academy update'}</p>
+                      {item.is_pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-accent" />}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.body || item.content}</p>
+                    {item.published_at && (
+                      <p className="mt-2 text-xs text-muted-foreground">{format(new Date(item.published_at), 'd MMM yyyy')}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="announcements-heading">
+          <h2 id="announcements-heading" className="mb-3 flex items-center gap-2 font-serif text-xl font-bold text-foreground">
+            <Bell className="h-5 w-5 text-accent" /> Class notifications
+          </h2>
+          <div className="space-y-3">
+            {announcements.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No new class notifications.</CardContent></Card>
+            ) : announcements.map((announcement: any) => (
+              <Card key={announcement.id} className="transition-shadow hover:shadow-md">
+                <CardContent className="flex gap-3 p-4">
+                  <Bell className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">{announcement.title || 'Course update'}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{announcement.body}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {courseNames.get(announcement.course_id) || 'Course'} · {format(new Date(announcement.created_at), 'd MMM yyyy')}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
