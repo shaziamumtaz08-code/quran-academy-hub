@@ -83,7 +83,7 @@ export default function WalkthroughShare() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${data.title.replace(/[^\w.-]+/g, '-')}.mp4`;
+                a.download = `${data.title.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'aqta-walkthrough'}.mp4`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();

@@ -39,7 +39,9 @@ export function WalkthroughVideoCard({
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = (fileName || videoPath.split('/').pop() || 'walkthrough') .replace(/[^\w.-]+/g, '-');
+      a.download =
+        (fileName || videoPath.split('/').pop() || 'walkthrough').replace(/[\\/:*?"<>|]+/g, '-').trim() ||
+        'aqta-walkthrough.mp4';
       document.body.appendChild(a);
       a.click();
       a.remove();
