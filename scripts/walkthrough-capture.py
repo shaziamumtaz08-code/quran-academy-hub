@@ -222,7 +222,7 @@ async def capture_auth(page, base_url: str, flow: dict) -> tuple[bool, str]:
 async def run(flow: dict, out_dir: Path) -> dict:
     base_url = flow.get("base_url", "http://localhost:8080")
     out_dir.mkdir(parents=True, exist_ok=True)
-    frames, problems = [], []
+    frames, problems, skipped = [], [], []
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -272,7 +272,16 @@ async def run(flow: dict, out_dir: Path) -> dict:
                             "y": round((box["y"] + box["height"] / 2) / size["height"], 4),
                         }
             except Exception as exc:  # target missing => do not guess, flag it
-                problems.append(f"Step {step['step']} ({label}): {type(exc).__name__} {exc}"[:300])
+                # Steps marked "optional" describe UI that only appears when the
+                # account has the underlying data (an invoice, a scheduled class).
+                # They are recorded as skipped, never faked, and never block the run.
+                if step.get("optional"):
+                    skipped.append(
+                        f"Step {step['step']} ({label}) skipped — "
+                        f"{step.get('optional_note', 'the screen state was not present on the demo account.')}"
+                    )
+                else:
+                    problems.append(f"Step {step['step']} ({label}): {type(exc).__name__} {exc}"[:300])
                 continue
 
             shot = out_dir / f"step-{step['step']:02d}.png"
@@ -281,6 +290,7 @@ async def run(flow: dict, out_dir: Path) -> dict:
                 {
                     "step": step["step"],
                     "label": label,
+                    "label_ur": step.get("label_ur"),
                     "route": step.get("route"),
                     "path": f"{flow['slug']}/step-{step['step']:02d}.png",
                     "local": str(shot),
@@ -299,7 +309,7 @@ async def run(flow: dict, out_dir: Path) -> dict:
         await browser.close()
 
     status = "ready" if frames and not problems else ("needs_review" if frames else "failed")
-    return {"status": status, "frames": frames, "problems": problems}
+    return {"status": status, "frames": frames, "problems": problems, "skipped": skipped}
 
 
 def main() -> int:

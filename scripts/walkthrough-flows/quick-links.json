@@ -3,6 +3,7 @@
   "slug": "quick-links",
   "base_url": "http://localhost:8080",
   "auth": "capture",
+  "capture_email": "shaziademo@gmail.com",
   "steps": [
     {
       "step": 1,
@@ -10,43 +11,58 @@
       "action": "goto",
       "route": "/dashboard",
       "target": "Quick links",
-      "by": "text"
+      "by": "text",
+      "label_ur": "ڈیش بورڈ پر Quick links کا خانہ تلاش کریں"
     },
     {
       "step": 2,
-      "label": "Message teacher opens a direct chat",
+      "label": "Message teacher opens a direct chat with your teacher",
       "action": "verify",
       "target": "Message teacher",
-      "by": "text"
+      "by": "text",
+      "label_ur": "Message teacher سے استاد کو براہِ راست پیغام بھیجیں"
     },
     {
       "step": 3,
-      "label": "Leave Request tells the academy about an absence",
+      "label": "Leave Request tells the academy in advance about an absence",
       "action": "verify",
       "target": "Leave Request",
-      "by": "text"
+      "by": "text",
+      "label_ur": "Leave Request سے غیر حاضری کی پیشگی اطلاع دیں"
     },
     {
       "step": 4,
-      "label": "Recordings and Exam results are one tap away",
+      "label": "My files keeps your shared worksheets and documents",
       "action": "verify",
-      "target": "Exam results",
-      "by": "text"
+      "target": "My files",
+      "by": "text",
+      "label_ur": "My files میں آپ کی ورک شیٹس اور دستاویزات ہیں"
     },
     {
       "step": 5,
-      "label": "Help Centre brings you back to these guides",
+      "label": "Recordings opens past class recordings",
       "action": "verify",
-      "target": "Help Centre",
-      "by": "text"
+      "target": "Recordings",
+      "by": "text",
+      "label_ur": "Recordings سے پرانی کلاسوں کی ریکارڈنگ دیکھیں"
     },
     {
       "step": 6,
-      "label": "Fees live on the Fee status card — tap Pay",
+      "label": "Exam results shows your marks and remarks",
       "action": "verify",
-      "target": "Fee status",
-      "by": "text"
+      "target": "Exam results",
+      "by": "text",
+      "label_ur": "Exam results میں نمبر اور تبصرے ہوتے ہیں"
+    },
+    {
+      "step": 7,
+      "label": "Help Centre brings you back to these guides any time",
+      "action": "click",
+      "target": "Help Centre",
+      "by": "text",
+      "label_ur": "Help Centre سے کسی بھی وقت یہ رہنمائی دوبارہ کھولیں"
     }
   ],
-  "capture_email": "shaziademo@gmail.com"
+  "title": "Using quick links",
+  "title_ur": "کوئک لنکس کا استعمال"
 }

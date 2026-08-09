@@ -1,0 +1,71 @@
+{
+  "tutorial_id": "d3c9e4a6-7153-4c24-9f86-9e3d0a2c5533",
+  "slug": "lesson-planning",
+  "base_url": "http://localhost:8080",
+  "auth": "capture",
+  "capture_email": "teacherdemo@gmail.com",
+  "steps": [
+    {
+      "step": 1,
+      "label": "Open Monthly Planning from the teacher menu",
+      "action": "goto",
+      "route": "/monthly-planning",
+      "target": "Set monthly learning goals for students",
+      "by": "text",
+      "label_ur": "استاد کے مینو سے Monthly Planning کھولیں"
+    },
+    {
+      "step": 2,
+      "label": "Choose the month and year you are planning for",
+      "action": "verify",
+      "target": "August",
+      "by": "text",
+      "label_ur": "جس مہینے اور سال کا منصوبہ بنانا ہے وہ منتخب کریں"
+    },
+    {
+      "step": 3,
+      "label": "The counter shows how many of your students still need a plan",
+      "action": "verify",
+      "target": "plans",
+      "by": "text",
+      "label_ur": "شمار کنندہ بتاتا ہے کہ کتنے طلبہ کے منصوبے باقی ہیں"
+    },
+    {
+      "step": 4,
+      "label": "Plans can only be made for active assignments — paused ones are excluded",
+      "action": "verify",
+      "target": "Monthly plans can only be created for active assignments",
+      "by": "text",
+      "label_ur": "منصوبہ صرف فعال اسائنمنٹس کے لیے بنتا ہے، روکے گئے شامل نہیں"
+    },
+    {
+      "step": 5,
+      "label": "Press Create Plan to start a student's monthly plan",
+      "action": "click",
+      "target": "Create Plan",
+      "by": "role:button",
+      "label_ur": "Create Plan دبا کر طالبعلم کا ماہانہ منصوبہ شروع کریں"
+    },
+    {
+      "step": 6,
+      "label": "Select the student and set the month's targets, then submit for approval",
+      "action": "verify",
+      "target": "Student",
+      "by": "text",
+      "optional": true,
+      "optional_note": "Requires at least one active assignment on the demo teacher.",
+      "label_ur": "طالبعلم منتخب کریں، اہداف لکھیں اور منظوری کے لیے بھیجیں"
+    },
+    {
+      "step": 7,
+      "label": "Lesson records for each completed class live under Lessons",
+      "action": "goto",
+      "route": "/lessons",
+      "target": "View all lesson records and homework assignments",
+      "by": "text",
+      "label_ur": "ہر کلاس کا سبق Lessons کے صفحے پر محفوظ رہتا ہے"
+    }
+  ],
+  "title": "Monthly planning and lessons",
+  "title_ur": "ماہانہ منصوبہ بندی اور اسباق"
+}

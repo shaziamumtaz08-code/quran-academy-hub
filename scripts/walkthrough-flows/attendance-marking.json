@@ -1,0 +1,72 @@
+{
+  "tutorial_id": "b1a7c2e4-5f31-4a02-9d64-7c1b8e0a3311",
+  "slug": "attendance-marking",
+  "base_url": "http://localhost:8080",
+  "auth": "capture",
+  "capture_email": "teacherdemo@gmail.com",
+  "steps": [
+    {
+      "step": 1,
+      "label": "Open Attendance from the teacher menu",
+      "action": "goto",
+      "route": "/attendance",
+      "target": "Attendance Records",
+      "by": "text",
+      "label_ur": "استاد کے مینو سے Attendance کھولیں"
+    },
+    {
+      "step": 2,
+      "label": "The tiles summarise scheduled, present, absent, rescheduled and missing classes",
+      "action": "verify",
+      "target": "Scheduled Classes",
+      "by": "text",
+      "label_ur": "اوپر کے خانے شیڈول، حاضر، غیر حاضر، ری شیڈول اور باقی ماندہ کا خلاصہ ہیں"
+    },
+    {
+      "step": 3,
+      "label": "Missing lists the classes still waiting to be marked",
+      "action": "verify",
+      "target": "Missing",
+      "by": "role:button",
+      "label_ur": "Missing میں وہ کلاسیں ہیں جن کی حاضری ابھی درج نہیں ہوئی"
+    },
+    {
+      "step": 4,
+      "label": "Filter by month, date range or this week to find a class",
+      "action": "verify",
+      "target": "Date Range",
+      "by": "text",
+      "label_ur": "مہینہ، تاریخ کی حد یا اس ہفتے کے فلٹر سے کلاس تلاش کریں"
+    },
+    {
+      "step": 5,
+      "label": "Press Mark Attendance to open the form",
+      "action": "click",
+      "target": "Mark Attendance",
+      "by": "role:button",
+      "label_ur": "Mark Attendance دبائیں تاکہ فارم کھلے"
+    },
+    {
+      "step": 6,
+      "label": "Pick the student — the scheduled time fills in automatically",
+      "action": "verify",
+      "target": "Student",
+      "by": "text",
+      "optional": true,
+      "optional_note": "Requires at least one active assignment on the demo teacher.",
+      "label_ur": "طالبعلم منتخب کریں — شیڈول کا وقت خود بھر جاتا ہے"
+    },
+    {
+      "step": 7,
+      "label": "Set the status, add the lesson covered and any remarks, then save",
+      "action": "verify",
+      "target": "Save",
+      "by": "role:button",
+      "optional": true,
+      "optional_note": "Requires at least one active assignment on the demo teacher.",
+      "label_ur": "حالت، پڑھایا گیا سبق اور تبصرہ لکھ کر محفوظ کریں"
+    }
+  ],
+  "title": "Marking attendance",
+  "title_ur": "حاضری درج کرنا"
+}
