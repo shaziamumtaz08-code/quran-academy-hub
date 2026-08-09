@@ -60,6 +60,8 @@ def shape(text: str) -> str:
         return text
     import arabic_reshaper
     from bidi.algorithm import get_display
+    # Noto Naskh Arabic has no glyph for these separators; use Urdu equivalents.
+    text = text.replace("—", "،").replace("–", "،").replace("/", " از ")
     return get_display(arabic_reshaper.reshape(text))
 
 
@@ -108,7 +110,7 @@ def compose(shot_path: Path, step: int, total: int, label: str, hotspot, pulse: 
     d = ImageDraw.Draw(canvas)
     d.rectangle([0, SHOT_H, W, H], fill=CAPTION_BG)
     d.rectangle([0, SHOT_H, W, SHOT_H + 3], fill=ACCENT)
-    step_txt = f"مرحلہ {step} / {total}" if LANG == "ur" else f"STEP {step} OF {total}"
+    step_txt = f"مرحلہ {step} از {total}" if LANG == "ur" else f"STEP {step} OF {total}"
     step_txt = shape(step_txt)
     if LANG == "ur":
         d.text((W - 48 - d.textlength(step_txt, font=F_STEP), SHOT_H + 14), step_txt, font=F_STEP, fill=ACCENT)
