@@ -58,6 +58,40 @@ Deno.serve(async (req) => {
 
     const checks: Array<{ step: string; ok: boolean; detail?: string; data?: any }> = [];
 
+    // Persist the credentials the admin typed even when Zoom rejects them, so
+    // nothing is lost and the seat is visibly marked as failed (never silently
+    // "saved but unverified"). Only ever touches the seat being saved.
+    const saveFailedCredentials = async (reason: string) => {
+      if (!(save && teacher_id)) return null;
+      const { data: existing } = await adminClient
+        .from("zoom_accounts")
+        .select("id")
+        .eq("teacher_id", teacher_id)
+        .eq("tier", tier || "free")
+        .maybeSingle();
+      const payload: Record<string, unknown> = {
+        teacher_id,
+        tier: tier || "free",
+        zoom_account_email: zoom_email,
+        zoom_account_id_cred: account_id,
+        zoom_client_id: client_id,
+        zoom_client_secret: client_secret,
+        credential_status: "failed",
+        credential_error: reason.slice(0, 1000),
+        credential_checked_at: new Date().toISOString(),
+      };
+      if (personal_meeting_link) payload.meeting_link = personal_meeting_link;
+      const { data, error } = existing
+        ? await adminClient.from("zoom_accounts").update(payload).eq("id", existing.id).select("id").maybeSingle()
+        : await adminClient.from("zoom_accounts").insert({ ...payload, is_active: true }).select("id").maybeSingle();
+      if (error) {
+        checks.push({ step: "save_account", ok: false, detail: `Credentials could not be stored: ${error.message}` });
+        return null;
+      }
+      checks.push({ step: "save_account", ok: true, detail: "Credentials stored and flagged as FAILED — retry after fixing the Zoom app." });
+      return data;
+    };
+
     // STEP 1: Mint S2S OAuth token
     const authString = btoa(`${client_id}:${client_secret}`);
     const tokenResp = await fetch(
@@ -66,12 +100,17 @@ Deno.serve(async (req) => {
     );
     const tokenData = await tokenResp.json();
     if (!tokenResp.ok || !tokenData.access_token) {
-      checks.push({
-        step: "oauth_token",
+      const reason = `Zoom rejected credentials (HTTP ${tokenResp.status}): ${tokenData.reason || tokenData.message || JSON.stringify(tokenData).slice(0, 300)}`;
+      checks.push({ step: "oauth_token", ok: false, detail: reason });
+      const stored = await saveFailedCredentials(reason);
+      return json({
         ok: false,
-        detail: `Zoom rejected credentials (HTTP ${tokenResp.status}): ${tokenData.reason || tokenData.message || JSON.stringify(tokenData).slice(0, 300)}`,
+        checks,
+        credential_status: "failed",
+        failure_reason: reason,
+        stored_unverified: Boolean(stored),
+        verdict: "Fix: verify Account ID / Client ID / Client Secret in the Marketplace S2S app.",
       });
-      return json({ ok: false, checks, verdict: "Fix: verify Account ID / Client ID / Client Secret in the Marketplace S2S app." });
     }
     const scopes = String(tokenData.scope || "").split(/\s+/).filter(Boolean);
     checks.push({ step: "oauth_token", ok: true, detail: `Token minted, scopes=${scopes.length}`, data: { scopes } });
@@ -83,18 +122,23 @@ Deno.serve(async (req) => {
     );
     const userBody = await userResp.json();
     if (!userResp.ok) {
-      checks.push({
-        step: "user_lookup",
-        ok: false,
-        detail: `HTTP ${userResp.status}: ${userBody.message || JSON.stringify(userBody).slice(0, 300)}`,
-      });
       const hasUserScope = scopes.some((s: string) =>
         s.startsWith("user:read:user") || s === "user:read" || s === "user:read:admin"
       );
       const scopeHint = hasUserScope
-        ? "Email may not exist on this account."
+        ? "Email may not exist on this Zoom account."
         : "Missing user read scope — add 'user:read:user:admin' (Granular) or 'user:read:admin' (Classic) to the S2S app and reactivate.";
-      return json({ ok: false, checks, verdict: `Fix: ${scopeHint}` });
+      const reason = `Host lookup failed (HTTP ${userResp.status}): ${userBody.message || JSON.stringify(userBody).slice(0, 300)} — ${scopeHint}`;
+      checks.push({ step: "user_lookup", ok: false, detail: reason });
+      const stored = await saveFailedCredentials(reason);
+      return json({
+        ok: false,
+        checks,
+        credential_status: "failed",
+        failure_reason: reason,
+        stored_unverified: Boolean(stored),
+        verdict: `Fix: ${scopeHint}`,
+      });
     }
     const hostId = userBody.id;
     const planType = userBody.type; // 1=Basic (free), 2=Licensed, 3=On-prem
@@ -122,6 +166,7 @@ Deno.serve(async (req) => {
     if (save && teacher_id) {
       const finalTier: "free" | "licensed" = tier || resolvedTier;
       const meetingLink = personal_meeting_link || personalMeetingUrl;
+      const nowIso = new Date().toISOString();
       const upsertPayload = {
         teacher_id,
         zoom_account_email: zoom_email,
@@ -129,15 +174,18 @@ Deno.serve(async (req) => {
         tier: finalTier,
         meeting_link: meetingLink,
         is_active: true,
-        last_validated_at: new Date().toISOString(),
+        last_validated_at: nowIso,
         zoom_account_id_cred: account_id,
         zoom_client_id: client_id,
         zoom_client_secret: client_secret,
+        credential_status: "verified",
+        credential_error: null,
+        credential_checked_at: nowIso,
       };
       const { data: upserted, error: upErr } = await adminClient
         .from("zoom_accounts")
         .upsert(upsertPayload, { onConflict: "teacher_id,tier" })
-        .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at")
+        .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, credential_status")
         .maybeSingle();
       if (upErr) {
         checks.push({ step: "save_account", ok: false, detail: upErr.message });
@@ -149,6 +197,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
+      credential_status: saved ? "verified" : "unverified",
       verdict: saved
         ? `PASS. ${planLabel} account saved as teacher's dedicated Zoom account.`
         : `PASS. ${planLabel} account. Ready to save as a teacher's dedicated Zoom account.`,

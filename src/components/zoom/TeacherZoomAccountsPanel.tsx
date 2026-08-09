@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
+import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
 
 
 /**
@@ -121,14 +122,23 @@ export function TeacherZoomAccountsPanel() {
       });
       const body = await resp.json();
       setValidateResult(body);
+      qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      qc.invalidateQueries({ queryKey: ['zoom-seat-status'] });
       if (body?.ok && body?.saved) {
-        toast({ title: 'Saved', description: `Dedicated ${form.tier} account linked to teacher.` });
-        qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
-      } else if (!body?.ok) {
-        toast({ title: 'Validation failed', description: body.verdict || 'See details', variant: 'destructive' });
+        toast({
+          title: '✅ Verified — host ID resolved',
+          description: `Host ID ${body.resolved?.host_id} saved for this teacher's ${form.tier} seat.`,
+        });
+      } else {
+        toast({
+          title: '❌ Save failed verification',
+          description: body?.failure_reason || body?.verdict || body?.error || 'Zoom rejected this setup.',
+          variant: 'destructive',
+        });
       }
     } catch (e: any) {
-      setValidateResult({ ok: false, verdict: e.message });
+      setValidateResult({ ok: false, verdict: e.message, failure_reason: e.message });
+      toast({ title: '❌ Save failed', description: e.message, variant: 'destructive' });
     } finally {
       setValidating(false);
     }
@@ -177,6 +187,8 @@ export function TeacherZoomAccountsPanel() {
 
 
   return (
+    <div className="space-y-6">
+    <ZoomSeatStatusTable />
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
@@ -258,8 +270,20 @@ export function TeacherZoomAccountsPanel() {
               {validateResult && (
                 <Alert variant={validateResult.ok ? 'default' : 'destructive'}>
                   {validateResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                  <AlertTitle className="text-sm">{validateResult.ok ? 'PASS' : 'FAIL'}</AlertTitle>
-                  <AlertDescription className="text-xs whitespace-pre-wrap">{validateResult.verdict || validateResult.error}</AlertDescription>
+                  <AlertTitle className="text-sm">
+                    {validateResult.ok
+                      ? `✅ Verified — host ID ${validateResult.resolved?.host_id || 'resolved'}`
+                      : '❌ Failed — credentials were NOT verified'}
+                  </AlertTitle>
+                  <AlertDescription className="text-xs whitespace-pre-wrap space-y-1">
+                    <p>{validateResult.failure_reason || validateResult.verdict || validateResult.error}</p>
+                    {!validateResult.ok && validateResult.stored_unverified && (
+                      <p className="font-medium">
+                        The credentials you typed were stored and flagged as “Failed” so you don't have to retype them —
+                        fix the Zoom app, then press Validate &amp; Save again.
+                      </p>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
             </div>
@@ -380,5 +404,6 @@ export function TeacherZoomAccountsPanel() {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }

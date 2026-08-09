@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.zoom-validate-account]
 verify_jwt = false
 
+[functions.zoom-webhook-health]
+verify_jwt = false
+
 [functions.course-applicant-import]
 verify_jwt = false
 
