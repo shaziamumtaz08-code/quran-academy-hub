@@ -12,7 +12,6 @@ import {
   DollarSign,
   FileText,
   FolderOpen,
-  GraduationCap,
   Landmark,
   LayoutDashboard,
   Megaphone,
