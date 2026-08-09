@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -229,7 +229,7 @@ export default function Tutorials() {
   const active = tutorialId ? readable.find((row) => row.id === tutorialId) || null : null;
 
   // Resolve an optional video for the open article (never required).
-  useMemo(() => {
+  useEffect(() => {
     let cancelled = false;
     setVideoUrl(null);
     if (!active) return;
@@ -242,7 +242,7 @@ export default function Tutorials() {
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.id]);
+  }, [active?.id, active?.source_type, active?.storage_path, active?.video_url]);
 
   const NeedMoreHelp = (
     <Card className="border-primary/20 bg-primary/5">
