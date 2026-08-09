@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Mail, Lock, Loader2, ChevronDown, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { MinorLoginTab } from '@/components/auth/MinorLoginTab';
 import logoDark from '@/assets/logo-dark.jpg';
 
 const loginSchema = z.object({
@@ -36,7 +35,6 @@ const saveRecentEmail = (email: string) => {
 };
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState<'email' | 'student'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);

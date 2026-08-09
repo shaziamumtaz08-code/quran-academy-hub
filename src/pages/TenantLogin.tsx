@@ -10,7 +10,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, Loader2, Eye, EyeOff, User, Sparkles, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
-import { MinorLoginTab } from '@/components/auth/MinorLoginTab';
 import { lovable } from '@/integrations/lovable';
 
 const ALL_METHODS = ['email_password', 'uid_pin', 'google', 'magic_link', 'microsoft', 'whatsapp_otp'] as const;
