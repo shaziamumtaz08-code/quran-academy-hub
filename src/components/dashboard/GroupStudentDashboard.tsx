@@ -392,8 +392,54 @@ export function GroupStudentDashboard() {
         </section>
       </div>
 
+      {/* Class recordings */}
+      <section aria-labelledby="recordings-heading">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 id="recordings-heading" className="flex items-center gap-2 font-serif text-2xl font-bold text-foreground">
+              <PlayCircle className="h-5 w-5 text-primary" /> Class recordings
+            </h2>
+            <p className="text-sm text-muted-foreground">Catch up on classes you missed.</p>
+          </div>
+          <Button variant="outline" className="shrink-0" onClick={() => navigate('/recordings')}>
+            View all
+          </Button>
+        </div>
+        {recordings.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <PlayCircle className="mx-auto mb-2 h-9 w-9 text-muted-foreground" />
+              <p className="font-semibold text-foreground">No recordings yet</p>
+              <p className="text-sm text-muted-foreground">Recordings appear here once a class is published.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {recordings.map((rec: any) => (
+              <Card key={rec.id} className="overflow-hidden transition-shadow hover:shadow-md">
+                <div className="flex h-24 items-center justify-center bg-gradient-to-br from-primary/15 to-accent/15">
+                  <PlayCircle className="h-9 w-9 text-primary" />
+                </div>
+                <CardContent className="space-y-2 p-4">
+                  <p className="truncate font-semibold text-foreground">
+                    {courseNames.get(rec.course_id) || 'Class recording'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(rec.actual_start || rec.scheduled_start), 'd MMM yyyy')}
+                  </p>
+                  <Button size="sm" className="w-full" onClick={() => window.open(rec.recording_link, '_blank', 'noopener')}>
+                    Watch
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Spotlight / browse courses */}
-      {catalog.length > 0 && (
+      {(
+
         <section aria-labelledby="spotlight-heading">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
