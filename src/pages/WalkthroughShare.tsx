@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, LifeBuoy, PlayCircle } from 'lucide-react';
+import { Loader2, LifeBuoy, PlayCircle, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface ShareData {
@@ -69,6 +70,31 @@ export default function WalkthroughShare() {
           <p className="mt-1 text-sm text-muted-foreground">
             Recorded from the live academy app{mins ? ` · about ${mins} min` : ''}
           </p>
+        </div>
+
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const res = await fetch(data.video_url);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${data.title.replace(/[^\w.-]+/g, '-')}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 4000);
+              } catch {
+                window.open(data.video_url, '_blank');
+              }
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" /> Download video (MP4)
+          </Button>
         </div>
 
         <video
