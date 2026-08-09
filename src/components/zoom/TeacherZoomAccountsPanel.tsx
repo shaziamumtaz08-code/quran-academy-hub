@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
+import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
 
 
 /**
