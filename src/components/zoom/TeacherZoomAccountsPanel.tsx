@@ -404,5 +404,6 @@ export function TeacherZoomAccountsPanel() {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }
