@@ -14,6 +14,7 @@ import {
   Megaphone,
   Newspaper,
   Pin,
+  PlayCircle,
   Radio,
   Sparkles,
   Video,
@@ -152,14 +153,44 @@ export function GroupStudentDashboard() {
     queryKey: ['group-student-catalog', activeDivision?.id, enrolledIds.join(',')],
     enabled: Boolean(activeDivision?.id),
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const columns = 'id, name, level, seo_slug, thumbnail_url, hero_image_url, max_students, pricing, status, website_enabled, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name)';
+      const { data: featured } = await supabase
         .from('courses')
-        .select('id, name, level, seo_slug, thumbnail_url, hero_image_url, max_students, pricing, status, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name)')
+        .select(columns)
         .eq('website_enabled', true)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(12);
-      return (rows || []).filter((row: any) => !enrolledIds.includes(row.id)).slice(0, 4);
+
+      let rows = (featured || []).filter((row: any) => !enrolledIds.includes(row.id));
+
+      if (rows.length === 0) {
+        const { data: fallback } = await supabase
+          .from('courses')
+          .select(columns)
+          .eq('status', 'active')
+          .eq('division_id', activeDivision!.id)
+          .order('created_at', { ascending: false })
+          .limit(12);
+        rows = (fallback || []).filter((row: any) => !enrolledIds.includes(row.id));
+      }
+
+      return rows.slice(0, 4);
+    },
+  });
+
+  const { data: recordings = [] } = useQuery({
+    queryKey: ['group-student-recordings', studentId],
+    enabled: Boolean(studentId),
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('live_sessions')
+        .select('id, actual_start, scheduled_start, recording_link, course_id')
+        .eq('student_id', studentId!)
+        .not('recording_link', 'is', null)
+        .order('actual_start', { ascending: false, nullsFirst: false })
+        .limit(4);
+      return (rows || []) as any[];
     },
   });
 
@@ -362,8 +393,54 @@ export function GroupStudentDashboard() {
         </section>
       </div>
 
+      {/* Class recordings */}
+      <section aria-labelledby="recordings-heading">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 id="recordings-heading" className="flex items-center gap-2 font-serif text-2xl font-bold text-foreground">
+              <PlayCircle className="h-5 w-5 text-primary" /> Class recordings
+            </h2>
+            <p className="text-sm text-muted-foreground">Catch up on classes you missed.</p>
+          </div>
+          <Button variant="outline" className="shrink-0" onClick={() => navigate('/recordings')}>
+            View all
+          </Button>
+        </div>
+        {recordings.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <PlayCircle className="mx-auto mb-2 h-9 w-9 text-muted-foreground" />
+              <p className="font-semibold text-foreground">No recordings yet</p>
+              <p className="text-sm text-muted-foreground">Recordings appear here once a class is published.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {recordings.map((rec: any) => (
+              <Card key={rec.id} className="overflow-hidden transition-shadow hover:shadow-md">
+                <div className="flex h-24 items-center justify-center bg-gradient-to-br from-primary/15 to-accent/15">
+                  <PlayCircle className="h-9 w-9 text-primary" />
+                </div>
+                <CardContent className="space-y-2 p-4">
+                  <p className="truncate font-semibold text-foreground">
+                    {courseNames.get(rec.course_id) || 'Class recording'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(rec.actual_start || rec.scheduled_start), 'd MMM yyyy')}
+                  </p>
+                  <Button size="sm" className="w-full" onClick={() => window.open(rec.recording_link, '_blank', 'noopener')}>
+                    Watch
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Spotlight / browse courses */}
-      {catalog.length > 0 && (
+      {(
+
         <section aria-labelledby="spotlight-heading">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -376,6 +453,15 @@ export function GroupStudentDashboard() {
               <Compass className="mr-2 h-4 w-4" /> Browse all
             </Button>
           </div>
+          {catalog.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <Sparkles className="mx-auto mb-2 h-9 w-9 text-muted-foreground" />
+                <p className="font-semibold text-foreground">No featured courses right now</p>
+                <p className="text-sm text-muted-foreground">Browse the full catalogue to see everything on offer.</p>
+              </CardContent>
+            </Card>
+          ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {catalog.map((course: any) => (
               <CourseThumbnailCard
@@ -398,7 +484,9 @@ export function GroupStudentDashboard() {
               />
             ))}
           </div>
+          )}
         </section>
+
       )}
 
       {/* News + announcements */}
