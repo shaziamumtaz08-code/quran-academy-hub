@@ -152,14 +152,44 @@ export function GroupStudentDashboard() {
     queryKey: ['group-student-catalog', activeDivision?.id, enrolledIds.join(',')],
     enabled: Boolean(activeDivision?.id),
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const columns = 'id, name, level, seo_slug, thumbnail_url, hero_image_url, max_students, pricing, status, website_enabled, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name)';
+      const { data: featured } = await supabase
         .from('courses')
-        .select('id, name, level, seo_slug, thumbnail_url, hero_image_url, max_students, pricing, status, subject:subjects!courses_subject_id_fkey(name), teacher:profiles!courses_teacher_id_fkey(full_name)')
+        .select(columns)
         .eq('website_enabled', true)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(12);
-      return (rows || []).filter((row: any) => !enrolledIds.includes(row.id)).slice(0, 4);
+
+      let rows = (featured || []).filter((row: any) => !enrolledIds.includes(row.id));
+
+      if (rows.length === 0) {
+        const { data: fallback } = await supabase
+          .from('courses')
+          .select(columns)
+          .eq('status', 'active')
+          .eq('division_id', activeDivision!.id)
+          .order('created_at', { ascending: false })
+          .limit(12);
+        rows = (fallback || []).filter((row: any) => !enrolledIds.includes(row.id));
+      }
+
+      return rows.slice(0, 4);
+    },
+  });
+
+  const { data: recordings = [] } = useQuery({
+    queryKey: ['group-student-recordings', studentId],
+    enabled: Boolean(studentId),
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('live_sessions')
+        .select('id, actual_start, scheduled_start, recording_link, course_id')
+        .eq('student_id', studentId!)
+        .not('recording_link', 'is', null)
+        .order('actual_start', { ascending: false, nullsFirst: false })
+        .limit(4);
+      return (rows || []) as any[];
     },
   });
 
