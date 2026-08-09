@@ -615,6 +615,9 @@ export default function Tutorials() {
                         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
                           <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {readingMinutes(guide.steps.length, guide.intro)} min read</Badge>
                           {guide.steps.length > 0 && <Badge variant="outline">{guide.steps.length} steps</Badge>}
+                          {Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0 && (
+                            <Badge variant="outline" className="gap-1 border-emerald-600/40 text-emerald-700"><MousePointerClick className="h-3 w-3" /> Walkthrough</Badge>
+                          )}
                           {hasVideo && <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> Video</Badge>}
                         </div>
                         <span className="inline-flex items-center pt-1 text-sm font-medium text-primary">
