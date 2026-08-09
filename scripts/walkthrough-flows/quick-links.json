@@ -1,0 +1,14 @@
+{
+  "tutorial_id": "a1f53264-ccf3-4606-a5bd-12f464f0f8ff",
+  "slug": "quick-links",
+  "base_url": "http://localhost:8080",
+  "auth": "session",
+  "steps": [
+    { "step": 1, "label": "Find the Quick links card on your dashboard", "action": "goto", "route": "/dashboard", "target": "Quick links", "by": "text" },
+    { "step": 2, "label": "Message teacher opens a direct chat", "action": "verify", "target": "Message teacher", "by": "text" },
+    { "step": 3, "label": "Leave Request tells the academy about an absence", "action": "verify", "target": "Leave Request", "by": "text" },
+    { "step": 4, "label": "Recordings and Exam results are one tap away", "action": "verify", "target": "Exam results", "by": "text" },
+    { "step": 5, "label": "Help Centre brings you back to these guides", "action": "verify", "target": "Help Centre", "by": "text" },
+    { "step": 6, "label": "Fees live on the Fee status card — tap Pay", "action": "verify", "target": "Fee status", "by": "text" }
+  ]
+}

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, BookOpen, ChevronRight, Clock, GraduationCap, LifeBuoy, Loader2,
-  MessageCircle, Pencil, Plus, Search, Trash2, Upload, Video,
+  MessageCircle, MousePointerClick, Pencil, Plus, Search, Trash2, Upload, Video,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { WalkthroughViewer, type WalkthroughFrame } from '@/components/tutorials/WalkthroughViewer';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -44,6 +45,10 @@ interface TutorialRow {
   visible_roles: string[];
   sort_order: number;
   is_published: boolean;
+  walkthrough_status?: string | null;
+  walkthrough_frames?: WalkthroughFrame[] | null;
+  walkthrough_generated_at?: string | null;
+  walkthrough_error?: string | null;
 }
 
 const emptyForm = {
@@ -206,6 +211,22 @@ export default function Tutorials() {
     onError: (error: any) => toast({ title: 'Could not delete', description: error.message, variant: 'destructive' }),
   });
 
+  const queueWalkthrough = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('tutorial_videos')
+        .update({ walkthrough_status: 'pending', walkthrough_error: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Capture queued', description: 'Screens will be captured from the live app.' });
+      queryClient.invalidateQueries({ queryKey: ['tutorial-videos'] });
+    },
+    onError: (error: any) => toast({ title: 'Could not queue', description: error.message, variant: 'destructive' }),
+  });
+
+
   async function handleUpload(file: File) {
     setUploading(true);
     try {
@@ -364,6 +385,30 @@ export default function Tutorials() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
+          <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
+        )}
+
+        {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
+                <p className="text-xs text-muted-foreground">
+                  {active.walkthrough_status === 'pending'
+                    ? 'Queued — screens will be captured from the live app on the next capture run.'
+                    : active.walkthrough_error
+                      ? `Last attempt failed: ${active.walkthrough_error}`
+                      : 'No screens captured yet for this guide.'}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
+                <MousePointerClick className="mr-2 h-4 w-4" /> Queue capture
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -570,6 +615,9 @@ export default function Tutorials() {
                         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
                           <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {readingMinutes(guide.steps.length, guide.intro)} min read</Badge>
                           {guide.steps.length > 0 && <Badge variant="outline">{guide.steps.length} steps</Badge>}
+                          {Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0 && (
+                            <Badge variant="outline" className="gap-1 border-emerald-600/40 text-emerald-700"><MousePointerClick className="h-3 w-3" /> Walkthrough</Badge>
+                          )}
                           {hasVideo && <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> Video</Badge>}
                         </div>
                         <span className="inline-flex items-center pt-1 text-sm font-medium text-primary">

@@ -11373,6 +11373,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           duration_seconds: number | null
+          flow_steps: Json
           id: string
           is_published: boolean
           sort_order: number
@@ -11383,6 +11384,10 @@ export type Database = {
           updated_at: string
           video_url: string
           visible_roles: string[]
+          walkthrough_error: string | null
+          walkthrough_frames: Json
+          walkthrough_generated_at: string | null
+          walkthrough_status: string
         }
         Insert: {
           category?: string
@@ -11390,6 +11395,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_seconds?: number | null
+          flow_steps?: Json
           id?: string
           is_published?: boolean
           sort_order?: number
@@ -11400,6 +11406,10 @@ export type Database = {
           updated_at?: string
           video_url: string
           visible_roles?: string[]
+          walkthrough_error?: string | null
+          walkthrough_frames?: Json
+          walkthrough_generated_at?: string | null
+          walkthrough_status?: string
         }
         Update: {
           category?: string
@@ -11407,6 +11417,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_seconds?: number | null
+          flow_steps?: Json
           id?: string
           is_published?: boolean
           sort_order?: number
@@ -11417,6 +11428,10 @@ export type Database = {
           updated_at?: string
           video_url?: string
           visible_roles?: string[]
+          walkthrough_error?: string | null
+          walkthrough_frames?: Json
+          walkthrough_generated_at?: string | null
+          walkthrough_status?: string
         }
         Relationships: []
       }
