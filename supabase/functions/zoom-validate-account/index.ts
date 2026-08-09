@@ -197,6 +197,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
+      credential_status: saved ? "verified" : "unverified",
       verdict: saved
         ? `PASS. ${planLabel} account saved as teacher's dedicated Zoom account.`
         : `PASS. ${planLabel} account. Ready to save as a teacher's dedicated Zoom account.`,
