@@ -5,13 +5,13 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { AdminOverviewDashboard } from '@/components/dashboard/AdminOverviewDashboard';
 import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
+import { GroupStudentDashboard } from '@/components/dashboard/GroupStudentDashboard';
 import { ParentDashboard } from '@/components/dashboard/ParentDashboard';
 import { FeesAdminDashboard } from '@/components/dashboard/FeesAdminDashboard';
 import { AdmissionsAdminDashboard } from '@/components/dashboard/AdmissionsAdminDashboard';
 import { AcademicAdminDashboard } from '@/components/dashboard/AcademicAdminDashboard';
 import { ExaminerDashboard } from '@/components/dashboard/ExaminerDashboard';
 import { PageShell } from '@/components/layout/PageShell';
-import UnifiedDashboard from './UnifiedDashboard';
 
 export default function Dashboard() {
   const { profile, isLoading, activeRole } = useAuth();
@@ -63,12 +63,12 @@ export default function Dashboard() {
     case 'teacher':
       return <TeacherDashboard />;
     case 'student':
-      return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
+      return activeDivision?.model_type === 'group' ? <GroupStudentDashboard /> : <StudentDashboard />;
     case 'parent':
       // Dual-role users (their own student + parent) with no linked children
       // should see their student dashboard instead of an empty "My Children" shell.
       if (profile.roles?.includes('student')) {
-        return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
+        return activeDivision?.model_type === 'group' ? <GroupStudentDashboard /> : <StudentDashboard />;
       }
       return <ParentDashboard />;
     case 'examiner':
