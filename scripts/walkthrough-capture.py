@@ -178,20 +178,34 @@ def impersonate(session: dict, target_email: str, expect_role: str | None) -> tu
 
 
 async def capture_auth(page, base_url: str, flow: dict) -> tuple[bool, str]:
-    session, msg = capture_sign_in(flow)
-    if not session:
-        return False, msg
+    """Signs in through the app's own login form (no storage injection, no
+    service role) so the session is created exactly like a real user's."""
+    email = (flow.get("capture_email") or os.environ.get("CAPTURE_ACCOUNT_EMAIL", "")).strip()
+    password = os.environ.get("CAPTURE_ACCOUNT_PASSWORD", "")
+    if not (email and password):
+        return False, (
+            "Capture credentials not configured. Set the flow's capture_email and "
+            "add CAPTURE_ACCOUNT_PASSWORD in Project Settings, Secrets."
+        )
 
-    storage_key = f"sb-{os.environ.get('VITE_SUPABASE_PROJECT_ID', 'project')}-auth-token"
-    await page.goto(base_url, wait_until="domcontentloaded")
-    await page.evaluate(
-        f"localStorage.setItem({json.dumps(storage_key)}, {json.dumps(json.dumps(session))})"
-    )
+    await page.goto(f"{base_url}/login", wait_until="domcontentloaded")
+    try:
+        await page.get_by_label("Email Address").fill(email)
+        await page.get_by_label("Password").fill(password)
+        await page.get_by_role("button", name="Sign In").click()
+        await page.wait_for_timeout(9000)
+    except Exception as exc:
+        return False, f"Login form interaction failed: {exc}"
+    if "/login" in page.url:
+        return False, f"Sign-in as {email} did not complete."
 
     target = flow.get("impersonate_email")
     if not target:
-        return True, "capture account session active"
+        return True, f"signed in as {email}"
 
+    session, msg = capture_sign_in(flow)
+    if not session:
+        return False, msg
     token_hash, imsg = impersonate(session, target, flow.get("expect_role"))
     if not token_hash:
         return False, imsg
