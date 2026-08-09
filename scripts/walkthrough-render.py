@@ -34,6 +34,9 @@ ACCENT = (56, 189, 148)
 TEXT = (240, 245, 250)
 MUTED = (156, 172, 194)
 
+URDU_FONT = "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/share/fonts/noto/NotoNaskhArabic[wght].ttf"
+LANG = "en"
+
 FONT_REG = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Regular.ttf"
 FONT_BOLD = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Bold.ttf"
 
@@ -49,6 +52,17 @@ F_TITLE = font(FONT_BOLD, 52)
 F_SUB = font(FONT_REG, 26)
 F_STEP = font(FONT_BOLD, 22)
 F_LABEL = font(FONT_REG, 26)
+
+
+def shape(text: str) -> str:
+    """Shapes Arabic-script text (joined forms + visual RTL order) for Pillow."""
+    if LANG != "ur":
+        return text
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    # Noto Naskh Arabic has no glyph for these separators; use Urdu equivalents.
+    text = text.replace("—", "،").replace("–", "،").replace("/", " از ")
+    return get_display(arabic_reshaper.reshape(text))
 
 
 def wrap(draw, text, fnt, max_w):
@@ -96,12 +110,25 @@ def compose(shot_path: Path, step: int, total: int, label: str, hotspot, pulse: 
     d = ImageDraw.Draw(canvas)
     d.rectangle([0, SHOT_H, W, H], fill=CAPTION_BG)
     d.rectangle([0, SHOT_H, W, SHOT_H + 3], fill=ACCENT)
-    d.text((48, SHOT_H + 18), f"STEP {step} OF {total}", font=F_STEP, fill=ACCENT)
-    lines = wrap(d, label, F_LABEL, W - 96)[:2]
-    y = SHOT_H + 48
-    for line in lines:
-        d.text((48, y), line, font=F_LABEL, fill=TEXT)
-        y += 32
+    step_txt = f"مرحلہ {step} از {total}" if LANG == "ur" else f"STEP {step} OF {total}"
+    step_txt = shape(step_txt)
+    if LANG == "ur":
+        d.text((W - 48 - d.textlength(step_txt, font=F_STEP), SHOT_H + 14), step_txt, font=F_STEP, fill=ACCENT)
+    else:
+        d.text((48, SHOT_H + 18), step_txt, font=F_STEP, fill=ACCENT)
+    if LANG == "ur":
+        lines = wrap(d, label, F_LABEL, W - 96)[:2]
+        y = SHOT_H + 48
+        for line in lines:
+            txt = shape(line)
+            d.text((W - 48 - d.textlength(txt, font=F_LABEL), y), txt, font=F_LABEL, fill=TEXT)
+            y += 40
+    else:
+        lines = wrap(d, label, F_LABEL, W - 96)[:2]
+        y = SHOT_H + 48
+        for line in lines:
+            d.text((48, y), line, font=F_LABEL, fill=TEXT)
+            y += 32
     return canvas
 
 
@@ -111,11 +138,16 @@ def title_card(title: str, total: int):
     d.rectangle([0, H // 2 + 90, W, H // 2 + 94], fill=ACCENT)
     lines = wrap(d, title, F_TITLE, W - 200)
     y = H // 2 - 60 - (len(lines) - 1) * 30
+    sub = (f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
+           if LANG == "ur" else f"A {total}-step walkthrough recorded from the live LMS")
     for line in lines:
-        d.text((100, y), line, font=F_TITLE, fill=TEXT)
+        txt = shape(line)
+        x = (W - 100 - d.textlength(txt, font=F_TITLE)) if LANG == "ur" else 100
+        d.text((x, y), txt, font=F_TITLE, fill=TEXT)
         y += 62
-    d.text((100, H // 2 + 120), f"A {total}-step walkthrough recorded from the live LMS",
-           font=F_SUB, fill=MUTED)
+    sub = shape(sub)
+    sx = (W - 100 - d.textlength(sub, font=F_SUB)) if LANG == "ur" else 100
+    d.text((sx, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
     return img
 
 
@@ -180,7 +212,15 @@ def main():
     ap.add_argument("manifest")
     ap.add_argument("--title", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--lang", default="en", choices=["en", "ur"])
     args = ap.parse_args()
+    global LANG, F_TITLE, F_SUB, F_STEP, F_LABEL
+    LANG = args.lang
+    if LANG == "ur":
+        F_TITLE = font(URDU_FONT, 48)
+        F_SUB = font(URDU_FONT, 24)
+        F_STEP = font(URDU_FONT, 22)
+        F_LABEL = font(URDU_FONT, 28)
     manifest = json.loads(Path(args.manifest).read_text())
     print(json.dumps(render(manifest, args.title, Path(args.out)), indent=2))
 

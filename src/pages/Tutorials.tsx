@@ -430,6 +430,7 @@ export default function Tutorials() {
         {active.walkthrough_video_path && (
           <WalkthroughVideoCard
             videoPath={active.walkthrough_video_path}
+            fileName={`${active.title}.mp4`}
             posterPath={active.walkthrough_poster_path}
             shareToken={active.share_token}
             shareEnabled={active.share_enabled}
