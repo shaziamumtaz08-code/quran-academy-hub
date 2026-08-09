@@ -394,6 +394,16 @@ export default function Tutorials() {
           </Card>
         )}
 
+        {active.walkthrough_video_path && (
+          <WalkthroughVideoCard
+            videoPath={active.walkthrough_video_path}
+            posterPath={active.walkthrough_poster_path}
+            shareToken={active.share_token}
+            shareEnabled={active.share_enabled}
+            durationSeconds={active.duration_seconds}
+          />
+        )}
+
         {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
           <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
         )}
