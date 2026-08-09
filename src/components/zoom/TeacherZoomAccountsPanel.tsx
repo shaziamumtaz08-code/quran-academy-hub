@@ -122,14 +122,23 @@ export function TeacherZoomAccountsPanel() {
       });
       const body = await resp.json();
       setValidateResult(body);
+      qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      qc.invalidateQueries({ queryKey: ['zoom-seat-status'] });
       if (body?.ok && body?.saved) {
-        toast({ title: 'Saved', description: `Dedicated ${form.tier} account linked to teacher.` });
-        qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
-      } else if (!body?.ok) {
-        toast({ title: 'Validation failed', description: body.verdict || 'See details', variant: 'destructive' });
+        toast({
+          title: '✅ Verified — host ID resolved',
+          description: `Host ID ${body.resolved?.host_id} saved for this teacher's ${form.tier} seat.`,
+        });
+      } else {
+        toast({
+          title: '❌ Save failed verification',
+          description: body?.failure_reason || body?.verdict || body?.error || 'Zoom rejected this setup.',
+          variant: 'destructive',
+        });
       }
     } catch (e: any) {
-      setValidateResult({ ok: false, verdict: e.message });
+      setValidateResult({ ok: false, verdict: e.message, failure_reason: e.message });
+      toast({ title: '❌ Save failed', description: e.message, variant: 'destructive' });
     } finally {
       setValidating(false);
     }
