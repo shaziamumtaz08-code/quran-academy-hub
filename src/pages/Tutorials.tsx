@@ -352,6 +352,23 @@ export default function Tutorials() {
           </CardContent>
         </Card>
 
+        {guide.faqs.length > 0 && (
+          <Card>
+            <CardContent className="p-5 md:p-6">
+              <h2 className="mb-3 font-serif text-lg font-bold text-foreground">Common problems</h2>
+              <div className="space-y-3">
+                {guide.faqs.map((faq, index) => (
+                  <div key={index} className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-semibold text-foreground">{faq.q}</p>
+                    {faq.a && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
         {videoUrl && (
           <Card>
             <CardContent className="space-y-3 p-5">
