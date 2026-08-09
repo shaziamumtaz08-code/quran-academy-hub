@@ -48,6 +48,7 @@ const ProgressTimeline = lazy(() => import("./pages/ProgressTimeline"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Library = lazy(() => import("./pages/Library"));
 const LibraryShare = lazy(() => import("./pages/LibraryShare"));
+const WalkthroughShare = lazy(() => import("./pages/WalkthroughShare"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const Assignments = lazy(() => import("./pages/Assignments"));
