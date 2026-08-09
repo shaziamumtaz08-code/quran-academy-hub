@@ -453,6 +453,15 @@ export function GroupStudentDashboard() {
               <Compass className="mr-2 h-4 w-4" /> Browse all
             </Button>
           </div>
+          {catalog.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <Sparkles className="mx-auto mb-2 h-9 w-9 text-muted-foreground" />
+                <p className="font-semibold text-foreground">No featured courses right now</p>
+                <p className="text-sm text-muted-foreground">Browse the full catalogue to see everything on offer.</p>
+              </CardContent>
+            </Card>
+          ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {catalog.map((course: any) => (
               <CourseThumbnailCard
