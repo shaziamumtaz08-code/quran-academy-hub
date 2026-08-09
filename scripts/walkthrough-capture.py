@@ -106,9 +106,16 @@ def _post(path: str, body: dict, token: str | None = None) -> tuple[int, dict]:
             return e.code, {}
 
 
-def capture_sign_in() -> tuple[dict | None, str]:
-    """Password sign-in as the capture account. Returns (session, message)."""
-    email = os.environ.get("CAPTURE_ACCOUNT_EMAIL", "").strip()
+def capture_sign_in(flow: dict | None = None) -> tuple[dict | None, str]:
+    """Password sign-in as the capture/demo account. Returns (session, message).
+
+    Least-privilege default: each flow names the demo account it captures
+    (`capture_email`, a non-sensitive value kept in the flow file) and they all
+    share one password held in the CAPTURE_ACCOUNT_PASSWORD secret. No admin
+    identity and no impersonation is needed in that mode.
+    """
+    email = ((flow or {}).get("capture_email") or os.environ.get("CAPTURE_ACCOUNT_EMAIL", "")).strip()
+
     password = os.environ.get("CAPTURE_ACCOUNT_PASSWORD", "")
     if not SUPABASE_URL or not SUPABASE_KEY:
         return None, "Supabase env vars missing in the capture environment."
