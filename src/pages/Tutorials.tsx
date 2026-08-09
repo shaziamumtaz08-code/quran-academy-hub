@@ -68,22 +68,38 @@ function toEmbedUrl(url: string) {
   return null;
 }
 
-/** Splits a guide body into a short intro, numbered steps and any closing notes. */
+/** Splits a guide body into a short intro, numbered steps (with optional per-step image), notes and FAQs. */
 function parseGuide(description?: string | null) {
   const lines = (description || '').split('\n').map((line) => line.trim());
   const intro: string[] = [];
-  const steps: string[] = [];
+  const steps: { text: string; image?: string }[] = [];
   const notes: string[] = [];
+  const faqs: { q: string; a: string }[] = [];
+  let inFaq = false;
   lines.forEach((line) => {
     if (!line) return;
     if (/^step-by-step script:?$/i.test(line)) return;
-    const match = line.match(/^\d+[.)]\s*(.+)$/);
-    if (match) steps.push(match[1]);
-    else if (steps.length === 0) intro.push(line);
-    else notes.push(line);
+    if (/^(faq|common problems|common questions):?$/i.test(line)) { inFaq = true; return; }
+    if (inFaq) {
+      const q = line.match(/^q[:.]\s*(.+)$/i);
+      if (q) { faqs.push({ q: q[1], a: '' }); return; }
+      const a = line.match(/^a[:.]\s*(.+)$/i);
+      if (a && faqs.length) { faqs[faqs.length - 1].a = a[1]; return; }
+      if (faqs.length) { faqs[faqs.length - 1].a = `${faqs[faqs.length - 1].a} ${line}`.trim(); return; }
+      return;
+    }
+    // optional per-step visual: "1. Do the thing [img: https://...]"
+    let image: string | undefined;
+    const withImage = line.replace(/\[img:\s*([^\]]+)\]/i, (_m, url) => { image = String(url).trim(); return ''; }).trim();
+    const match = withImage.match(/^\d+[.)]\s*(.+)$/);
+    if (match) steps.push({ text: match[1], image });
+    else if (steps.length === 0) intro.push(withImage);
+    else if (withImage) notes.push(withImage);
+    else if (image && steps.length) steps[steps.length - 1].image = image;
   });
-  return { intro: intro.join(' '), steps, notes };
+  return { intro: intro.join(' '), steps, notes, faqs };
 }
+
 
 function readingMinutes(steps: number, intro: string) {
   return Math.max(1, Math.round((steps * 12 + intro.length / 5) / 60) || 1);
@@ -314,9 +330,15 @@ export default function Tutorials() {
                 {guide.steps.map((step, index) => (
                   <li key={index} className="flex gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
-                    <p className="pt-0.5 text-sm leading-relaxed text-foreground">{step}</p>
+                    <div className="space-y-2 pt-0.5">
+                      <p className="text-sm leading-relaxed text-foreground">{step.text}</p>
+                      {step.image && (
+                        <img src={step.image} alt={`Step ${index + 1}`} loading="lazy" className="w-full rounded-lg border border-border" />
+                      )}
+                    </div>
                   </li>
                 ))}
+
               </ol>
             )}
             {guide.notes.length > 0 && (
@@ -329,6 +351,23 @@ export default function Tutorials() {
             )}
           </CardContent>
         </Card>
+
+        {guide.faqs.length > 0 && (
+          <Card>
+            <CardContent className="p-5 md:p-6">
+              <h2 className="mb-3 font-serif text-lg font-bold text-foreground">Common problems</h2>
+              <div className="space-y-3">
+                {guide.faqs.map((faq, index) => (
+                  <div key={index} className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-semibold text-foreground">{faq.q}</p>
+                    {faq.a && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
 
         {videoUrl && (
           <Card>
@@ -380,7 +419,7 @@ export default function Tutorials() {
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 placeholder={'One-line intro.\n\n1. First step\n2. Second step'}
               />
-              <p className="text-xs text-muted-foreground">First lines = intro. Lines starting with 1. 2. 3. become numbered steps.</p>
+              <p className="text-xs text-muted-foreground">First lines = intro. Lines starting with 1. 2. 3. become numbered steps. Add an optional picture to a step with [img: https://link-to-screenshot]. Add a "FAQ:" line, then "Q: ..." / "A: ..." lines for common problems. Video is always optional.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
