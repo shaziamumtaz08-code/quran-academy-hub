@@ -62,6 +62,7 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
       { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Zoom', href: '/zoom-management', icon: Video },
       { label: 'Tasks', href: '/hub', icon: Briefcase },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
   }
@@ -77,6 +78,7 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
     return [
       { label: 'Announcements', href: '/announcements', icon: MessageSquare },
       { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
   return [];
