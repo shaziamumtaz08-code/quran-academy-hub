@@ -373,6 +373,30 @@ export default function Tutorials() {
           </Card>
         )}
 
+        {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
+          <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
+        )}
+
+        {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
+                <p className="text-xs text-muted-foreground">
+                  {active.walkthrough_status === 'pending'
+                    ? 'Queued — screens will be captured from the live app on the next capture run.'
+                    : active.walkthrough_error
+                      ? `Last attempt failed: ${active.walkthrough_error}`
+                      : 'No screens captured yet for this guide.'}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
+                <MousePointerClick className="mr-2 h-4 w-4" /> Queue capture
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
 
         {videoUrl && (
           <Card>
