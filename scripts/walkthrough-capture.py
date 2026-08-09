@@ -65,6 +65,146 @@ async def restore_session(context, page, base_url: str) -> bool:
     return True
 
 
+# --------------------------------------------------------------------------
+# Capture-account authentication (no service-role, no backdoor)
+#
+# The runner signs in with ordinary Supabase email/password auth using a
+# dedicated academy-owned capture account. Credentials are read ONLY from
+# environment secrets (CAPTURE_ACCOUNT_EMAIL / CAPTURE_ACCOUNT_PASSWORD) and
+# are never written to disk, logs, screenshots or flow files.
+#
+# When a flow declares "impersonate_email", the runner then goes through the
+# EXISTING audited impersonate-user edge function (super_admin/admin only,
+# writes user_activity_log) and lands on /impersonate, exactly like the admin
+# UI does. RLS and role checks stay fully in force.
+# --------------------------------------------------------------------------
+
+SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("VITE_SUPABASE_PUBLISHABLE_KEY", "")
+
+
+def _post(path: str, body: dict, token: str | None = None) -> tuple[int, dict]:
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}{path}",
+        data=json.dumps(body).encode(),
+        headers={
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {token or SUPABASE_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except Exception:
+            return e.code, {}
+
+
+def capture_sign_in(flow: dict | None = None) -> tuple[dict | None, str]:
+    """Password sign-in as the capture/demo account. Returns (session, message).
+
+    Least-privilege default: each flow names the demo account it captures
+    (`capture_email`, a non-sensitive value kept in the flow file) and they all
+    share one password held in the CAPTURE_ACCOUNT_PASSWORD secret. No admin
+    identity and no impersonation is needed in that mode.
+    """
+    email = ((flow or {}).get("capture_email") or os.environ.get("CAPTURE_ACCOUNT_EMAIL", "")).strip()
+
+    password = os.environ.get("CAPTURE_ACCOUNT_PASSWORD", "")
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None, "Supabase env vars missing in the capture environment."
+    if not (email and password):
+        return None, (
+            "Capture credentials not configured. Set the flow's capture_email "
+            "(or CAPTURE_ACCOUNT_EMAIL) and add CAPTURE_ACCOUNT_PASSWORD in "
+            "Project Settings, Secrets."
+        )
+    status, data = _post("/auth/v1/token?grant_type=password", {"email": email, "password": password})
+    if status != 200 or not data.get("access_token"):
+        return None, f"Capture account sign-in refused (HTTP {status}). Check the stored credentials."
+    return data, "signed in"
+
+
+def impersonate(session: dict, target_email: str, expect_role: str | None) -> tuple[str | None, str]:
+    """Uses the audited impersonate-user function. Fails closed on any problem."""
+    token = session["access_token"]
+    # Resolve the target profile through PostgREST under the capture account's
+    # own RLS — no service-role, no elevated access.
+    import urllib.parse
+    import urllib.request
+
+    q = urllib.parse.urlencode({"select": "id,full_name", "email": f"eq.{target_email}", "limit": "1"})
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/profiles?{q}",
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            rows = json.loads(r.read() or b"[]")
+    except Exception as exc:
+        return None, f"Could not resolve demo identity {target_email}: {exc}"
+    if not rows:
+        return None, f"Demo identity {target_email} not found — refusing to capture."
+    target_id = rows[0]["id"]
+
+    if expect_role:
+        q = urllib.parse.urlencode({"select": "role", "user_id": f"eq.{target_id}"})
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/user_roles?{q}",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {token}"},
+        )
+        try:
+            with urllib.request.urlopen(req) as r:
+                roles = [x["role"] for x in json.loads(r.read() or b"[]")]
+        except Exception as exc:
+            return None, f"Could not verify role for {target_email}: {exc}"
+        if expect_role not in roles:
+            return None, f"{target_email} does not hold the {expect_role} role — refusing to capture."
+
+    status, data = _post(
+        "/functions/v1/impersonate-user",
+        {"targetUserId": target_id, "redirectTo": "http://localhost:8080/impersonate"},
+        token,
+    )
+    if status != 200 or not data.get("tokenHash"):
+        return None, f"Impersonation refused for {target_email} (HTTP {status})."
+    return data["tokenHash"], "ok"
+
+
+async def capture_auth(page, base_url: str, flow: dict) -> tuple[bool, str]:
+    session, msg = capture_sign_in(flow)
+    if not session:
+        return False, msg
+
+    storage_key = f"sb-{os.environ.get('VITE_SUPABASE_PROJECT_ID', 'project')}-auth-token"
+    await page.goto(base_url, wait_until="domcontentloaded")
+    await page.evaluate(
+        f"localStorage.setItem({json.dumps(storage_key)}, {json.dumps(json.dumps(session))})"
+    )
+
+    target = flow.get("impersonate_email")
+    if not target:
+        return True, "capture account session active"
+
+    token_hash, imsg = impersonate(session, target, flow.get("expect_role"))
+    if not token_hash:
+        return False, imsg
+    await page.goto(
+        f"{base_url}/impersonate?impersonate=1&th={token_hash}&next=/dashboard",
+        wait_until="domcontentloaded",
+    )
+    await page.wait_for_timeout(6000)
+    if "/impersonate" in page.url:
+        return False, f"Impersonated session for {target} did not start."
+    return True, f"impersonating {target}"
+
+
 async def run(flow: dict, out_dir: Path) -> dict:
     base_url = flow.get("base_url", "http://localhost:8080")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -75,7 +215,14 @@ async def run(flow: dict, out_dir: Path) -> dict:
         context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
 
-        if flow.get("auth") == "session":
+        if flow.get("auth") == "capture":
+            ok, msg = await capture_auth(page, base_url, flow)
+            print(f"[auth] {msg}")
+            if not ok:
+                await browser.close()
+                return {"status": "needs_review", "frames": [], "problems": [msg]}
+
+        elif flow.get("auth") == "session":
             ok = await restore_session(context, page, base_url)
             if not ok:
                 await browser.close()
