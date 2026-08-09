@@ -2,12 +2,45 @@
   "tutorial_id": "d4210128-f1de-4254-ae1f-4c0d57d21c04",
   "slug": "communication",
   "base_url": "http://localhost:8080",
-  "auth": "session",
+  "auth": "capture",
   "steps": [
-    { "step": 1, "label": "Open Messages & Requests from the Communication menu", "action": "goto", "route": "/work-hub", "target": "Inbox", "by": "text" },
-    { "step": 2, "label": "Inbox: raise a request, complaint, feedback or leave note", "action": "verify", "target": "Inbox", "by": "role:tab" },
-    { "step": 3, "label": "Messages: chat with your teacher or the admin team", "action": "click", "target": "Messages", "by": "role:tab" },
-    { "step": 4, "label": "Tasks: follow what is pending and its status", "action": "click", "target": "Tasks", "by": "role:tab" },
-    { "step": 5, "label": "Academy news lives on the Announcements page", "action": "goto", "route": "/announcements", "target": "Announcements", "by": "text" }
-  ]
+    {
+      "step": 1,
+      "label": "Open Messages & Requests from the Communication menu",
+      "action": "goto",
+      "route": "/work-hub",
+      "target": "Inbox",
+      "by": "text"
+    },
+    {
+      "step": 2,
+      "label": "Inbox: raise a request, complaint, feedback or leave note",
+      "action": "verify",
+      "target": "Inbox",
+      "by": "role:tab"
+    },
+    {
+      "step": 3,
+      "label": "Messages: chat with your teacher or the admin team",
+      "action": "click",
+      "target": "Messages",
+      "by": "role:tab"
+    },
+    {
+      "step": 4,
+      "label": "Tasks: follow what is pending and its status",
+      "action": "click",
+      "target": "Tasks",
+      "by": "role:tab"
+    },
+    {
+      "step": 5,
+      "label": "Academy news lives on the Announcements page",
+      "action": "goto",
+      "route": "/announcements",
+      "target": "Announcements",
+      "by": "text"
+    }
+  ],
+  "capture_email": "tafseerdemo@gmail.com"
 }
