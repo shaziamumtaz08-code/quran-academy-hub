@@ -3,43 +3,68 @@
   "slug": "dashboard",
   "base_url": "http://localhost:8080",
   "auth": "capture",
+  "capture_email": "shaziademo@gmail.com",
   "steps": [
     {
       "step": 1,
-      "label": "Your dashboard opens after sign in",
+      "label": "Your dashboard opens right after sign in",
       "action": "goto",
       "route": "/dashboard",
       "target": "Quick links",
-      "by": "text"
+      "by": "text",
+      "label_ur": "سائن اِن کے فوراً بعد آپ کا ڈیش بورڈ کھلتا ہے"
     },
     {
       "step": 2,
-      "label": "The top bar holds notifications and your account menu",
+      "label": "The greeting strip shows the Hijri date and today's prayer times",
       "action": "verify",
-      "target": "Notifications",
-      "by": "role:button"
+      "target": "Assalamu Alaikum",
+      "by": "text",
+      "label_ur": "اوپر والی پٹی میں ہجری تاریخ اور نماز کے اوقات ہیں"
     },
     {
       "step": 3,
-      "label": "The join bar shows today's class with a Join button",
+      "label": "The class bar shows today's class — a Join button appears when it is time",
       "action": "verify",
       "target": "Join",
-      "by": "text"
+      "by": "text",
+      "optional": true,
+      "optional_note": "Only visible on a day with a scheduled class.",
+      "label_ur": "کلاس کی پٹی آج کی کلاس دکھاتی ہے، وقت پر Join کا بٹن آ جاتا ہے"
     },
     {
       "step": 4,
-      "label": "Fee status card shows what is due",
+      "label": "Recent lessons lists what your teacher recorded after each class",
       "action": "verify",
-      "target": "Fee status",
-      "by": "text"
+      "target": "Recent lessons",
+      "by": "text",
+      "label_ur": "Recent lessons میں استاد کا لکھا ہوا سبق نظر آتا ہے"
     },
     {
       "step": 5,
-      "label": "Scroll on for recordings, results and academy news",
+      "label": "Performance shows your attendance and sessions this month",
       "action": "verify",
-      "target": "Recordings",
-      "by": "text"
+      "target": "Performance",
+      "by": "text",
+      "label_ur": "Performance میں اس مہینے کی حاضری اور کلاسیں ہیں"
+    },
+    {
+      "step": 6,
+      "label": "Action centre tells you if anything needs your attention",
+      "action": "verify",
+      "target": "Action centre",
+      "by": "text",
+      "label_ur": "Action centre بتاتا ہے کہ کوئی کام باقی تو نہیں"
+    },
+    {
+      "step": 7,
+      "label": "Use the left menu for Attendance, Reports, Fees and Library",
+      "action": "verify",
+      "target": "Fees",
+      "by": "text",
+      "label_ur": "بائیں مینو سے حاضری، رپورٹس، فیس اور لائبریری کھولیں"
     }
   ],
-  "capture_email": "shaziademo@gmail.com"
+  "title": "Understanding your dashboard",
+  "title_ur": "اپنے ڈیش بورڈ کو سمجھنا"
 }

@@ -6,32 +6,38 @@
   "steps": [
     {
       "step": 1,
-      "label": "Open the academy link \u2014 the sign-in page loads",
+      "label": "Open the academy link — the sign-in page loads",
       "action": "goto",
       "route": "/login",
       "target": "Welcome Back",
-      "by": "text"
+      "by": "text",
+      "label_ur": "اکیڈمی کا لنک کھولیں — سائن اِن کا صفحہ آ جائے گا"
     },
     {
       "step": 2,
       "label": "Type the email address the academy gave you",
       "action": "verify",
       "target": "Email Address",
-      "by": "text"
+      "by": "text",
+      "label_ur": "وہ ای میل لکھیں جو اکیڈمی نے دی ہے"
     },
     {
       "step": 3,
       "label": "Enter your password",
       "action": "verify",
       "target": "Password",
-      "by": "text"
+      "by": "text",
+      "label_ur": "اپنا پاس ورڈ درج کریں"
     },
     {
       "step": 4,
       "label": "Press Sign In to open your dashboard",
       "action": "verify",
       "target": "Sign In",
-      "by": "role:button"
+      "by": "role:button",
+      "label_ur": "Sign In دبائیں، آپ کا ڈیش بورڈ کھل جائے گا"
     }
-  ]
+  ],
+  "title": "Logging in to AQTA",
+  "title_ur": "اے کیو ٹی اے میں لاگ اِن کرنا"
 }

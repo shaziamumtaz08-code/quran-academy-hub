@@ -3,44 +3,59 @@
   "slug": "communication",
   "base_url": "http://localhost:8080",
   "auth": "capture",
+  "capture_email": "shaziademo@gmail.com",
   "steps": [
     {
       "step": 1,
-      "label": "Open Messages & Requests from the Communication menu",
+      "label": "Open Communication, then Messages & Requests",
       "action": "goto",
       "route": "/work-hub",
-      "target": "Inbox",
-      "by": "text"
+      "target": "Tickets, messages, and tasks in one place.",
+      "by": "text",
+      "label_ur": "Communication پھر Messages & Requests کھولیں"
     },
     {
       "step": 2,
-      "label": "Inbox: raise a request, complaint, feedback or leave note",
+      "label": "Inbox holds every request, complaint, feedback or leave note you raised",
       "action": "verify",
-      "target": "Inbox",
-      "by": "role:tab"
+      "target": "My Inbox",
+      "by": "text",
+      "label_ur": "Inbox میں آپ کی بھیجی گئی ہر درخواست اور شکایت محفوظ رہتی ہے"
     },
     {
       "step": 3,
-      "label": "Messages: chat with your teacher or the admin team",
-      "action": "click",
-      "target": "Messages",
-      "by": "role:tab"
+      "label": "New Ticket starts a fresh request — pick the right category",
+      "action": "verify",
+      "target": "New Ticket",
+      "by": "text",
+      "label_ur": "New Ticket سے نئی درخواست شروع کریں، درست زمرہ منتخب کریں"
     },
     {
       "step": 4,
-      "label": "Tasks: follow what is pending and its status",
+      "label": "Messages is where you chat with your teacher or the admin team",
       "action": "click",
-      "target": "Tasks",
-      "by": "role:tab"
+      "target": "Messages",
+      "by": "role:tab",
+      "label_ur": "Messages میں استاد یا ایڈمن سے گفتگو کریں"
     },
     {
       "step": 5,
-      "label": "Academy news lives on the Announcements page",
+      "label": "Tasks shows anything the academy asked you to complete",
+      "action": "click",
+      "target": "Tasks",
+      "by": "role:tab",
+      "label_ur": "Tasks میں وہ کام ہیں جو اکیڈمی نے آپ کے ذمے لگائے"
+    },
+    {
+      "step": 6,
+      "label": "Academy news is posted under Announcements",
       "action": "goto",
       "route": "/announcements",
-      "target": "Announcements",
-      "by": "text"
+      "target": "Academy-wide updates",
+      "by": "text",
+      "label_ur": "اکیڈمی کی خبریں Announcements میں آتی ہیں"
     }
   ],
-  "capture_email": "shaziademo@gmail.com"
+  "title": "Using Communication",
+  "title_ur": "کمیونیکیشن کا استعمال"
 }

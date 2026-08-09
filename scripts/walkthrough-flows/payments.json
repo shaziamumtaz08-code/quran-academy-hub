@@ -3,43 +3,56 @@
   "slug": "payments",
   "base_url": "http://localhost:8080",
   "auth": "capture",
+  "capture_email": "shaziademo@gmail.com",
   "steps": [
     {
       "step": 1,
-      "label": "Open Fees from the Fee status card",
+      "label": "Open Fees from the left menu",
       "action": "goto",
       "route": "/payments",
-      "target": "Invoices",
-      "by": "text"
+      "target": "My Fees",
+      "by": "text",
+      "label_ur": "بائیں مینو سے Fees کھولیں"
     },
     {
       "step": 2,
-      "label": "Each invoice shows Pending, Partial, Paid or Overdue",
+      "label": "Every monthly invoice the academy issues appears in this list",
       "action": "verify",
-      "target": "Pending",
-      "by": "text"
+      "target": "View your fee invoices",
+      "by": "text",
+      "label_ur": "اکیڈمی کے جاری کردہ تمام ماہانہ بل یہاں آتے ہیں"
     },
     {
       "step": 3,
-      "label": "Open an invoice to see the academy payment details",
+      "label": "Each invoice shows its status: Pending, Partially paid, Paid or Overdue",
       "action": "verify",
-      "target": "View",
-      "by": "text"
+      "target": "Pending",
+      "by": "text",
+      "optional": true,
+      "optional_note": "Requires at least one issued invoice on the demo account.",
+      "label_ur": "ہر بل کی حالت لکھی ہوتی ہے: باقی، جزوی، ادا شدہ یا مقررہ وقت گزر چکا"
     },
     {
       "step": 4,
-      "label": "After paying, tap Upload Payment Proof",
+      "label": "Open the invoice to see the academy bank and wallet details",
       "action": "verify",
-      "target": "Upload Payment Proof",
-      "by": "role:button"
+      "target": "View",
+      "by": "text",
+      "optional": true,
+      "optional_note": "Requires at least one issued invoice on the demo account.",
+      "label_ur": "بل کھول کر اکیڈمی کے بینک اور والٹ کی تفصیل دیکھیں"
     },
     {
       "step": 5,
-      "label": "Attach the screenshot and submit — admin verifies it",
-      "action": "click",
+      "label": "After paying, tap Upload Payment Proof and attach your slip",
+      "action": "verify",
       "target": "Upload Payment Proof",
-      "by": "role:button"
+      "by": "role:button",
+      "optional": true,
+      "optional_note": "Requires an unpaid invoice on the demo account.",
+      "label_ur": "ادائیگی کے بعد Upload Payment Proof دبا کر رسید لگائیں"
     }
   ],
-  "capture_email": "shaziademo@gmail.com"
+  "title": "Fees and payment slips",
+  "title_ur": "فیس اور ادائیگی کا ثبوت"
 }

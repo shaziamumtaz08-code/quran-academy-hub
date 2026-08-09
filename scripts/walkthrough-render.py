@@ -151,6 +151,13 @@ def title_card(title: str, total: int):
     return img
 
 
+def label_of(frame: dict) -> str:
+    """Urdu renders use the step's own Urdu caption when the flow provides one."""
+    if LANG == "ur" and frame.get("label_ur"):
+        return frame["label_ur"]
+    return frame["label"]
+
+
 def render(manifest: dict, title: str, out: Path) -> dict:
     frames = sorted(manifest["frames"], key=lambda f: f["step"])
     total = len(frames)
@@ -169,11 +176,11 @@ def render(manifest: dict, title: str, out: Path) -> dict:
     prev_last = None
     for f in frames:
         shot = Path(f.get("local") or f["path"])
-        secs = hold_seconds(f["label"])
+        secs = hold_seconds(label_of(f))
         count = int(secs * FPS)
         for i in range(count):
             pulse = (i % FPS) / FPS
-            img = compose(shot, f["step"], total, f["label"], f.get("hotspot"), pulse)
+            img = compose(shot, f["step"], total, label_of(f), f.get("hotspot"), pulse)
             if prev_last is not None and i < FADE_FRAMES:
                 img = Image.blend(prev_last, img, (i + 1) / FADE_FRAMES)
             emit(img)
@@ -195,7 +202,7 @@ def render(manifest: dict, title: str, out: Path) -> dict:
 
     poster = out.with_suffix(".jpg")
     compose(Path(frames[0].get("local") or frames[0]["path"]), frames[0]["step"], total,
-            frames[0]["label"], frames[0].get("hotspot"), 0.0).save(poster, quality=88)
+            label_of(frames[0]), frames[0].get("hotspot"), 0.0).save(poster, quality=88)
 
     shutil.rmtree(tmp, ignore_errors=True)
     return {
