@@ -11376,6 +11376,8 @@ export type Database = {
           flow_steps: Json
           id: string
           is_published: boolean
+          share_enabled: boolean
+          share_token: string | null
           sort_order: number
           source_type: string
           storage_path: string | null
@@ -11387,7 +11389,9 @@ export type Database = {
           walkthrough_error: string | null
           walkthrough_frames: Json
           walkthrough_generated_at: string | null
+          walkthrough_poster_path: string | null
           walkthrough_status: string
+          walkthrough_video_path: string | null
         }
         Insert: {
           category?: string
@@ -11398,6 +11402,8 @@ export type Database = {
           flow_steps?: Json
           id?: string
           is_published?: boolean
+          share_enabled?: boolean
+          share_token?: string | null
           sort_order?: number
           source_type?: string
           storage_path?: string | null
@@ -11409,7 +11415,9 @@ export type Database = {
           walkthrough_error?: string | null
           walkthrough_frames?: Json
           walkthrough_generated_at?: string | null
+          walkthrough_poster_path?: string | null
           walkthrough_status?: string
+          walkthrough_video_path?: string | null
         }
         Update: {
           category?: string
@@ -11420,6 +11428,8 @@ export type Database = {
           flow_steps?: Json
           id?: string
           is_published?: boolean
+          share_enabled?: boolean
+          share_token?: string | null
           sort_order?: number
           source_type?: string
           storage_path?: string | null
@@ -11431,7 +11441,9 @@ export type Database = {
           walkthrough_error?: string | null
           walkthrough_frames?: Json
           walkthrough_generated_at?: string | null
+          walkthrough_poster_path?: string | null
           walkthrough_status?: string
+          walkthrough_video_path?: string | null
         }
         Relationships: []
       }
@@ -12929,6 +12941,19 @@ export type Database = {
         }[]
       }
       get_schema_overview: { Args: never; Returns: Json }
+      get_shared_walkthrough: {
+        Args: { _token: string }
+        Returns: {
+          category: string
+          description: string
+          duration_seconds: number
+          id: string
+          poster_path: string
+          title: string
+          video_path: string
+          walkthrough_frames: Json
+        }[]
+      }
       get_student_active_assignment_ids: {
         Args: { _student_id: string }
         Returns: string[]
