@@ -211,6 +211,22 @@ export default function Tutorials() {
     onError: (error: any) => toast({ title: 'Could not delete', description: error.message, variant: 'destructive' }),
   });
 
+  const queueWalkthrough = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('tutorial_videos')
+        .update({ walkthrough_status: 'pending', walkthrough_error: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Capture queued', description: 'Screens will be captured from the live app.' });
+      queryClient.invalidateQueries({ queryKey: ['tutorial-videos'] });
+    },
+    onError: (error: any) => toast({ title: 'Could not queue', description: error.message, variant: 'destructive' }),
+  });
+
+
   async function handleUpload(file: File) {
     setUploading(true);
     try {
