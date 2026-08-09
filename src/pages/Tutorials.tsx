@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { WalkthroughViewer, type WalkthroughFrame } from '@/components/tutorials/WalkthroughViewer';
+import { WalkthroughVideoCard } from '@/components/tutorials/WalkthroughVideoCard';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
