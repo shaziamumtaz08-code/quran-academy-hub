@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, BookOpen, ChevronRight, Clock, GraduationCap, LifeBuoy, Loader2,
-  MessageCircle, Pencil, Plus, Search, Trash2, Upload, Video,
+  MessageCircle, MousePointerClick, Pencil, Plus, Search, Trash2, Upload, Video,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
