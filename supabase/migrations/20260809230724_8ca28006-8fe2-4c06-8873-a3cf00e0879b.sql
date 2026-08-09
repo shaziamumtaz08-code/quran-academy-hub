@@ -1,0 +1,1 @@
+UPDATE public.fee_invoices SET billing_month = '2026-08' WHERE id = 'b18b5020-e9b5-44da-afb8-25f96a53084f';
