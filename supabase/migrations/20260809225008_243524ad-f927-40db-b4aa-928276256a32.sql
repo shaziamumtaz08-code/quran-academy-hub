@@ -1,0 +1,1 @@
+UPDATE public.tutorial_videos SET share_enabled = true, updated_at = now() WHERE walkthrough_status = 'ready' AND walkthrough_video_path IS NOT NULL AND share_token IS NOT NULL AND share_enabled = false;
