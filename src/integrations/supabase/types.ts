@@ -11376,6 +11376,7 @@ export type Database = {
           flow_steps: Json
           id: string
           is_published: boolean
+          language: string
           share_enabled: boolean
           share_token: string | null
           sort_order: number
@@ -11383,6 +11384,7 @@ export type Database = {
           storage_path: string | null
           thumbnail_url: string | null
           title: string
+          tutorial_key: string | null
           updated_at: string
           video_url: string
           visible_roles: string[]
@@ -11402,6 +11404,7 @@ export type Database = {
           flow_steps?: Json
           id?: string
           is_published?: boolean
+          language?: string
           share_enabled?: boolean
           share_token?: string | null
           sort_order?: number
@@ -11409,6 +11412,7 @@ export type Database = {
           storage_path?: string | null
           thumbnail_url?: string | null
           title: string
+          tutorial_key?: string | null
           updated_at?: string
           video_url: string
           visible_roles?: string[]
@@ -11428,6 +11432,7 @@ export type Database = {
           flow_steps?: Json
           id?: string
           is_published?: boolean
+          language?: string
           share_enabled?: boolean
           share_token?: string | null
           sort_order?: number
@@ -11435,6 +11440,7 @@ export type Database = {
           storage_path?: string | null
           thumbnail_url?: string | null
           title?: string
+          tutorial_key?: string | null
           updated_at?: string
           video_url?: string
           visible_roles?: string[]
