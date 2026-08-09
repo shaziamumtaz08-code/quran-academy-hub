@@ -207,7 +207,14 @@ async def run(flow: dict, out_dir: Path) -> dict:
         context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
 
-        if flow.get("auth") == "session":
+        if flow.get("auth") == "capture":
+            ok, msg = await capture_auth(page, base_url, flow)
+            print(f"[auth] {msg}")
+            if not ok:
+                await browser.close()
+                return {"status": "needs_review", "frames": [], "problems": [msg]}
+
+        elif flow.get("auth") == "session":
             ok = await restore_session(context, page, base_url)
             if not ok:
                 await browser.close()
