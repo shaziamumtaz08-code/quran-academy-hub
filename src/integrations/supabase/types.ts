@@ -12658,6 +12658,7 @@ export type Database = {
       admin_get_sensitive_profile: {
         Args: { _user_id: string }
         Returns: {
+          address: string
           bank_account_number: string
           bank_account_title: string
           bank_iban: string
@@ -12879,6 +12880,7 @@ export type Database = {
       get_my_sensitive_profile: {
         Args: never
         Returns: {
+          address: string
           bank_account_number: string
           bank_account_title: string
           bank_iban: string
