@@ -44,6 +44,10 @@ interface TutorialRow {
   visible_roles: string[];
   sort_order: number;
   is_published: boolean;
+  walkthrough_status?: string | null;
+  walkthrough_frames?: WalkthroughFrame[] | null;
+  walkthrough_generated_at?: string | null;
+  walkthrough_error?: string | null;
 }
 
 const emptyForm = {
