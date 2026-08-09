@@ -330,9 +330,15 @@ export default function Tutorials() {
                 {guide.steps.map((step, index) => (
                   <li key={index} className="flex gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
-                    <p className="pt-0.5 text-sm leading-relaxed text-foreground">{step}</p>
+                    <div className="space-y-2 pt-0.5">
+                      <p className="text-sm leading-relaxed text-foreground">{step.text}</p>
+                      {step.image && (
+                        <img src={step.image} alt={`Step ${index + 1}`} loading="lazy" className="w-full rounded-lg border border-border" />
+                      )}
+                    </div>
                   </li>
                 ))}
+
               </ol>
             )}
             {guide.notes.length > 0 && (
