@@ -484,7 +484,9 @@ export function GroupStudentDashboard() {
               />
             ))}
           </div>
+          )}
         </section>
+
       )}
 
       {/* News + announcements */}
