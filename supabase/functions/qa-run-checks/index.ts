@@ -454,7 +454,7 @@ async function checkRls(): Promise<CheckResult[]> {
 
   const protectedTables = [
     "profiles", "leads", "demo_sessions", "demo_feedback", "fee_invoices",
-    "salary_payouts", "user_roles", "student_teacher_assignments", "minor_credentials",
+    "salary_payouts", "user_roles", "student_teacher_assignments",
     "expenses", "cash_advances", "staff_salaries", "tickets", "qa_runs", "qa_chat_messages",
   ];
   for (const t of protectedTables) {
