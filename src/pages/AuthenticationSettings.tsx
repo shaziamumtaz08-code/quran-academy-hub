@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { trackActivity } from '@/lib/activityLogger';
-import { Loader2, AlertTriangle, ShieldCheck, Mail, Sparkles, Hash, MessageSquare } from 'lucide-react';
+import { Loader2, AlertTriangle, ShieldCheck, Mail, Sparkles, MessageSquare } from 'lucide-react';
 
 interface MethodRow {
   id: string;
