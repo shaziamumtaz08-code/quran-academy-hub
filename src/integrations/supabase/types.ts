@@ -12039,6 +12039,9 @@ export type Database = {
         Row: {
           auto_record: boolean
           created_at: string
+          credential_checked_at: string | null
+          credential_error: string | null
+          credential_status: string
           display_label: string | null
           id: string
           is_active: boolean
@@ -12059,6 +12062,9 @@ export type Database = {
         Insert: {
           auto_record?: boolean
           created_at?: string
+          credential_checked_at?: string | null
+          credential_error?: string | null
+          credential_status?: string
           display_label?: string | null
           id?: string
           is_active?: boolean
@@ -12079,6 +12085,9 @@ export type Database = {
         Update: {
           auto_record?: boolean
           created_at?: string
+          credential_checked_at?: string | null
+          credential_error?: string | null
+          credential_status?: string
           display_label?: string | null
           id?: string
           is_active?: boolean
