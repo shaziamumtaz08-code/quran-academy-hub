@@ -49,6 +49,10 @@ interface TutorialRow {
   walkthrough_frames?: WalkthroughFrame[] | null;
   walkthrough_generated_at?: string | null;
   walkthrough_error?: string | null;
+  walkthrough_video_path?: string | null;
+  walkthrough_poster_path?: string | null;
+  share_token?: string | null;
+  share_enabled?: boolean | null;
 }
 
 const emptyForm = {
