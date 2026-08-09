@@ -33,8 +33,15 @@ const ROLES = [
 
 const CATEGORIES = ['Getting started', 'Attendance', 'Classes & Zoom', 'Fees & Payments', 'Reports', 'Communication', 'General'];
 
+const LANGS = [
+  { value: 'en', label: 'English' },
+  { value: 'ur', label: 'اردو' },
+];
+
 interface TutorialRow {
   id: string;
+  language: string;
+  tutorial_key: string | null;
   title: string;
   description: string | null;
   category: string;
@@ -58,6 +65,8 @@ interface TutorialRow {
 
 const emptyForm = {
   id: '',
+  language: 'en',
+  tutorial_key: '',
   title: '',
   description: '',
   category: 'Getting started',
@@ -123,6 +132,7 @@ export default function Tutorials() {
   const isAdmin = activeRole === 'admin' || activeRole === 'super_admin';
 
   const [search, setSearch] = useState('');
+  const [lang, setLang] = useState<'en' | 'ur'>('en');
   const [category, setCategory] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -153,6 +163,7 @@ export default function Tutorials() {
 
   const visible = useMemo(() => {
     return readable.filter((item) => {
+      if ((item.language || 'en') !== lang) return false;
       if (category !== 'all' && item.category !== category) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -160,7 +171,7 @@ export default function Tutorials() {
       }
       return true;
     });
-  }, [readable, category, search]);
+  }, [readable, category, search, lang]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TutorialRow[]>();
@@ -175,6 +186,8 @@ export default function Tutorials() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
+        language: form.language,
+        tutorial_key: form.tutorial_key.trim() || null,
         title: form.title.trim(),
         description: form.description.trim() || null,
         category: form.category,
@@ -251,6 +264,8 @@ export default function Tutorials() {
     if (row) {
       setForm({
         id: row.id,
+        language: row.language || 'en',
+        tutorial_key: row.tutorial_key || '',
         title: row.title,
         description: row.description || '',
         category: row.category,
@@ -466,6 +481,22 @@ export default function Tutorials() {
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader><DialogTitle>{form.id ? 'Edit guide' : 'Add guide'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Language branch</Label>
+                <Select value={form.language} onValueChange={(value) => setForm({ ...form, language: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LANGS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tut-key">Guide key</Label>
+                <Input id="tut-key" value={form.tutorial_key} onChange={(event) => setForm({ ...form, tutorial_key: event.target.value })} placeholder="logging-in" />
+              </div>
+            </div>
+            <p className="-mt-2 text-xs text-muted-foreground">Use the same guide key for the English and Urdu version of one guide.</p>
             <div className="space-y-2">
               <Label htmlFor="tut-title">Title</Label>
               <Input id="tut-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="How to upload a payment slip" />
