@@ -79,11 +79,23 @@ export function ZoomWebhookHealthPanel() {
 
   const run = useMutation({
     mutationFn: async (repair: boolean) => {
-      const { data: res, error } = await supabase.functions.invoke('zoom-webhook-health', {
-        body: { repair },
+      // Send the admin's session token explicitly so the function can always
+      // authenticate the caller (functions.invoke previously produced a 401).
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error('Your session expired — sign in again to run the health check.');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-webhook-health`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ repair }),
       });
-      if (error) throw error;
-      if (res?.error) throw new Error(res.error);
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok || res?.error) throw new Error(res?.error || `Health check failed (HTTP ${resp.status})`);
       return res as HealthResponse;
     },
     onSuccess: (res, repair) => {
