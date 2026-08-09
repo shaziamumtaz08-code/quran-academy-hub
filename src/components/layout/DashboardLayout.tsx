@@ -279,6 +279,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         children: [
           { label: "Announcements", href: "/announcements" },
           { label: "Messages & Requests", href: "/hub" },
+          { label: "Help Centre", href: "/tutorials" },
         ],
       },
     );
@@ -304,6 +305,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         children: [
           { label: "Announcements", href: "/announcements" },
           { label: "Messages & Requests", href: "/hub" },
+          { label: "Help Centre", href: "/tutorials" },
         ],
       },
     );

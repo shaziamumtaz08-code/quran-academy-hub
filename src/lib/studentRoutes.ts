@@ -26,6 +26,8 @@ export const STUDENT_ALLOWED_ROUTES: readonly string[] = [
   '/connections',        // /connections/:userType/:userId
   '/select-division',    // soft — guard will still bounce non-super_admins
   '/parent',             // hybrid student+parent users
+  '/tutorials',          // Help Centre (Student + Parent)
+  '/help',
 ] as const;
 
 /**
