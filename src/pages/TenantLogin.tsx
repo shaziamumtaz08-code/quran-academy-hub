@@ -10,10 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, Loader2, Eye, EyeOff, User, Sparkles, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
-import { MinorLoginTab } from '@/components/auth/MinorLoginTab';
 import { lovable } from '@/integrations/lovable';
 
-const ALL_METHODS = ['email_password', 'uid_pin', 'google', 'magic_link', 'microsoft', 'whatsapp_otp'] as const;
+const ALL_METHODS = ['email_password', 'google', 'magic_link', 'microsoft', 'whatsapp_otp'] as const;
 type Method = typeof ALL_METHODS[number];
 
 interface OrgConfig {
@@ -83,7 +82,6 @@ export default function TenantLogin() {
         if (cfg.length === 0) {
           cfg = [
             { method: 'email_password', enabled: true, is_default: true, is_supported: true },
-            { method: 'uid_pin', enabled: true, is_default: false, is_supported: true },
             { method: 'google', enabled: true, is_default: false, is_supported: true },
             { method: 'magic_link', enabled: true, is_default: false, is_supported: true },
           ];
@@ -273,12 +271,6 @@ export default function TenantLogin() {
               </TabsContent>
             )}
 
-            {tabMethods.some((m) => m.method === 'uid_pin') && (
-              <TabsContent value="uid_pin" className="mt-5">
-                <MinorLoginTab />
-              </TabsContent>
-            )}
-
             {tabMethods.some((m) => m.method === 'magic_link') && (
               <TabsContent value="magic_link" className="mt-5">
                 <form onSubmit={handleMagicLink} className="space-y-4">
@@ -310,7 +302,6 @@ export default function TenantLogin() {
 function labelFor(m: Method): string {
   switch (m) {
     case 'email_password': return 'Email';
-    case 'uid_pin': return 'UID + PIN';
     case 'magic_link': return 'Magic Link';
     case 'google': return 'Google';
     case 'microsoft': return 'Microsoft';

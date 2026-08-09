@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { trackActivity } from '@/lib/activityLogger';
-import { Loader2, AlertTriangle, ShieldCheck, Mail, Sparkles, Hash, MessageSquare } from 'lucide-react';
+import { Loader2, AlertTriangle, ShieldCheck, Mail, Sparkles, MessageSquare } from 'lucide-react';
 
 interface MethodRow {
   id: string;
@@ -22,14 +22,13 @@ interface MethodRow {
 
 const META: Record<string, { label: string; description: string; icon: React.ReactNode }> = {
   email_password: { label: 'Email + Password', description: 'Standard email and password sign-in.', icon: <Mail className="h-5 w-5" /> },
-  uid_pin: { label: 'UID / Roll No + PIN', description: 'Username and 4-digit PIN — ideal for students and minors.', icon: <Hash className="h-5 w-5" /> },
   google: { label: 'Google', description: 'One-click sign-in with a Google account.', icon: <ShieldCheck className="h-5 w-5" /> },
   magic_link: { label: 'Magic Link', description: 'Passwordless sign-in via emailed link.', icon: <Sparkles className="h-5 w-5" /> },
   microsoft: { label: 'Microsoft', description: 'Coming soon — requires custom OAuth setup.', icon: <ShieldCheck className="h-5 w-5" /> },
   whatsapp_otp: { label: 'WhatsApp OTP', description: 'Coming soon — 6-digit one-time code via WhatsApp.', icon: <MessageSquare className="h-5 w-5" /> },
 };
 
-const ORDER = ['email_password', 'uid_pin', 'google', 'magic_link', 'microsoft', 'whatsapp_otp'];
+const ORDER = ['email_password', 'google', 'magic_link', 'microsoft', 'whatsapp_otp'];
 
 export default function AuthenticationSettings() {
   const { profile, hasRole, isSuperAdmin } = useAuth();

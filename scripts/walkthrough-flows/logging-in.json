@@ -14,38 +14,24 @@
     },
     {
       "step": 2,
-      "label": "Stay on the Email & Password tab",
-      "action": "verify",
-      "target": "Email & Password",
-      "by": "text"
-    },
-    {
-      "step": 3,
       "label": "Type the email address the academy gave you",
       "action": "verify",
       "target": "Email Address",
       "by": "text"
     },
     {
+      "step": 3,
+      "label": "Enter your password",
+      "action": "verify",
+      "target": "Password",
+      "by": "text"
+    },
+    {
       "step": 4,
-      "label": "Enter your password, then press Sign In",
+      "label": "Press Sign In to open your dashboard",
       "action": "verify",
       "target": "Sign In",
       "by": "role:button"
-    },
-    {
-      "step": 5,
-      "label": "Children with an academy PIN use the Student PIN tab instead",
-      "action": "click",
-      "target": "Student PIN",
-      "by": "text"
-    },
-    {
-      "step": 6,
-      "label": "Enter the student ID and PIN, then sign in",
-      "action": "verify",
-      "target": "PIN",
-      "by": "text"
     }
   ]
 }

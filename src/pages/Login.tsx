@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Mail, Lock, Loader2, ChevronDown, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { MinorLoginTab } from '@/components/auth/MinorLoginTab';
 import logoDark from '@/assets/logo-dark.jpg';
 
 const loginSchema = z.object({
@@ -36,7 +35,6 @@ const saveRecentEmail = (email: string) => {
 };
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState<'email' | 'student'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -137,34 +135,9 @@ export default function Login() {
             <p className="text-muted-foreground mt-2">Sign in to continue your learning journey</p>
           </div>
 
-          {/* Dual Tab Switcher */}
-          <div className="flex rounded-xl bg-muted p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => setActiveTab('email')}
-              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'email'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Mail className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-              Email & Password
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('student')}
-              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'student'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              🎓 Student PIN
-            </button>
-          </div>
+          {
 
-          {activeTab === 'email' ? (
+
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
@@ -243,9 +216,9 @@ export default function Login() {
                 )}
               </Button>
             </form>
-          ) : (
-            <MinorLoginTab />
-          )}
+          }
+
+
 
           <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground">

@@ -1,21 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Key, Eye, EyeOff, Shield, Clock } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 interface LinkedChild {
   id: string;
   student_id: string;
   full_name: string;
   email: string | null;
-  hasPin: boolean;
-  username: string | null;
   oversight_level: string;
 }
 
@@ -23,9 +17,6 @@ export function FamilyManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [resetChildId, setResetChildId] = useState<string | null>(null);
-  const [newPin, setNewPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
 
   const { data: children, isLoading } = useQuery({
     queryKey: ['family-children', user?.id],
@@ -57,66 +48,18 @@ export function FamilyManagement() {
 
       if (!links?.length) return [];
 
-      const studentIds = links.map(l => l.student_id);
-      const { data: credentials } = await supabase
-        .from('minor_credentials')
-        .select('profile_id, username')
-        .in('profile_id', studentIds);
-
-      const credMap = new Map(credentials?.map(c => [c.profile_id, c]) || []);
-
       return links.map(link => {
         const student = link.student as any;
-        const cred = credMap.get(link.student_id);
         return {
           id: link.id,
           student_id: link.student_id,
           full_name: student?.full_name || 'Unknown',
           email: student?.email || null,
-          hasPin: !!cred,
-          username: cred?.username || null,
           oversight_level: oversightMap.get(link.id) || 'none',
         };
       }) as LinkedChild[];
     },
     enabled: !!user?.id,
-  });
-
-  const resetPinMutation = useMutation({
-    mutationFn: async ({ studentId, pin }: { studentId: string; pin: string }) => {
-      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-        throw new Error('PIN must be exactly 4 digits');
-      }
-
-      // Hash the PIN with a fresh random per-credential salt so stored
-      // hashes cannot be reversed via a 10k-entry rainbow table.
-      const saltBytes = new Uint8Array(16);
-      crypto.getRandomValues(saltBytes);
-      const pinSalt = Array.from(saltBytes)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      const encoder = new TextEncoder();
-      const data = encoder.encode(`${pinSalt}:${pin}`);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const pinHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-      const { error } = await supabase
-        .from('minor_credentials')
-        .update({ pin_hash: pinHash, pin_salt: pinSalt, failed_attempts: 0, locked_until: null })
-        .eq('profile_id', studentId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'PIN Reset', description: 'Your child\'s PIN has been updated successfully.' });
-      setResetChildId(null);
-      setNewPin('');
-      queryClient.invalidateQueries({ queryKey: ['family-children'] });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    },
   });
 
   const updateOversightMutation = useMutation({
@@ -159,9 +102,6 @@ export function FamilyManagement() {
                   </div>
                   <div>
                     <p className="text-[13px] font-bold text-foreground">{child.full_name}</p>
-                    {child.username && (
-                      <p className="text-[10px] text-muted-foreground font-mono">@{child.username}</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -178,60 +118,6 @@ export function FamilyManagement() {
                   <option value="full">Full dashboard</option>
                 </select>
 
-                {/* PIN Reset */}
-                {child.hasPin && (
-                  <Dialog open={resetChildId === child.student_id} onOpenChange={(o) => { if (!o) { setResetChildId(null); setNewPin(''); } }}>
-                    <DialogTrigger asChild>
-                      <button
-                        onClick={() => setResetChildId(child.student_id)}
-                        className="text-[10px] px-2 py-1 rounded-lg border border-gold/30 bg-gold/5 text-gold font-bold flex items-center gap-1 hover:bg-gold/10 transition-colors"
-                      >
-                        <Key className="w-3 h-3" /> Reset PIN
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-sm">
-                      <DialogHeader>
-                        <DialogTitle className="text-base">Reset PIN for {child.full_name}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 pt-2">
-                        <div>
-                          <Label className="text-xs font-bold">New 4-digit PIN</Label>
-                          <div className="relative mt-1">
-                            <Input
-                              type={showPin ? 'text' : 'password'}
-                              maxLength={4}
-                              pattern="\d{4}"
-                              inputMode="numeric"
-                              value={newPin}
-                              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                              placeholder="••••"
-                              className="text-center text-xl tracking-[0.5em] font-mono"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPin(!showPin)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                            >
-                              {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-                        <Button
-                          className="w-full"
-                          disabled={newPin.length !== 4 || resetPinMutation.isPending}
-                          onClick={() => resetPinMutation.mutate({ studentId: child.student_id, pin: newPin })}
-                        >
-                          {resetPinMutation.isPending ? 'Resetting...' : 'Set New PIN'}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
-
-                {/* Status badges */}
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${child.hasPin ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>
-                  {child.hasPin ? '🔐 PIN Set' : 'No PIN'}
-                </span>
               </div>
             </div>
           ))}
