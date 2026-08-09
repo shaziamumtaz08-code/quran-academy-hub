@@ -2,12 +2,44 @@
   "tutorial_id": "a298d34b-662b-4ece-aa96-a8f48e7d722b",
   "slug": "dashboard",
   "base_url": "http://localhost:8080",
-  "auth": "session",
+  "auth": "capture",
   "steps": [
-    { "step": 1, "label": "Your dashboard opens after sign in", "action": "goto", "route": "/dashboard", "target": "Quick links", "by": "text" },
-    { "step": 2, "label": "The top bar holds notifications and your account menu", "action": "verify", "target": "Notifications", "by": "role:button" },
-    { "step": 3, "label": "The join bar shows today's class with a Join button", "action": "verify", "target": "Join", "by": "text" },
-    { "step": 4, "label": "Fee status card shows what is due", "action": "verify", "target": "Fee status", "by": "text" },
-    { "step": 5, "label": "Scroll on for recordings, results and academy news", "action": "verify", "target": "Recordings", "by": "text" }
-  ]
+    {
+      "step": 1,
+      "label": "Your dashboard opens after sign in",
+      "action": "goto",
+      "route": "/dashboard",
+      "target": "Quick links",
+      "by": "text"
+    },
+    {
+      "step": 2,
+      "label": "The top bar holds notifications and your account menu",
+      "action": "verify",
+      "target": "Notifications",
+      "by": "role:button"
+    },
+    {
+      "step": 3,
+      "label": "The join bar shows today's class with a Join button",
+      "action": "verify",
+      "target": "Join",
+      "by": "text"
+    },
+    {
+      "step": 4,
+      "label": "Fee status card shows what is due",
+      "action": "verify",
+      "target": "Fee status",
+      "by": "text"
+    },
+    {
+      "step": 5,
+      "label": "Scroll on for recordings, results and academy news",
+      "action": "verify",
+      "target": "Recordings",
+      "by": "text"
+    }
+  ],
+  "capture_email": "shaziademo@gmail.com"
 }
