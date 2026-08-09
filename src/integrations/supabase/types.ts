@@ -11366,6 +11366,60 @@ export type Database = {
         }
         Relationships: []
       }
+      tutorial_videos: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          is_published: boolean
+          sort_order: number
+          source_type: string
+          storage_path: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          video_url: string
+          visible_roles: string[]
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_published?: boolean
+          sort_order?: number
+          source_type?: string
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          video_url: string
+          visible_roles?: string[]
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_published?: boolean
+          sort_order?: number
+          source_type?: string
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string
+          visible_roles?: string[]
+        }
+        Relationships: []
+      }
       user_activity_log: {
         Row: {
           action: string
