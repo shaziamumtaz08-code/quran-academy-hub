@@ -268,8 +268,20 @@ export function TeacherZoomAccountsPanel() {
               {validateResult && (
                 <Alert variant={validateResult.ok ? 'default' : 'destructive'}>
                   {validateResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                  <AlertTitle className="text-sm">{validateResult.ok ? 'PASS' : 'FAIL'}</AlertTitle>
-                  <AlertDescription className="text-xs whitespace-pre-wrap">{validateResult.verdict || validateResult.error}</AlertDescription>
+                  <AlertTitle className="text-sm">
+                    {validateResult.ok
+                      ? `✅ Verified — host ID ${validateResult.resolved?.host_id || 'resolved'}`
+                      : '❌ Failed — credentials were NOT verified'}
+                  </AlertTitle>
+                  <AlertDescription className="text-xs whitespace-pre-wrap space-y-1">
+                    <p>{validateResult.failure_reason || validateResult.verdict || validateResult.error}</p>
+                    {!validateResult.ok && validateResult.stored_unverified && (
+                      <p className="font-medium">
+                        The credentials you typed were stored and flagged as “Failed” so you don't have to retype them —
+                        fix the Zoom app, then press Validate &amp; Save again.
+                      </p>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
             </div>
