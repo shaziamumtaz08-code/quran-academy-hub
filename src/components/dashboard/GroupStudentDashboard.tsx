@@ -91,7 +91,7 @@ export function GroupStudentDashboard() {
         courseIds.length
           ? supabase
               .from('course_notifications')
-              .select('id, course_id, title, content, created_at')
+              .select('id, course_id, title, body, created_at')
               .in('course_id', courseIds)
               .order('created_at', { ascending: false })
               .limit(6)
@@ -312,7 +312,7 @@ export function GroupStudentDashboard() {
                 <Bell className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div className="min-w-0">
                   <p className="font-semibold text-foreground">{announcement.title || 'Course update'}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{announcement.content}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{announcement.body}</p>
                   <p className="mt-2 text-xs text-muted-foreground">{format(new Date(announcement.created_at), 'd MMM yyyy')}</p>
                 </div>
               </CardContent>
