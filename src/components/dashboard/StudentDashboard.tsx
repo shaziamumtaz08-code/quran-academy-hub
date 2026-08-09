@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import {
-  MessageCircle, CalendarOff, FolderOpen, Users, Video, FileText, ClipboardList,
+  MessageCircle, CalendarOff, FolderOpen, Users, Video, FileText, ClipboardList, LifeBuoy,
   Clock, ExternalLink, CheckCircle2, XCircle, AlertCircle, Tag, Bell, Flame, CheckCircle,
 } from 'lucide-react';
 import {
@@ -639,6 +639,7 @@ export function StudentDashboard() {
     { icon: Users, label: 'My network', iconBg: 'bg-blue-50', iconCol: 'text-blue-600', to: user?.id ? `/connections/student/${user.id}` : '/dashboard' },
     { icon: Video, label: 'Recordings', iconBg: 'bg-rose-50', iconCol: 'text-rose-600', to: '/recordings' },
     { icon: ClipboardList, label: 'Exam results', iconBg: 'bg-emerald-50', iconCol: 'text-emerald-600', to: '/student-reports' },
+    { icon: LifeBuoy, label: 'Help Centre', iconBg: 'bg-sky-50', iconCol: 'text-sky-600', to: '/tutorials' },
   ];
 
   const QuickLinksCard = (

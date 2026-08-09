@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LogIn, Users, AlertTriangle, CheckCircle2, Calendar, Video, Clock } from 'lucide-react';
+import { LogIn, Users, AlertTriangle, CheckCircle2, Calendar, Video, Clock, LifeBuoy, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -291,6 +291,25 @@ export default function ParentDashboard() {
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/tutorials')}
+          className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <LifeBuoy className="h-5 w-5 text-primary" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">Help Centre</p>
+              <p className="text-sm text-muted-foreground">
+                Short written guides: logging in, fees and payment slips, messaging the academy.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+          </div>
+        </button>
 
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

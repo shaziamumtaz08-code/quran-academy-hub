@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Loader2, Pencil, Play, Plus, Search, Trash2, Upload, Video } from 'lucide-react';
+import {
+  ArrowLeft, BookOpen, ChevronRight, Clock, GraduationCap, LifeBuoy, Loader2,
+  MessageCircle, Pencil, Plus, Search, Trash2, Upload, Video,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +37,7 @@ interface TutorialRow {
   description: string | null;
   category: string;
   source_type: 'link' | 'upload';
-  video_url: string;
+  video_url: string | null;
   storage_path: string | null;
   thumbnail_url: string | null;
   duration_seconds: number | null;
@@ -50,6 +54,7 @@ const emptyForm = {
   source_type: 'link' as 'link' | 'upload',
   video_url: '',
   storage_path: '' as string | null,
+  thumbnail_url: '',
   visible_roles: ['admin', 'super_admin', 'teacher', 'student', 'parent'],
   sort_order: 0,
   is_published: true,
@@ -63,18 +68,40 @@ function toEmbedUrl(url: string) {
   return null;
 }
 
+/** Splits a guide body into a short intro, numbered steps and any closing notes. */
+function parseGuide(description?: string | null) {
+  const lines = (description || '').split('\n').map((line) => line.trim());
+  const intro: string[] = [];
+  const steps: string[] = [];
+  const notes: string[] = [];
+  lines.forEach((line) => {
+    if (!line) return;
+    if (/^step-by-step script:?$/i.test(line)) return;
+    const match = line.match(/^\d+[.)]\s*(.+)$/);
+    if (match) steps.push(match[1]);
+    else if (steps.length === 0) intro.push(line);
+    else notes.push(line);
+  });
+  return { intro: intro.join(' '), steps, notes };
+}
+
+function readingMinutes(steps: number, intro: string) {
+  return Math.max(1, Math.round((steps * 12 + intro.length / 5) / 60) || 1);
+}
+
 export default function Tutorials() {
   const { user, activeRole } = useAuth();
+  const navigate = useNavigate();
+  const { tutorialId } = useParams();
   const queryClient = useQueryClient();
   const isAdmin = activeRole === 'admin' || activeRole === 'super_admin';
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
-  const [playing, setPlaying] = useState<TutorialRow | null>(null);
-  const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const { data: tutorials = [], isLoading } = useQuery({
     queryKey: ['tutorial-videos', activeRole],
@@ -89,11 +116,17 @@ export default function Tutorials() {
     },
   });
 
-  const visible = useMemo(() => {
+  const readable = useMemo(() => {
     const role = activeRole || 'student';
     return tutorials.filter((item) => {
       if (!isAdmin && !item.is_published) return false;
       if (!isAdmin && !(item.visible_roles || []).includes(role)) return false;
+      return true;
+    });
+  }, [tutorials, activeRole, isAdmin]);
+
+  const visible = useMemo(() => {
+    return readable.filter((item) => {
       if (category !== 'all' && item.category !== category) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -101,7 +134,7 @@ export default function Tutorials() {
       }
       return true;
     });
-  }, [tutorials, activeRole, isAdmin, category, search]);
+  }, [readable, category, search]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TutorialRow[]>();
@@ -120,8 +153,9 @@ export default function Tutorials() {
         description: form.description.trim() || null,
         category: form.category,
         source_type: form.source_type,
-        video_url: form.video_url.trim(),
+        video_url: form.video_url.trim() || null,
         storage_path: form.storage_path || null,
+        thumbnail_url: form.thumbnail_url.trim() || null,
         visible_roles: form.visible_roles,
         sort_order: Number(form.sort_order) || 0,
         is_published: form.is_published,
@@ -135,7 +169,7 @@ export default function Tutorials() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Tutorial saved' });
+      toast({ title: 'Guide saved' });
       setDialogOpen(false);
       setForm(emptyForm);
       queryClient.invalidateQueries({ queryKey: ['tutorial-videos'] });
@@ -150,7 +184,7 @@ export default function Tutorials() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Tutorial removed' });
+      toast({ title: 'Guide removed' });
       queryClient.invalidateQueries({ queryKey: ['tutorial-videos'] });
     },
     onError: (error: any) => toast({ title: 'Could not delete', description: error.message, variant: 'destructive' }),
@@ -171,16 +205,6 @@ export default function Tutorials() {
     }
   }
 
-  async function openPlayer(row: TutorialRow) {
-    setPlaying(row);
-    if (row.source_type === 'upload' && row.storage_path) {
-      const { data } = await supabase.storage.from('tutorial-videos').createSignedUrl(row.storage_path, 3600);
-      setPlayUrl(data?.signedUrl || null);
-    } else {
-      setPlayUrl(row.video_url);
-    }
-  }
-
   function openEditor(row?: TutorialRow) {
     if (row) {
       setForm({
@@ -189,8 +213,9 @@ export default function Tutorials() {
         description: row.description || '',
         category: row.category,
         source_type: row.source_type,
-        video_url: row.video_url,
+        video_url: row.video_url || '',
         storage_path: row.storage_path,
+        thumbnail_url: row.thumbnail_url || '',
         visible_roles: row.visible_roles || [],
         sort_order: row.sort_order,
         is_published: row.is_published,
@@ -201,126 +226,161 @@ export default function Tutorials() {
     setDialogOpen(true);
   }
 
-  const embed = playUrl ? toEmbedUrl(playUrl) : null;
+  const active = tutorialId ? readable.find((row) => row.id === tutorialId) || null : null;
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 animate-fade-in">
-      <header className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground md:p-8">
-        <p className="text-xs font-bold uppercase tracking-wide opacity-80">Help centre</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold">Video tutorials</h1>
-        <p className="mt-2 max-w-2xl text-sm opacity-90">
-          Short walkthroughs showing how to use the academy portal — filtered to what your role actually needs.
-        </p>
-      </header>
+  // Resolve an optional video for the open article (never required).
+  useEffect(() => {
+    let cancelled = false;
+    setVideoUrl(null);
+    if (!active) return;
+    if (active.source_type === 'upload' && active.storage_path) {
+      supabase.storage.from('tutorial-videos').createSignedUrl(active.storage_path, 3600).then(({ data }) => {
+        if (!cancelled) setVideoUrl(data?.signedUrl || null);
+      });
+    } else if (active.video_url) {
+      setVideoUrl(active.video_url);
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, active?.source_type, active?.storage_path, active?.video_url]);
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tutorials" className="pl-9" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Tabs value={category} onValueChange={setCategory}>
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="all">All</TabsTrigger>
-              {CATEGORIES.filter((item) => tutorials.some((row) => row.category === item)).map((item) => (
-                <TabsTrigger key={item} value={item}>{item}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          {isAdmin && (
-            <Button onClick={() => openEditor()} className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" /> Add tutorial
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-52" />)}
-        </div>
-      ) : visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <GraduationCap className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <p className="font-semibold text-foreground">No tutorials yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {isAdmin ? 'Add your first walkthrough — paste a YouTube link or upload an MP4.' : 'Tutorials for your role will appear here soon.'}
+  const NeedMoreHelp = (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <LifeBuoy className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="font-semibold text-foreground">Need more help?</p>
+            <p className="text-sm text-muted-foreground">
+              Message the academy team or raise a request — we usually reply the same day.
             </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => navigate('/hub?new=1')}>
+            <MessageCircle className="mr-2 h-4 w-4" /> Ask the academy
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate('/announcements')}>
+            Announcements
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // ---------------- Article view ----------------
+  if (tutorialId) {
+    if (isLoading) {
+      return <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6"><Skeleton className="h-40" /><Skeleton className="h-64" /></div>;
+    }
+    if (!active) {
+      return (
+        <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+          <Button variant="ghost" onClick={() => navigate('/tutorials')}><ArrowLeft className="mr-2 h-4 w-4" /> Help Centre</Button>
+          <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">This guide is not available for your account.</CardContent></Card>
+        </div>
+      );
+    }
+    const guide = parseGuide(active.description);
+    const embed = videoUrl ? toEmbedUrl(videoUrl) : null;
+    return (
+      <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6 animate-fade-in">
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate('/tutorials')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Help Centre
+        </Button>
+
+        <header className="rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide opacity-85">
+            <span>{active.category}</span>
+            <span>•</span>
+            <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} min read</span>
+            {!active.is_published && <Badge variant="secondary" className="ml-1">Draft</Badge>}
+          </div>
+          <h1 className="mt-2 font-serif text-2xl font-bold md:text-3xl">{active.title}</h1>
+          {guide.intro && <p className="mt-2 text-sm opacity-90">{guide.intro}</p>}
+        </header>
+
+        {active.thumbnail_url && (
+          <img src={active.thumbnail_url} alt={`${active.title} screenshot`} loading="lazy" className="w-full rounded-xl border border-border object-cover" />
+        )}
+
+        <Card>
+          <CardContent className="p-5 md:p-6">
+            <h2 className="mb-4 font-serif text-lg font-bold text-foreground">Step by step</h2>
+            {guide.steps.length === 0 ? (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{active.description || 'No steps added yet.'}</p>
+            ) : (
+              <ol className="space-y-4">
+                {guide.steps.map((step, index) => (
+                  <li key={index} className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
+                    <p className="pt-0.5 text-sm leading-relaxed text-foreground">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {guide.notes.length > 0 && (
+              <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
+                <p className="mb-1 text-sm font-semibold text-foreground">Good to know</p>
+                {guide.notes.map((note, index) => (
+                  <p key={index} className="text-sm leading-relaxed text-muted-foreground">{note}</p>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        grouped.map(([groupName, rows]) => (
-          <section key={groupName} className="space-y-3">
-            <h2 className="font-serif text-xl font-bold text-foreground">{groupName}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map((row) => (
-                <Card key={row.id} className="group overflow-hidden transition-shadow hover:shadow-md">
-                  <button type="button" className="block w-full text-left" onClick={() => openPlayer(row)}>
-                    <div className="relative flex h-36 items-center justify-center bg-muted">
-                      {row.thumbnail_url ? (
-                        <img src={row.thumbnail_url} alt={`${row.title} thumbnail`} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <Video className="h-10 w-10 text-muted-foreground" />
-                      )}
-                      <span className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition-colors group-hover:bg-foreground/20">
-                        <Play className="h-9 w-9 text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      </span>
-                    </div>
-                    <div className="space-y-1 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-foreground">{row.title}</p>
-                        {!row.is_published && <Badge variant="secondary">Draft</Badge>}
-                      </div>
-                      {row.description && <p className="line-clamp-2 text-sm text-muted-foreground">{row.description}</p>}
-                    </div>
-                  </button>
-                  {isAdmin && (
-                    <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                      <Button size="sm" variant="ghost" onClick={() => openEditor(row)}>
-                        <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(row)}>
-                        <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
-          </section>
-        ))
-      )}
 
-      {/* Player */}
-      <Dialog open={Boolean(playing)} onOpenChange={(open) => { if (!open) { setPlaying(null); setPlayUrl(null); } }}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>{playing?.title}</DialogTitle></DialogHeader>
-          <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-            {!playUrl ? (
-              <div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : embed ? (
-              <iframe src={embed} title={playing?.title || 'Tutorial'} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
-            ) : (
-              <video src={playUrl} controls className="h-full w-full" />
-            )}
+        {videoUrl && (
+          <Card>
+            <CardContent className="space-y-3 p-5">
+              <p className="text-sm font-semibold text-foreground">Optional: watch the walkthrough</p>
+              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                {embed ? (
+                  <iframe src={embed} title={active.title} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
+                ) : (
+                  <video src={videoUrl} controls className="h-full w-full" />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {NeedMoreHelp}
+
+        {isAdmin && (
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => openEditor(active)}>
+              <Pencil className="mr-2 h-4 w-4" /> Edit this guide
+            </Button>
           </div>
-          {playing?.description && <p className="text-sm text-muted-foreground">{playing.description}</p>}
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* Editor */}
+        <EditorDialog />
+      </div>
+    );
+  }
+
+  // ---------------- Editor dialog (shared) ----------------
+  function EditorDialog() {
+    return (
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-          <DialogHeader><DialogTitle>{form.id ? 'Edit tutorial' : 'Add tutorial'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{form.id ? 'Edit guide' : 'Add guide'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tut-title">Title</Label>
-              <Input id="tut-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="How to mark attendance" />
+              <Input id="tut-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="How to upload a payment slip" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tut-desc">Description</Label>
-              <Textarea id="tut-desc" rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+              <Label htmlFor="tut-desc">Guide text</Label>
+              <Textarea
+                id="tut-desc"
+                rows={8}
+                value={form.description}
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                placeholder={'One-line intro.\n\n1. First step\n2. Second step'}
+              />
+              <p className="text-xs text-muted-foreground">First lines = intro. Lines starting with 1. 2. 3. become numbered steps.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -339,7 +399,12 @@ export default function Tutorials() {
             </div>
 
             <div className="space-y-2">
-              <Label>Video source</Label>
+              <Label htmlFor="tut-shot">Screenshot URL (optional)</Label>
+              <Input id="tut-shot" value={form.thumbnail_url} onChange={(event) => setForm({ ...form, thumbnail_url: event.target.value })} placeholder="https://..." />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Video (optional)</Label>
               <Tabs value={form.source_type} onValueChange={(value) => setForm({ ...form, source_type: value as 'link' | 'upload' })}>
                 <TabsList className="w-full">
                   <TabsTrigger value="link" className="flex-1">YouTube / Vimeo link</TabsTrigger>
@@ -347,7 +412,7 @@ export default function Tutorials() {
                 </TabsList>
               </Tabs>
               {form.source_type === 'link' ? (
-                <Input value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value, storage_path: null })} placeholder="https://youtu.be/..." />
+                <Input value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value, storage_path: null })} placeholder="Leave empty for a text-only guide" />
               ) : (
                 <div className="space-y-2">
                   <Input type="file" accept="video/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) handleUpload(file); }} />
@@ -387,15 +452,113 @@ export default function Tutorials() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={!form.title.trim() || !form.video_url.trim() || uploading || saveMutation.isPending}
-            >
-              {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save tutorial
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.title.trim() || uploading || saveMutation.isPending}>
+              {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save guide
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    );
+  }
+
+  // ---------------- List view ----------------
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 animate-fade-in">
+      <header className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground md:p-8">
+        <p className="text-xs font-bold uppercase tracking-wide opacity-80">Help centre</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold">How to use the academy portal</h1>
+        <p className="mt-2 max-w-2xl text-sm opacity-90">
+          Short written guides — read them in a minute, no video needed. Filtered to what your role actually uses.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full md:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guides" className="pl-9" />
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <Tabs value={category} onValueChange={setCategory}>
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="all">All</TabsTrigger>
+              {CATEGORIES.filter((item) => readable.some((row) => row.category === item)).map((item) => (
+                <TabsTrigger key={item} value={item}>{item}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          {isAdmin && (
+            <Button onClick={() => openEditor()} className="shrink-0">
+              <Plus className="mr-2 h-4 w-4" /> Add guide
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-44" />)}
+        </div>
+      ) : visible.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <GraduationCap className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+            <p className="font-semibold text-foreground">No guides yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isAdmin ? 'Add your first written guide — video is optional.' : 'Guides for your role will appear here soon.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        grouped.map(([groupName, rows]) => (
+          <section key={groupName} className="space-y-3">
+            <h2 className="font-serif text-xl font-bold text-foreground">{groupName}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {rows.map((row) => {
+                const guide = parseGuide(row.description);
+                const hasVideo = Boolean(row.video_url || row.storage_path);
+                return (
+                  <Card key={row.id} className="group flex flex-col overflow-hidden transition-shadow hover:shadow-md">
+                    <button type="button" className="flex-1 text-left" onClick={() => navigate(`/tutorials/${row.id}`)}>
+                      <div className="space-y-2 p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <BookOpen className="h-4.5 w-4.5 text-primary" />
+                          </span>
+                          {!row.is_published && <Badge variant="secondary">Draft</Badge>}
+                        </div>
+                        <p className="font-semibold leading-snug text-foreground">{row.title}</p>
+                        {guide.intro && <p className="line-clamp-2 text-sm text-muted-foreground">{guide.intro}</p>}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {readingMinutes(guide.steps.length, guide.intro)} min read</Badge>
+                          {guide.steps.length > 0 && <Badge variant="outline">{guide.steps.length} steps</Badge>}
+                          {hasVideo && <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> Video</Badge>}
+                        </div>
+                        <span className="inline-flex items-center pt-1 text-sm font-medium text-primary">
+                          Read guide <ChevronRight className="ml-1 h-4 w-4" />
+                        </span>
+                      </div>
+                    </button>
+                    {isAdmin && (
+                      <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEditor(row)}>
+                          <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(row)}>
+                          <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        ))
+      )}
+
+      {NeedMoreHelp}
+
+      <EditorDialog />
     </div>
   );
 }

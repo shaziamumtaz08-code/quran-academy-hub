@@ -452,6 +452,8 @@ function AppRoutes() {
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/announcements" element={<ProtectedRoute><DashboardLayout><AnnouncementsPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutorials" element={<ProtectedRoute><DashboardLayout><TutorialsPage /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/tutorials/:tutorialId" element={<ProtectedRoute><DashboardLayout><TutorialsPage /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/help" element={<Navigate to="/tutorials" replace />} />
       <Route path="/communication" element={<ProtectedRoute><RouteGuard moduleId="communication"><DashboardLayout><CommunicationLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><RouteGuard moduleId="settings"><DashboardLayout><SettingsLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
 
