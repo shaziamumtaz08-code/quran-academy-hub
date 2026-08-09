@@ -8,6 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
   Award, FileText, FolderOpen, LogOut, Activity, Megaphone, Video,
+  LifeBuoy,
 } from 'lucide-react';
 
 import logoDark from '@/assets/logo-dark.jpg';
@@ -32,6 +33,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Zoom', href: '/zoom-management', icon: Video, divider: true },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
       { label: 'Settings', href: '/settings', icon: Cog },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
   if (role === 'teacher') {
@@ -45,6 +47,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Zoom', href: '/live-classes', icon: Video, divider: true },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
 
@@ -56,6 +59,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Communication', href: '/announcements', icon: MessageSquare },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
     if (role === 'parent') {
       items.push({ label: 'Family', href: '/parent', icon: Users });
@@ -68,6 +72,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Exam Center', href: '/report-card-templates', icon: Award },
       { label: 'Student Reports', href: '/student-reports', icon: FileText },
       { label: 'Communication', href: '/announcements', icon: MessageSquare },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
   return [{ label: 'Home', href: '/dashboard', icon: LayoutDashboard }];

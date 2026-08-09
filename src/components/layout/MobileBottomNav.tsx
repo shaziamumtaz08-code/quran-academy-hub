@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays, FolderOpen, Activity, Wallet, CreditCard } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays, FolderOpen, Activity, Wallet, CreditCard, LifeBuoy } from 'lucide-react';
 import { useState } from 'react';
 
 interface MobileTabItem {
@@ -62,6 +62,7 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
       { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Zoom', href: '/zoom-management', icon: Video },
       { label: 'Tasks', href: '/hub', icon: Briefcase },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
   }
@@ -70,12 +71,14 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Messages & Requests', href: '/hub', icon: Briefcase },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
   if (role === 'teacher') {
     return [
       { label: 'Announcements', href: '/announcements', icon: MessageSquare },
       { label: 'Library', href: '/library', icon: FolderOpen },
+      { label: 'Help Centre', href: '/tutorials', icon: LifeBuoy },
     ];
   }
   return [];
