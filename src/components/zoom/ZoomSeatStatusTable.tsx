@@ -66,17 +66,17 @@ export function ZoomSeatStatusTable() {
       if (hostIds.length) {
         const { data: logRows } = await (supabase as any)
           .from('zoom_attendance_logs')
-          .select('host_id, created_at')
-          .in('host_id', hostIds);
+          .select('zoom_host_id, timestamp')
+          .in('zoom_host_id', hostIds);
         logs = logRows || [];
       }
 
       const stats = new Map<string, { count: number; last: string | null }>();
       for (const l of logs) {
-        const s = stats.get(l.host_id) || { count: 0, last: null };
+        const s = stats.get(l.zoom_host_id) || { count: 0, last: null };
         s.count += 1;
-        if (!s.last || l.created_at > s.last) s.last = l.created_at;
-        stats.set(l.host_id, s);
+        if (!s.last || l.timestamp > s.last) s.last = l.timestamp;
+        stats.set(l.zoom_host_id, s);
       }
 
       return rows.map((r) => {
