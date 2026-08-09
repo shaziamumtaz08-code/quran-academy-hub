@@ -14,6 +14,7 @@ import {
   FolderOpen,
   Landmark,
   LayoutDashboard,
+  LifeBuoy,
   Megaphone,
   Menu,
   MessageCircle,
