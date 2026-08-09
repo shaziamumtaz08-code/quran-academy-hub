@@ -121,9 +121,9 @@ def capture_sign_in(flow: dict | None = None) -> tuple[dict | None, str]:
         return None, "Supabase env vars missing in the capture environment."
     if not (email and password):
         return None, (
-            "Capture credentials not configured. Set the flow's capture_email (or "
-            "CAPTURE_ACCOUNT_EMAIL) and add CAPTURE_ACCOUNT_PASSWORD in "
-            "CAPTURE_ACCOUNT_PASSWORD in Project Settings, Secrets."
+            "Capture credentials not configured. Set the flow's capture_email "
+            "(or CAPTURE_ACCOUNT_EMAIL) and add CAPTURE_ACCOUNT_PASSWORD in "
+            "Project Settings, Secrets."
         )
     status, data = _post("/auth/v1/token?grant_type=password", {"email": email, "password": password})
     if status != 200 or not data.get("access_token"):
