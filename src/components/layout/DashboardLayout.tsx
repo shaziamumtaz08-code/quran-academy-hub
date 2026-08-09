@@ -268,9 +268,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     const items: DrawerItem[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
-    if (isGroupStyleModel) {
-      items.push({ label: "My Courses", href: "/my-courses", icon: GraduationCap });
-    }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
       { label: "Reports", href: "/student-reports", icon: FileText },
@@ -296,9 +293,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     const items: DrawerItem[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
-    if (isGroupStyleModel) {
-      items.push({ label: "My Courses", href: "/my-courses", icon: GraduationCap });
-    }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
       { label: "Reports", href: "/student-reports", icon: FileText },
