@@ -121,7 +121,8 @@ def capture_sign_in(flow: dict | None = None) -> tuple[dict | None, str]:
         return None, "Supabase env vars missing in the capture environment."
     if not (email and password):
         return None, (
-            "Capture credentials not configured. Add CAPTURE_ACCOUNT_EMAIL and "
+            "Capture credentials not configured. Set the flow's capture_email (or "
+            "CAPTURE_ACCOUNT_EMAIL) and add CAPTURE_ACCOUNT_PASSWORD in "
             "CAPTURE_ACCOUNT_PASSWORD in Project Settings, Secrets."
         )
     status, data = _post("/auth/v1/token?grant_type=password", {"email": email, "password": password})
@@ -177,7 +178,7 @@ def impersonate(session: dict, target_email: str, expect_role: str | None) -> tu
 
 
 async def capture_auth(page, base_url: str, flow: dict) -> tuple[bool, str]:
-    session, msg = capture_sign_in()
+    session, msg = capture_sign_in(flow)
     if not session:
         return False, msg
 
