@@ -14,6 +14,7 @@ import {
   Megaphone,
   Newspaper,
   Pin,
+  PlayCircle,
   Radio,
   Sparkles,
   Video,
