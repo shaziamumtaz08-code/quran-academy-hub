@@ -419,7 +419,7 @@ export default function Tutorials() {
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 placeholder={'One-line intro.\n\n1. First step\n2. Second step'}
               />
-              <p className="text-xs text-muted-foreground">First lines = intro. Lines starting with 1. 2. 3. become numbered steps.</p>
+              <p className="text-xs text-muted-foreground">First lines = intro. Lines starting with 1. 2. 3. become numbered steps. Add an optional picture to a step with [img: https://link-to-screenshot]. Add a "FAQ:" line, then "Q: ..." / "A: ..." lines for common problems. Video is always optional.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
