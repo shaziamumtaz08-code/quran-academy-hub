@@ -34,35 +34,8 @@ ACCENT = (56, 189, 148)
 TEXT = (240, 245, 250)
 MUTED = (156, 172, 194)
 
-URDU_FONT = "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/share/fonts/noto/NotoNaskhArabic[wght].ttf"
-LANG = "en"
+// placeholder
 
-FONT_REG = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Regular.ttf"
-FONT_BOLD = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Bold.ttf"
-
-
-def font(path: str, size: int):
-    try:
-        return ImageFont.truetype(path, size)
-    except Exception:
-        return ImageFont.load_default()
-
-
-F_TITLE = font(FONT_BOLD, 52)
-F_SUB = font(FONT_REG, 26)
-F_STEP = font(FONT_BOLD, 22)
-F_LABEL = font(FONT_REG, 26)
-
-
-def shape(text: str) -> str:
-    """Shapes Arabic-script text (joined forms + visual RTL order) for Pillow."""
-    if LANG != "ur":
-        return text
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    # Noto Naskh Arabic has no glyph for these separators; use Urdu equivalents.
-    text = text.replace("—", "،").replace("–", "،").replace("/", " از ")
-    return get_display(arabic_reshaper.reshape(text))
 
 
 def wrap(draw, text, fnt, max_w):
