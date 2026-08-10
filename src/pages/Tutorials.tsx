@@ -402,7 +402,7 @@ export default function Tutorials() {
         <article className="space-y-6">
           <header className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">{active.category}</span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">{isUrdu ? (CATEGORY_UR[active.category] || active.category) : active.category}</span>
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} {t('minRead')}</span>
               {guide.steps.length > 0 && (
                 <span className="inline-flex items-center gap-1"><ListOrdered className="h-3.5 w-3.5" /> {guide.steps.length} {t('stepsWord')}</span>
