@@ -980,7 +980,11 @@ export default function SalaryEngine() {
               <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setBulkDeductOpen(true)}>
                 <TrendingDown className="h-4 w-4 mr-1" /> Bulk Deduction
               </Button>
+              <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setAuditOpen(true)}>
+                <AlertCircle className="h-4 w-4 mr-1" /> Sheet Audit
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
+
                 <History className="h-4 w-4 mr-1" /> History
               </Button>
               <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
