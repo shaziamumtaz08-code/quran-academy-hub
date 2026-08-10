@@ -297,6 +297,17 @@ def render(manifest: dict, title: str, out: Path) -> dict:
     tmp = Path(tempfile.mkdtemp(prefix="wt-render-"))
     n = 0
 
+    if LANG == "ur":
+        items = [
+            _ur_item(title, 58, "#f0f5fa", 600, W - 200),
+            _ur_item(f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو", 30, "#9cacc2", 400, W - 200),
+        ]
+        for f in frames:
+            items.append(_ur_item(f"مرحلہ {f['step']} از {total}", 26, "#38bd94", 400, W - 96))
+            items.append(_ur_item(label_of(f), 34, "#f0f5fa", 400, W - 96))
+        prewarm_ur(items)
+
+
     def emit(img):
         nonlocal n
         n += 1
