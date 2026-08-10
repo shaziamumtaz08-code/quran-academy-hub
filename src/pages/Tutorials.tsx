@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, BookOpen, ChevronRight, Clock, GraduationCap, LifeBuoy, Loader2,
-  MessageCircle, MousePointerClick, Pencil, Plus, Search, Trash2, Upload, Video,
+  ArrowLeft, ArrowRight, Clock, GraduationCap, Languages, LifeBuoy, ListOrdered, Loader2,
+  MessageCircle, MousePointerClick, Pencil, Plus, Search, Sparkles, Trash2, Upload,
 } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { WalkthroughViewer, type WalkthroughFrame } from '@/components/tutorials/WalkthroughViewer';
 import { WalkthroughVideoCard } from '@/components/tutorials/WalkthroughVideoCard';
+import { TutorialCard } from '@/components/tutorials/TutorialCard';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -37,6 +39,49 @@ const LANGS = [
   { value: 'en', label: 'English' },
   { value: 'ur', label: 'اردو' },
 ];
+
+/** Bilingual labels for the learner-facing Help Centre chrome. */
+const UI = {
+  eyebrow: { en: 'Help centre', ur: 'مرکزِ رہنمائی' },
+  heading: { en: 'Learn the academy portal, step by step', ur: 'اکیڈمی پورٹل قدم بہ قدم سیکھیں' },
+  sub: {
+    en: 'Short written guides and screen walkthroughs — filtered to exactly what your role uses.',
+    ur: 'مختصر تحریری رہنمائیاں اور اسکرین واک تھرو — صرف وہی جو آپ کے کردار سے متعلق ہیں۔',
+  },
+  searchPlaceholder: { en: 'Search guides…', ur: 'رہنمائی تلاش کریں…' },
+  all: { en: 'All topics', ur: 'تمام موضوعات' },
+  back: { en: 'Back to Help Centre', ur: 'مرکزِ رہنمائی پر واپس' },
+  minRead: { en: 'min read', ur: 'منٹ' },
+  stepsWord: { en: 'steps', ur: 'مراحل' },
+  stepWord: { en: 'Step', ur: 'مرحلہ' },
+  draft: { en: 'Draft', ur: 'مسودہ' },
+  stepByStep: { en: 'Step by step', ur: 'قدم بہ قدم' },
+  noSteps: { en: 'No steps added yet.', ur: 'ابھی کوئی مراحل شامل نہیں کیے گئے۔' },
+  goodToKnow: { en: 'Good to know', ur: 'یاد رکھنے کی بات' },
+  commonProblems: { en: 'Common problems', ur: 'عام مسائل' },
+  optionalVideo: { en: 'Optional: watch the walkthrough', ur: 'اختیاری: واک تھرو دیکھیں' },
+  empty: { en: 'No guides yet', ur: 'ابھی کوئی رہنمائی موجود نہیں' },
+  emptySub: { en: 'Guides for your role will appear here soon.', ur: 'آپ کے کردار کی رہنمائیاں جلد یہاں دستیاب ہوں گی۔' },
+  needHelp: { en: 'Need more help?', ur: 'مزید مدد چاہیے؟' },
+  needHelpSub: {
+    en: 'Message the academy team or raise a request — we usually reply the same day.',
+    ur: 'اکیڈمی ٹیم کو پیغام بھیجیں — عموماً اسی دن جواب دیا جاتا ہے۔',
+  },
+  ask: { en: 'Ask the academy', ur: 'اکیڈمی سے پوچھیں' },
+  announcements: { en: 'Announcements', ur: 'اعلانات' },
+} as const;
+
+const CATEGORY_UR: Record<string, string> = {
+  'Getting started': 'ابتدائی رہنمائی',
+  Attendance: 'حاضری',
+  'Classes & Zoom': 'کلاسز اور زوم',
+  'Fees & Payments': 'فیس اور ادائیگی',
+  Reports: 'رپورٹس',
+  Communication: 'رابطہ',
+  General: 'عمومی',
+};
+
+
 
 interface TutorialRow {
   id: string;
@@ -301,29 +346,29 @@ export default function Tutorials() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id, active?.source_type, active?.storage_path, active?.video_url]);
 
+  const helpLang = lang === 'ur' ? 'ur' : 'en';
   const NeedMoreHelp = (
-    <Card className="border-primary/20 bg-primary/5">
+    <Card className={`border-primary/20 bg-primary/5 ${helpLang === 'ur' ? 'urdu-text' : ''}`}>
       <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <LifeBuoy className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div>
-            <p className="font-semibold text-foreground">Need more help?</p>
-            <p className="text-sm text-muted-foreground">
-              Message the academy team or raise a request — we usually reply the same day.
-            </p>
+            <p className="font-semibold text-foreground">{UI.needHelp[helpLang]}</p>
+            <p className="text-sm text-muted-foreground">{UI.needHelpSub[helpLang]}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => navigate('/hub?new=1')}>
-            <MessageCircle className="mr-2 h-4 w-4" /> Ask the academy
+          <Button size="sm" className={helpLang === 'ur' ? 'urdu-ui' : ''} onClick={() => navigate('/hub?new=1')}>
+            <MessageCircle className="me-2 h-4 w-4" /> {UI.ask[helpLang]}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate('/announcements')}>
-            Announcements
+          <Button size="sm" variant="outline" className={helpLang === 'ur' ? 'urdu-ui' : ''} onClick={() => navigate('/announcements')}>
+            {UI.announcements[helpLang]}
           </Button>
         </div>
       </CardContent>
     </Card>
   );
+
 
   // ---------------- Article view ----------------
   if (tutorialId) {
@@ -344,153 +389,157 @@ export default function Tutorials() {
     const other = active.tutorial_key
       ? readable.find((row) => row.tutorial_key === active.tutorial_key && row.id !== active.id)
       : undefined;
+    const t = (key: keyof typeof UI) => UI[key][isUrdu ? 'ur' : 'en'];
     return (
       <div
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6 animate-fade-in"
+        className={`mx-auto max-w-3xl p-4 md:p-8 animate-fade-in ${isUrdu ? 'urdu-text' : ''}`}
         dir={isUrdu ? 'rtl' : 'ltr'}
-        style={isUrdu ? { fontFamily: "'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif", lineHeight: 2 } : undefined}
       >
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate('/tutorials')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Help Centre
+        <Button variant="ghost" size="sm" className="-ms-2 mb-4 text-muted-foreground" onClick={() => navigate('/tutorials')}>
+          {isUrdu ? <ArrowRight className="ms-2 h-4 w-4" /> : <ArrowLeft className="me-2 h-4 w-4" />} {t('back')}
         </Button>
 
-        <header className="rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide opacity-85">
-            <span>{active.category}</span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} min read</span>
-            {!active.is_published && <Badge variant="secondary" className="ml-1">Draft</Badge>}
-          </div>
-          <h1 className="mt-2 font-serif text-2xl font-bold md:text-3xl">{active.title}</h1>
-          {guide.intro && <p className="mt-2 text-sm opacity-90">{guide.intro}</p>}
-        </header>
+        <article className="space-y-6">
+          <header className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">{isUrdu ? (CATEGORY_UR[active.category] || active.category) : active.category}</span>
+              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} {t('minRead')}</span>
+              {guide.steps.length > 0 && (
+                <span className="inline-flex items-center gap-1"><ListOrdered className="h-3.5 w-3.5" /> {guide.steps.length} {t('stepsWord')}</span>
+              )}
+              {!active.is_published && <Badge variant="secondary">{t('draft')}</Badge>}
+            </div>
+            <h1 className={`font-serif font-bold tracking-tight text-foreground ${isUrdu ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl'}`}>
+              {active.title}
+            </h1>
+            {guide.intro && <p className="text-base leading-relaxed text-muted-foreground">{guide.intro}</p>}
+            {other && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={other.language === 'ur' ? 'urdu-ui' : undefined}
+                onClick={() => { setLang((other.language as 'en' | 'ur') || 'en'); navigate(`/tutorials/${other.id}`); }}
+              >
+                <Languages className="me-2 h-4 w-4" />
+                {other.language === 'ur' ? 'اردو میں پڑھیں' : 'Read in English'}
+              </Button>
+            )}
+          </header>
 
-        {other && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setLang((other.language as 'en' | 'ur') || 'en'); navigate(`/tutorials/${other.id}`); }}
-          >
-            {other.language === 'ur' ? 'اردو میں پڑھیں' : 'Read in English'}
-          </Button>
-        )}
+          {active.walkthrough_video_path && (
+            <WalkthroughVideoCard
+              videoPath={active.walkthrough_video_path}
+              fileName={`${active.title}.mp4`}
+              posterPath={active.walkthrough_poster_path}
+              shareToken={active.share_token}
+              shareEnabled={active.share_enabled}
+              durationSeconds={active.duration_seconds}
+            />
+          )}
 
-        {active.thumbnail_url && (
-          <img src={active.thumbnail_url} alt={`${active.title} screenshot`} loading="lazy" className="w-full rounded-xl border border-border object-cover" />
-        )}
+          {active.thumbnail_url && !active.walkthrough_video_path && (
+            <img src={active.thumbnail_url} alt={`${active.title}`} loading="lazy" className="w-full rounded-2xl border border-border object-cover shadow-sm" />
+          )}
 
-        <Card>
-          <CardContent className="p-5 md:p-6">
-            <h2 className="mb-4 font-serif text-lg font-bold text-foreground">Step by step</h2>
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-7">
+            <h2 className="mb-5 font-serif text-lg font-bold text-foreground md:text-xl">{t('stepByStep')}</h2>
             {guide.steps.length === 0 ? (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{active.description || 'No steps added yet.'}</p>
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">{active.description || t('noSteps')}</p>
             ) : (
-              <ol className="space-y-4">
+              <ol className="space-y-6">
                 {guide.steps.map((step, index) => (
-                  <li key={index} className="flex gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
-                    <div className="space-y-2 pt-0.5">
-                      <p className="text-sm leading-relaxed text-foreground">{step.text}</p>
+                  <li key={index} className="relative flex gap-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-3 border-b border-border/60 pb-5 last:border-0 last:pb-0">
+                      <p className={`leading-relaxed text-foreground ${isUrdu ? 'text-base' : 'text-[15px]'}`}>{step.text}</p>
                       {step.image && (
-                        <img src={step.image} alt={`Step ${index + 1}`} loading="lazy" className="w-full rounded-lg border border-border" />
+                        <img src={step.image} alt={`${t('stepWord')} ${index + 1}`} loading="lazy" className="w-full rounded-xl border border-border shadow-sm" />
                       )}
                     </div>
                   </li>
                 ))}
-
               </ol>
             )}
             {guide.notes.length > 0 && (
-              <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
-                <p className="mb-1 text-sm font-semibold text-foreground">Good to know</p>
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="mb-1 text-sm font-semibold text-foreground">{t('goodToKnow')}</p>
                 {guide.notes.map((note, index) => (
                   <p key={index} className="text-sm leading-relaxed text-muted-foreground">{note}</p>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </section>
 
-        {guide.faqs.length > 0 && (
-          <Card>
-            <CardContent className="p-5 md:p-6">
-              <h2 className="mb-3 font-serif text-lg font-bold text-foreground">Common problems</h2>
+          {guide.faqs.length > 0 && (
+            <section className="rounded-2xl border border-border bg-muted/30 p-5 md:p-7">
+              <h2 className="mb-4 font-serif text-lg font-bold text-foreground md:text-xl">{t('commonProblems')}</h2>
               <div className="space-y-3">
                 {guide.faqs.map((faq, index) => (
-                  <div key={index} className="rounded-lg border border-border p-3">
+                  <div key={index} className="rounded-xl border border-border bg-card p-4">
                     <p className="text-sm font-semibold text-foreground">{faq.q}</p>
-                    {faq.a && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
+                    {faq.a && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </section>
+          )}
 
-        {active.walkthrough_video_path && (
-          <WalkthroughVideoCard
-            videoPath={active.walkthrough_video_path}
-            fileName={`${active.title}.mp4`}
-            posterPath={active.walkthrough_poster_path}
-            shareToken={active.share_token}
-            shareEnabled={active.share_enabled}
-            durationSeconds={active.duration_seconds}
-          />
-        )}
+          {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
+            <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
+          )}
 
-        {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
-          <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
-        )}
+          {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
+                  <p className="text-xs text-muted-foreground">
+                    {active.walkthrough_status === 'pending'
+                      ? 'Queued — screens will be captured from the live app on the next capture run.'
+                      : active.walkthrough_error
+                        ? `Last attempt failed: ${active.walkthrough_error}`
+                        : 'No screens captured yet for this guide.'}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
+                  <MousePointerClick className="me-2 h-4 w-4" /> Queue capture
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-        {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
-                <p className="text-xs text-muted-foreground">
-                  {active.walkthrough_status === 'pending'
-                    ? 'Queued — screens will be captured from the live app on the next capture run.'
-                    : active.walkthrough_error
-                      ? `Last attempt failed: ${active.walkthrough_error}`
-                      : 'No screens captured yet for this guide.'}
-                </p>
-              </div>
-              <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
-                <MousePointerClick className="mr-2 h-4 w-4" /> Queue capture
+          {videoUrl && (
+            <Card>
+              <CardContent className="space-y-3 p-5">
+                <p className="text-sm font-semibold text-foreground">{t('optionalVideo')}</p>
+                <div className="aspect-video w-full overflow-hidden rounded-xl bg-muted">
+                  {embed ? (
+                    <iframe src={embed} title={active.title} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
+                  ) : (
+                    <video src={videoUrl} controls className="h-full w-full" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {NeedMoreHelp}
+
+          {isAdmin && (
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => openEditor(active)}>
+                <Pencil className="me-2 h-4 w-4" /> Edit this guide
               </Button>
-            </CardContent>
-          </Card>
-        )}
-
-
-        {videoUrl && (
-          <Card>
-            <CardContent className="space-y-3 p-5">
-              <p className="text-sm font-semibold text-foreground">Optional: watch the walkthrough</p>
-              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                {embed ? (
-                  <iframe src={embed} title={active.title} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
-                ) : (
-                  <video src={videoUrl} controls className="h-full w-full" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {NeedMoreHelp}
-
-        {isAdmin && (
-          <div className="flex justify-end">
-            <Button variant="outline" size="sm" onClick={() => openEditor(active)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit this guide
-            </Button>
-          </div>
-        )}
+            </div>
+          )}
+        </article>
 
         <EditorDialog />
       </div>
     );
+
   }
 
   // ---------------- Editor dialog (shared) ----------------
@@ -611,108 +660,143 @@ export default function Tutorials() {
   }
 
   // ---------------- List view ----------------
+  const isUr = lang === 'ur';
+  const t = (key: keyof typeof UI) => UI[key][isUr ? 'ur' : 'en'];
+  const catLabel = (name: string) => (isUr ? CATEGORY_UR[name] || name : name);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 animate-fade-in">
-      <header className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground md:p-8">
-        <p className="text-xs font-bold uppercase tracking-wide opacity-80">Help centre</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold">How to use the academy portal</h1>
-        <p className="mt-2 max-w-2xl text-sm opacity-90">
-          Short written guides — read them in a minute, no video needed. Filtered to what your role actually uses.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-8 p-4 pb-16 md:p-8 animate-fade-in" dir={isUr ? 'rtl' : 'ltr'}>
+      {/* Hero */}
+      <header className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary via-primary to-accent px-6 py-8 text-primary-foreground md:px-10 md:py-10">
+        <span className="pointer-events-none absolute -end-16 -top-16 h-52 w-52 rounded-full bg-primary-foreground/10 blur-2xl" />
+        <div className={`relative max-w-2xl ${isUr ? 'urdu-text' : ''}`}>
+          <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+            <Sparkles className="h-3.5 w-3.5" /> {t('eyebrow')}
+          </p>
+          <h1 className={`mt-3 font-serif font-bold tracking-tight ${isUr ? 'text-2xl md:text-4xl' : 'text-3xl md:text-4xl'}`}>
+            {t('heading')}
+          </h1>
+          <p className="mt-2 text-sm opacity-90 md:text-base">{t('sub')}</p>
+        </div>
       </header>
 
-      <Tabs value={lang} onValueChange={(value) => setLang(value as 'en' | 'ur')}>
-        <TabsList className="h-11 w-full max-w-sm">
-          <TabsTrigger value="en" className="flex-1 text-sm font-semibold">English</TabsTrigger>
-          <TabsTrigger value="ur" className="flex-1 text-base font-semibold" style={{ fontFamily: "'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif" }}>اردو</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guides" className="pl-9" />
+      {/* Language branches + search */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="inline-flex w-full max-w-xs rounded-full border border-border bg-muted/60 p-1 shadow-sm sm:w-auto" role="tablist">
+          {LANGS.map((item) => {
+            const activeLang = lang === item.value;
+            return (
+              <button
+                key={item.value}
+                role="tab"
+                aria-selected={activeLang}
+                onClick={() => setLang(item.value as 'en' | 'ur')}
+                className={`flex-1 rounded-full px-5 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeLang ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                } ${item.value === 'ur' ? 'urdu-ui' : ''}`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <Tabs value={category} onValueChange={setCategory}>
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="all">All</TabsTrigger>
-              {CATEGORIES.filter((item) => readable.some((row) => row.category === item)).map((item) => (
-                <TabsTrigger key={item} value={item}>{item}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+
+        <div className="flex w-full items-center gap-2 lg:max-w-md">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('searchPlaceholder')}
+              className={`h-11 rounded-full border-border bg-card ps-9 shadow-sm ${isUr ? 'urdu-ui text-right' : ''}`}
+            />
+          </div>
           {isAdmin && (
-            <Button onClick={() => openEditor()} className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" /> Add guide
+            <Button onClick={() => openEditor()} variant="outline" className="h-11 shrink-0 rounded-full">
+              <Plus className="me-2 h-4 w-4" /> Add guide
             </Button>
           )}
         </div>
       </div>
 
+      {/* Category chips */}
+      <div className="-mx-1 flex flex-wrap gap-2 px-1">
+        {['all', ...CATEGORIES.filter((item) => readable.some((row) => row.category === item))].map((item) => {
+          const selected = category === item;
+          return (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                selected
+                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              } ${isUr ? 'urdu-ui' : ''}`}
+            >
+              {item === 'all' ? t('all') : catLabel(item)}
+            </button>
+          );
+        })}
+      </div>
+
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-44" />)}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-52 rounded-xl" />)}
         </div>
       ) : visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
+        <Card className="border-dashed">
+          <CardContent className={`py-16 text-center ${isUr ? 'urdu-text' : ''}`}>
             <GraduationCap className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <p className="font-semibold text-foreground">No guides yet</p>
+            <p className="font-semibold text-foreground">{t('empty')}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdmin ? 'Add your first written guide — video is optional.' : 'Guides for your role will appear here soon.'}
+              {isAdmin && !isUr ? 'Add your first written guide — video is optional.' : t('emptySub')}
             </p>
           </CardContent>
         </Card>
       ) : (
-        grouped.map(([groupName, rows]) => (
-          <section key={groupName} className="space-y-3">
-            <h2 className="font-serif text-xl font-bold text-foreground">{groupName}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map((row) => {
-                const guide = parseGuide(row.description);
-                const hasVideo = Boolean(row.video_url || row.storage_path);
-                return (
-                  <Card key={row.id} className="group flex flex-col overflow-hidden transition-shadow hover:shadow-md">
-                    <button type="button" className="flex-1 text-left" onClick={() => navigate(`/tutorials/${row.id}`)}>
-                      <div className="space-y-2 p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                            <BookOpen className="h-4.5 w-4.5 text-primary" />
-                          </span>
-                          {!row.is_published && <Badge variant="secondary">Draft</Badge>}
+        <div className="space-y-10">
+          {grouped.map(([groupName, rows]) => (
+            <section key={groupName} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <h2 className={`font-serif font-bold text-foreground ${isUr ? 'urdu-text text-lg' : 'text-xl'}`}>
+                  {catLabel(groupName)}
+                </h2>
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-muted-foreground">{rows.length}</span>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {rows.map((row) => {
+                  const guide = parseGuide(row.description);
+                  return (
+                    <TutorialCard
+                      key={row.id}
+                      row={{
+                        ...row,
+                        hasFrames: Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0,
+                        hasVideo: Boolean(row.video_url || row.storage_path),
+                      }}
+                      intro={guide.intro}
+                      steps={guide.steps.length}
+                      minutes={readingMinutes(guide.steps.length, guide.intro)}
+                      isUrdu={isUr}
+                      onOpen={() => navigate(`/tutorials/${row.id}`)}
+                      adminBar={isAdmin ? (
+                        <div className="flex items-center justify-end gap-1 border-t border-border/70 bg-muted/30 px-2 py-1.5">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => openEditor(row)}>
+                            <Pencil className="me-1 h-3.5 w-3.5" /> Edit
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(row)}>
+                            <Trash2 className="me-1 h-3.5 w-3.5" /> Delete
+                          </Button>
                         </div>
-                        <p className="font-semibold leading-snug text-foreground">{row.title}</p>
-                        {guide.intro && <p className="line-clamp-2 text-sm text-muted-foreground">{guide.intro}</p>}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {readingMinutes(guide.steps.length, guide.intro)} min read</Badge>
-                          {guide.steps.length > 0 && <Badge variant="outline">{guide.steps.length} steps</Badge>}
-                          {Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0 && (
-                            <Badge variant="outline" className="gap-1 border-emerald-600/40 text-emerald-700"><MousePointerClick className="h-3 w-3" /> Walkthrough</Badge>
-                          )}
-                          {hasVideo && <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> Video</Badge>}
-                        </div>
-                        <span className="inline-flex items-center pt-1 text-sm font-medium text-primary">
-                          Read guide <ChevronRight className="ml-1 h-4 w-4" />
-                        </span>
-                      </div>
-                    </button>
-                    {isAdmin && (
-                      <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                        <Button size="sm" variant="ghost" onClick={() => openEditor(row)}>
-                          <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(row)}>
-                          <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
-                        </Button>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        ))
+                      ) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
 
       {NeedMoreHelp}
@@ -721,3 +805,4 @@ export default function Tutorials() {
     </div>
   );
 }
+
