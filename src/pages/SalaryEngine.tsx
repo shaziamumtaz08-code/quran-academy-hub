@@ -139,6 +139,8 @@ export default function SalaryEngine() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+
   
   // Revert modal state
   const [revertModalOpen, setRevertModalOpen] = useState(false);
