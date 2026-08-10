@@ -216,8 +216,10 @@ export default function SalaryEngine() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
-        .in('status', ['active', 'completed']);
+        .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status_effective_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+        // 'left'/'completed' assignments still earn salary for the months they were active —
+        // the effective date window below decides inclusion, not the current status.
+        .in('status', ['active', 'completed', 'left']);
       return data || [];
     },
   });
@@ -368,7 +370,10 @@ export default function SalaryEngine() {
         const studentName = assign.profiles?.full_name || 'Unknown';
 
         const effectiveFrom = assign.effective_from_date || monthStart;
-        const effectiveTo = assign.effective_to_date || monthEnd;
+        // For ended assignments fall back to the status effective date when no explicit end date is set
+        const endedOn = assign.effective_to_date
+          || ((assign.status === 'left' || assign.status === 'completed') ? assign.status_effective_date : null);
+        const effectiveTo = endedOn || monthEnd;
         const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
         const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
 
@@ -1149,7 +1154,13 @@ export default function SalaryEngine() {
                           {payout?.is_revised && (
                             <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
                           )}
+                          {payout && Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01 && (
+                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                              NEEDS REVISION · PKR {teacher.netSalary.toFixed(0)}
+                            </Badge>
+                          )}
                         </div>
+
                       </TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
