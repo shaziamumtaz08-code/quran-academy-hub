@@ -1154,7 +1154,13 @@ export default function SalaryEngine() {
                           {payout?.is_revised && (
                             <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
                           )}
+                          {payout && Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01 && (
+                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                              NEEDS REVISION · PKR {teacher.netSalary.toFixed(0)}
+                            </Badge>
+                          )}
                         </div>
+
                       </TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
