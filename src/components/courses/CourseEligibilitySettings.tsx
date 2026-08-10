@@ -47,10 +47,13 @@ export function CourseEligibilitySettings({ courseId }: Props) {
   const { data: courseData } = useQuery({
     queryKey: ['course-settings', courseId],
     queryFn: async () => {
-      const { data } = await supabase.from('courses').select('webhook_secret, auto_enroll_enabled, name').eq('id', courseId).single();
-      return data;
+      const { data } = await supabase.from('courses').select('auto_enroll_enabled, name').eq('id', courseId).single();
+      // webhook_secret is column-restricted; only staff can read it via this RPC
+      const { data: secret } = await supabase.rpc('get_course_webhook_secret', { _course_id: courseId });
+      return data ? { ...data, webhook_secret: (secret as string | null) ?? null } : null;
     },
   });
+
 
   const toggleAutoEnroll = useMutation({
     mutationFn: async (enabled: boolean) => {
