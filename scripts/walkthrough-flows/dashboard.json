@@ -10,7 +10,7 @@
       "label": "Your dashboard opens right after sign in",
       "action": "goto",
       "route": "/dashboard",
-      "target": "Quick links",
+      "target": "QUICK LINKS",
       "by": "text",
       "label_ur": "سائن اِن کے فوراً بعد آپ کا ڈیش بورڈ کھلتا ہے"
     },
@@ -24,45 +24,83 @@
     },
     {
       "step": 3,
-      "label": "The class bar shows today's class — a Join button appears when it is time",
+      "label": "Next Class names your teacher, subject and how long until class",
       "action": "verify",
-      "target": "Join",
+      "target": "NEXT CLASS",
       "by": "text",
-      "optional": true,
-      "optional_note": "Only visible on a day with a scheduled class.",
-      "label_ur": "کلاس کی پٹی آج کی کلاس دکھاتی ہے، وقت پر Join کا بٹن آ جاتا ہے"
+      "label_ur": "Next Class میں استاد، مضمون اور کلاس میں باقی وقت لکھا ہوتا ہے"
     },
     {
       "step": 4,
-      "label": "Recent lessons lists what your teacher recorded after each class",
+      "label": "The Join Class button goes live 15 minutes before the class starts",
       "action": "verify",
-      "target": "Recent lessons",
+      "target": "Link goes live 15 min before",
+      "by": "text",
+      "label_ur": "Join Class کا بٹن کلاس سے پندرہ منٹ پہلے فعال ہو جاتا ہے"
+    },
+    {
+      "step": 5,
+      "label": "Quick links reach your teacher, leave requests, files and recordings",
+      "action": "verify",
+      "target": "Message teacher",
+      "by": "text",
+      "label_ur": "Quick links سے استاد سے رابطہ، چھٹی کی درخواست، فائلیں اور ریکارڈنگز کھلتی ہیں"
+    },
+    {
+      "step": 6,
+      "label": "Fee status shows the last payment and the next amount due — Pay opens the slip",
+      "action": "verify",
+      "target": "NEXT DUE",
+      "by": "text",
+      "label_ur": "Fee status میں پچھلی ادائیگی اور اگلی واجب الادا رقم ہے — Pay سے پرچی کھلتی ہے"
+    },
+    {
+      "step": 7,
+      "label": "Recent lessons lists exactly what your teacher recorded after each class",
+      "action": "verify",
+      "target": "RECENT LESSONS",
       "by": "text",
       "label_ur": "Recent lessons میں استاد کا لکھا ہوا سبق نظر آتا ہے"
     },
     {
-      "step": 5,
-      "label": "Performance shows your attendance and sessions this month",
+      "step": 8,
+      "label": "Syllabus progress tracks how much of the course is done",
       "action": "verify",
-      "target": "Performance",
+      "target": "Syllabus progress",
+      "by": "text",
+      "label_ur": "Syllabus progress بتاتا ہے کہ نصاب کتنا مکمل ہوا"
+    },
+    {
+      "step": 9,
+      "label": "Performance shows your attendance and sessions attended this month",
+      "action": "verify",
+      "target": "PERFORMANCE",
       "by": "text",
       "label_ur": "Performance میں اس مہینے کی حاضری اور کلاسیں ہیں"
     },
     {
-      "step": 6,
-      "label": "Action centre tells you if anything needs your attention",
+      "step": 10,
+      "label": "Recent results collects your exam and quiz scores",
       "action": "verify",
-      "target": "Action centre",
+      "target": "RECENT RESULTS",
       "by": "text",
-      "label_ur": "Action centre بتاتا ہے کہ کوئی کام باقی تو نہیں"
+      "label_ur": "Recent results میں امتحان اور کوئز کے نتائج جمع ہوتے ہیں"
     },
     {
-      "step": 7,
-      "label": "Use the left menu for Attendance, Reports, Fees and Library",
+      "step": 11,
+      "label": "Action centre tells you if anything needs your attention, like an unpaid fee",
       "action": "verify",
-      "target": "Fees",
+      "target": "ACTION CENTRE",
       "by": "text",
-      "label_ur": "بائیں مینو سے حاضری، رپورٹس، فیس اور لائبریری کھولیں"
+      "label_ur": "Action centre بتاتا ہے کہ کوئی کام باقی تو نہیں، مثلاً فیس کی ادائیگی"
+    },
+    {
+      "step": 12,
+      "label": "Use the left menu for Attendance, Reports, Fees, Library and the Help Centre",
+      "action": "verify",
+      "target": "Help Centre",
+      "by": "text",
+      "label_ur": "بائیں مینو سے حاضری، رپورٹس، فیس، لائبریری اور Help Centre کھولیں"
     }
   ],
   "title": "Understanding your dashboard",
