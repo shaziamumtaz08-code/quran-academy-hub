@@ -365,15 +365,18 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--lang", default="en", choices=["en", "ur"])
     args = ap.parse_args()
-    global LANG, URDU_FONT, F_TITLE, F_SUB, F_STEP, F_LABEL
+    global LANG, URDU_FONT, F_TITLE, F_SUB, F_STEP, F_LABEL, SHOT_H, CAPTION_H
     LANG = args.lang
     if LANG == "ur":
         URDU_FONT = urdu_font_path()
-        # Nastaliq needs more vertical room per line than Naskh.
+        # Nastaliq sits taller than Latin type, so the caption band grows.
+        SHOT_H = 672
+        CAPTION_H = H - SHOT_H
         F_TITLE = font(URDU_FONT, 54)
         F_SUB = font(URDU_FONT, 28)
         F_STEP = font(URDU_FONT, 24)
         F_LABEL = font(URDU_FONT, 32)
+
 
     manifest = json.loads(Path(args.manifest).read_text())
     print(json.dumps(render(manifest, args.title, Path(args.out)), indent=2))
