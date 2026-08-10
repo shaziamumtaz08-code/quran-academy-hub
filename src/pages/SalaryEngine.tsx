@@ -22,6 +22,8 @@ import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStat
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
+import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
+
 import { trackActivity } from '@/lib/activityLogger';
 import { useUrlState } from '@/hooks/useUrlState';
 import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
