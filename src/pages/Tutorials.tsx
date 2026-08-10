@@ -659,108 +659,143 @@ export default function Tutorials() {
   }
 
   // ---------------- List view ----------------
+  const isUr = lang === 'ur';
+  const t = (key: keyof typeof UI) => UI[key][isUr ? 'ur' : 'en'];
+  const catLabel = (name: string) => (isUr ? CATEGORY_UR[name] || name : name);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 animate-fade-in">
-      <header className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground md:p-8">
-        <p className="text-xs font-bold uppercase tracking-wide opacity-80">Help centre</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold">How to use the academy portal</h1>
-        <p className="mt-2 max-w-2xl text-sm opacity-90">
-          Short written guides — read them in a minute, no video needed. Filtered to what your role actually uses.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-8 p-4 pb-16 md:p-8 animate-fade-in" dir={isUr ? 'rtl' : 'ltr'}>
+      {/* Hero */}
+      <header className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary via-primary to-accent px-6 py-8 text-primary-foreground md:px-10 md:py-10">
+        <span className="pointer-events-none absolute -end-16 -top-16 h-52 w-52 rounded-full bg-primary-foreground/10 blur-2xl" />
+        <div className={`relative max-w-2xl ${isUr ? 'urdu-text' : ''}`}>
+          <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+            <Sparkles className="h-3.5 w-3.5" /> {t('eyebrow')}
+          </p>
+          <h1 className={`mt-3 font-serif font-bold tracking-tight ${isUr ? 'text-2xl md:text-4xl' : 'text-3xl md:text-4xl'}`}>
+            {t('heading')}
+          </h1>
+          <p className="mt-2 text-sm opacity-90 md:text-base">{t('sub')}</p>
+        </div>
       </header>
 
-      <Tabs value={lang} onValueChange={(value) => setLang(value as 'en' | 'ur')}>
-        <TabsList className="h-11 w-full max-w-sm">
-          <TabsTrigger value="en" className="flex-1 text-sm font-semibold">English</TabsTrigger>
-          <TabsTrigger value="ur" className="flex-1 text-base font-semibold" style={{ fontFamily: "'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif" }}>اردو</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guides" className="pl-9" />
+      {/* Language branches + search */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="inline-flex w-full max-w-xs rounded-full border border-border bg-muted/60 p-1 shadow-sm sm:w-auto" role="tablist">
+          {LANGS.map((item) => {
+            const activeLang = lang === item.value;
+            return (
+              <button
+                key={item.value}
+                role="tab"
+                aria-selected={activeLang}
+                onClick={() => setLang(item.value as 'en' | 'ur')}
+                className={`flex-1 rounded-full px-5 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  activeLang ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                } ${item.value === 'ur' ? 'urdu-ui' : ''}`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <Tabs value={category} onValueChange={setCategory}>
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="all">All</TabsTrigger>
-              {CATEGORIES.filter((item) => readable.some((row) => row.category === item)).map((item) => (
-                <TabsTrigger key={item} value={item}>{item}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+
+        <div className="flex w-full items-center gap-2 lg:max-w-md">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('searchPlaceholder')}
+              className={`h-11 rounded-full border-border bg-card ps-9 shadow-sm ${isUr ? 'urdu-ui text-right' : ''}`}
+            />
+          </div>
           {isAdmin && (
-            <Button onClick={() => openEditor()} className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" /> Add guide
+            <Button onClick={() => openEditor()} variant="outline" className="h-11 shrink-0 rounded-full">
+              <Plus className="me-2 h-4 w-4" /> Add guide
             </Button>
           )}
         </div>
       </div>
 
+      {/* Category chips */}
+      <div className="-mx-1 flex flex-wrap gap-2 px-1">
+        {['all', ...CATEGORIES.filter((item) => readable.some((row) => row.category === item))].map((item) => {
+          const selected = category === item;
+          return (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                selected
+                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              } ${isUr ? 'urdu-ui' : ''}`}
+            >
+              {item === 'all' ? t('all') : catLabel(item)}
+            </button>
+          );
+        })}
+      </div>
+
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-44" />)}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-52 rounded-xl" />)}
         </div>
       ) : visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
+        <Card className="border-dashed">
+          <CardContent className={`py-16 text-center ${isUr ? 'urdu-text' : ''}`}>
             <GraduationCap className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <p className="font-semibold text-foreground">No guides yet</p>
+            <p className="font-semibold text-foreground">{t('empty')}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdmin ? 'Add your first written guide — video is optional.' : 'Guides for your role will appear here soon.'}
+              {isAdmin && !isUr ? 'Add your first written guide — video is optional.' : t('emptySub')}
             </p>
           </CardContent>
         </Card>
       ) : (
-        grouped.map(([groupName, rows]) => (
-          <section key={groupName} className="space-y-3">
-            <h2 className="font-serif text-xl font-bold text-foreground">{groupName}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map((row) => {
-                const guide = parseGuide(row.description);
-                const hasVideo = Boolean(row.video_url || row.storage_path);
-                return (
-                  <Card key={row.id} className="group flex flex-col overflow-hidden transition-shadow hover:shadow-md">
-                    <button type="button" className="flex-1 text-left" onClick={() => navigate(`/tutorials/${row.id}`)}>
-                      <div className="space-y-2 p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                            <BookOpen className="h-4.5 w-4.5 text-primary" />
-                          </span>
-                          {!row.is_published && <Badge variant="secondary">Draft</Badge>}
+        <div className="space-y-10">
+          {grouped.map(([groupName, rows]) => (
+            <section key={groupName} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <h2 className={`font-serif font-bold text-foreground ${isUr ? 'urdu-text text-lg' : 'text-xl'}`}>
+                  {catLabel(groupName)}
+                </h2>
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-muted-foreground">{rows.length}</span>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {rows.map((row) => {
+                  const guide = parseGuide(row.description);
+                  return (
+                    <TutorialCard
+                      key={row.id}
+                      row={{
+                        ...row,
+                        hasFrames: Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0,
+                        hasVideo: Boolean(row.video_url || row.storage_path),
+                      }}
+                      intro={guide.intro}
+                      steps={guide.steps.length}
+                      minutes={readingMinutes(guide.steps.length, guide.intro)}
+                      isUrdu={isUr}
+                      onOpen={() => navigate(`/tutorials/${row.id}`)}
+                      adminBar={isAdmin ? (
+                        <div className="flex items-center justify-end gap-1 border-t border-border/70 bg-muted/30 px-2 py-1.5">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => openEditor(row)}>
+                            <Pencil className="me-1 h-3.5 w-3.5" /> Edit
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(row)}>
+                            <Trash2 className="me-1 h-3.5 w-3.5" /> Delete
+                          </Button>
                         </div>
-                        <p className="font-semibold leading-snug text-foreground">{row.title}</p>
-                        {guide.intro && <p className="line-clamp-2 text-sm text-muted-foreground">{guide.intro}</p>}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> {readingMinutes(guide.steps.length, guide.intro)} min read</Badge>
-                          {guide.steps.length > 0 && <Badge variant="outline">{guide.steps.length} steps</Badge>}
-                          {Array.isArray(row.walkthrough_frames) && row.walkthrough_frames.length > 0 && (
-                            <Badge variant="outline" className="gap-1 border-emerald-600/40 text-emerald-700"><MousePointerClick className="h-3 w-3" /> Walkthrough</Badge>
-                          )}
-                          {hasVideo && <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> Video</Badge>}
-                        </div>
-                        <span className="inline-flex items-center pt-1 text-sm font-medium text-primary">
-                          Read guide <ChevronRight className="ml-1 h-4 w-4" />
-                        </span>
-                      </div>
-                    </button>
-                    {isAdmin && (
-                      <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                        <Button size="sm" variant="ghost" onClick={() => openEditor(row)}>
-                          <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(row)}>
-                          <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
-                        </Button>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        ))
+                      ) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
 
       {NeedMoreHelp}
@@ -769,3 +804,4 @@ export default function Tutorials() {
     </div>
   );
 }
+
