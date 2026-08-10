@@ -34,11 +34,52 @@ ACCENT = (56, 189, 148)
 TEXT = (240, 245, 250)
 MUTED = (156, 172, 194)
 
-URDU_FONT = "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/share/fonts/noto/NotoNaskhArabic[wght].ttf"
+import re
+import urllib.request
+
 LANG = "en"
 
 FONT_REG = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Regular.ttf"
 FONT_BOLD = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Bold.ttf"
+
+# Urdu captions render in Jameel Noori Nastaleeq (the academy's Nastaliq face,
+# already used across the app). Noto Naskh is only a fallback if the CDN copy
+# cannot be fetched. Latin words and digits inside an Urdu caption are drawn
+# with Liberation Sans, because the Urdu faces have no Latin glyphs and Pillow
+# would otherwise paint tofu boxes.
+NASTALIQ_POINTER = Path(__file__).resolve().parents[1] / "src/assets/fonts/Jameel-Noori-Nastaleeq-Regular.ttf.asset.json"
+NASTALIQ_HOSTS = [
+    "https://id-preview--205c6690-e8af-4742-9dce-ca0cd7736df2.lovable.app",
+    "https://lms.alqurantimeacademy.com",
+    "https://alqurantimeacademy.lovable.app",
+]
+NASTALIQ_CACHE = Path("/tmp/aqta-fonts/Jameel-Noori-Nastaleeq-Regular.ttf")
+NASKH_FALLBACK = (
+    "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/"
+    "share/fonts/noto/NotoNaskhArabic[wght].ttf"
+)
+
+
+def urdu_font_path() -> str:
+    if NASTALIQ_CACHE.exists() and NASTALIQ_CACHE.stat().st_size > 1_000_000:
+        return str(NASTALIQ_CACHE)
+    try:
+        rel = json.loads(NASTALIQ_POINTER.read_text())["url"]
+    except Exception:
+        return NASKH_FALLBACK
+    NASTALIQ_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    for host in NASTALIQ_HOSTS:
+        try:
+            urllib.request.urlretrieve(host + rel, NASTALIQ_CACHE)
+            if NASTALIQ_CACHE.stat().st_size > 1_000_000:
+                return str(NASTALIQ_CACHE)
+        except Exception:
+            continue
+    return NASKH_FALLBACK
+
+
+
+URDU_FONT = NASKH_FALLBACK  # replaced with the Nastaliq path for --lang ur
 
 
 def font(path: str, size: int):
@@ -53,16 +94,115 @@ F_SUB = font(FONT_REG, 26)
 F_STEP = font(FONT_BOLD, 22)
 F_LABEL = font(FONT_REG, 26)
 
+# Latin companions for the Urdu faces, keyed by the Urdu font size.
+LATIN_FOR = {}
+
+ARABIC_CHARS = r"\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF"
+RUN_SPLIT = re.compile(rf"([{ARABIC_CHARS}][{ARABIC_CHARS}\s\u060C\u061B\u061F.,]*)")
+
 
 def shape(text: str) -> str:
-    """Shapes Arabic-script text (joined forms + visual RTL order) for Pillow."""
-    if LANG != "ur":
-        return text
+    """Joined forms + visual RTL order for an all-Arabic-script chunk."""
     import arabic_reshaper
     from bidi.algorithm import get_display
-    # Noto Naskh Arabic has no glyph for these separators; use Urdu equivalents.
-    text = text.replace("—", "،").replace("–", "،").replace("/", " از ")
+
     return get_display(arabic_reshaper.reshape(text))
+
+
+def normalize_ur(text: str) -> str:
+    return text.replace("—", "،").replace("–", "،").replace("/", " ، ")
+
+
+def split_runs(text: str):
+    """[(is_arabic, chunk)] in logical order."""
+    out = []
+    for part in RUN_SPLIT.split(normalize_ur(text)):
+        if not part:
+            continue
+        is_ar = bool(re.match(rf"[{ARABIC_CHARS}]", part))
+        out.append((is_ar, part))
+    return out
+
+
+def latin_font(ur_font):
+    size = max(14, int(getattr(ur_font, "size", 26) * 0.72))
+    if size not in LATIN_FOR:
+        LATIN_FOR[size] = font(FONT_REG, size)
+    return LATIN_FOR[size]
+
+
+def mixed_width(d, text, ur_font) -> float:
+    total = 0.0
+    for is_ar, chunk in split_runs(text):
+        f = ur_font if is_ar else latin_font(ur_font)
+        total += d.textlength(shape(chunk) if is_ar else chunk, font=f)
+    return total
+
+
+def draw_mixed_rtl(d, right_x, y, text, ur_font, fill):
+    """Draws a mixed Urdu/Latin line right-aligned, runs laid out RTL."""
+    x = right_x
+    for is_ar, chunk in split_runs(text):
+        f = ur_font if is_ar else latin_font(ur_font)
+        txt = shape(chunk) if is_ar else chunk
+        w = d.textlength(txt, font=f)
+        dy = 0 if is_ar else int(getattr(ur_font, "size", 26) * 0.18)
+        d.text((x - w, y + dy), txt, font=f, fill=fill)
+        x -= w
+    return right_x - x
+
+
+def wrap_mixed(d, text, ur_font, max_w):
+    words, lines, cur = normalize_ur(text).split(), [], ""
+    for w in words:
+        trial = f"{cur} {w}".strip()
+        if mixed_width(d, trial, ur_font) <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+# --- Urdu captions are rasterised by Chromium (proper Nastaliq shaping) ------
+import sys as _sys
+
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+import urdu_text  # noqa: E402
+
+UR_STRIPS: dict = {}
+
+
+def _ur_item(text, size, color, weight, max_w):
+    return {
+        "text": text,
+        "size": int(size),
+        "color": color,
+        "weight": str(weight),
+        "max_w": int(max_w),
+    }
+
+
+def prewarm_ur(items):
+    """Rasterise every Urdu caption up front in a single browser session."""
+    urdu_text.FONT_FILE = Path(URDU_FONT)
+    UR_STRIPS.update(urdu_text.render_strips(items))
+
+
+def paste_ur(canvas, text, size, color, weight, right_x, y, max_w=None):
+    item = _ur_item(text, size, color, weight, max_w or (W - 96))
+    key = urdu_text._key(item["text"], item["size"], item["color"], item["max_w"], item["weight"])
+    path = UR_STRIPS.get(key)
+    if path is None or not Path(path).exists():
+        UR_STRIPS.update(urdu_text.render_strips([item]))
+        path = UR_STRIPS[key]
+    strip = Image.open(path).convert("RGBA")
+    canvas.paste(strip, (int(right_x - strip.width), int(y)), strip)
+
+
 
 
 def wrap(draw, text, fnt, max_w):
@@ -110,20 +250,11 @@ def compose(shot_path: Path, step: int, total: int, label: str, hotspot, pulse: 
     d = ImageDraw.Draw(canvas)
     d.rectangle([0, SHOT_H, W, H], fill=CAPTION_BG)
     d.rectangle([0, SHOT_H, W, SHOT_H + 3], fill=ACCENT)
-    step_txt = f"مرحلہ {step} از {total}" if LANG == "ur" else f"STEP {step} OF {total}"
-    step_txt = shape(step_txt)
     if LANG == "ur":
-        d.text((W - 48 - d.textlength(step_txt, font=F_STEP), SHOT_H + 14), step_txt, font=F_STEP, fill=ACCENT)
+        paste_ur(canvas, f"مرحلہ {step} از {total}", 26, "#38bd94", 400, W - 48, SHOT_H + 12)
+        paste_ur(canvas, label, 34, "#f0f5fa", 400, W - 48, SHOT_H + 46, max_w=W - 96)
     else:
-        d.text((48, SHOT_H + 18), step_txt, font=F_STEP, fill=ACCENT)
-    if LANG == "ur":
-        lines = wrap(d, label, F_LABEL, W - 96)[:2]
-        y = SHOT_H + 48
-        for line in lines:
-            txt = shape(line)
-            d.text((W - 48 - d.textlength(txt, font=F_LABEL), y), txt, font=F_LABEL, fill=TEXT)
-            y += 40
-    else:
+        d.text((48, SHOT_H + 18), f"STEP {step} OF {total}", font=F_STEP, fill=ACCENT)
         lines = wrap(d, label, F_LABEL, W - 96)[:2]
         y = SHOT_H + 48
         for line in lines:
@@ -136,19 +267,21 @@ def title_card(title: str, total: int):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
     d.rectangle([0, H // 2 + 90, W, H // 2 + 94], fill=ACCENT)
+    if LANG == "ur":
+        sub = f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
+        paste_ur(img, title, 58, "#f0f5fa", 600, W - 100, H // 2 - 110, max_w=W - 200)
+        paste_ur(img, sub, 30, "#9cacc2", 400, W - 100, H // 2 + 116, max_w=W - 200)
+        return img
+    sub = f"A {total}-step walkthrough recorded from the live LMS"
     lines = wrap(d, title, F_TITLE, W - 200)
     y = H // 2 - 60 - (len(lines) - 1) * 30
-    sub = (f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
-           if LANG == "ur" else f"A {total}-step walkthrough recorded from the live LMS")
     for line in lines:
-        txt = shape(line)
-        x = (W - 100 - d.textlength(txt, font=F_TITLE)) if LANG == "ur" else 100
-        d.text((x, y), txt, font=F_TITLE, fill=TEXT)
+        d.text((100, y), line, font=F_TITLE, fill=TEXT)
         y += 62
-    sub = shape(sub)
-    sx = (W - 100 - d.textlength(sub, font=F_SUB)) if LANG == "ur" else 100
-    d.text((sx, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
+    d.text((100, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
     return img
+
+
 
 
 def label_of(frame: dict) -> str:
@@ -163,6 +296,17 @@ def render(manifest: dict, title: str, out: Path) -> dict:
     total = len(frames)
     tmp = Path(tempfile.mkdtemp(prefix="wt-render-"))
     n = 0
+
+    if LANG == "ur":
+        items = [
+            _ur_item(title, 58, "#f0f5fa", 600, W - 200),
+            _ur_item(f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو", 30, "#9cacc2", 400, W - 200),
+        ]
+        for f in frames:
+            items.append(_ur_item(f"مرحلہ {f['step']} از {total}", 26, "#38bd94", 400, W - 96))
+            items.append(_ur_item(label_of(f), 34, "#f0f5fa", 400, W - 96))
+        prewarm_ur(items)
+
 
     def emit(img):
         nonlocal n
@@ -221,13 +365,19 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--lang", default="en", choices=["en", "ur"])
     args = ap.parse_args()
-    global LANG, F_TITLE, F_SUB, F_STEP, F_LABEL
+    global LANG, URDU_FONT, F_TITLE, F_SUB, F_STEP, F_LABEL, SHOT_H, CAPTION_H
     LANG = args.lang
     if LANG == "ur":
-        F_TITLE = font(URDU_FONT, 48)
-        F_SUB = font(URDU_FONT, 24)
-        F_STEP = font(URDU_FONT, 22)
-        F_LABEL = font(URDU_FONT, 28)
+        URDU_FONT = urdu_font_path()
+        # Nastaliq sits taller than Latin type, so the caption band grows.
+        SHOT_H = 672
+        CAPTION_H = H - SHOT_H
+        F_TITLE = font(URDU_FONT, 54)
+        F_SUB = font(URDU_FONT, 28)
+        F_STEP = font(URDU_FONT, 24)
+        F_LABEL = font(URDU_FONT, 32)
+
+
     manifest = json.loads(Path(args.manifest).read_text())
     print(json.dumps(render(manifest, args.title, Path(args.out)), indent=2))
 
