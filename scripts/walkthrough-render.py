@@ -205,20 +205,15 @@ def compose(shot_path: Path, step: int, total: int, label: str, hotspot, pulse: 
     d = ImageDraw.Draw(canvas)
     d.rectangle([0, SHOT_H, W, H], fill=CAPTION_BG)
     d.rectangle([0, SHOT_H, W, SHOT_H + 3], fill=ACCENT)
-    step_txt = f"مرحلہ {step} از {total}" if LANG == "ur" else f"STEP {step} OF {total}"
-    step_txt = shape(step_txt)
     if LANG == "ur":
-        d.text((W - 48 - d.textlength(step_txt, font=F_STEP), SHOT_H + 14), step_txt, font=F_STEP, fill=ACCENT)
-    else:
-        d.text((48, SHOT_H + 18), step_txt, font=F_STEP, fill=ACCENT)
-    if LANG == "ur":
-        lines = wrap(d, label, F_LABEL, W - 96)[:2]
+        draw_mixed_rtl(d, W - 48, SHOT_H + 14, f"مرحلہ {step} از {total}", F_STEP, ACCENT)
+        lines = wrap_mixed(d, label, F_LABEL, W - 96)[:2]
         y = SHOT_H + 48
         for line in lines:
-            txt = shape(line)
-            d.text((W - 48 - d.textlength(txt, font=F_LABEL), y), txt, font=F_LABEL, fill=TEXT)
-            y += 40
+            draw_mixed_rtl(d, W - 48, y, line, F_LABEL, TEXT)
+            y += 42
     else:
+        d.text((48, SHOT_H + 18), f"STEP {step} OF {total}", font=F_STEP, fill=ACCENT)
         lines = wrap(d, label, F_LABEL, W - 96)[:2]
         y = SHOT_H + 48
         for line in lines:
@@ -231,19 +226,24 @@ def title_card(title: str, total: int):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
     d.rectangle([0, H // 2 + 90, W, H // 2 + 94], fill=ACCENT)
+    if LANG == "ur":
+        sub = f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
+        lines = wrap_mixed(d, title, F_TITLE, W - 200)
+        y = H // 2 - 60 - (len(lines) - 1) * 30
+        for line in lines:
+            draw_mixed_rtl(d, W - 100, y, line, F_TITLE, TEXT)
+            y += 70
+        draw_mixed_rtl(d, W - 100, H // 2 + 120, sub, F_SUB, MUTED)
+        return img
+    sub = f"A {total}-step walkthrough recorded from the live LMS"
     lines = wrap(d, title, F_TITLE, W - 200)
     y = H // 2 - 60 - (len(lines) - 1) * 30
-    sub = (f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
-           if LANG == "ur" else f"A {total}-step walkthrough recorded from the live LMS")
     for line in lines:
-        txt = shape(line)
-        x = (W - 100 - d.textlength(txt, font=F_TITLE)) if LANG == "ur" else 100
-        d.text((x, y), txt, font=F_TITLE, fill=TEXT)
+        d.text((100, y), line, font=F_TITLE, fill=TEXT)
         y += 62
-    sub = shape(sub)
-    sx = (W - 100 - d.textlength(sub, font=F_SUB)) if LANG == "ur" else 100
-    d.text((sx, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
+    d.text((100, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
     return img
+
 
 
 def label_of(frame: dict) -> str:
