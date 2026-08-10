@@ -346,29 +346,29 @@ export default function Tutorials() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id, active?.source_type, active?.storage_path, active?.video_url]);
 
+  const helpLang = lang === 'ur' ? 'ur' : 'en';
   const NeedMoreHelp = (
-    <Card className="border-primary/20 bg-primary/5">
+    <Card className={`border-primary/20 bg-primary/5 ${helpLang === 'ur' ? 'urdu-text' : ''}`}>
       <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <LifeBuoy className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div>
-            <p className="font-semibold text-foreground">Need more help?</p>
-            <p className="text-sm text-muted-foreground">
-              Message the academy team or raise a request — we usually reply the same day.
-            </p>
+            <p className="font-semibold text-foreground">{UI.needHelp[helpLang]}</p>
+            <p className="text-sm text-muted-foreground">{UI.needHelpSub[helpLang]}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => navigate('/hub?new=1')}>
-            <MessageCircle className="mr-2 h-4 w-4" /> Ask the academy
+          <Button size="sm" className={helpLang === 'ur' ? 'urdu-ui' : ''} onClick={() => navigate('/hub?new=1')}>
+            <MessageCircle className="me-2 h-4 w-4" /> {UI.ask[helpLang]}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate('/announcements')}>
-            Announcements
+          <Button size="sm" variant="outline" className={helpLang === 'ur' ? 'urdu-ui' : ''} onClick={() => navigate('/announcements')}>
+            {UI.announcements[helpLang]}
           </Button>
         </div>
       </CardContent>
     </Card>
   );
+
 
   // ---------------- Article view ----------------
   if (tutorialId) {
