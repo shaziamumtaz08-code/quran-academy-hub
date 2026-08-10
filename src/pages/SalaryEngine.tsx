@@ -22,6 +22,8 @@ import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStat
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
+import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
+
 import { trackActivity } from '@/lib/activityLogger';
 import { useUrlState } from '@/hooks/useUrlState';
 import { StickyScrollTable } from '@/components/ui/sticky-scroll-table';
@@ -139,6 +141,8 @@ export default function SalaryEngine() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+
   
   // Revert modal state
   const [revertModalOpen, setRevertModalOpen] = useState(false);
@@ -370,12 +374,16 @@ export default function SalaryEngine() {
         const studentName = assign.profiles?.full_name || 'Unknown';
 
         const effectiveFrom = assign.effective_from_date || monthStart;
-        // For ended assignments fall back to the status effective date when no explicit end date is set
-        const endedOn = assign.effective_to_date
+        // For ended assignments fall back to the status effective date when no explicit end date is set.
+        // Assignment end dates are month-granular: an assignment that ends in a month is paid for
+        // that whole month, so the end date is normalised to the end of its month.
+        const rawEnd = assign.effective_to_date
           || ((assign.status === 'left' || assign.status === 'completed') ? assign.status_effective_date : null);
+        const endedOn = rawEnd ? format(endOfMonth(parseISO(rawEnd)), 'yyyy-MM-dd') : null;
         const effectiveTo = endedOn || monthEnd;
         const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
         const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
+
 
         if (dateFrom > dateTo) return null;
 
@@ -974,7 +982,11 @@ export default function SalaryEngine() {
               <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setBulkDeductOpen(true)}>
                 <TrendingDown className="h-4 w-4 mr-1" /> Bulk Deduction
               </Button>
+              <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setAuditOpen(true)}>
+                <AlertCircle className="h-4 w-4 mr-1" /> Sheet Audit
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
+
                 <History className="h-4 w-4 mr-1" /> History
               </Button>
               <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
@@ -1283,7 +1295,22 @@ export default function SalaryEngine() {
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
         />
 
+        {/* ── Cross-month Sheet Audit ── */}
+        <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Salary Sheet Audit</DialogTitle>
+              <DialogDescription>
+                Reconciles every saved sheet against the assignments actually active in that month
+                (month-granular end dates), so back-dated changes never stay hidden.
+              </DialogDescription>
+            </DialogHeader>
+            <SalarySheetAuditPanel onOpenMonth={(m) => { setSalaryMonth(m); setAuditOpen(false); }} />
+          </DialogContent>
+        </Dialog>
+
         {/* ── Revert Confirmation Modal ── */}
+
         <Dialog open={revertModalOpen} onOpenChange={setRevertModalOpen}>
           <DialogContent>
             <DialogHeader>
