@@ -628,8 +628,13 @@ export default function SalaryEngine() {
           }
           return;
         }
-        const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
+        // Saving the sheet re-syncs it with live data, so clear any staleness flag.
+        const { error } = await supabase
+          .from('salary_payouts')
+          .update({ ...payload, revision_required_at: null, revision_reason: null } as any)
+          .eq('id', existing.id);
         if (error) throw error;
+
       } else {
         const { error } = await supabase.from('salary_payouts').insert(payload);
         if (error) throw error;
@@ -1161,11 +1166,16 @@ export default function SalaryEngine() {
                           {payout?.is_revised && (
                             <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
                           )}
-                          {payout && Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01 && (
-                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                          {payout && (payout.revision_required_at || Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01) && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-amber-50 text-amber-700 border-amber-200"
+                              title={payout.revision_reason || 'Live calculation differs from the saved sheet'}
+                            >
                               NEEDS REVISION · PKR {teacher.netSalary.toFixed(0)}
                             </Badge>
                           )}
+
                         </div>
 
                       </TableCell>

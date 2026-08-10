@@ -8680,6 +8680,8 @@ export type Database = {
           reverted_at: string | null
           reverted_by: string | null
           revises_payout_id: string | null
+          revision_reason: string | null
+          revision_required_at: string | null
           salary_month: string
           status: string
           superseded_by_payout_id: string | null
@@ -8724,6 +8726,8 @@ export type Database = {
           reverted_at?: string | null
           reverted_by?: string | null
           revises_payout_id?: string | null
+          revision_reason?: string | null
+          revision_required_at?: string | null
           salary_month: string
           status?: string
           superseded_by_payout_id?: string | null
@@ -8768,6 +8772,8 @@ export type Database = {
           reverted_at?: string | null
           reverted_by?: string | null
           revises_payout_id?: string | null
+          revision_reason?: string | null
+          revision_required_at?: string | null
           salary_month?: string
           status?: string
           superseded_by_payout_id?: string | null
@@ -13123,6 +13129,15 @@ export type Database = {
       lookup_family_prefill: {
         Args: { _email: string; _phone: string }
         Returns: Json
+      }
+      mark_salary_payouts_for_revision: {
+        Args: {
+          _from_month: string
+          _reason: string
+          _teacher_id: string
+          _to_month: string
+        }
+        Returns: undefined
       }
       normalize_phone: {
         Args: { p_country: string; raw_phone: string }
