@@ -394,14 +394,27 @@
     @apply text-destructive;
   }
 
-  /* Urdu text — Nastaliq script (Jameel Noori preferred, Noto web fallback) */
+  /* Urdu text — genuine Nastaliq (Noto Nastaliq Urdu is webfont-loaded and always available) */
   .urdu-text {
-    font-family: 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', 'Noto Nastaliq Urdu', serif;
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
     direction: rtl;
-    unicode-bidi: embed;
-    line-height: 2.4;
-    font-size: 1.2em;
+    unicode-bidi: isolate;
+    text-align: right;
+    line-height: 2.3;
+    font-size: 1.05em;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+    text-rendering: optimizeLegibility;
+    padding-block: 0.15em;
   }
+
+  /* Compact Nastaliq for chips, buttons and inline labels */
+  .urdu-ui {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+    line-height: 1.9;
+    font-size: 0.95em;
+    padding-block: 0.1em;
+  }
+
 
   /* Arabic text — Naskh script (Noto Naskh Arabic preferred) */
   .arabic-text {
