@@ -491,11 +491,18 @@
       margin: 0 !important;
       padding: 0 !important;
       width: 210mm !important;
-      overflow: hidden !important;
+      min-height: 297mm !important;
+      overflow: visible !important;
     }
 
     /* Hide everything by default */
-    body * {
+    body:has(#print-root) * {
+      visibility: hidden;
+    }
+
+    /* Explicit fallback for salary documents. Browser print engines have
+       inconsistent support for :has() while constructing print previews. */
+    body.salary-document-print * {
       visibility: hidden;
     }
 
@@ -506,9 +513,7 @@
     }
 
     #print-root {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
+      position: static !important;
       width: 794px !important;
       max-width: 210mm !important;
       margin: 0 !important;
@@ -647,7 +652,7 @@
 @media print {
   /* Only isolate an in-dialog salary sheet. Dedicated document routes use
      #print-root and already have their own print visibility rules above. */
-  body:not(:has(#print-root)) * { visibility: hidden; }
+  body:not(:has(#print-root)):not(.salary-document-print) * { visibility: hidden; }
   .salary-sheet-print, .salary-sheet-print * { visibility: visible; }
   .salary-sheet-print { position: absolute; left: 0; top: 0; width: 100%; }
   .print\\:hidden { display: none !important; }
