@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, BookOpen, ChevronRight, Clock, GraduationCap, LifeBuoy, Loader2,
-  MessageCircle, MousePointerClick, Pencil, Plus, Search, Trash2, Upload, Video,
+  ArrowLeft, ArrowRight, Clock, GraduationCap, Languages, LifeBuoy, ListOrdered, Loader2,
+  MessageCircle, MousePointerClick, Pencil, Plus, Search, Sparkles, Trash2, Upload,
 } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
