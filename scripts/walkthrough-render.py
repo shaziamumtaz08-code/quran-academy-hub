@@ -167,6 +167,41 @@ def wrap_mixed(d, text, ur_font, max_w):
     return lines
 
 
+# --- Urdu captions are rasterised by Chromium (proper Nastaliq shaping) ------
+import sys as _sys
+
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+import urdu_text  # noqa: E402
+
+UR_STRIPS: dict = {}
+
+
+def _ur_item(text, size, color, weight, max_w):
+    return {
+        "text": text,
+        "size": int(size),
+        "color": color,
+        "weight": str(weight),
+        "max_w": int(max_w),
+    }
+
+
+def prewarm_ur(items):
+    """Rasterise every Urdu caption up front in a single browser session."""
+    urdu_text.FONT_FILE = Path(URDU_FONT)
+    UR_STRIPS.update(urdu_text.render_strips(items))
+
+
+def paste_ur(canvas, text, size, color, weight, right_x, y, max_w=None):
+    item = _ur_item(text, size, color, weight, max_w or (W - 96))
+    key = urdu_text._key(item["text"], item["size"], item["color"], item["max_w"], item["weight"])
+    path = UR_STRIPS.get(key)
+    if path is None or not Path(path).exists():
+        UR_STRIPS.update(urdu_text.render_strips([item]))
+        path = UR_STRIPS[key]
+    strip = Image.open(path).convert("RGBA")
+    canvas.paste(strip, (int(right_x - strip.width), int(y)), strip)
+
 
 
 
