@@ -373,19 +373,12 @@ export default function SalaryEngine() {
         const payoutType = assign.payout_type || 'monthly';
         const studentName = assign.profiles?.full_name || 'Unknown';
 
-        const effectiveFrom = assign.effective_from_date || monthStart;
-        // For ended assignments fall back to the status effective date when no explicit end date is set.
-        // Assignment end dates are month-granular: an assignment that ends in a month is paid for
-        // that whole month, so the end date is normalised to the end of its month.
-        const rawEnd = assign.effective_to_date
-          || ((assign.status === 'left' || assign.status === 'completed') ? assign.status_effective_date : null);
-        const endedOn = rawEnd ? format(endOfMonth(parseISO(rawEnd)), 'yyyy-MM-dd') : null;
-        const effectiveTo = endedOn || monthEnd;
-        const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
-        const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
+        // Window rules live in src/lib/salaryWindow.ts and are locked by unit tests
+        // (ended assignments still pay for the months they were active; month-granular end dates).
+        const win = assignmentMonthWindow(assign, monthStart, monthEnd);
+        if (!win) return null;
+        const { dateFrom, dateTo } = win;
 
-
-        if (dateFrom > dateTo) return null;
 
         const fromDate = parseISO(dateFrom);
         const toDate = parseISO(dateTo);
