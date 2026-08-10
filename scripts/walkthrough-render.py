@@ -216,12 +216,8 @@ def compose(shot_path: Path, step: int, total: int, label: str, hotspot, pulse: 
     d.rectangle([0, SHOT_H, W, H], fill=CAPTION_BG)
     d.rectangle([0, SHOT_H, W, SHOT_H + 3], fill=ACCENT)
     if LANG == "ur":
-        draw_mixed_rtl(d, W - 48, SHOT_H + 14, f"مرحلہ {step} از {total}", F_STEP, ACCENT)
-        lines = wrap_mixed(d, label, F_LABEL, W - 96)[:2]
-        y = SHOT_H + 48
-        for line in lines:
-            draw_mixed_rtl(d, W - 48, y, line, F_LABEL, TEXT)
-            y += 42
+        paste_ur(canvas, f"مرحلہ {step} از {total}", 26, "#38bd94", 400, W - 48, SHOT_H + 12)
+        paste_ur(canvas, label, 34, "#f0f5fa", 400, W - 48, SHOT_H + 46, max_w=W - 96)
     else:
         d.text((48, SHOT_H + 18), f"STEP {step} OF {total}", font=F_STEP, fill=ACCENT)
         lines = wrap(d, label, F_LABEL, W - 96)[:2]
@@ -238,12 +234,8 @@ def title_card(title: str, total: int):
     d.rectangle([0, H // 2 + 90, W, H // 2 + 94], fill=ACCENT)
     if LANG == "ur":
         sub = f"لائیو ایل ایم ایس سے ریکارڈ کیا گیا {total} مرحلوں کا واک تھرو"
-        lines = wrap_mixed(d, title, F_TITLE, W - 200)
-        y = H // 2 - 60 - (len(lines) - 1) * 30
-        for line in lines:
-            draw_mixed_rtl(d, W - 100, y, line, F_TITLE, TEXT)
-            y += 70
-        draw_mixed_rtl(d, W - 100, H // 2 + 120, sub, F_SUB, MUTED)
+        paste_ur(img, title, 58, "#f0f5fa", 600, W - 100, H // 2 - 110, max_w=W - 200)
+        paste_ur(img, sub, 30, "#9cacc2", 400, W - 100, H // 2 + 116, max_w=W - 200)
         return img
     sub = f"A {total}-step walkthrough recorded from the live LMS"
     lines = wrap(d, title, F_TITLE, W - 200)
@@ -253,6 +245,7 @@ def title_card(title: str, total: int):
         y += 62
     d.text((100, H // 2 + 120), sub, font=F_SUB, fill=MUTED)
     return img
+
 
 
 
