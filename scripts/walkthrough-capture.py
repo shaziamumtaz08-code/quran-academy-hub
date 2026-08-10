@@ -40,6 +40,10 @@ from playwright.async_api import async_playwright
 def locator_for(page, target: str, by: str):
     if by == "text":
         return page.get_by_text(target, exact=False).first
+    if by == "text_last":
+        # Dropdown options render above content that repeats the same label;
+        # the last match is the one inside the open listbox.
+        return page.get_by_text(target, exact=False).last
     if by.startswith("role:"):
         return page.get_by_role(by.split(":", 1)[1], name=target).first
     if by == "testid":
@@ -47,6 +51,7 @@ def locator_for(page, target: str, by: str):
     if by == "css":
         return page.locator(target).first
     raise ValueError(f"Unknown selector kind: {by}")
+
 
 
 async def restore_session(context, page, base_url: str) -> bool:

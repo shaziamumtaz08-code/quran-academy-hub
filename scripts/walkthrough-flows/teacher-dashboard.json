@@ -1,0 +1,100 @@
+{
+  "tutorial_id": "6e1c8f2a-40d7-4c93-9a15-2f7b6d1c94a0",
+  "slug": "teacher-dashboard",
+  "base_url": "http://localhost:8080",
+  "auth": "capture",
+  "capture_email": "teacherdemo@gmail.com",
+  "steps": [
+    {
+      "step": 1,
+      "label": "Your dashboard opens right after sign in",
+      "action": "goto",
+      "route": "/dashboard",
+      "target": "Quick links",
+      "by": "text",
+      "label_ur": "سائن اِن کے فوراً بعد آپ کا ڈیش بورڈ کھلتا ہے"
+    },
+    {
+      "step": 2,
+      "label": "The top strip shows the Hijri date and today's prayer times",
+      "action": "verify",
+      "target": "Assalamu Alaikum",
+      "by": "text",
+      "label_ur": "اوپر والی پٹی میں ہجری تاریخ اور نماز کے اوقات ہیں"
+    },
+    {
+      "step": 3,
+      "label": "Active Classes and My Classes Today tell you your load at a glance",
+      "action": "verify",
+      "target": "My Classes Today",
+      "by": "text",
+      "label_ur": "Active Classes اور My Classes Today آپ کا آج کا کام ایک نظر میں بتاتے ہیں"
+    },
+    {
+      "step": 4,
+      "label": "Pending Grading counts submissions still waiting for your marks",
+      "action": "verify",
+      "target": "Pending Grading",
+      "by": "text",
+      "label_ur": "Pending Grading میں وہ کام ہے جس کی مارکنگ باقی ہے"
+    },
+    {
+      "step": 5,
+      "label": "Quick links jump straight to Mark attendance, Lesson log and Fill plan",
+      "action": "verify",
+      "target": "Mark attendance",
+      "by": "text",
+      "label_ur": "Quick links سے حاضری، سبق کا اندراج اور پلان براہِ راست کھلتے ہیں"
+    },
+    {
+      "step": 6,
+      "label": "Missing lists classes you have not marked yet — clear it daily",
+      "action": "verify",
+      "target": "Missing",
+      "by": "text",
+      "label_ur": "Missing میں غیر درج شدہ کلاسیں ہیں — انہیں روز مکمل کریں"
+    },
+    {
+      "step": 7,
+      "label": "My stats shows attendance rate, student progress and missed classes this month",
+      "action": "verify",
+      "target": "My stats",
+      "by": "text",
+      "label_ur": "My stats میں اس مہینے کی حاضری، طلبہ کی پیش رفت اور چھوٹی ہوئی کلاسیں ہیں"
+    },
+    {
+      "step": 8,
+      "label": "Action centre flags lesson plans pending and unmarked attendance",
+      "action": "verify",
+      "target": "Action centre",
+      "by": "text",
+      "label_ur": "Action centre بتاتا ہے کہ پلان یا حاضری باقی تو نہیں"
+    },
+    {
+      "step": 9,
+      "label": "Recent sessions lists the last classes with the lesson you recorded",
+      "action": "verify",
+      "target": "Recent sessions",
+      "by": "text",
+      "label_ur": "Recent sessions میں پچھلی کلاسیں اور درج کیا گیا سبق نظر آتا ہے"
+    },
+    {
+      "step": 10,
+      "label": "Salary & leave shows this month's net salary and your remaining leave",
+      "action": "verify",
+      "target": "Salary & leave",
+      "by": "text",
+      "label_ur": "Salary & leave میں اس مہینے کی تنخواہ اور باقی چھٹیاں ہیں"
+    },
+    {
+      "step": 11,
+      "label": "Use the left menu for Students, Reports, Library and the Help Centre",
+      "action": "verify",
+      "target": "Student Reports",
+      "by": "text",
+      "label_ur": "بائیں مینو سے طلبہ، رپورٹس، لائبریری اور Help Centre کھولیں"
+    }
+  ],
+  "title": "Understanding your teacher dashboard",
+  "title_ur": "استاد کے ڈیش بورڈ کو سمجھنا"
+}
