@@ -1,42 +1,50 @@
-# Turn the verified walkthrough into a real shareable MP4
+# Cohesive Billing Lifecycle: Assignment → Plan → Invoice → Close-out
 
-## What I found (verified, not assumed)
+## What is actually broken (verified in the database)
 
-**1. Where the 6 captured screens live**
-- Storage: private bucket `tutorial-captures`, objects `logging-in/step-01.png` … `step-06.png` (PNG, ~334 KB each, 1280x900 viewport). Confirmed by querying `storage.objects`.
-- Metadata: `tutorial_videos` row "Logging in to AQTA" (`59fed1fa-…`), `walkthrough_status = ready`, `walkthrough_generated_at = 2026-08-09 14:41 UTC`, and `walkthrough_frames` = 6 JSON entries, each with `step`, `label`, `route`, `path`, and a normalised click `hotspot` (`x`,`y` as 0..1 fractions). All 6 have hotspots.
-- Playback today: `src/components/tutorials/WalkthroughViewer.tsx` mints signed URLs and shows Next/Previous with a pulsing hotspot ring — exactly the slideshow you reviewed. There is no video anywhere: the row's `video_url` is empty and `storage_path` is null.
-- The capture runner is `scripts/walkthrough-capture.py` (Playwright). The PNGs it wrote to `/tmp` are gone (sandbox is ephemeral) — the bucket copies are the surviving source.
+- **80 of 81 active billing plans have no `assignment_id`.** Every automatic stop rule written so far keys off the plan's assignment. With the link missing, those rules never fire. Nida's plan was the only linked one — which is why hers was the only one that reacted (and over-reacted), and everyone else's simply bills forever.
+- **Issa has duplicate invoices** for Aug, Sep, Oct and Nov (two rows each month, 5,000 apiece). His first plan (created 7 Aug, start 8 Aug) was superseded by a second (start 6 Jul), but superseding only set a pointer — it never voided the old plan's unpaid invoices. So both plans' invoices coexist. He is not "double-planned": only one plan is active. The duplication is in the invoices, and in the plans list showing superseded rows alongside active ones.
+- **No refund object exists.** Zero negative invoices in the system, and `invoice_adjustments` only records edits — it cannot represent money owed back.
+- **Saadin and Sudaim** left on 10 Aug. Each paid 5,612.90 covering 3–31 Aug. Service used: 3–10 Aug. Their Sep–Nov invoices were voided, but the August overpayment (roughly 4,065 each) is invisible to the system.
 
-**2. Can a real video be assembled automatically? Yes.**
-- `ffmpeg` is present in the build sandbox with `libx264` (MP4/H.264), `libvpx-vp9` and `gif` encoders — confirmed by `ffmpeg -encoders`.
-- Everything the video needs already exists in the data: ordered frames, per-step labels, and hotspot coordinates. Nothing has to be invented; the renderer only re-draws what was already captured and verified.
+## The model to implement
 
-**3. Can it be stored and shared? Yes, with one decision.**
-- The MP4 can be uploaded to storage and recorded on the tutorial row (`storage_path` / `video_url`), and the existing detail page already renders a `<video>` player when a URL is present — no new player UI needed.
-- For a link you can send to a parent outside the LMS, a signed URL expires, so it must be either a public bucket or a token share page (the app already uses that pattern in `LibraryShare.tsx` / `PublicPolicies.tsx`). See the choice below.
+**One assignment = one active plan. Unlimited plans per student (one per class).** A plan with no assignment is invalid.
 
-**4. Fallback** — not needed. A true MP4 is achievable with the current stack.
+```text
+assignment (active/paused/left/completed)
+    └── billing plan (exactly one active at a time; older ones superseded)
+            └── invoices (one per billing month, prorated at both ends)
+                    └── close-out: refund invoice when paid > earned
+```
 
-## Proposed build
+Lifecycle rules, enforced in the database so no screen can bypass them:
 
-**Renderer** — new `scripts/walkthrough-render.py`:
-- Downloads the frames for a tutorial from `tutorial-captures` using its `walkthrough_frames` order.
-- For each step composes a 1280x720 frame: the screenshot, a lower caption bar with `Step N of 6 — <label>`, and a highlight ring drawn at the stored hotspot (Pillow, already installed).
-- Renders a hold per step (~4s, +1s per 12 words of label) plus a short cross-fade between steps, and a 2s title card using the guide title.
-- Encodes with ffmpeg `libx264 + yuv420p + faststart` to MP4 at 30fps (broadly playable, including WhatsApp). A `.webm` copy is optional and cheap; skip unless asked.
-- Uploads the MP4 and writes `storage_path`, `duration_seconds`, and `thumbnail_url` (first frame) back onto the `tutorial_videos` row.
+1. **Creation** — a plan must carry an `assignment_id`. Creating a new plan for an assignment that already has one automatically supersedes the old plan and voids the old plan's unpaid invoices.
+2. **Ending** — admins never delete a plan. Ending the assignment (status `left` / `completed`, with its effective date) is the single action; the plan closes itself. There is also an explicit "End billing plan" action with a mandatory reason for fee-only stops (e.g. scholarship) where the class continues.
+3. **Final month proration** — the leaving month is charged day-by-day up to the leave date, matching how teacher payout already prorates `(rate / days_in_month) × active_days`. Saadin left 10 Aug → 8 days of August, not the whole month. Future months are voided.
+4. **Refund on close-out** — when the recomputed final-month amount is less than what was already paid, the system generates a **refund invoice**: a negative-amount document linked to the original invoice, with status `pending` until an admin marks it refunded and attaches proof. It appears in the student's ledger, the parent's fee view, and a new Finance → Refunds queue.
+5. **Reactivation** — if the assignment is reactivated later, a new plan is created; old closed plans stay in history, never resurrected.
 
-**Sharing** — pick one:
-- (A) Public bucket `tutorial-videos-public`: simplest, gives a permanent plain URL. Note the workspace may block public buckets; if it rejects, we fall back to (B).
-- (B) Keep the bucket private and add a public share page `/help/w/:token` that resolves a per-tutorial share token and streams the MP4 via a short-lived signed URL minted server-side. Same pattern as the existing library share link, nothing public-by-accident.
-Recommendation: try (A), fall back to (B) automatically.
+## Consequence of the proration decision
 
-**In-app** — add a "Download / Share video" action on the guide detail page next to the existing slideshow. The slideshow stays; the video is an addition, not a replacement.
+Today the platform treats assignment end dates as **month-granular** for salary inclusion (leaving in June = paid for June), while the amount itself is already day-prorated. Your answer sets **billing** to day-prorate to the leave date, which matches the amount math on the salary side. I will align billing to day-level proration and leave salary inclusion untouched — nothing in payroll changes, so no historic salary sheet is disturbed.
 
-**Scope of this pass**: render and publish the video for the one guide that actually has verified frames (Logging in). The other four guides remain `pending` — they need an authenticated capture run first, which requires you to be signed in to the preview once.
+## Data repair included
+
+- Backfill `assignment_id` on the 80 unlinked active plans by matching student + subject + division; anything ambiguous lands in an admin "Unlinked plans" review list rather than being guessed.
+- Void the superseded-plan duplicates (Issa: Aug/Sep/Oct/Nov extras), keeping the plan that is actually active.
+- Recompute August for Saadin and Sudaim to 3–10 Aug and raise a refund invoice each for the difference.
+- Re-examine Nida: her Nazra assignment is still active but her 2,000 plan was deactivated by the earlier over-correction. She will be restored to one active 2,000 plan linked to that assignment.
+
+## Guardrails so this cannot drift again
+
+- A billing lifecycle audit panel in Finance that lists, at all times: plans with no assignment, assignments with no plan, assignments ended but plan still active, and invoices billed past an assignment's end. Empty list = healthy.
+- Unit tests for the close-out math (proration, refund amount, void set) in a shared `src/lib/billingWindow.ts`, mirroring `salaryWindow.ts`, so the rules live in one tested place.
 
 ## Technical notes
-- Files: new `scripts/walkthrough-render.py`; small edits to `src/pages/Tutorials.tsx` (share/download action) and possibly a new `src/pages/WalkthroughShare.tsx` + route if we land on option (B).
-- DB: reuses existing `tutorial_videos` columns (`storage_path`, `video_url`, `duration_seconds`, `thumbnail_url`); a `share_token` column is added only under option (B).
-- No change to the capture runner or to `WalkthroughViewer`.
+
+- Migration: `NOT NULL`-equivalent guard trigger on `student_billing_plans.assignment_id`; partial unique index on `(assignment_id) WHERE is_active`; supersede trigger that voids the predecessor's unpaid invoices.
+- `auto_generate_plan_invoices` rewritten to prorate the final month against `COALESCE(effective_to_date, status_effective_date)` at day granularity instead of month, and to call a new `close_out_billing_plan(plan_id)` that emits the refund row.
+- New table `fee_refunds` (or negative-amount `fee_invoices` rows flagged `is_refund`) with GRANTs and RLS: admins manage, the student and their linked parents can read their own.
+- Frontend: `BillingPlansTable` filters to active plans with a History drawer; `Payments.tsx` review dialog shows close-out and refund lines distinctly; new Refunds queue page.
