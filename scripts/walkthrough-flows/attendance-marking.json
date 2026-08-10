@@ -10,7 +10,7 @@
       "label": "Open Attendance from the teacher menu",
       "action": "goto",
       "route": "/attendance",
-      "target": "Attendance Records",
+      "target": "Scheduled Classes",
       "by": "text",
       "label_ur": "استاد کے مینو سے Attendance کھولیں"
     },
@@ -18,17 +18,17 @@
       "step": 2,
       "label": "The tiles summarise scheduled, present, absent, rescheduled and missing classes",
       "action": "verify",
-      "target": "Scheduled Classes",
+      "target": "Student Absent",
       "by": "text",
       "label_ur": "اوپر کے خانے شیڈول، حاضر، غیر حاضر، ری شیڈول اور باقی ماندہ کا خلاصہ ہیں"
     },
     {
       "step": 3,
-      "label": "Missing lists the classes still waiting to be marked",
+      "label": "Every marked class lists the exact Nazra lesson covered that day",
       "action": "verify",
-      "target": "Missing",
-      "by": "role:button",
-      "label_ur": "Missing میں وہ کلاسیں ہیں جن کی حاضری ابھی درج نہیں ہوئی"
+      "target": "Lesson Covered",
+      "by": "text",
+      "label_ur": "ہر درج شدہ کلاس کے سامنے اُس دن کا ناظرہ سبق لکھا ہوتا ہے"
     },
     {
       "step": 4,
@@ -48,21 +48,71 @@
     },
     {
       "step": 6,
-      "label": "Pick the student — the scheduled time fills in automatically",
-      "action": "verify",
-      "target": "Student",
+      "label": "Pick the student — the subject shows next to the name",
+      "action": "click",
+      "target": "Select a student",
       "by": "text",
-      "label_ur": "طالبعلم منتخب کریں — شیڈول کا وقت خود بھر جاتا ہے"
+      "settle_ms": 1500,
+      "label_ur": "طالبعلم منتخب کریں — نام کے ساتھ مضمون بھی نظر آتا ہے"
     },
     {
       "step": 7,
-      "label": "Set the status, add the lesson covered and any remarks, then save",
+      "label": "Choose the Nazra student from the list",
+      "action": "click",
+      "target": "Shazia Demo1to1",
+      "by": "text_last",
+      "settle_ms": 3000,
+      "label_ur": "فہرست میں سے ناظرہ کا طالبعلم منتخب کریں"
+    },
+    {
+      "step": 8,
+      "label": "The scheduled time fills in automatically from the weekly slot",
+      "action": "verify",
+      "target": "Auto-filled from the weekly schedule",
+      "by": "text",
+      "label_ur": "کلاس کا وقت ہفتہ وار شیڈول سے خود بھر جاتا ہے"
+    },
+    {
+      "step": 9,
+      "label": "Lesson Today shows the last lesson — pick New Lesson or Same as last class",
+      "action": "verify",
+      "target": "Lesson Today",
+      "by": "text",
+      "label_ur": "Lesson Today پچھلا سبق دکھاتا ہے — نیا سبق یا وہی سبق منتخب کریں"
+    },
+    {
+      "step": 10,
+      "label": "Under Sabaq choose the marker: Ruku, Ayah or Quarter",
+      "action": "verify",
+      "target": "Select Marker",
+      "by": "text",
+      "label_ur": "سبق میں مارکر منتخب کریں: رکوع، آیت یا پارے کا حصہ"
+    },
+    {
+      "step": 11,
+      "label": "Set the From and To Surah and Ayah — total ayahs are counted for you",
+      "action": "verify",
+      "target": "Total Ayahs",
+      "by": "text",
+      "label_ur": "شروع اور آخر کی سورت اور آیت درج کریں — کل آیات خود شمار ہو جاتی ہیں"
+    },
+    {
+      "step": 12,
+      "label": "Add a voice note when a tajweed correction is easier said than typed",
+      "action": "verify",
+      "target": "Voice Note for Parent / Student",
+      "by": "text",
+      "label_ur": "تجوید کی اصلاح لکھنے کے بجائے وائس نوٹ بھی بھیج سکتے ہیں"
+    },
+    {
+      "step": 13,
+      "label": "Write any remarks, then press Mark Attendance to save",
       "action": "verify",
       "target": "Remarks",
       "by": "text",
-      "label_ur": "حالت، پڑھایا گیا سبق اور تبصرہ لکھ کر محفوظ کریں"
+      "label_ur": "تبصرہ لکھ کر Mark Attendance دبائیں اور محفوظ کریں"
     }
   ],
-  "title": "Marking attendance",
-  "title_ur": "حاضری درج کرنا"
+  "title": "Marking Nazra attendance",
+  "title_ur": "ناظرہ کی حاضری درج کرنا"
 }
