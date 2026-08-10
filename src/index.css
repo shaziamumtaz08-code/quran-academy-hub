@@ -645,7 +645,9 @@
 
 /* Print styles for Salary Sheet */
 @media print {
-  body * { visibility: hidden; }
+  /* Only isolate an in-dialog salary sheet. Dedicated document routes use
+     #print-root and already have their own print visibility rules above. */
+  body:not(:has(#print-root)) * { visibility: hidden; }
   .salary-sheet-print, .salary-sheet-print * { visibility: visible; }
   .salary-sheet-print { position: absolute; left: 0; top: 0; width: 100%; }
   .print\\:hidden { display: none !important; }
