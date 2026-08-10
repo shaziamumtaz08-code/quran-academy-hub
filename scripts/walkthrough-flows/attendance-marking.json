@@ -52,18 +52,14 @@
       "action": "verify",
       "target": "Student",
       "by": "text",
-      "optional": true,
-      "optional_note": "Requires at least one active assignment on the demo teacher.",
       "label_ur": "طالبعلم منتخب کریں — شیڈول کا وقت خود بھر جاتا ہے"
     },
     {
       "step": 7,
       "label": "Set the status, add the lesson covered and any remarks, then save",
       "action": "verify",
-      "target": "Save",
-      "by": "role:button",
-      "optional": true,
-      "optional_note": "Requires at least one active assignment on the demo teacher.",
+      "target": "Remarks",
+      "by": "text",
       "label_ur": "حالت، پڑھایا گیا سبق اور تبصرہ لکھ کر محفوظ کریں"
     }
   ],
