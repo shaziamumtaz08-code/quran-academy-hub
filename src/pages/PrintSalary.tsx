@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,11 @@ import { fetchSensitiveByUserIds } from '@/lib/sensitiveProfile';
 
 export default function PrintSalary() {
   const { payoutId } = useParams<{ payoutId: string }>();
+
+  useEffect(() => {
+    document.body.classList.add('salary-document-print');
+    return () => document.body.classList.remove('salary-document-print');
+  }, []);
 
   const { data: payout, isLoading } = useQuery({
     queryKey: ['print-salary', payoutId],
