@@ -344,153 +344,157 @@ export default function Tutorials() {
     const other = active.tutorial_key
       ? readable.find((row) => row.tutorial_key === active.tutorial_key && row.id !== active.id)
       : undefined;
+    const t = (key: keyof typeof UI) => UI[key][isUrdu ? 'ur' : 'en'];
     return (
       <div
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6 animate-fade-in"
+        className={`mx-auto max-w-3xl p-4 md:p-8 animate-fade-in ${isUrdu ? 'urdu-text' : ''}`}
         dir={isUrdu ? 'rtl' : 'ltr'}
-        style={isUrdu ? { fontFamily: "'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif", lineHeight: 2 } : undefined}
       >
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate('/tutorials')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Help Centre
+        <Button variant="ghost" size="sm" className="-ms-2 mb-4 text-muted-foreground" onClick={() => navigate('/tutorials')}>
+          {isUrdu ? <ArrowRight className="ms-2 h-4 w-4" /> : <ArrowLeft className="me-2 h-4 w-4" />} {t('back')}
         </Button>
 
-        <header className="rounded-2xl border border-border bg-gradient-to-br from-primary via-primary to-accent p-6 text-primary-foreground">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide opacity-85">
-            <span>{active.category}</span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} min read</span>
-            {!active.is_published && <Badge variant="secondary" className="ml-1">Draft</Badge>}
-          </div>
-          <h1 className="mt-2 font-serif text-2xl font-bold md:text-3xl">{active.title}</h1>
-          {guide.intro && <p className="mt-2 text-sm opacity-90">{guide.intro}</p>}
-        </header>
+        <article className="space-y-6">
+          <header className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">{active.category}</span>
+              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {readingMinutes(guide.steps.length, guide.intro)} {t('minRead')}</span>
+              {guide.steps.length > 0 && (
+                <span className="inline-flex items-center gap-1"><ListOrdered className="h-3.5 w-3.5" /> {guide.steps.length} {t('stepsWord')}</span>
+              )}
+              {!active.is_published && <Badge variant="secondary">{t('draft')}</Badge>}
+            </div>
+            <h1 className={`font-serif font-bold tracking-tight text-foreground ${isUrdu ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl'}`}>
+              {active.title}
+            </h1>
+            {guide.intro && <p className="text-base leading-relaxed text-muted-foreground">{guide.intro}</p>}
+            {other && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={other.language === 'ur' ? 'urdu-ui' : undefined}
+                onClick={() => { setLang((other.language as 'en' | 'ur') || 'en'); navigate(`/tutorials/${other.id}`); }}
+              >
+                <Languages className="me-2 h-4 w-4" />
+                {other.language === 'ur' ? 'اردو میں پڑھیں' : 'Read in English'}
+              </Button>
+            )}
+          </header>
 
-        {other && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setLang((other.language as 'en' | 'ur') || 'en'); navigate(`/tutorials/${other.id}`); }}
-          >
-            {other.language === 'ur' ? 'اردو میں پڑھیں' : 'Read in English'}
-          </Button>
-        )}
+          {active.walkthrough_video_path && (
+            <WalkthroughVideoCard
+              videoPath={active.walkthrough_video_path}
+              fileName={`${active.title}.mp4`}
+              posterPath={active.walkthrough_poster_path}
+              shareToken={active.share_token}
+              shareEnabled={active.share_enabled}
+              durationSeconds={active.duration_seconds}
+            />
+          )}
 
-        {active.thumbnail_url && (
-          <img src={active.thumbnail_url} alt={`${active.title} screenshot`} loading="lazy" className="w-full rounded-xl border border-border object-cover" />
-        )}
+          {active.thumbnail_url && !active.walkthrough_video_path && (
+            <img src={active.thumbnail_url} alt={`${active.title}`} loading="lazy" className="w-full rounded-2xl border border-border object-cover shadow-sm" />
+          )}
 
-        <Card>
-          <CardContent className="p-5 md:p-6">
-            <h2 className="mb-4 font-serif text-lg font-bold text-foreground">Step by step</h2>
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-7">
+            <h2 className="mb-5 font-serif text-lg font-bold text-foreground md:text-xl">{t('stepByStep')}</h2>
             {guide.steps.length === 0 ? (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{active.description || 'No steps added yet.'}</p>
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">{active.description || t('noSteps')}</p>
             ) : (
-              <ol className="space-y-4">
+              <ol className="space-y-6">
                 {guide.steps.map((step, index) => (
-                  <li key={index} className="flex gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
-                    <div className="space-y-2 pt-0.5">
-                      <p className="text-sm leading-relaxed text-foreground">{step.text}</p>
+                  <li key={index} className="relative flex gap-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-3 border-b border-border/60 pb-5 last:border-0 last:pb-0">
+                      <p className={`leading-relaxed text-foreground ${isUrdu ? 'text-base' : 'text-[15px]'}`}>{step.text}</p>
                       {step.image && (
-                        <img src={step.image} alt={`Step ${index + 1}`} loading="lazy" className="w-full rounded-lg border border-border" />
+                        <img src={step.image} alt={`${t('stepWord')} ${index + 1}`} loading="lazy" className="w-full rounded-xl border border-border shadow-sm" />
                       )}
                     </div>
                   </li>
                 ))}
-
               </ol>
             )}
             {guide.notes.length > 0 && (
-              <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
-                <p className="mb-1 text-sm font-semibold text-foreground">Good to know</p>
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="mb-1 text-sm font-semibold text-foreground">{t('goodToKnow')}</p>
                 {guide.notes.map((note, index) => (
                   <p key={index} className="text-sm leading-relaxed text-muted-foreground">{note}</p>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </section>
 
-        {guide.faqs.length > 0 && (
-          <Card>
-            <CardContent className="p-5 md:p-6">
-              <h2 className="mb-3 font-serif text-lg font-bold text-foreground">Common problems</h2>
+          {guide.faqs.length > 0 && (
+            <section className="rounded-2xl border border-border bg-muted/30 p-5 md:p-7">
+              <h2 className="mb-4 font-serif text-lg font-bold text-foreground md:text-xl">{t('commonProblems')}</h2>
               <div className="space-y-3">
                 {guide.faqs.map((faq, index) => (
-                  <div key={index} className="rounded-lg border border-border p-3">
+                  <div key={index} className="rounded-xl border border-border bg-card p-4">
                     <p className="text-sm font-semibold text-foreground">{faq.q}</p>
-                    {faq.a && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
+                    {faq.a && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>}
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </section>
+          )}
 
-        {active.walkthrough_video_path && (
-          <WalkthroughVideoCard
-            videoPath={active.walkthrough_video_path}
-            fileName={`${active.title}.mp4`}
-            posterPath={active.walkthrough_poster_path}
-            shareToken={active.share_token}
-            shareEnabled={active.share_enabled}
-            durationSeconds={active.duration_seconds}
-          />
-        )}
+          {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
+            <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
+          )}
 
-        {Array.isArray(active.walkthrough_frames) && active.walkthrough_frames.length > 0 && (
-          <WalkthroughViewer frames={active.walkthrough_frames} generatedAt={active.walkthrough_generated_at} />
-        )}
+          {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
+                  <p className="text-xs text-muted-foreground">
+                    {active.walkthrough_status === 'pending'
+                      ? 'Queued — screens will be captured from the live app on the next capture run.'
+                      : active.walkthrough_error
+                        ? `Last attempt failed: ${active.walkthrough_error}`
+                        : 'No screens captured yet for this guide.'}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
+                  <MousePointerClick className="me-2 h-4 w-4" /> Queue capture
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-        {isAdmin && (!Array.isArray(active.walkthrough_frames) || active.walkthrough_frames.length === 0) && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Visual walkthrough</p>
-                <p className="text-xs text-muted-foreground">
-                  {active.walkthrough_status === 'pending'
-                    ? 'Queued — screens will be captured from the live app on the next capture run.'
-                    : active.walkthrough_error
-                      ? `Last attempt failed: ${active.walkthrough_error}`
-                      : 'No screens captured yet for this guide.'}
-                </p>
-              </div>
-              <Button size="sm" variant="outline" disabled={queueWalkthrough.isPending} onClick={() => queueWalkthrough.mutate(active.id)}>
-                <MousePointerClick className="mr-2 h-4 w-4" /> Queue capture
+          {videoUrl && (
+            <Card>
+              <CardContent className="space-y-3 p-5">
+                <p className="text-sm font-semibold text-foreground">{t('optionalVideo')}</p>
+                <div className="aspect-video w-full overflow-hidden rounded-xl bg-muted">
+                  {embed ? (
+                    <iframe src={embed} title={active.title} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
+                  ) : (
+                    <video src={videoUrl} controls className="h-full w-full" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {NeedMoreHelp}
+
+          {isAdmin && (
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => openEditor(active)}>
+                <Pencil className="me-2 h-4 w-4" /> Edit this guide
               </Button>
-            </CardContent>
-          </Card>
-        )}
-
-
-        {videoUrl && (
-          <Card>
-            <CardContent className="space-y-3 p-5">
-              <p className="text-sm font-semibold text-foreground">Optional: watch the walkthrough</p>
-              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                {embed ? (
-                  <iframe src={embed} title={active.title} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen />
-                ) : (
-                  <video src={videoUrl} controls className="h-full w-full" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {NeedMoreHelp}
-
-        {isAdmin && (
-          <div className="flex justify-end">
-            <Button variant="outline" size="sm" onClick={() => openEditor(active)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit this guide
-            </Button>
-          </div>
-        )}
+            </div>
+          )}
+        </article>
 
         <EditorDialog />
       </div>
     );
+
   }
 
   // ---------------- Editor dialog (shared) ----------------
