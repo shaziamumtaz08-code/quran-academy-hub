@@ -34,7 +34,129 @@ ACCENT = (56, 189, 148)
 TEXT = (240, 245, 250)
 MUTED = (156, 172, 194)
 
-// placeholder
+import re
+import urllib.request
+
+LANG = "en"
+
+FONT_REG = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Regular.ttf"
+FONT_BOLD = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/share/fonts/truetype/LiberationSans-Bold.ttf"
+
+# Urdu captions render in Jameel Noori Nastaleeq (the academy's Nastaliq face,
+# already used across the app). Noto Naskh is only a fallback if the CDN copy
+# cannot be fetched. Latin words and digits inside an Urdu caption are drawn
+# with Liberation Sans, because the Urdu faces have no Latin glyphs and Pillow
+# would otherwise paint tofu boxes.
+NASTALIQ_URL = (
+    "https://alqurantimeacademy.lovable.app/__l5e/assets-v1/"
+    "82310dfa-2172-4370-b76d-589e9a36cb77/Jameel-Noori-Nastaleeq-Regular.ttf"
+)
+NASTALIQ_CACHE = Path("/tmp/aqta-fonts/Jameel-Noori-Nastaleeq-Regular.ttf")
+NASKH_FALLBACK = (
+    "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/"
+    "share/fonts/noto/NotoNaskhArabic[wght].ttf"
+)
+
+
+def urdu_font_path() -> str:
+    if NASTALIQ_CACHE.exists() and NASTALIQ_CACHE.stat().st_size > 100000:
+        return str(NASTALIQ_CACHE)
+    try:
+        NASTALIQ_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(NASTALIQ_URL, NASTALIQ_CACHE)
+        return str(NASTALIQ_CACHE)
+    except Exception:
+        return NASKH_FALLBACK
+
+
+URDU_FONT = NASKH_FALLBACK  # replaced with the Nastaliq path for --lang ur
+
+
+def font(path: str, size: int):
+    try:
+        return ImageFont.truetype(path, size)
+    except Exception:
+        return ImageFont.load_default()
+
+
+F_TITLE = font(FONT_BOLD, 52)
+F_SUB = font(FONT_REG, 26)
+F_STEP = font(FONT_BOLD, 22)
+F_LABEL = font(FONT_REG, 26)
+
+# Latin companions for the Urdu faces, keyed by the Urdu font size.
+LATIN_FOR = {}
+
+ARABIC_CHARS = r"\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF"
+RUN_SPLIT = re.compile(rf"([{ARABIC_CHARS}][{ARABIC_CHARS}\s\u060C\u061B\u061F.,]*)")
+
+
+def shape(text: str) -> str:
+    """Joined forms + visual RTL order for an all-Arabic-script chunk."""
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    return get_display(arabic_reshaper.reshape(text))
+
+
+def normalize_ur(text: str) -> str:
+    return text.replace("—", "،").replace("–", "،").replace("/", " ، ")
+
+
+def split_runs(text: str):
+    """[(is_arabic, chunk)] in logical order."""
+    out = []
+    for part in RUN_SPLIT.split(normalize_ur(text)):
+        if not part:
+            continue
+        is_ar = bool(re.match(rf"[{ARABIC_CHARS}]", part))
+        out.append((is_ar, part))
+    return out
+
+
+def latin_font(ur_font):
+    size = max(14, int(getattr(ur_font, "size", 26) * 0.72))
+    if size not in LATIN_FOR:
+        LATIN_FOR[size] = font(FONT_REG, size)
+    return LATIN_FOR[size]
+
+
+def mixed_width(d, text, ur_font) -> float:
+    total = 0.0
+    for is_ar, chunk in split_runs(text):
+        f = ur_font if is_ar else latin_font(ur_font)
+        total += d.textlength(shape(chunk) if is_ar else chunk, font=f)
+    return total
+
+
+def draw_mixed_rtl(d, right_x, y, text, ur_font, fill):
+    """Draws a mixed Urdu/Latin line right-aligned, runs laid out RTL."""
+    x = right_x
+    for is_ar, chunk in split_runs(text):
+        f = ur_font if is_ar else latin_font(ur_font)
+        txt = shape(chunk) if is_ar else chunk
+        w = d.textlength(txt, font=f)
+        dy = 0 if is_ar else int(getattr(ur_font, "size", 26) * 0.18)
+        d.text((x - w, y + dy), txt, font=f, fill=fill)
+        x -= w
+    return right_x - x
+
+
+def wrap_mixed(d, text, ur_font, max_w):
+    words, lines, cur = normalize_ur(text).split(), [], ""
+    for w in words:
+        trial = f"{cur} {w}".strip()
+        if mixed_width(d, trial, ur_font) <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
+
+
 
 
 
