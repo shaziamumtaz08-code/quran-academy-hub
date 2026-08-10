@@ -47,10 +47,12 @@ FONT_BOLD = "/nix/store/0hdgmcjy7q8zn7h3amz8nf96l9qh7wv0-liberation-fonts-2.1.5/
 # cannot be fetched. Latin words and digits inside an Urdu caption are drawn
 # with Liberation Sans, because the Urdu faces have no Latin glyphs and Pillow
 # would otherwise paint tofu boxes.
-NASTALIQ_URL = (
-    "https://alqurantimeacademy.lovable.app/__l5e/assets-v1/"
-    "82310dfa-2172-4370-b76d-589e9a36cb77/Jameel-Noori-Nastaleeq-Regular.ttf"
-)
+NASTALIQ_POINTER = Path(__file__).resolve().parents[1] / "src/assets/fonts/Jameel-Noori-Nastaleeq-Regular.ttf.asset.json"
+NASTALIQ_HOSTS = [
+    "https://id-preview--205c6690-e8af-4742-9dce-ca0cd7736df2.lovable.app",
+    "https://lms.alqurantimeacademy.com",
+    "https://alqurantimeacademy.lovable.app",
+]
 NASTALIQ_CACHE = Path("/tmp/aqta-fonts/Jameel-Noori-Nastaleeq-Regular.ttf")
 NASKH_FALLBACK = (
     "/nix/store/dg3hd9mqha517djbgpgnq8r4q1j1wn30-noto-fonts-2025.11.01/"
@@ -59,14 +61,22 @@ NASKH_FALLBACK = (
 
 
 def urdu_font_path() -> str:
-    if NASTALIQ_CACHE.exists() and NASTALIQ_CACHE.stat().st_size > 100000:
+    if NASTALIQ_CACHE.exists() and NASTALIQ_CACHE.stat().st_size > 1_000_000:
         return str(NASTALIQ_CACHE)
     try:
-        NASTALIQ_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(NASTALIQ_URL, NASTALIQ_CACHE)
-        return str(NASTALIQ_CACHE)
+        rel = json.loads(NASTALIQ_POINTER.read_text())["url"]
     except Exception:
         return NASKH_FALLBACK
+    NASTALIQ_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    for host in NASTALIQ_HOSTS:
+        try:
+            urllib.request.urlretrieve(host + rel, NASTALIQ_CACHE)
+            if NASTALIQ_CACHE.stat().st_size > 1_000_000:
+                return str(NASTALIQ_CACHE)
+        except Exception:
+            continue
+    return NASKH_FALLBACK
+
 
 
 URDU_FONT = NASKH_FALLBACK  # replaced with the Nastaliq path for --lang ur
