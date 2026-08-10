@@ -370,7 +370,10 @@ export default function SalaryEngine() {
         const studentName = assign.profiles?.full_name || 'Unknown';
 
         const effectiveFrom = assign.effective_from_date || monthStart;
-        const effectiveTo = assign.effective_to_date || monthEnd;
+        // For ended assignments fall back to the status effective date when no explicit end date is set
+        const endedOn = assign.effective_to_date
+          || ((assign.status === 'left' || assign.status === 'completed') ? assign.status_effective_date : null);
+        const effectiveTo = endedOn || monthEnd;
         const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
         const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
 
