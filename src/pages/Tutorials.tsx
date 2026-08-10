@@ -39,6 +39,49 @@ const LANGS = [
   { value: 'ur', label: 'اردو' },
 ];
 
+/** Bilingual labels for the learner-facing Help Centre chrome. */
+const UI = {
+  eyebrow: { en: 'Help centre', ur: 'مرکزِ رہنمائی' },
+  heading: { en: 'Learn the academy portal, step by step', ur: 'اکیڈمی پورٹل قدم بہ قدم سیکھیں' },
+  sub: {
+    en: 'Short written guides and screen walkthroughs — filtered to exactly what your role uses.',
+    ur: 'مختصر تحریری رہنمائیاں اور اسکرین واک تھرو — صرف وہی جو آپ کے کردار سے متعلق ہیں۔',
+  },
+  searchPlaceholder: { en: 'Search guides…', ur: 'رہنمائی تلاش کریں…' },
+  all: { en: 'All topics', ur: 'تمام موضوعات' },
+  back: { en: 'Back to Help Centre', ur: 'مرکزِ رہنمائی پر واپس' },
+  minRead: { en: 'min read', ur: 'منٹ' },
+  stepsWord: { en: 'steps', ur: 'مراحل' },
+  stepWord: { en: 'Step', ur: 'مرحلہ' },
+  draft: { en: 'Draft', ur: 'مسودہ' },
+  stepByStep: { en: 'Step by step', ur: 'قدم بہ قدم' },
+  noSteps: { en: 'No steps added yet.', ur: 'ابھی کوئی مراحل شامل نہیں کیے گئے۔' },
+  goodToKnow: { en: 'Good to know', ur: 'یاد رکھنے کی بات' },
+  commonProblems: { en: 'Common problems', ur: 'عام مسائل' },
+  optionalVideo: { en: 'Optional: watch the walkthrough', ur: 'اختیاری: واک تھرو دیکھیں' },
+  empty: { en: 'No guides yet', ur: 'ابھی کوئی رہنمائی موجود نہیں' },
+  emptySub: { en: 'Guides for your role will appear here soon.', ur: 'آپ کے کردار کی رہنمائیاں جلد یہاں دستیاب ہوں گی۔' },
+  needHelp: { en: 'Need more help?', ur: 'مزید مدد چاہیے؟' },
+  needHelpSub: {
+    en: 'Message the academy team or raise a request — we usually reply the same day.',
+    ur: 'اکیڈمی ٹیم کو پیغام بھیجیں — عموماً اسی دن جواب دیا جاتا ہے۔',
+  },
+  ask: { en: 'Ask the academy', ur: 'اکیڈمی سے پوچھیں' },
+  announcements: { en: 'Announcements', ur: 'اعلانات' },
+} as const;
+
+const CATEGORY_UR: Record<string, string> = {
+  'Getting started': 'ابتدائی رہنمائی',
+  Attendance: 'حاضری',
+  'Classes & Zoom': 'کلاسز اور زوم',
+  'Fees & Payments': 'فیس اور ادائیگی',
+  Reports: 'رپورٹس',
+  Communication: 'رابطہ',
+  General: 'عمومی',
+};
+
+
+
 interface TutorialRow {
   id: string;
   language: string;
