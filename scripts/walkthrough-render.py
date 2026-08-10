@@ -316,13 +316,16 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--lang", default="en", choices=["en", "ur"])
     args = ap.parse_args()
-    global LANG, F_TITLE, F_SUB, F_STEP, F_LABEL
+    global LANG, URDU_FONT, F_TITLE, F_SUB, F_STEP, F_LABEL
     LANG = args.lang
     if LANG == "ur":
-        F_TITLE = font(URDU_FONT, 48)
-        F_SUB = font(URDU_FONT, 24)
-        F_STEP = font(URDU_FONT, 22)
-        F_LABEL = font(URDU_FONT, 28)
+        URDU_FONT = urdu_font_path()
+        # Nastaliq needs more vertical room per line than Naskh.
+        F_TITLE = font(URDU_FONT, 54)
+        F_SUB = font(URDU_FONT, 28)
+        F_STEP = font(URDU_FONT, 24)
+        F_LABEL = font(URDU_FONT, 32)
+
     manifest = json.loads(Path(args.manifest).read_text())
     print(json.dumps(render(manifest, args.title, Path(args.out)), indent=2))
 
