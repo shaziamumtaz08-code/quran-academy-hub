@@ -1391,13 +1391,14 @@ function ShareLinksDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   };
 
   const { data: courses = [] } = useQuery({
-    queryKey: ['courses-with-webhook-secret'],
+    queryKey: ['courses-list-for-webhook'],
     enabled: open,
     queryFn: async () => {
-      const { data } = await supabase.from('courses').select('id, name, webhook_secret').order('name');
+      const { data } = await supabase.from('courses').select('id, name').order('name');
       return data || [];
     },
   });
+
 
   const webhookUrl = `https://sienlnxwwdqnybugipdt.supabase.co/functions/v1/applicant-webhook`;
 
