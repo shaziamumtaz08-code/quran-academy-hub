@@ -407,6 +407,18 @@
     padding-block: 0.15em;
   }
 
+  /* Nastaliq wins over utility font classes (font-serif/font-sans) inside Urdu content */
+  .urdu-text :not(.arabic-text):not(svg):not(path) {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
+  }
+
+  .urdu-text h1,
+  .urdu-text h2,
+  .urdu-text h3 {
+    line-height: 1.9;
+  }
+
+
   /* Compact Nastaliq for chips, buttons and inline labels */
   .urdu-ui {
     font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
