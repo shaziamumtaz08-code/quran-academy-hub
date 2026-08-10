@@ -1293,7 +1293,22 @@ export default function SalaryEngine() {
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
         />
 
+        {/* ── Cross-month Sheet Audit ── */}
+        <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Salary Sheet Audit</DialogTitle>
+              <DialogDescription>
+                Reconciles every saved sheet against the assignments actually active in that month
+                (month-granular end dates), so back-dated changes never stay hidden.
+              </DialogDescription>
+            </DialogHeader>
+            <SalarySheetAuditPanel onOpenMonth={(m) => { setSalaryMonth(m); setAuditOpen(false); }} />
+          </DialogContent>
+        </Dialog>
+
         {/* ── Revert Confirmation Modal ── */}
+
         <Dialog open={revertModalOpen} onOpenChange={setRevertModalOpen}>
           <DialogContent>
             <DialogHeader>
