@@ -133,7 +133,7 @@ export default function PrintSalary() {
   const watermarkText = isArchived ? 'VOID — SUPERSEDED' : (isRevised ? 'REVISED' : null);
 
   return (
-    <div id="print-root" style={{ margin: '0 auto', position: 'relative' }}>
+    <div id="print-root" className="salary-print-document" style={{ margin: '0 auto', position: 'relative' }}>
       {watermarkText && (
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10,

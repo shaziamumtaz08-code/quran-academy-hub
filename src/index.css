@@ -495,13 +495,8 @@
       overflow: visible !important;
     }
 
-    /* Hide everything by default */
-    body:has(#print-root) * {
-      visibility: hidden;
-    }
-
-    /* Explicit fallback for salary documents. Browser print engines have
-       inconsistent support for :has() while constructing print previews. */
+    /* Dedicated salary documents use an explicit body class. Do not depend on
+       :has() here: some browser print compositors evaluate it inconsistently. */
     body.salary-document-print * {
       visibility: hidden;
     }
@@ -514,12 +509,31 @@
 
     #print-root {
       position: static !important;
-      width: 794px !important;
-      max-width: 210mm !important;
+      display: block !important;
+      width: 210mm !important;
+      max-width: none !important;
+      min-height: 1px !important;
       margin: 0 !important;
       padding: 0 !important;
       background: white !important;
       z-index: 999999 !important;
+    }
+
+    body.salary-document-print #root {
+      display: block !important;
+      min-height: 1px !important;
+      overflow: visible !important;
+    }
+
+    body.salary-document-print .salary-print-document {
+      display: block !important;
+      position: static !important;
+      visibility: visible !important;
+      overflow: visible !important;
+    }
+
+    body.salary-document-print .salary-print-document > div:not(.print\:hidden) {
+      visibility: visible !important;
     }
 
     /* A4 container */
@@ -652,7 +666,7 @@
 @media print {
   /* Only isolate an in-dialog salary sheet. Dedicated document routes use
      #print-root and already have their own print visibility rules above. */
-  body:not(:has(#print-root)):not(.salary-document-print) * { visibility: hidden; }
+  body:not(.salary-document-print) .salary-sheet-print ~ * { visibility: hidden; }
   .salary-sheet-print, .salary-sheet-print * { visibility: visible; }
   .salary-sheet-print { position: absolute; left: 0; top: 0; width: 100%; }
   .print\\:hidden { display: none !important; }
