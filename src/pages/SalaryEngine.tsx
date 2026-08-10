@@ -225,7 +225,7 @@ export default function SalaryEngine() {
         .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status_effective_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
         // 'left'/'completed' assignments still earn salary for the months they were active —
         // the effective date window below decides inclusion, not the current status.
-        .in('status', ['active', 'completed', 'left']);
+        .in('status', [...SALARY_ASSIGNMENT_STATUSES]);
       return data || [];
     },
   });
