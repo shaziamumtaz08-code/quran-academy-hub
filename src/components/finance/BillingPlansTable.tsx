@@ -6,14 +6,24 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles, CalendarCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { trackActivity } from '@/lib/activityLogger';
 import RevisePlanDialog from './RevisePlanDialog';
+import CloseBillingPlanDialog from './CloseBillingPlanDialog';
+import { LIFECYCLE_LABELS, type PlanLifecycleStatus } from '@/lib/billingCloseOut';
 import { cn } from '@/lib/utils';
+
+const LIFECYCLE_STYLES: Record<PlanLifecycleStatus, string> = {
+  open: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  pending_closure: 'bg-amber-100 text-amber-800 border-amber-200',
+  closed: 'bg-muted text-muted-foreground border-border',
+  suspended: 'bg-sky-100 text-sky-700 border-sky-200',
+  superseded: 'bg-red-100 text-red-700 border-red-200',
+};
 
 interface BillingPlan {
   id: string;
@@ -30,6 +40,10 @@ interface BillingPlan {
   superseded_by?: string | null;
   superseded_at?: string | null;
   change_reason?: string | null;
+  lifecycle_status?: PlanLifecycleStatus;
+  billing_close_date?: string | null;
+  close_reason?: string | null;
+  assignment?: { id: string; status: string; effective_to_date: string | null; status_effective_date: string | null } | null;
   profiles: { full_name: string } | null;
   fee_packages: { name: string; amount: number } | null;
 }
