@@ -388,7 +388,7 @@ export function UnifiedAttendanceForm({
   // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
   // when the teacher picks "Same as last class".
   const { data: previousLesson } = useQuery({
-    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? existingRecord?.id : null],
+    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? activeRecord?.id : null],
     queryFn: async () => {
       if (!student.id) return null;
       let q = supabase
@@ -400,7 +400,7 @@ export function UnifiedAttendanceForm({
         .order('class_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1);
-      if (isEdit && existingRecord?.id) q = q.neq('id', existingRecord.id);
+      if (isEdit && activeRecord?.id) q = q.neq('id', activeRecord.id);
       const { data, error } = await q;
       if (error) throw error;
       return data?.[0] ?? null;
@@ -574,7 +574,7 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset/hydrate form on open. Edit mode hydrates from existingRecord; create mode resets to defaults.
+  // Reset/hydrate form on open. Edit mode hydrates from activeRecord; create mode resets to defaults.
   useEffect(() => {
     if (!open) {
       setSelectedStatus(initialStatus || 'present');
@@ -619,9 +619,9 @@ export function UnifiedAttendanceForm({
       return;
     }
 
-    // EDIT MODE: hydrate every state from existingRecord
-    if (isEdit && existingRecord) {
-      const r = existingRecord;
+    // EDIT MODE: hydrate every state from activeRecord
+    if (isEdit && activeRecord) {
+      const r = activeRecord;
       setSelectedStatus(r.status);
       setClassDate(r.class_date);
       setClassTime(r.class_time ? r.class_time.substring(0, 5) : '');
@@ -671,7 +671,7 @@ export function UnifiedAttendanceForm({
     }
 
     if (initialStatus) setSelectedStatus(initialStatus);
-  }, [open, initialStatus, isEdit, existingRecord]);
+  }, [open, initialStatus, isEdit, activeRecord]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
@@ -782,13 +782,13 @@ export function UnifiedAttendanceForm({
       let savedId: string | undefined;
       let leaveSummary: { inserted: number; skipped: number; total: number } | null = null;
 
-      if (isEdit && existingRecord) {
+      if (isEdit && activeRecord) {
         const { error } = await supabase
           .from('attendance')
           .update({ ...basePayload, ...phaseAPayload })
-          .eq('id', existingRecord.id);
+          .eq('id', activeRecord.id);
         if (error) throw error;
-        savedId = existingRecord.id;
+        savedId = activeRecord.id;
       } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
         // Multi-day leave — expand into one row per date (cap 31 days)
         const start = parseISO(classDate);
@@ -970,9 +970,9 @@ export function UnifiedAttendanceForm({
             {isEdit
               ? <>
                   {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
-                  {existingRecord?.created_at && (
+                  {activeRecord?.created_at && (
                     <span className="block text-xs text-muted-foreground mt-1">
-                      Created: {format(parseISO(existingRecord.created_at), 'dd MMM yyyy h:mm a')}
+                      Created: {format(parseISO(activeRecord.created_at), 'dd MMM yyyy h:mm a')}
                     </span>
                   )}
                 </>
