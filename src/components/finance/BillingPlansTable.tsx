@@ -59,6 +59,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [revisePlan, setRevisePlan] = useState<BillingPlan | null>(null);
+  const [closingPlan, setClosingPlan] = useState<BillingPlan | null>(null);
   const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -77,8 +78,10 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           id, student_id, base_package_id, session_duration, net_recurring_fee,
           currency, flat_discount, duration_surcharge, is_active, created_at,
           effective_from, superseded_by, superseded_at, change_reason,
+          lifecycle_status, billing_close_date, close_reason,
           profiles!student_billing_plans_student_id_fkey(full_name),
-          fee_packages!student_billing_plans_base_package_id_fkey(name, amount)
+          fee_packages!student_billing_plans_base_package_id_fkey(name, amount),
+          assignment:student_teacher_assignments!student_billing_plans_assignment_id_fkey(id, status, effective_to_date, status_effective_date)
         `)
         .order('created_at', { ascending: false });
       if (branchId) q = q.eq('branch_id', branchId);
@@ -217,6 +220,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
               <TableRow>
                 <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead>Package</TableHead>
+                <TableHead>Lifecycle</TableHead>
                 <TableHead className="text-center"><Button variant="ghost" size="sm" className="gap-1 h-8 font-medium" onClick={() => toggleSort('duration')}>Duration <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead className="text-right">Net Fee</TableHead>
                 <TableHead>Currency</TableHead>
