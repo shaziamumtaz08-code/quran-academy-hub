@@ -1031,15 +1031,28 @@ export function UnifiedAttendanceForm({
         )}
 
         <div className="space-y-4 py-2">
-          {/* Duplicate Attendance Warning */}
+          {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
           {hasDuplicateAttendance && (
             <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
               <Ban className="h-4 w-4" />
-              <AlertDescription>
-                Attendance already marked for {format(parseISO(classDate), 'dd MMM yyyy')}.
+              <AlertDescription className="space-y-2">
+                <p>
+                  Attendance already marked for {format(parseISO(classDate), 'dd MMM yyyy')}
+                  {classTime ? ` at ${classTime.slice(0, 5)}` : ''} ({existingAttendance?.[0]?.status?.replace(/_/g, ' ')}).
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  onClick={() => setSwitchEditId(existingAttendance?.[0]?.id ?? null)}
+                >
+                  Edit existing record
+                </Button>
               </AlertDescription>
             </Alert>
           )}
+
 
           {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
           {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
