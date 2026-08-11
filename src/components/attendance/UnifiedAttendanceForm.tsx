@@ -169,7 +169,27 @@ export function UnifiedAttendanceForm({
   allowTimeEdit = false,
   onSuccess
 }: UnifiedAttendanceFormProps) {
-  const isEdit = mode === 'edit' && !!existingRecord;
+  // A teacher who lands on an already-marked slot can switch this dialog into edit
+  // mode in place, instead of hitting a dead end.
+  const [switchEditId, setSwitchEditId] = useState<string | null>(null);
+  const { data: switchedRecord } = useQuery({
+    queryKey: ['attendance-switch-to-edit', switchEditId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('id', switchEditId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as ExistingAttendanceRecord;
+    },
+    enabled: !!switchEditId,
+  });
+  const activeRecord = existingRecord ?? switchedRecord ?? undefined;
+  const isEdit = (mode === 'edit' || !!switchedRecord) && !!activeRecord;
+  useEffect(() => {
+    if (!open) setSwitchEditId(null);
+  }, [open]);
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -368,7 +388,7 @@ export function UnifiedAttendanceForm({
   // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
   // when the teacher picks "Same as last class".
   const { data: previousLesson } = useQuery({
-    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? existingRecord?.id : null],
+    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? activeRecord?.id : null],
     queryFn: async () => {
       if (!student.id) return null;
       let q = supabase
@@ -380,7 +400,7 @@ export function UnifiedAttendanceForm({
         .order('class_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1);
-      if (isEdit && existingRecord?.id) q = q.neq('id', existingRecord.id);
+      if (isEdit && activeRecord?.id) q = q.neq('id', activeRecord.id);
       const { data, error } = await q;
       if (error) throw error;
       return data?.[0] ?? null;
@@ -554,7 +574,7 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset/hydrate form on open. Edit mode hydrates from existingRecord; create mode resets to defaults.
+  // Reset/hydrate form on open. Edit mode hydrates from activeRecord; create mode resets to defaults.
   useEffect(() => {
     if (!open) {
       setSelectedStatus(initialStatus || 'present');
@@ -599,9 +619,9 @@ export function UnifiedAttendanceForm({
       return;
     }
 
-    // EDIT MODE: hydrate every state from existingRecord
-    if (isEdit && existingRecord) {
-      const r = existingRecord;
+    // EDIT MODE: hydrate every state from activeRecord
+    if (isEdit && activeRecord) {
+      const r = activeRecord;
       setSelectedStatus(r.status);
       setClassDate(r.class_date);
       setClassTime(r.class_time ? r.class_time.substring(0, 5) : '');
@@ -651,7 +671,7 @@ export function UnifiedAttendanceForm({
     }
 
     if (initialStatus) setSelectedStatus(initialStatus);
-  }, [open, initialStatus, isEdit, existingRecord]);
+  }, [open, initialStatus, isEdit, activeRecord]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
@@ -762,13 +782,13 @@ export function UnifiedAttendanceForm({
       let savedId: string | undefined;
       let leaveSummary: { inserted: number; skipped: number; total: number } | null = null;
 
-      if (isEdit && existingRecord) {
+      if (isEdit && activeRecord) {
         const { error } = await supabase
           .from('attendance')
           .update({ ...basePayload, ...phaseAPayload })
-          .eq('id', existingRecord.id);
+          .eq('id', activeRecord.id);
         if (error) throw error;
-        savedId = existingRecord.id;
+        savedId = activeRecord.id;
       } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
         // Multi-day leave — expand into one row per date (cap 31 days)
         const start = parseISO(classDate);
@@ -876,14 +896,38 @@ export function UnifiedAttendanceForm({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => {
-      toast({ 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to mark attendance',
+    onError: (error: any) => {
+      const raw = error?.message || String(error);
+      const code = error?.code || '';
+      let friendly = raw;
+      if (code === '42501' || /row-level security|permission denied/i.test(raw)) {
+        friendly = 'You do not have permission to mark attendance for this student. Please contact an admin.';
+      } else if (/duplicate|already/i.test(raw)) {
+        friendly = 'A record already exists for this student at this date and time. Edit the existing record instead.';
+      }
+      toast({
+        title: 'Attendance could not be saved',
+        description: friendly,
         variant: 'destructive',
+      });
+      // Leave a trace so "it won't save" reports can be investigated.
+      trackActivity({
+        action: 'attendance_save_failed',
+        entityType: 'attendance',
+        entityId: activeRecord?.id,
+        entityLabel: student.full_name,
+        details: {
+          student_id: student.id,
+          class_date: classDate,
+          class_time: classTime,
+          status: selectedStatus,
+          error_code: code,
+          error_message: raw,
+        },
       });
     },
   });
+
 
   const isFutureDate = useMemo(() => {
     if (!classDate) return false;
@@ -909,29 +953,39 @@ export function UnifiedAttendanceForm({
   const isLeaveStatus = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
   const canAssignFutureDate = isLeaveStatus;
 
-  const isFormValid = useMemo(() => {
-    if (!classDate) return false;
+  // Every reason the save is blocked, in plain language. The button stays disabled,
+  // but the teacher always sees exactly what is missing instead of a dead grey button.
+  const blockingReasons = useMemo(() => {
+    const reasons: string[] = [];
+    if (!classDate) reasons.push('Pick the class date.');
     // Leave statuses don't require a slot time — they cover whole days
-    if (!isLeaveStatus && !classTime) return false;
-    if (isFutureDate && !canAssignFutureDate) return false;
-    if (needsStudent && !student.id) return false;
+    if (!isLeaveStatus && !classTime) reasons.push('Set the class time for this slot.');
+    if (isFutureDate && !canAssignFutureDate) reasons.push('This date is in the future — only leave can be recorded ahead of time.');
+    if (needsStudent && !student.id) reasons.push('No student selected for this record.');
     // Leave can be marked even when the day isn't scheduled or already has a record
-    if (!isLeaveStatus && hasDuplicateAttendance) return false;
+    if (!isLeaveStatus && hasDuplicateAttendance) {
+      reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
+    }
     // Non-scheduled day is shown as a soft warning only — teachers can still mark
     // attendance (covers make-ups, ad-hoc lessons, and teachers without schedules).
-    if (requiresReason(selectedStatus) && !reasonCategory) return false;
-    if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
-    if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
-    if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
-    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
-    if (lessonRequired && !hasLessonDetails) return false;
+    if (requiresReason(selectedStatus) && !reasonCategory) reasons.push('Choose a reason for this absence or leave.');
+    if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) reasons.push('Describe the reason (you selected "Other").');
+    if (requiresReschedule(selectedStatus) && !rescheduleDate) reasons.push('Set the rescheduled date.');
+    if (requiresReschedule(selectedStatus) && !rescheduleReason) reasons.push('Choose why the class was rescheduled.');
+    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) reasons.push('Describe the reschedule reason (you selected "Other").');
+    if (lessonRequired && !hasLessonDetails) {
+      if (currentSubjectType === 'qaida') reasons.push('Select the Baab and the unit covered today.');
+      else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') reasons.push('Select the Surah and Ayah covered today.');
+      else reasons.push('Enter the lesson topic covered today.');
+    }
     // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
-    if (lessonRequired && !lessonType) return false;
+    if (lessonRequired && !lessonType) reasons.push('Choose "Lesson Today" — New lesson or Same as last class.');
     // When repeating, a written explanation (reason + what was done) is required.
-    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) return false;
-  
-    return true;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
+    return reasons;
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+
+  const isFormValid = blockingReasons.length === 0;
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -950,9 +1004,9 @@ export function UnifiedAttendanceForm({
             {isEdit
               ? <>
                   {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
-                  {existingRecord?.created_at && (
+                  {activeRecord?.created_at && (
                     <span className="block text-xs text-muted-foreground mt-1">
-                      Created: {format(parseISO(existingRecord.created_at), 'dd MMM yyyy h:mm a')}
+                      Created: {format(parseISO(activeRecord.created_at), 'dd MMM yyyy h:mm a')}
                     </span>
                   )}
                 </>
@@ -1001,15 +1055,28 @@ export function UnifiedAttendanceForm({
         )}
 
         <div className="space-y-4 py-2">
-          {/* Duplicate Attendance Warning */}
+          {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
           {hasDuplicateAttendance && (
             <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
               <Ban className="h-4 w-4" />
-              <AlertDescription>
-                Attendance already marked for {format(parseISO(classDate), 'dd MMM yyyy')}.
+              <AlertDescription className="space-y-2">
+                <p>
+                  Attendance already marked for {format(parseISO(classDate), 'dd MMM yyyy')}
+                  {classTime ? ` at ${classTime.slice(0, 5)}` : ''} ({existingAttendance?.[0]?.status?.replace(/_/g, ' ')}).
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  onClick={() => setSwitchEditId(existingAttendance?.[0]?.id ?? null)}
+                >
+                  Edit existing record
+                </Button>
               </AlertDescription>
             </Alert>
           )}
+
 
           {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
           {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
@@ -1411,8 +1478,24 @@ export function UnifiedAttendanceForm({
           </div>
         </div>
 
+        {/* Why the save is blocked — never leave the button silently disabled */}
+        {!isFormValid && (
+          <Alert className="mt-4 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <p className="font-medium mb-1">Cannot save yet:</p>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {blockingReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border">
+
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
