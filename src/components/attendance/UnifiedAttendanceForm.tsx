@@ -169,7 +169,27 @@ export function UnifiedAttendanceForm({
   allowTimeEdit = false,
   onSuccess
 }: UnifiedAttendanceFormProps) {
-  const isEdit = mode === 'edit' && !!existingRecord;
+  // A teacher who lands on an already-marked slot can switch this dialog into edit
+  // mode in place, instead of hitting a dead end.
+  const [switchEditId, setSwitchEditId] = useState<string | null>(null);
+  const { data: switchedRecord } = useQuery({
+    queryKey: ['attendance-switch-to-edit', switchEditId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('id', switchEditId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as ExistingAttendanceRecord;
+    },
+    enabled: !!switchEditId,
+  });
+  const activeRecord = existingRecord ?? switchedRecord ?? undefined;
+  const isEdit = (mode === 'edit' || !!switchedRecord) && !!activeRecord;
+  useEffect(() => {
+    if (!open) setSwitchEditId(null);
+  }, [open]);
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
