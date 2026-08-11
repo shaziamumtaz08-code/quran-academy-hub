@@ -896,14 +896,38 @@ export function UnifiedAttendanceForm({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => {
-      toast({ 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to mark attendance',
+    onError: (error: any) => {
+      const raw = error?.message || String(error);
+      const code = error?.code || '';
+      let friendly = raw;
+      if (code === '42501' || /row-level security|permission denied/i.test(raw)) {
+        friendly = 'You do not have permission to mark attendance for this student. Please contact an admin.';
+      } else if (/duplicate|already/i.test(raw)) {
+        friendly = 'A record already exists for this student at this date and time. Edit the existing record instead.';
+      }
+      toast({
+        title: 'Attendance could not be saved',
+        description: friendly,
         variant: 'destructive',
+      });
+      // Leave a trace so "it won't save" reports can be investigated.
+      trackActivity({
+        action: 'attendance_save_failed',
+        entityType: 'attendance',
+        entityId: activeRecord?.id,
+        entityLabel: student.full_name,
+        details: {
+          student_id: student.id,
+          class_date: classDate,
+          class_time: classTime,
+          status: selectedStatus,
+          error_code: code,
+          error_message: raw,
+        },
       });
     },
   });
+
 
   const isFutureDate = useMemo(() => {
     if (!classDate) return false;
