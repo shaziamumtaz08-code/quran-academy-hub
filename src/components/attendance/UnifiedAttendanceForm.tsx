@@ -1454,8 +1454,24 @@ export function UnifiedAttendanceForm({
           </div>
         </div>
 
+        {/* Why the save is blocked — never leave the button silently disabled */}
+        {!isFormValid && (
+          <Alert className="mt-4 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <p className="font-medium mb-1">Cannot save yet:</p>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {blockingReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border">
+
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
