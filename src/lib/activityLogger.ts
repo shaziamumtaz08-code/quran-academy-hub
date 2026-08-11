@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ActionType =
   | 'attendance_marked'
+  | 'attendance_save_failed'
   | 'attendance_edited'
   | 'attendance_updated'
   | 'attendance_deleted'
