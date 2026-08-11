@@ -31,6 +31,7 @@ import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
 import { FeePackagesTab, DiscountRulesTab } from '@/pages/FinanceSetup';
 import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel';
+import BillingLifecyclePanel from '@/components/finance/BillingLifecyclePanel';
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
@@ -2197,6 +2198,7 @@ export default function Payments() {
                       setSetupOpen(true);
                     }}
                   />
+                  <BillingLifecyclePanel />
                   <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
                 </TabsContent>
                 <TabsContent value="packages">

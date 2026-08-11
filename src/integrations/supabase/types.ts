@@ -858,6 +858,129 @@ export type Database = {
           },
         ]
       }
+      billing_credits: {
+        Row: {
+          amount: number
+          applied_invoice_id: string | null
+          assignment_id: string | null
+          branch_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          division_id: string | null
+          id: string
+          kind: string
+          plan_id: string | null
+          proof_url: string | null
+          reason: string | null
+          source_invoice_id: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          applied_invoice_id?: string | null
+          assignment_id?: string | null
+          branch_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          division_id?: string | null
+          id?: string
+          kind?: string
+          plan_id?: string | null
+          proof_url?: string | null
+          reason?: string | null
+          source_invoice_id?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          applied_invoice_id?: string | null
+          assignment_id?: string | null
+          branch_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          division_id?: string | null
+          id?: string
+          kind?: string
+          plan_id?: string | null
+          proof_url?: string | null
+          reason?: string | null
+          source_invoice_id?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_credits_applied_invoice_id_fkey"
+            columns: ["applied_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "student_billing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_source_invoice_id_fkey"
+            columns: ["source_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_credits_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_plan_backfill_log: {
         Row: {
           id: string
@@ -9721,8 +9844,13 @@ export type Database = {
         Row: {
           assignment_id: string | null
           base_package_id: string | null
+          billing_close_date: string | null
           branch_id: string | null
           change_reason: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closure_variance_reason: string | null
           created_at: string
           currency: string
           division_id: string | null
@@ -9732,8 +9860,10 @@ export type Database = {
           global_discount_id: string | null
           id: string
           is_active: boolean
+          lifecycle_status: string
           manual_discount_reason: string | null
           net_recurring_fee: number
+          pending_closure_at: string | null
           session_duration: number
           student_id: string
           superseded_at: string | null
@@ -9743,8 +9873,13 @@ export type Database = {
         Insert: {
           assignment_id?: string | null
           base_package_id?: string | null
+          billing_close_date?: string | null
           branch_id?: string | null
           change_reason?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_variance_reason?: string | null
           created_at?: string
           currency?: string
           division_id?: string | null
@@ -9754,8 +9889,10 @@ export type Database = {
           global_discount_id?: string | null
           id?: string
           is_active?: boolean
+          lifecycle_status?: string
           manual_discount_reason?: string | null
           net_recurring_fee?: number
+          pending_closure_at?: string | null
           session_duration?: number
           student_id: string
           superseded_at?: string | null
@@ -9765,8 +9902,13 @@ export type Database = {
         Update: {
           assignment_id?: string | null
           base_package_id?: string | null
+          billing_close_date?: string | null
           branch_id?: string | null
           change_reason?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_variance_reason?: string | null
           created_at?: string
           currency?: string
           division_id?: string | null
@@ -9776,8 +9918,10 @@ export type Database = {
           global_discount_id?: string | null
           id?: string
           is_active?: boolean
+          lifecycle_status?: string
           manual_discount_reason?: string | null
           net_recurring_fee?: number
+          pending_closure_at?: string | null
           session_duration?: number
           student_id?: string
           superseded_at?: string | null
@@ -12768,6 +12912,15 @@ export type Database = {
             }
             Returns: boolean
           }
+      close_billing_plan: {
+        Args: {
+          _close_date: string
+          _credit_kind?: string
+          _plan_id: string
+          _reason?: string
+        }
+        Returns: Json
+      }
       close_paid_leave_cover: {
         Args: { _cover_assignment_id: string; _manual?: boolean }
         Returns: Json

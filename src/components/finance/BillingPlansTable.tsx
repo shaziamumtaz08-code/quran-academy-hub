@@ -6,14 +6,24 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles, CalendarCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { trackActivity } from '@/lib/activityLogger';
 import RevisePlanDialog from './RevisePlanDialog';
+import CloseBillingPlanDialog from './CloseBillingPlanDialog';
+import { LIFECYCLE_LABELS, type PlanLifecycleStatus } from '@/lib/billingCloseOut';
 import { cn } from '@/lib/utils';
+
+const LIFECYCLE_STYLES: Record<PlanLifecycleStatus, string> = {
+  open: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  pending_closure: 'bg-amber-100 text-amber-800 border-amber-200',
+  closed: 'bg-muted text-muted-foreground border-border',
+  suspended: 'bg-sky-100 text-sky-700 border-sky-200',
+  superseded: 'bg-red-100 text-red-700 border-red-200',
+};
 
 interface BillingPlan {
   id: string;
@@ -30,6 +40,10 @@ interface BillingPlan {
   superseded_by?: string | null;
   superseded_at?: string | null;
   change_reason?: string | null;
+  lifecycle_status?: PlanLifecycleStatus;
+  billing_close_date?: string | null;
+  close_reason?: string | null;
+  assignment?: { id: string; status: string; effective_to_date: string | null; status_effective_date: string | null } | null;
   profiles: { full_name: string } | null;
   fee_packages: { name: string; amount: number } | null;
 }
@@ -45,6 +59,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [revisePlan, setRevisePlan] = useState<BillingPlan | null>(null);
+  const [closingPlan, setClosingPlan] = useState<BillingPlan | null>(null);
   const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -63,8 +78,10 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           id, student_id, base_package_id, session_duration, net_recurring_fee,
           currency, flat_discount, duration_surcharge, is_active, created_at,
           effective_from, superseded_by, superseded_at, change_reason,
+          lifecycle_status, billing_close_date, close_reason,
           profiles!student_billing_plans_student_id_fkey(full_name),
-          fee_packages!student_billing_plans_base_package_id_fkey(name, amount)
+          fee_packages!student_billing_plans_base_package_id_fkey(name, amount),
+          assignment:student_teacher_assignments!student_billing_plans_assignment_id_fkey(id, status, effective_to_date, status_effective_date)
         `)
         .order('created_at', { ascending: false });
       if (branchId) q = q.eq('branch_id', branchId);
@@ -203,6 +220,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
               <TableRow>
                 <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead>Package</TableHead>
+                <TableHead>Lifecycle</TableHead>
                 <TableHead className="text-center"><Button variant="ghost" size="sm" className="gap-1 h-8 font-medium" onClick={() => toggleSort('duration')}>Duration <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead className="text-right">Net Fee</TableHead>
                 <TableHead>Currency</TableHead>
@@ -223,6 +241,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     </span>
                   </TableCell>
                   <TableCell><Badge variant="outline" className="text-xs">{plan.fee_packages?.name || '—'}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={cn('text-[10px]', LIFECYCLE_STYLES[(plan.lifecycle_status || 'open') as PlanLifecycleStatus])}>
+                      {LIFECYCLE_LABELS[(plan.lifecycle_status || 'open') as PlanLifecycleStatus]}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-center">{plan.session_duration} min</TableCell>
                   <TableCell className="text-right font-mono font-semibold">{Number(plan.net_recurring_fee).toLocaleString()}</TableCell>
                   <TableCell><Badge variant="secondary">{plan.currency}</Badge></TableCell>
@@ -240,6 +263,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {plan.lifecycle_status === 'pending_closure' && (
+                        <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setClosingPlan(plan)}>
+                          <CalendarCheck className="h-3.5 w-3.5" /> Review &amp; Close
+                        </Button>
+                      )}
                       {onViewPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
                       )}
@@ -283,6 +311,8 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           plan={revisePlan as any}
         />
       )}
+
+      <CloseBillingPlanDialog plan={closingPlan} onOpenChange={(o) => !o && setClosingPlan(null)} />
     </div>
   );
 }
