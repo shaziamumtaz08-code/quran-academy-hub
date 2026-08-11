@@ -263,6 +263,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {plan.lifecycle_status === 'pending_closure' && (
+                        <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setClosingPlan(plan)}>
+                          <CalendarCheck className="h-3.5 w-3.5" /> Review &amp; Close
+                        </Button>
+                      )}
                       {onViewPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
                       )}
@@ -306,6 +311,8 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
           plan={revisePlan as any}
         />
       )}
+
+      <CloseBillingPlanDialog plan={closingPlan} onOpenChange={(o) => !o && setClosingPlan(null)} />
     </div>
   );
 }
