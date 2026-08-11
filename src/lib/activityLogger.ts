@@ -24,6 +24,7 @@ export type ActionType =
   | 'billing_plan_created'
   | 'billing_plan_updated'
   | 'billing_plan_deleted'
+  | 'billing_plan_closed'
   | 'invoice_edited'
   | 'invoice_deleted'
   | 'invoice_status_changed'
