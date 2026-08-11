@@ -929,29 +929,39 @@ export function UnifiedAttendanceForm({
   const isLeaveStatus = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
   const canAssignFutureDate = isLeaveStatus;
 
-  const isFormValid = useMemo(() => {
-    if (!classDate) return false;
+  // Every reason the save is blocked, in plain language. The button stays disabled,
+  // but the teacher always sees exactly what is missing instead of a dead grey button.
+  const blockingReasons = useMemo(() => {
+    const reasons: string[] = [];
+    if (!classDate) reasons.push('Pick the class date.');
     // Leave statuses don't require a slot time — they cover whole days
-    if (!isLeaveStatus && !classTime) return false;
-    if (isFutureDate && !canAssignFutureDate) return false;
-    if (needsStudent && !student.id) return false;
+    if (!isLeaveStatus && !classTime) reasons.push('Set the class time for this slot.');
+    if (isFutureDate && !canAssignFutureDate) reasons.push('This date is in the future — only leave can be recorded ahead of time.');
+    if (needsStudent && !student.id) reasons.push('No student selected for this record.');
     // Leave can be marked even when the day isn't scheduled or already has a record
-    if (!isLeaveStatus && hasDuplicateAttendance) return false;
+    if (!isLeaveStatus && hasDuplicateAttendance) {
+      reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
+    }
     // Non-scheduled day is shown as a soft warning only — teachers can still mark
     // attendance (covers make-ups, ad-hoc lessons, and teachers without schedules).
-    if (requiresReason(selectedStatus) && !reasonCategory) return false;
-    if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
-    if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
-    if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
-    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
-    if (lessonRequired && !hasLessonDetails) return false;
+    if (requiresReason(selectedStatus) && !reasonCategory) reasons.push('Choose a reason for this absence or leave.');
+    if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) reasons.push('Describe the reason (you selected "Other").');
+    if (requiresReschedule(selectedStatus) && !rescheduleDate) reasons.push('Set the rescheduled date.');
+    if (requiresReschedule(selectedStatus) && !rescheduleReason) reasons.push('Choose why the class was rescheduled.');
+    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) reasons.push('Describe the reschedule reason (you selected "Other").');
+    if (lessonRequired && !hasLessonDetails) {
+      if (currentSubjectType === 'qaida') reasons.push('Select the Baab and the unit covered today.');
+      else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') reasons.push('Select the Surah and Ayah covered today.');
+      else reasons.push('Enter the lesson topic covered today.');
+    }
     // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
-    if (lessonRequired && !lessonType) return false;
+    if (lessonRequired && !lessonType) reasons.push('Choose "Lesson Today" — New lesson or Same as last class.');
     // When repeating, a written explanation (reason + what was done) is required.
-    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) return false;
-  
-    return true;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
+    return reasons;
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+
+  const isFormValid = blockingReasons.length === 0;
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
