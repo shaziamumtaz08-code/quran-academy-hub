@@ -62,17 +62,16 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
     enabled: !!kit?.id,
   });
 
-  // Fetch quiz count
+  // Fetch quiz count via the answer-key-free RPC (students must never read correct_answer)
   const { data: quizCount = 0 } = useQuery({
     queryKey: ['student-quiz-count', kit?.id],
     queryFn: async () => {
-      const { count } = await supabase.from('quiz_questions')
-        .select('id', { count: 'exact', head: true })
-        .eq('kit_id', kit!.id);
-      return count || 0;
+      const { data } = await supabase.rpc('get_kit_quiz_questions_for_student', { _kit_id: kit!.id });
+      return (data || []).length;
     },
     enabled: !!kit?.id,
   });
+
 
   if (isLoading) return <Skeleton className="h-24" />;
   if (!kit) return null;
