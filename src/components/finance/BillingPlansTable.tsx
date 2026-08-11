@@ -241,6 +241,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     </span>
                   </TableCell>
                   <TableCell><Badge variant="outline" className="text-xs">{plan.fee_packages?.name || '—'}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={cn('text-[10px]', LIFECYCLE_STYLES[(plan.lifecycle_status || 'open') as PlanLifecycleStatus])}>
+                      {LIFECYCLE_LABELS[(plan.lifecycle_status || 'open') as PlanLifecycleStatus]}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-center">{plan.session_duration} min</TableCell>
                   <TableCell className="text-right font-mono font-semibold">{Number(plan.net_recurring_fee).toLocaleString()}</TableCell>
                   <TableCell><Badge variant="secondary">{plan.currency}</Badge></TableCell>
