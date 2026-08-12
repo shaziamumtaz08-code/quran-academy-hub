@@ -368,24 +368,8 @@ export default function SalaryEngine() {
   const savePayout = useMutation({
     mutationFn: async (teacher: TeacherSalaryRow) => {
       const existing = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
-      const payload = {
-        teacher_id: teacher.teacherId,
-        salary_month: salaryMonth,
-        base_salary: teacher.baseSalary,
-        extra_class_amount: teacher.extraClassAmount,
-        adjustment_amount: teacher.adjustmentAmount,
-        expense_amount: 0,
-        gross_salary: teacher.baseSalary + teacher.extraClassAmount + teacher.adjustmentAmount,
-        deductions: teacher.deductions,
-        net_salary: teacher.netSalary,
-        calculation_json: JSON.parse(JSON.stringify({
-          students: teacher.students,
-          roleSalaries: teacher.roleSalaries,
-          staffType: teacher.staffType,
-          calculated_at: new Date().toISOString(),
-        })),
-        status: 'confirmed',
-      };
+      const payload = buildPayoutPayload(teacher, salaryMonth);
+
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
           // Already paid/locked — revise via RPC: archive old, insert new w/ prior_paid carry-forward
