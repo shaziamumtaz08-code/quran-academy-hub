@@ -1,12 +1,22 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Loader2, History, Download } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { AlertTriangle, CheckCircle2, Loader2, History, Download, RefreshCw } from 'lucide-react';
 import { format, parseISO, endOfMonth, startOfMonth, eachMonthOfInterval } from 'date-fns';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
+import {
+  PAID_PAYOUT_STATUSES, isPaidLikePayout, fetchSalaryMonthInputs,
+  computeSalaryRows, saveUnpaidPayout,
+} from '@/lib/salaryCalc';
+
 
 interface Props {
   onOpenMonth?: (month: string, view?: 'active' | 'archived') => void;
