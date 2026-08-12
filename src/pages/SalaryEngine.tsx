@@ -25,6 +25,13 @@ import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
+import {
+  computeSalaryRows,
+  buildPayoutPayload,
+  type StudentPayoutRow as SalaryCalcStudentRow,
+  type RoleSalaryRow as SalaryCalcRoleRow,
+  type TeacherSalaryRow as SalaryCalcTeacherRow,
+} from '@/lib/salaryCalc';
 
 import { trackActivity } from '@/lib/activityLogger';
 import { useUrlState } from '@/hooks/useUrlState';
