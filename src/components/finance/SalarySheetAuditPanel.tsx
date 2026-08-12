@@ -349,6 +349,21 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
         )}
         <span className="text-muted-foreground">Open the month, verify, then save to persist the revised sheet.</span>
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!eligibleRows.length || progress !== null}
+          >
+            {progress ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving {progress.done} of {progress.total}…
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerate &amp; Save All Flagged ({eligibleRows.length})
+              </>
+            )}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setOnlyIssues((v) => !v)}>
             {onlyIssues ? `Show all ${rows.length}` : 'Show issues only'}
           </Button>
@@ -357,6 +372,24 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate {eligibleRows.length} salary sheet(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will regenerate and save {eligibleRows.length} salary sheets. Already-paid/locked sheets are skipped
+              {skippedCount ? ` (${skippedCount} will be skipped and must be revised manually with a reason)` : ''}. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={runBulkRegenerate}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {!visible.length && (
         <Card className="border-emerald-200">
