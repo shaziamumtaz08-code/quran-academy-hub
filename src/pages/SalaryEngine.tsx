@@ -329,195 +329,24 @@ export default function SalaryEngine() {
     },
   });
 
-  // ── Role Salary Calculation Helper ──
+  // ── Calculation Engine (single source of truth: src/lib/salaryCalc.ts) ──
 
-  const calculateRoleSalaries = (userId: string): RoleSalaryRow[] => {
-    const userStaffSalaries = staffSalaries.filter((s: any) => s.user_id === userId);
-    return userStaffSalaries.map((ss: any) => {
-      const effFrom = ss.effective_from;
-      const effTo = ss.effective_to || fullMonthEnd;
-      const dateFrom = effFrom > monthStart ? effFrom : monthStart;
-      const dateTo = effTo < fullMonthEnd ? effTo : fullMonthEnd;
+  const salaryData: TeacherSalaryRow[] = useMemo(() => computeSalaryRows({
+    profiles: allSalariedProfiles,
+    assignments,
+    attendance,
+    leaveEvents,
+    extraClasses,
+    salaryAdjustments,
+    existingPayouts,
+    feeInvoices,
+    schedules,
+    staffSalaries,
+    salaryMonth,
+    editAmounts,
+    editRoleAmounts,
+  }), [allSalariedProfiles, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, staffSalaries, salaryMonth, editAmounts, editRoleAmounts]);
 
-      if (dateFrom > dateTo) return null;
-
-      const fromDate = parseISO(dateFrom);
-      const toDate = parseISO(dateTo);
-      const activeDays = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      
-      let proratedAmount = ss.monthly_amount;
-      if (ss.prorate_partial_months && activeDays < daysInMonth) {
-        proratedAmount = (ss.monthly_amount / daysInMonth) * activeDays;
-      }
-
-      return {
-        role: ss.role,
-        monthlyAmount: Number(ss.monthly_amount),
-        effectiveFrom: dateFrom,
-        effectiveTo: dateTo,
-        activeDays,
-        totalDays: daysInMonth,
-        proratedAmount: Math.round(proratedAmount * 100) / 100,
-        editedAmount: editRoleAmounts[ss.id] !== undefined ? editRoleAmounts[ss.id] : null,
-        staffSalaryId: ss.id,
-      } as RoleSalaryRow;
-    }).filter((r): r is RoleSalaryRow => r !== null);
-  };
-
-  // ── Calculation Engine ──
-
-  const salaryData: TeacherSalaryRow[] = useMemo(() => {
-    return allSalariedProfiles.map((profile: any) => {
-      const teacherAssignments = assignments.filter((a: any) => a.teacher_id === profile.id);
-
-      const studentRows: StudentPayoutRow[] = teacherAssignments.map((assign: any) => {
-        const payoutAmount = Number(assign.payout_amount) || 0;
-        const payoutType = assign.payout_type || 'monthly';
-        const studentName = assign.profiles?.full_name || 'Unknown';
-
-        // Window rules live in src/lib/salaryWindow.ts and are locked by unit tests
-        // (ended assignments still pay for the months they were active; month-granular end dates).
-        const win = assignmentMonthWindow(assign, monthStart, monthEnd);
-        if (!win) return null;
-        const { dateFrom, dateTo } = win;
-
-
-        const fromDate = parseISO(dateFrom);
-        const toDate = parseISO(dateTo);
-        const totalDaysInRange = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-        const teacherLeaves = leaveEvents.filter((l: any) => l.teacher_id === profile.id);
-        let unpaidLeaveDays = 0;
-        const leaveDateSet = new Set<string>();
-        teacherLeaves.forEach((leave: any) => {
-          const lStart = parseISO(leave.start_date);
-          const lEnd = parseISO(leave.end_date);
-          const overlapStart = lStart > fromDate ? lStart : fromDate;
-          const overlapEnd = lEnd < toDate ? lEnd : toDate;
-          if (overlapStart <= overlapEnd) {
-            const days = eachDayOfInterval({ start: overlapStart, end: overlapEnd });
-            days.forEach(d => {
-              const key = format(d, 'yyyy-MM-dd');
-              leaveDateSet.add(key);
-              if (leave.leave_type === 'unpaid') unpaidLeaveDays++;
-            });
-          }
-        });
-
-        const eligibleDays = totalDaysInRange - unpaidLeaveDays;
-
-        const studentAttendance = attendance.filter((a: any) => a.teacher_id === profile.id && a.student_id === assign.student_id);
-        const attendanceMap = new Map<string, string>();
-        studentAttendance.forEach((a: any) => attendanceMap.set(a.class_date, a.status));
-
-        const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
-        const scheduledDays = new Set(assignSchedules.map((s: any) => s.day_of_week?.toLowerCase()));
-
-        const attendanceDays = allDatesInMonth
-          .filter(d => d >= fromDate && d <= toDate)
-          .map(d => {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            const attStatus = attendanceMap.get(dateStr);
-            const dayName = format(d, 'EEEE').toLowerCase();
-            // Normalise role-qualified statuses (student_leave / teacher_absent / …)
-            const marked = normalizeAttendanceStatus(attStatus);
-            let status = 'none';
-            if (marked !== 'none') status = marked;
-            else if (leaveDateSet.has(dateStr)) status = 'leave';
-            else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
-            return { date: dateStr, status };
-          });
-
-        const presentCount = attendanceDays.filter(d => d.status === 'present').length;
-        const absentCount = attendanceDays.filter(d => d.status === 'absent').length;
-        const leaveCount = attendanceDays.filter(d => d.status === 'leave').length;
-        const rescheduledCount = attendanceDays.filter(d => d.status === 'rescheduled').length;
-        const holidayCount = attendanceDays.filter(d => d.status === 'holiday').length;
-        const missingCount = attendanceDays.filter(d => d.status === 'none').length;
-
-        let calculatedAmount = 0;
-        if (payoutType === 'monthly') {
-          calculatedAmount = (payoutAmount / daysInMonth) * eligibleDays;
-        } else {
-          calculatedAmount = payoutAmount * presentCount;
-        }
-
-        // Prefer invoice tied to this assignment; fallback to any paid invoice for the student; else first invoice
-        const studentInvoices = feeInvoices.filter((f: any) => f.student_id === assign.student_id);
-        const studentFee =
-          studentInvoices.find((f: any) => f.assignment_id === assign.id) ||
-          studentInvoices.find((f: any) => f.status === 'paid' || f.status === 'partially_paid') ||
-          studentInvoices[0];
-
-        const salaryLinked = assign.salary_linked !== false; // default true
-        const isTemporary = assign.is_temporary === true;
-        const effectiveCalc = salaryLinked ? calculatedAmount : 0;
-
-        return {
-          studentId: assign.student_id,
-          studentName,
-          assignmentId: assign.id,
-          dateFrom,
-          dateTo,
-          payoutRate: payoutAmount,
-          payoutType,
-          eligibleDays,
-          totalDays: totalDaysInRange,
-          calculatedAmount: Math.round(effectiveCalc * 100) / 100,
-          editedAmount: editAmounts[assign.id] !== undefined ? editAmounts[assign.id] : null,
-          attendanceDays,
-          presentCount,
-          absentCount,
-          leaveCount,
-          rescheduledCount,
-          holidayCount,
-          missingCount,
-          feeStatus: studentFee?.status || 'no_invoice',
-          lastPaymentDate: studentFee?.paid_at || null,
-          invoiceId: studentFee?.id || null,
-          salaryLinked,
-          isTemporary,
-        };
-      }).filter((row): row is StudentPayoutRow => row !== null);
-
-      // Role-based salaries
-      const roleSalaries = calculateRoleSalaries(profile.id);
-
-      const hasStudents = studentRows.length > 0;
-      const hasRoleSalaries = roleSalaries.length > 0;
-
-      // Skip users with neither students nor role salaries
-      if (!hasStudents && !hasRoleSalaries) return null;
-
-      const teachingBase = studentRows.reduce((sum, r) => sum + (r.editedAmount ?? r.calculatedAmount), 0);
-      const roleBase = roleSalaries.reduce((sum, r) => sum + (r.editedAmount ?? r.proratedAmount), 0);
-      const baseSalary = teachingBase + roleBase;
-      
-      const teacherExtras = extraClasses.filter((e: any) => e.teacher_id === profile.id);
-      const extraClassAmount = teacherExtras.reduce((sum: number, e: any) => sum + Number(e.rate), 0);
-      const teacherAdj = salaryAdjustments.filter((a: any) => a.teacher_id === profile.id);
-      const additions = teacherAdj.filter((a: any) => ['bonus', 'allowance', 'expense'].includes(a.adjustment_type)).reduce((s: number, a: any) => s + Number(a.amount), 0);
-      const deductions = teacherAdj.filter((a: any) => a.adjustment_type === 'deduction').reduce((s: number, a: any) => s + Number(a.amount), 0);
-      const netSalary = baseSalary + extraClassAmount + additions - deductions;
-      const existingPayout = existingPayouts.find((p: any) => p.teacher_id === profile.id);
-
-      const staffType = hasStudents && hasRoleSalaries ? 'dual' : hasStudents ? 'teacher' : 'staff';
-
-      return {
-        teacherId: profile.id,
-        teacherName: profile.full_name,
-        students: studentRows,
-        roleSalaries,
-        baseSalary: Math.round(baseSalary * 100) / 100,
-        extraClassAmount: Math.round(extraClassAmount * 100) / 100,
-        adjustmentAmount: Math.round(additions * 100) / 100,
-        deductions: Math.round(deductions * 100) / 100,
-        netSalary: Math.round(netSalary * 100) / 100,
-        payoutStatus: existingPayout?.status || 'draft',
-        staffType,
-      };
-    }).filter((t): t is TeacherSalaryRow => t !== null);
-  }, [allSalariedProfiles, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, staffSalaries, salaryMonth, editAmounts, editRoleAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd, fullMonthEnd]);
 
   const filteredData = useMemo(() => {
     let data = salaryData;
