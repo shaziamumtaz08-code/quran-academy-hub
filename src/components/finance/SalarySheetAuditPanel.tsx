@@ -1,49 +1,72 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
-import { format, parseISO, endOfMonth } from 'date-fns';
+import { AlertTriangle, CheckCircle2, Loader2, History, Download } from 'lucide-react';
+import { format, parseISO, endOfMonth, startOfMonth, eachMonthOfInterval } from 'date-fns';
+import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
 
 interface Props {
-  onOpenMonth?: (month: string) => void;
+  onOpenMonth?: (month: string, view?: 'active' | 'archived') => void;
 }
 
+type IssueKind = 'no_sheet' | 'missing_students' | 'extra_students' | 'amount_drift';
+
 interface AuditRow {
-  payoutId: string;
+  key: string;
+  payoutId: string | null;
   teacherId: string;
   teacherName: string;
   month: string;
   status: string;
-  netSalary: number;
-  missing: { id: string; student: string; status: string }[];
+  savedNet: number | null;
+  savedTeachingBase: number | null;
+  expectedTeachingBase: number;
+  missing: { id: string; student: string; status: string; amount: number }[];
   extra: { id: string; student: string }[];
+  issues: IssueKind[];
+  hasPreviousVersion: boolean;
 }
 
+const ISSUE_LABEL: Record<IssueKind, string> = {
+  no_sheet: 'No sheet saved',
+  missing_students: 'Students missing',
+  extra_students: 'Should not be billed',
+  amount_drift: 'Amount drift',
+};
+
 /**
- * Cross-month reconciliation: compares every saved (non-archived, non-void) salary sheet
- * against the assignments that were genuinely active in that month, using the
- * month-granular end-date rule. Any back-dated change (assignment end/start, fee plan
- * revision, status change) surfaces here as a stale sheet that must be revised.
+ * Full cross-month reconciliation of every teacher × month against the assignments
+ * that were genuinely active in that month (month-granular end dates, ended
+ * assignments still earn salary). Surfaces months where no sheet was ever saved,
+ * stale sheets after back-dated changes, and amount drift — with a direct link to
+ * the archived (previous) version of each sheet.
  */
 export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
+  const [onlyIssues, setOnlyIssues] = useState(true);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['salary-sheet-audit'],
+    queryKey: ['salary-sheet-audit-full'],
     queryFn: async () => {
       const [payoutsRes, assignRes] = await Promise.all([
         supabase
           .from('salary_payouts')
-          .select('id, teacher_id, salary_month, status, net_salary, calculation_json')
-          .eq('is_archived', false)
-          .is('voided_at', null),
+          .select('id, teacher_id, salary_month, status, net_salary, base_salary, calculation_json, is_archived, voided_at'),
         supabase
           .from('student_teacher_assignments')
-          .select('id, teacher_id, student_id, status, salary_linked, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)'),
+          .select('id, teacher_id, student_id, status, salary_linked, payout_amount, payout_type, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+          .in('status', [...SALARY_ASSIGNMENT_STATUSES]),
       ]);
 
-      const teacherIds = Array.from(new Set((payoutsRes.data || []).map((p: any) => p.teacher_id)));
+      const teacherIds = Array.from(
+        new Set([
+          ...(payoutsRes.data || []).map((p: any) => p.teacher_id),
+          ...(assignRes.data || []).map((a: any) => a.teacher_id),
+        ]),
+      ).filter(Boolean);
+
       const { data: profiles } = teacherIds.length
         ? await supabase.from('profiles').select('id, full_name').in('id', teacherIds)
         : { data: [] as any[] };
@@ -59,102 +82,246 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
   const rows: AuditRow[] = useMemo(() => {
     if (!data) return [];
     const nameById = new Map<string, string>(data.profiles.map((p: any) => [p.id, p.full_name]));
+    const assignments = data.assignments as any[];
+    if (!assignments.length) return [];
+
+    // Month range: earliest assignment start → current month
+    const starts = assignments
+      .map((a) => a.effective_from_date || a.start_date)
+      .filter(Boolean)
+      .sort();
+    const first = starts[0] ? startOfMonth(parseISO(starts[0])) : startOfMonth(new Date());
+    const months = eachMonthOfInterval({ start: first, end: startOfMonth(new Date()) }).map((d) =>
+      format(d, 'yyyy-MM'),
+    );
+
+    const activePayouts = (data.payouts as any[]).filter((p) => !p.is_archived && !p.voided_at);
+    const archivedByKey = new Set(
+      (data.payouts as any[])
+        .filter((p) => p.is_archived || p.voided_at)
+        .map((p) => `${p.teacher_id}|${p.salary_month}`),
+    );
+    const payoutByKey = new Map<string, any>(
+      activePayouts.map((p) => [`${p.teacher_id}|${p.salary_month}`, p]),
+    );
+
+    const teacherIds = Array.from(new Set(assignments.map((a) => a.teacher_id).filter(Boolean)));
     const out: AuditRow[] = [];
 
-    for (const payout of data.payouts as any[]) {
-      const monthStart = `${payout.salary_month}-01`;
-      const monthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
+    for (const teacherId of teacherIds) {
+      const mine = assignments.filter((a) => a.teacher_id === teacherId);
+      for (const month of months) {
+        const monthStart = `${month}-01`;
+        const monthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
+        const daysInMonth = Number(monthEnd.slice(-2));
 
-      const savedList: any[] = payout.calculation_json?.students || [];
-      const savedIds = new Set(savedList.map((s: any) => s.assignmentId).filter(Boolean));
+        const active = mine.filter((a) => {
+          if (a.salary_linked === false) return false;
+          return assignmentMonthWindow(a, monthStart, monthEnd) !== null;
+        });
+        if (!active.length) continue;
 
-      const active = (data.assignments as any[]).filter((a) => {
-        if (a.teacher_id !== payout.teacher_id) return false;
-        if (a.salary_linked === false) return false;
-        const from = a.effective_from_date || a.start_date;
-        const rawEnd = a.effective_to_date
-          || ((a.status === 'left' || a.status === 'completed') ? a.status_effective_date : null);
-        const to = rawEnd ? format(endOfMonth(parseISO(rawEnd)), 'yyyy-MM-dd') : null;
-        if (from && from > monthEnd) return false;
-        if (to && to < monthStart) return false;
-        return true;
-      });
+        const expectedByAssignment = new Map<string, number>();
+        for (const a of active) {
+          const win = assignmentMonthWindow(a, monthStart, monthEnd)!;
+          const days =
+            Math.floor(
+              (parseISO(win.dateTo).getTime() - parseISO(win.dateFrom).getTime()) / 86400000,
+            ) + 1;
+          const rate = Number(a.payout_amount) || 0;
+          const amount =
+            (a.payout_type || 'monthly') === 'monthly' ? (rate / daysInMonth) * days : 0;
+          expectedByAssignment.set(a.id, Math.round(amount));
+        }
+        const expectedTeachingBase = Array.from(expectedByAssignment.values()).reduce((s, v) => s + v, 0);
 
-      const activeIds = new Set(active.map((a) => a.id));
-      const missing = active
-        .filter((a) => !savedIds.has(a.id))
-        .map((a) => ({ id: a.id, student: a.profiles?.full_name || 'Unknown', status: a.status }));
-      const extra = savedList
-        .filter((s: any) => s.assignmentId && !activeIds.has(s.assignmentId))
-        .map((s: any) => ({ id: s.assignmentId, student: s.studentName || 'Unknown' }));
+        const key = `${teacherId}|${month}`;
+        const payout = payoutByKey.get(key);
+        const savedList: any[] = payout?.calculation_json?.students || [];
+        const savedIds = new Set(savedList.map((s: any) => s.assignmentId).filter(Boolean));
+        const savedTeachingBase = payout
+          ? savedList.reduce(
+              (s: number, r: any) => s + Number(r.editedAmount ?? r.calculatedAmount ?? 0),
+              0,
+            )
+          : null;
 
-      if (missing.length || extra.length) {
+        const activeIds = new Set(active.map((a) => a.id));
+        const missing = payout
+          ? active
+              .filter((a) => !savedIds.has(a.id))
+              .map((a) => ({
+                id: a.id,
+                student: a.profiles?.full_name || 'Unknown',
+                status: a.status,
+                amount: expectedByAssignment.get(a.id) || 0,
+              }))
+          : active.map((a) => ({
+              id: a.id,
+              student: a.profiles?.full_name || 'Unknown',
+              status: a.status,
+              amount: expectedByAssignment.get(a.id) || 0,
+            }));
+        const extra = savedList
+          .filter((s: any) => s.assignmentId && !activeIds.has(s.assignmentId))
+          .map((s: any) => ({ id: s.assignmentId, student: s.studentName || 'Unknown' }));
+
+        const issues: IssueKind[] = [];
+        if (!payout) issues.push('no_sheet');
+        if (payout && missing.length) issues.push('missing_students');
+        if (extra.length) issues.push('extra_students');
+        if (
+          payout &&
+          savedTeachingBase !== null &&
+          Math.abs(savedTeachingBase - expectedTeachingBase) > 1 &&
+          !missing.length &&
+          !extra.length
+        ) {
+          issues.push('amount_drift');
+        }
+
         out.push({
-          payoutId: payout.id,
-          teacherId: payout.teacher_id,
-          teacherName: nameById.get(payout.teacher_id) || 'Unknown',
-          month: payout.salary_month,
-          status: payout.status,
-          netSalary: Number(payout.net_salary) || 0,
+          key,
+          payoutId: payout?.id ?? null,
+          teacherId,
+          teacherName: nameById.get(teacherId) || 'Unknown',
+          month,
+          status: payout?.status || 'not generated',
+          savedNet: payout ? Number(payout.net_salary) || 0 : null,
+          savedTeachingBase,
+          expectedTeachingBase,
           missing,
           extra,
+          issues,
+          hasPreviousVersion: archivedByKey.has(key),
         });
       }
     }
 
-    return out.sort((a, b) => (a.month < b.month ? 1 : -1));
+    return out.sort((a, b) =>
+      a.month === b.month ? a.teacherName.localeCompare(b.teacherName) : a.month < b.month ? 1 : -1,
+    );
   }, [data]);
+
+  const visible = onlyIssues ? rows.filter((r) => r.issues.length) : rows;
+
+  const exportCsv = () => {
+    const header = [
+      'Teacher',
+      'Month',
+      'Sheet status',
+      'Saved net (PKR)',
+      'Saved teaching base',
+      'Expected teaching base',
+      'Issues',
+      'Missing students',
+      'Should not be billed',
+    ];
+    const lines = visible.map((r) =>
+      [
+        r.teacherName,
+        r.month,
+        r.status,
+        r.savedNet ?? '',
+        r.savedTeachingBase ?? '',
+        r.expectedTeachingBase,
+        r.issues.map((i) => ISSUE_LABEL[i]).join('; '),
+        r.missing.map((m) => `${m.student} (${m.status}, ${m.amount})`).join('; '),
+        r.extra.map((e) => e.student).join('; '),
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(','),
+    );
+    const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `salary-sheet-audit-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground p-6">
-        <Loader2 className="h-4 w-4 animate-spin" /> Reconciling all saved salary sheets…
+        <Loader2 className="h-4 w-4 animate-spin" /> Auditing every teacher × month against active assignments…
       </div>
     );
   }
 
-  if (!rows.length) {
-    return (
-      <Card className="border-emerald-200">
-        <CardContent className="p-6 flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-          <div>
-            <p className="font-medium">All saved salary sheets reconcile</p>
-            <p className="text-sm text-muted-foreground">
-              Every saved sheet contains exactly the assignments that were active in that month.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const issueCount = rows.filter((r) => r.issues.length).length;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <span className="font-medium">{rows.length} saved sheet(s) are stale after back-dated changes.</span>
-        <span className="text-muted-foreground">Open the month and hit Revise to persist the corrected amount.</span>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {issueCount ? (
+          <>
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <span className="font-medium">{issueCount} teacher-month sheet(s) need review.</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="font-medium">Every month reconciles with its active assignments.</span>
+          </>
+        )}
+        <span className="text-muted-foreground">Open the month, verify, then save to persist the revised sheet.</span>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOnlyIssues((v) => !v)}>
+            {onlyIssues ? `Show all ${rows.length}` : 'Show issues only'}
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={!visible.length}>
+            <Download className="h-3.5 w-3.5 mr-1" /> CSV
+          </Button>
+        </div>
       </div>
-      {rows.map((r) => (
-        <Card key={r.payoutId} className="border-amber-200">
+
+      {!visible.length && (
+        <Card className="border-emerald-200">
+          <CardContent className="p-6 text-sm text-muted-foreground">Nothing to review.</CardContent>
+        </Card>
+      )}
+
+      {visible.map((r) => (
+        <Card key={r.key} className={r.issues.length ? 'border-amber-200' : undefined}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex flex-wrap items-center gap-2">
               <span>{r.teacherName}</span>
               <Badge variant="outline">{r.month}</Badge>
               <Badge variant={r.status === 'paid' ? 'default' : 'secondary'}>{r.status}</Badge>
-              <span className="text-muted-foreground font-normal">saved net PKR {r.netSalary.toLocaleString()}</span>
-              {onOpenMonth && (
-                <Button size="sm" variant="outline" className="ml-auto" onClick={() => onOpenMonth(r.month)}>
-                  Open month
-                </Button>
-              )}
+              {r.issues.map((i) => (
+                <Badge key={i} variant="outline" className="border-amber-300 text-amber-700">
+                  {ISSUE_LABEL[i]}
+                </Badge>
+              ))}
+              <span className="text-muted-foreground font-normal">
+                saved {r.savedTeachingBase != null ? `PKR ${r.savedTeachingBase.toLocaleString()}` : '—'} · expected PKR{' '}
+                {r.expectedTeachingBase.toLocaleString()}
+              </span>
+              <div className="ml-auto flex items-center gap-2">
+                {r.hasPreviousVersion && onOpenMonth && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={() => onOpenMonth(r.month, 'archived')}
+                  >
+                    <History className="h-3.5 w-3.5 mr-1" /> Previous version
+                  </Button>
+                )}
+                {onOpenMonth && (
+                  <Button size="sm" variant="outline" onClick={() => onOpenMonth(r.month, 'active')}>
+                    Open month
+                  </Button>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-1 text-sm">
             {r.missing.map((m) => (
               <div key={`m-${m.id}`} className="text-amber-700">
-                Missing from sheet: <span className="font-medium">{m.student}</span> ({m.status})
+                {r.payoutId ? 'Missing from sheet' : 'Unpaid / never generated'}:{' '}
+                <span className="font-medium">{m.student}</span> ({m.status}) — PKR {m.amount.toLocaleString()}
               </div>
             ))}
             {r.extra.map((e) => (
