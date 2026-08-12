@@ -58,58 +58,10 @@ async function mergeProfileSensitiveRows(profiles: any[]) {
 const now = new Date();
 const currentSalaryMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-interface StudentPayoutRow {
-  studentId: string;
-  studentName: string;
-  assignmentId: string;
-  dateFrom: string;
-  dateTo: string;
-  payoutRate: number;
-  payoutType: string;
-  eligibleDays: number;
-  totalDays: number;
-  calculatedAmount: number;
-  editedAmount: number | null;
-  attendanceDays: { date: string; status: string }[];
-  presentCount: number;
-  absentCount: number;
-  leaveCount: number;
-  rescheduledCount: number;
-  holidayCount: number;
-  missingCount: number;
-  feeStatus: string;
-  lastPaymentDate: string | null;
-  invoiceId: string | null;
-  salaryLinked: boolean;
-  isTemporary: boolean;
-}
+type StudentPayoutRow = SalaryCalcStudentRow;
+export type RoleSalaryRow = SalaryCalcRoleRow;
+type TeacherSalaryRow = SalaryCalcTeacherRow;
 
-export interface RoleSalaryRow {
-  role: string;
-  monthlyAmount: number;
-  effectiveFrom: string;
-  effectiveTo: string;
-  activeDays: number;
-  totalDays: number;
-  proratedAmount: number;
-  editedAmount: number | null;
-  staffSalaryId: string;
-}
-
-interface TeacherSalaryRow {
-  teacherId: string;
-  teacherName: string;
-  students: StudentPayoutRow[];
-  roleSalaries: RoleSalaryRow[];
-  baseSalary: number;
-  extraClassAmount: number;
-  adjustmentAmount: number;
-  deductions: number;
-  netSalary: number;
-  payoutStatus: string;
-  payoutId?: string | null;
-  staffType: 'teacher' | 'staff' | 'dual';
-}
 
 const REVERT_REASONS = [
   'Incorrect amount',
