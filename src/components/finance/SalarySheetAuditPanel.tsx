@@ -56,6 +56,11 @@ const ISSUE_LABEL: Record<IssueKind, string> = {
  */
 export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
   const [onlyIssues, setOnlyIssues] = useState(true);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ['salary-sheet-audit-full'],
