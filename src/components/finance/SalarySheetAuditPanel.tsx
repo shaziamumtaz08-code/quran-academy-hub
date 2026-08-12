@@ -1,12 +1,22 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Loader2, History, Download } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { AlertTriangle, CheckCircle2, Loader2, History, Download, RefreshCw } from 'lucide-react';
 import { format, parseISO, endOfMonth, startOfMonth, eachMonthOfInterval } from 'date-fns';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
+import {
+  isPaidLikePayout, fetchSalaryMonthInputs,
+  computeSalaryRows, saveUnpaidPayout,
+} from '@/lib/salaryCalc';
+
 
 interface Props {
   onOpenMonth?: (month: string, view?: 'active' | 'archived') => void;
@@ -46,6 +56,11 @@ const ISSUE_LABEL: Record<IssueKind, string> = {
  */
 export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
   const [onlyIssues, setOnlyIssues] = useState(true);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ['salary-sheet-audit-full'],
@@ -241,6 +256,73 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  // Rows we are allowed to auto-fix: flagged, and not already paid/locked money.
+  const flaggedRows = rows.filter((r) => r.issues.length);
+  const eligibleRows = flaggedRows.filter((r) => !isPaidLikePayout(r.status));
+  const skippedCount = flaggedRows.length - eligibleRows.length;
+
+  const runBulkRegenerate = async () => {
+    setConfirmOpen(false);
+    const total = eligibleRows.length;
+    if (!total) return;
+    setProgress({ done: 0, total });
+
+    const failures: string[] = [];
+    let saved = 0;
+
+    // One fetch per distinct month, reused for every teacher flagged in that month.
+    const byMonth = new Map<string, AuditRow[]>();
+    for (const r of eligibleRows) {
+      byMonth.set(r.month, [...(byMonth.get(r.month) || []), r]);
+    }
+
+    let done = 0;
+    for (const [month, monthRows] of byMonth) {
+      let computed: ReturnType<typeof computeSalaryRows> = [];
+      let existingPayouts: any[] = [];
+      try {
+        const inputs = await fetchSalaryMonthInputs(month);
+        existingPayouts = inputs.existingPayouts;
+        computed = computeSalaryRows(inputs);
+      } catch (e: any) {
+        monthRows.forEach((r) => failures.push(`${r.teacherName} ${month}: ${e?.message || 'load failed'}`));
+        done += monthRows.length;
+        setProgress({ done, total });
+        continue;
+      }
+
+      for (const r of monthRows) {
+        try {
+          const teacherRow = computed.find((t) => t.teacherId === r.teacherId);
+          if (!teacherRow) throw new Error('no calculable rows for this month');
+          const existing = existingPayouts.find((p: any) => p.teacher_id === r.teacherId) || null;
+          await saveUnpaidPayout(teacherRow, month, existing);
+          saved++;
+        } catch (e: any) {
+          failures.push(`${r.teacherName} ${month}: ${e?.message || 'save failed'}`);
+        }
+        done++;
+        setProgress({ done, total });
+      }
+    }
+
+    setProgress(null);
+    await queryClient.invalidateQueries({ queryKey: ['salary-sheet-audit-full'] });
+    await queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    await queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
+
+    toast({
+      title: 'Bulk regeneration complete',
+      description: `${saved} sheet(s) saved, ${skippedCount} skipped (already paid/locked), ${failures.length} failed.${
+        failures.length ? ` First failure: ${failures[0]}` : ''
+      }`,
+      variant: failures.length ? 'destructive' : undefined,
+    });
+    if (failures.length) console.warn('[salary bulk regenerate] failures:', failures);
+  };
+
+
+
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground p-6">
@@ -267,6 +349,21 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
         )}
         <span className="text-muted-foreground">Open the month, verify, then save to persist the revised sheet.</span>
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!eligibleRows.length || progress !== null}
+          >
+            {progress ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving {progress.done} of {progress.total}…
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerate &amp; Save All Flagged ({eligibleRows.length})
+              </>
+            )}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setOnlyIssues((v) => !v)}>
             {onlyIssues ? `Show all ${rows.length}` : 'Show issues only'}
           </Button>
@@ -275,6 +372,24 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate {eligibleRows.length} salary sheet(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will regenerate and save {eligibleRows.length} salary sheets. Already-paid/locked sheets are skipped
+              {skippedCount ? ` (${skippedCount} will be skipped and must be revised manually with a reason)` : ''}. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={runBulkRegenerate}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {!visible.length && (
         <Card className="border-emerald-200">
