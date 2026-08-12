@@ -17,6 +17,7 @@ import AlertsAutomation from "@/components/reports/AlertsAutomation";
 import CustomReportBuilder from "@/components/reports/CustomReportBuilder";
 import AccountabilityReport from "@/components/reports/AccountabilityReport";
 import QaidaProgressReport from "@/components/reports/QaidaProgressReport";
+import ComplianceReport from "@/components/reports/ComplianceReport";
 
 const allViews = [
   { label: 'Executive', value: 'executive' },
@@ -25,6 +26,7 @@ const allViews = [
   { label: 'Engagement', value: 'engagement' },
   { label: 'Qaida Progress', value: 'qaida' },
   { label: 'Teachers', value: 'teachers' },
+  { label: 'Compliance', value: 'compliance' },
   { label: 'Accountability', value: 'accountability' },
   { label: 'Course/Batch', value: 'course-batch' },
   { label: 'Activity Logs', value: 'activity-logs' },
@@ -39,6 +41,7 @@ const baseDescriptions: Record<string, string> = {
   engagement: 'Student progress tracking, consistency, and engagement patterns.',
   qaida: 'Noorani Qaida baab-by-baab progress for every Qaida student.',
   teachers: 'Classes taken, punctuality, and teacher performance analysis.',
+  compliance: 'Attendance and planning compliance scorecard for any period, with teacher filtering.',
   accountability: 'Zoom session accountability, no-shows, and punctuality.',
   'course-batch': 'Enrollment counts, completion rates, and drop-off analysis.',
   'activity-logs': 'Complete audit trail of all system actions.',
@@ -53,7 +56,7 @@ export default function Reports() {
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const isOneToOne = activeModelType === 'one_to_one';
   const availableViews = useMemo(
-    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability'].includes(view.value)),
+    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability', 'compliance'].includes(view.value)),
     [isAdmin],
   );
 
@@ -69,6 +72,7 @@ export default function Reports() {
       case 'engagement': return <StudentEngagement />;
       case 'qaida': return <QaidaProgressReport />;
       case 'teachers': return <TeacherPerformance />;
+      case 'compliance': return <ComplianceReport />;
       case 'accountability': return <AccountabilityReport />;
       case 'course-batch': return <CourseReports />;
       case 'activity-logs': return <ActivityLogs />;
