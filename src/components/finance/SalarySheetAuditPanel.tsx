@@ -256,6 +256,73 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  // Rows we are allowed to auto-fix: flagged, and not already paid/locked money.
+  const flaggedRows = rows.filter((r) => r.issues.length);
+  const eligibleRows = flaggedRows.filter((r) => !isPaidLikePayout(r.status));
+  const skippedCount = flaggedRows.length - eligibleRows.length;
+
+  const runBulkRegenerate = async () => {
+    setConfirmOpen(false);
+    const total = eligibleRows.length;
+    if (!total) return;
+    setProgress({ done: 0, total });
+
+    const failures: string[] = [];
+    let saved = 0;
+
+    // One fetch per distinct month, reused for every teacher flagged in that month.
+    const byMonth = new Map<string, AuditRow[]>();
+    for (const r of eligibleRows) {
+      byMonth.set(r.month, [...(byMonth.get(r.month) || []), r]);
+    }
+
+    let done = 0;
+    for (const [month, monthRows] of byMonth) {
+      let computed: ReturnType<typeof computeSalaryRows> = [];
+      let existingPayouts: any[] = [];
+      try {
+        const inputs = await fetchSalaryMonthInputs(month);
+        existingPayouts = inputs.existingPayouts;
+        computed = computeSalaryRows(inputs);
+      } catch (e: any) {
+        monthRows.forEach((r) => failures.push(`${r.teacherName} ${month}: ${e?.message || 'load failed'}`));
+        done += monthRows.length;
+        setProgress({ done, total });
+        continue;
+      }
+
+      for (const r of monthRows) {
+        try {
+          const teacherRow = computed.find((t) => t.teacherId === r.teacherId);
+          if (!teacherRow) throw new Error('no calculable rows for this month');
+          const existing = existingPayouts.find((p: any) => p.teacher_id === r.teacherId) || null;
+          await saveUnpaidPayout(teacherRow, month, existing);
+          saved++;
+        } catch (e: any) {
+          failures.push(`${r.teacherName} ${month}: ${e?.message || 'save failed'}`);
+        }
+        done++;
+        setProgress({ done, total });
+      }
+    }
+
+    setProgress(null);
+    await queryClient.invalidateQueries({ queryKey: ['salary-sheet-audit-full'] });
+    await queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    await queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
+
+    toast({
+      title: 'Bulk regeneration complete',
+      description: `${saved} sheet(s) saved, ${skippedCount} skipped (already paid/locked), ${failures.length} failed.${
+        failures.length ? ` First failure: ${failures[0]}` : ''
+      }`,
+      variant: failures.length ? 'destructive' : undefined,
+    });
+    if (failures.length) console.warn('[salary bulk regenerate] failures:', failures);
+  };
+
+
+
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground p-6">
