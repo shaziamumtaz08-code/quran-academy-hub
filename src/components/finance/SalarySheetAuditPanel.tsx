@@ -13,7 +13,7 @@ import { AlertTriangle, CheckCircle2, Loader2, History, Download, RefreshCw } fr
 import { format, parseISO, endOfMonth, startOfMonth, eachMonthOfInterval } from 'date-fns';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
 import {
-  PAID_PAYOUT_STATUSES, isPaidLikePayout, fetchSalaryMonthInputs,
+  isPaidLikePayout, fetchSalaryMonthInputs,
   computeSalaryRows, saveUnpaidPayout,
 } from '@/lib/salaryCalc';
 
