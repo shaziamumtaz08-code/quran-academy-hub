@@ -1302,15 +1302,22 @@ export default function SalaryEngine() {
 
         {/* ── Cross-month Sheet Audit ── */}
         <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Salary Sheet Audit</DialogTitle>
               <DialogDescription>
-                Reconciles every saved sheet against the assignments actually active in that month
-                (month-granular end dates), so back-dated changes never stay hidden.
+                Reconciles every teacher × month against the assignments actually active in that month
+                (month-granular end dates, ended assignments still paid) — including months where no sheet
+                was ever generated. Use “Previous version” to open the archived sheet for that month.
               </DialogDescription>
             </DialogHeader>
-            <SalarySheetAuditPanel onOpenMonth={(m) => { setSalaryMonth(m); setAuditOpen(false); }} />
+            <SalarySheetAuditPanel
+              onOpenMonth={(m, view) => {
+                setSalaryMonth(m);
+                setSalaryView(view === 'archived' ? 'archived' : 'active');
+                setAuditOpen(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
 
