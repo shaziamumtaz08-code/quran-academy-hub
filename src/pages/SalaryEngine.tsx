@@ -387,13 +387,49 @@ export default function SalaryEngine() {
   // ── Mutations ──
 
   const savePayout = useMutation({
-    mutationFn: async ({ teacher, reason, action }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction }) => {
+    mutationFn: async ({ teacher, reason, action, changeType }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction; changeType?: RevisionChangeType }) => {
       const existing = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
       const payload = buildPayoutPayload(teacher, salaryMonth);
 
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
           if (!reason || !action) throw new Error('Revision details are required');
+
+          // "Payment adjustment": the underlying calculation is correct, only the
+          // amount actually paid differs (rounding / small correction / bonus).
+          // Record it as a salary_adjustments row on the SAME payout — no archive,
+          // no supersede, no "Revised" badge.
+          if (changeType === 'payment_adjustment') {
+            const paid = Number(existing.amount_paid) || 0;
+            const delta = Math.round((paid - Number(existing.net_salary || 0)) * 100) / 100;
+            if (Math.abs(delta) > 0.01) {
+              const { error: adjErr } = await supabase.from('salary_adjustments').insert({
+                teacher_id: teacher.teacherId,
+                salary_month: salaryMonth,
+                adjustment_type: 'rounding',
+                amount: Math.abs(delta),
+                reason,
+                created_by: user?.id || null,
+              } as any);
+              if (adjErr) throw adjErr;
+            }
+            const newAdjustment = Math.round(((Number(existing.adjustment_amount) || 0) + delta) * 100) / 100;
+            const newNet = Math.round(((Number(existing.net_salary) || 0) + delta) * 100) / 100;
+            const { error: updErr } = await supabase
+              .from('salary_payouts')
+              .update({
+                adjustment_amount: newAdjustment,
+                net_salary: newNet,
+                revision_required_at: null,
+                revision_reason: null,
+              } as any)
+              .eq('id', existing.id);
+            if (updErr) throw updErr;
+            queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
+            toast({ title: 'Payment adjustment recorded', description: `Sheet net updated to PKR ${newNet.toFixed(2)}.` });
+            return;
+          }
+
           // Auto-generate a settlement note from the reason & action so the audit log stays populated
           // without burdening the user with an extra field.
           const autoNote = action === 'accept_no_action'
@@ -759,6 +795,7 @@ export default function SalaryEngine() {
       setRevisionTeacher(teacher);
       setRevisionReason(payout.revision_reason || 'Back-dated salary recalculation');
       setSettlementAction('settle_separately');
+      setRevisionChangeType('payment_adjustment');
       return;
     }
     savePayout.mutate({ teacher });
@@ -1195,6 +1232,23 @@ export default function SalaryEngine() {
               </Alert>
 
               <div className="space-y-2">
+                <Label>What kind of difference is this?</Label>
+                <Select value={revisionChangeType} onValueChange={(v) => setRevisionChangeType(v as RevisionChangeType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="payment_adjustment">Payment adjustment (rounding, bonus, small correction)</SelectItem>
+                    <SelectItem value="data_change">Underlying data changed (back-dated assignment, corrected attendance, bug fix)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {revisionChangeType === 'payment_adjustment'
+                    ? 'Records an adjustment on this same sheet. Nothing is archived and no “Revised” badge is added.'
+                    : 'Archives the current sheet as a previous version and creates a revised sheet.'}
+                </p>
+              </div>
+
+              {revisionChangeType === 'data_change' && (
+              <div className="space-y-2">
                 <Label>What should happen to this difference?</Label>
                 <Select value={settlementAction} onValueChange={(value) => setSettlementAction(value as SettlementAction)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1208,9 +1262,10 @@ export default function SalaryEngine() {
                   Choosing “no further action” closes the difference as an accepted rounding or management decision; it does not create an adjustment.
                 </p>
               </div>
+              )}
 
               <div className="space-y-1.5">
-                <Label>Reason for recalculation</Label>
+                <Label>{revisionChangeType === 'payment_adjustment' ? 'Reason for adjustment' : 'Reason for recalculation'}</Label>
                 <Select value={revisionReason} onValueChange={setRevisionReason}>
                   <SelectTrigger><SelectValue placeholder="Select a reason" /></SelectTrigger>
                   <SelectContent>
@@ -1242,11 +1297,12 @@ export default function SalaryEngine() {
                   teacher: revisionTeacher,
                   reason: (revisionReason === 'Other' ? revisionReasonOther.trim() : revisionReason),
                   action: settlementAction,
+                  changeType: revisionChangeType,
                 })}
                 disabled={!revisionReason || (revisionReason === 'Other' && !revisionReasonOther.trim()) || savePayout.isPending}
               >
                 {savePayout.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Save revised sheet & decision
+                {revisionChangeType === 'payment_adjustment' ? 'Record payment adjustment' : 'Save revised sheet & decision'}
               </Button>
             </DialogFooter>
           </DialogContent>
