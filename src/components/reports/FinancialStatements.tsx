@@ -306,6 +306,17 @@ export default function FinancialStatements() {
 
   return (
     <div className="space-y-4">
+      {mode === "teacher" && missingCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+          <p className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            {missingCount} teacher-month{missingCount === 1 ? "" : "s"} missing salary sheets in this date range.
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/salary-engine?audit=1">Open Salary Sheet Audit</Link>
+          </Button>
+        </div>
+      )}
       <Tabs value={mode} onValueChange={(v) => { setMode(v as Mode); setPersonId(null); setSearch(""); }}>
         <TabsList>
           <TabsTrigger value="teacher"><Wallet className="mr-2 h-4 w-4" />Staff Salary Statement</TabsTrigger>
@@ -380,18 +391,6 @@ export default function FinancialStatements() {
                     </Button>
                   </div>
                 </div>
-
-                {mode === "teacher" && missingCount > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-                    <p className="flex items-center gap-2 text-sm text-amber-800">
-                      <AlertTriangle className="h-4 w-4" />
-                      {missingCount} teacher-month{missingCount === 1 ? "" : "s"} missing salary sheets in this date range.
-                    </p>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/salary-engine?audit=1">Open Salary Sheet Audit</Link>
-                    </Button>
-                  </div>
-                )}
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <SummaryTile label={mode === "teacher" ? "Total earned" : "Total billed"} value={totals.earned} />
