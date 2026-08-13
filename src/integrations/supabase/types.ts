@@ -8803,9 +8803,12 @@ export type Database = {
           reverted_at: string | null
           reverted_by: string | null
           revises_payout_id: string | null
+          revision_delta: number
           revision_reason: string | null
           revision_required_at: string | null
           salary_month: string
+          settlement_action: string | null
+          settlement_note: string | null
           status: string
           superseded_by_payout_id: string | null
           teacher_id: string
@@ -8849,9 +8852,12 @@ export type Database = {
           reverted_at?: string | null
           reverted_by?: string | null
           revises_payout_id?: string | null
+          revision_delta?: number
           revision_reason?: string | null
           revision_required_at?: string | null
           salary_month: string
+          settlement_action?: string | null
+          settlement_note?: string | null
           status?: string
           superseded_by_payout_id?: string | null
           teacher_id: string
@@ -8895,9 +8901,12 @@ export type Database = {
           reverted_at?: string | null
           reverted_by?: string | null
           revises_payout_id?: string | null
+          revision_delta?: number
           revision_reason?: string | null
           revision_required_at?: string | null
           salary_month?: string
+          settlement_action?: string | null
+          settlement_note?: string | null
           status?: string
           superseded_by_payout_id?: string | null
           teacher_id?: string
@@ -13334,19 +13343,35 @@ export type Database = {
         }
         Returns: Json
       }
-      revise_salary_payout: {
-        Args: {
-          _adjustment_amount: number
-          _base_salary: number
-          _calculation_json: Json
-          _change_reason: string
-          _deductions: number
-          _expense_amount: number
-          _extra_class_amount: number
-          _payout_id: string
-        }
-        Returns: Json
-      }
+      revise_salary_payout:
+        | {
+            Args: {
+              _adjustment_amount: number
+              _base_salary: number
+              _calculation_json: Json
+              _change_reason: string
+              _deductions: number
+              _expense_amount: number
+              _extra_class_amount: number
+              _payout_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _adjustment_amount: number
+              _base_salary: number
+              _calculation_json: Json
+              _change_reason: string
+              _deductions: number
+              _expense_amount: number
+              _extra_class_amount: number
+              _payout_id: string
+              _settlement_action?: string
+              _settlement_note?: string
+            }
+            Returns: Json
+          }
       safe_uuid: { Args: { _txt: string }; Returns: string }
       send_demo_chat: { Args: { _body: string; _token: string }; Returns: Json }
       set_vault_password: {
