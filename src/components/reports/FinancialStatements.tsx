@@ -225,6 +225,7 @@ export default function FinancialStatements() {
             if (!row) return;
             row.earned += Number(i.amount || 0) - Number(i.forgiven_amount || 0);
             row.paid += Number(i.amount_paid || 0);
+            row.hasSheet = true;
             row.status = i.status || "—";
             row.href = `/payments?month=${i.billing_month}&student=${personId}`;
           });
