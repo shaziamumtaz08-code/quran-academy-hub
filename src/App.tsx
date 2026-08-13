@@ -530,6 +530,7 @@ function AppRoutes() {
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
+      <Route path="/finance/print/salary-bulk" element={<ProtectedRoute><PrintSalaryBulk /></ProtectedRoute>} />
       <Route path="/course/:slug" element={<PublicCoursePage />} />
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
       <Route path="/inquiry" element={<PublicInquiryForm />} />
