@@ -50,6 +50,8 @@ interface StudentPayoutRow {
   totalDays: number;
   calculatedAmount: number;
   editedAmount: number | null;
+  overridePersisted?: boolean;
+
   attendanceDays: AttendanceDay[];
   presentCount: number;
   absentCount: number;
@@ -106,10 +108,12 @@ interface SalarySheetDialogProps {
   salaryMonth: string;
   year: number;
   month: number;
-  editAmounts: Record<string, number>;
-  editRoleAmounts?: Record<string, number>;
+  editAmounts: Record<string, number | null>;
+  editRoleAmounts?: Record<string, number | null>;
   onEditAmount: (assignmentId: string, amount: number) => void;
+  onClearOverride?: (assignmentId: string) => void;
   onEditRoleAmount?: (staffSalaryId: string, amount: number) => void;
+
   onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[], amountPaid?: number, paymentDate?: string) => void;
   onTopUp?: (amount: number, notes: string, receiptUrls: string[]) => void;
   onUpdateProofs?: (receiptUrls: string[], invoiceNumber?: string) => void;
@@ -141,7 +145,10 @@ export function SalarySheetDialog({
   editAmounts,
   editRoleAmounts = {},
   onEditAmount,
+  onClearOverride,
   onEditRoleAmount,
+
+
   onMarkPaid,
   onTopUp,
   onUpdateProofs,
@@ -230,8 +237,9 @@ export function SalarySheetDialog({
     }
   };
 
-  const teachingBase = teacher.students.reduce((s, r) => s + (editAmounts[r.assignmentId] ?? r.calculatedAmount), 0);
-  const roleBase = (teacher.roleSalaries || []).reduce((s, r) => s + (editRoleAmounts[r.staffSalaryId] ?? r.proratedAmount), 0);
+  const teachingBase = teacher.students.reduce((s, r) => s + (r.editedAmount ?? r.calculatedAmount), 0);
+  const roleBase = (teacher.roleSalaries || []).reduce((s, r) => s + (r.editedAmount ?? r.proratedAmount), 0);
+
   const totalBase = teachingBase + roleBase;
   const grandNet = totalBase + teacher.extraClassAmount + teacher.adjustmentAmount - teacher.deductions;
 
@@ -472,7 +480,9 @@ export function SalarySheetDialog({
                 </div>
 
                 {teacher.students.map((s) => {
-                  const finalAmt = editAmounts[s.assignmentId] ?? s.calculatedAmount;
+                  const finalAmt = s.editedAmount ?? s.calculatedAmount;
+                  const overrideActive = s.editedAmount !== null && Math.abs(s.editedAmount - s.calculatedAmount) > 0.01;
+
                   return (
                     <div key={s.assignmentId} className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
                       {/* Desktop Row */}
