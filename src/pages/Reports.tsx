@@ -19,12 +19,14 @@ import AccountabilityReport from "@/components/reports/AccountabilityReport";
 import QaidaProgressReport from "@/components/reports/QaidaProgressReport";
 import ComplianceReport from "@/components/reports/ComplianceReport";
 import FinancialStatements from "@/components/reports/FinancialStatements";
+import SalaryRevisionsReport from "@/components/reports/SalaryRevisionsReport";
 
 const allViews = [
   { label: 'Executive', value: 'executive' },
   { label: 'Attendance', value: 'attendance' },
   { label: 'Fees', value: 'fees' },
   { label: 'Statements', value: 'statements' },
+  { label: 'Salary Revisions', value: 'salary-revisions' },
   { label: 'Engagement', value: 'engagement' },
   { label: 'Qaida Progress', value: 'qaida' },
   { label: 'Teachers', value: 'teachers' },
@@ -41,6 +43,7 @@ const baseDescriptions: Record<string, string> = {
   attendance: 'Daily attendance summaries, absence detection, and streak tracking.',
   fees: 'Revenue tracking, pending dues, and payment analysis.',
   statements: 'Individual staff salary and student fee statements for any period — earned, paid, and outstanding.',
+  'salary-revisions': 'Salary sheets that are revision-due or out of sync with active assignments — filter by month, staff and issue type.',
   engagement: 'Student progress tracking, consistency, and engagement patterns.',
   qaida: 'Noorani Qaida baab-by-baab progress for every Qaida student.',
   teachers: 'Classes taken, punctuality, and teacher performance analysis.',
@@ -59,7 +62,7 @@ export default function Reports() {
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const isOneToOne = activeModelType === 'one_to_one';
   const availableViews = useMemo(
-    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability', 'compliance', 'statements'].includes(view.value)),
+    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability', 'compliance', 'statements', 'salary-revisions'].includes(view.value)),
     [isAdmin],
   );
 
@@ -73,6 +76,7 @@ export default function Reports() {
       case 'attendance': return <AttendanceReports />;
       case 'fees': return <FeeReports />;
       case 'statements': return <FinancialStatements />;
+      case 'salary-revisions': return <SalaryRevisionsReport />;
       case 'engagement': return <StudentEngagement />;
       case 'qaida': return <QaidaProgressReport />;
       case 'teachers': return <TeacherPerformance />;
