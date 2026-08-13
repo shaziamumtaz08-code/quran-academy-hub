@@ -131,7 +131,17 @@ export default function FinancialStatements() {
       const months = monthsBetween(monthFrom, monthTo);
       const byMonth = new Map<string, MonthRow>();
       months.forEach((m) =>
-        byMonth.set(m, { month: m, earned: 0, paid: 0, balance: 0, status: "—", href: "" }),
+        byMonth.set(m, {
+          month: m,
+          earned: 0,
+          paid: 0,
+          balance: 0,
+          status: "not_generated",
+          href: "",
+          hasSheet: false,
+          expected: 0,
+          lines: [],
+        }),
       );
 
       if (mode === "teacher") {
@@ -156,9 +166,48 @@ export default function FinancialStatements() {
                   : 0;
             row.earned += earned;
             row.paid += paid;
+            row.hasSheet = true;
             row.status = p.status || "—";
             row.href = `/salary-engine?month=${p.salary_month}&teacher=${personId}`;
           });
+
+        // Expected: assignments active in each month (what SHOULD have been billed)
+        const { data: assigns, error: aErr } = await supabase
+          .from("student_teacher_assignments")
+          .select(
+            "id, student_id, payout_amount, status, effective_from_date, effective_to_date, status_effective_date, salary_linked, profiles!student_teacher_assignments_student_id_fkey(full_name)",
+          )
+          .eq("teacher_id", personId as string)
+          .in("status", [...SALARY_ASSIGNMENT_STATUSES]);
+        if (aErr) throw aErr;
+
+        months.forEach((m) => {
+          const row = byMonth.get(m)!;
+          const monthStart = `${m}-01`;
+          const monthEndDate = endOfMonth(parseISO(monthStart));
+          const monthEnd = format(monthEndDate, "yyyy-MM-dd");
+          const monthDays = getDaysInMonth(monthEndDate);
+          (assigns || []).forEach((a: any) => {
+            if (a.salary_linked === false) return;
+            const win = assignmentMonthWindow(a, monthStart, monthEnd);
+            if (!win) return;
+            const activeDays =
+              differenceInCalendarDays(parseISO(win.dateTo), parseISO(win.dateFrom)) + 1;
+            const base = Number(a.payout_amount || 0);
+            const prorated = (base / monthDays) * activeDays;
+            row.lines.push({
+              id: a.id,
+              studentName: a.profiles?.full_name || "Unnamed student",
+              status: a.status || "—",
+              payoutAmount: base,
+              prorated,
+              activeDays,
+              monthDays,
+            });
+            row.expected += prorated;
+          });
+          if (!row.href) row.href = `/salary-engine?month=${m}&teacher=${personId}`;
+        });
       } else {
         let q = supabase
           .from("fee_invoices")
