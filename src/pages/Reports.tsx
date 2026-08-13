@@ -62,7 +62,7 @@ export default function Reports() {
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const isOneToOne = activeModelType === 'one_to_one';
   const availableViews = useMemo(
-    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability', 'compliance', 'statements'].includes(view.value)),
+    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability', 'compliance', 'statements', 'salary-revisions'].includes(view.value)),
     [isAdmin],
   );
 
@@ -76,6 +76,7 @@ export default function Reports() {
       case 'attendance': return <AttendanceReports />;
       case 'fees': return <FeeReports />;
       case 'statements': return <FinancialStatements />;
+      case 'salary-revisions': return <SalaryRevisionsReport />;
       case 'engagement': return <StudentEngagement />;
       case 'qaida': return <QaidaProgressReport />;
       case 'teachers': return <TeacherPerformance />;
