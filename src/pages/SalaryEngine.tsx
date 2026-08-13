@@ -725,6 +725,24 @@ export default function SalaryEngine() {
   };
 
   const selectedPayout = existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId);
+  const revisionPayout = revisionTeacher
+    ? existingPayouts.find((p: any) => p.teacher_id === revisionTeacher.teacherId)
+    : null;
+  const revisionPaid = Number(revisionPayout?.amount_paid) || 0;
+  const revisionSavedNet = Number(revisionPayout?.net_salary) || 0;
+  const revisionCalculatedNet = revisionTeacher?.netSalary || 0;
+  const revisionSettlementDelta = revisionCalculatedNet - revisionPaid;
+
+  const openRevision = (teacher: TeacherSalaryRow, payout: any) => {
+    if (payout && ['locked', 'paid', 'partially_paid'].includes(payout.status)) {
+      setRevisionTeacher(teacher);
+      setRevisionReason(payout.revision_reason || 'Back-dated salary recalculation');
+      setSettlementAction('settle_separately');
+      setSettlementNote('');
+      return;
+    }
+    savePayout.mutate({ teacher });
+  };
 
   return (
     <DashboardLayout>
@@ -946,13 +964,17 @@ export default function SalaryEngine() {
                             <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
                           )}
                           {payout && (payout.revision_required_at || Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01) && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] bg-amber-50 text-amber-700 border-amber-200"
-                              title={payout.revision_reason || 'Live calculation differs from the saved sheet'}
-                            >
-                              NEEDS REVISION · PKR {teacher.netSalary.toFixed(0)}
-                            </Badge>
+                            <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] leading-4 text-amber-800">
+                              <div className="font-semibold">CALCULATION CHANGED — review before settling</div>
+                              <div>Old sheet PKR {Number(payout.net_salary || 0).toFixed(2)} · Paid PKR {Number(payout.amount_paid || 0).toFixed(2)} · Recalculated PKR {teacher.netSalary.toFixed(2)}</div>
+                              <div className="font-medium">
+                                {teacher.netSalary - Number(payout.amount_paid || 0) > 0.01
+                                  ? `Potential amount still payable: PKR ${(teacher.netSalary - Number(payout.amount_paid || 0)).toFixed(2)}`
+                                  : teacher.netSalary - Number(payout.amount_paid || 0) < -0.01
+                                    ? `Potential overpayment: PKR ${Math.abs(teacher.netSalary - Number(payout.amount_paid || 0)).toFixed(2)}`
+                                    : 'Payment matches the recalculated salary.'}
+                              </div>
+                            </div>
                           )}
 
                         </div>
@@ -992,13 +1014,18 @@ export default function SalaryEngine() {
                             <Button 
                               size="sm" 
                               variant="default" 
-                              onClick={() => savePayout.mutate(teacher)} 
+                              onClick={() => openRevision(teacher, payout)} 
                               disabled={!canSave || savePayout.isPending}
                               title={willReviseLockedSheet ? 'Archive the locked/paid sheet and create a revised sheet' : (payout ? 'Revise this salary sheet' : 'Create salary sheet')}
                             >
                               {savePayout.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                               {payout ? 'Revise' : 'Create'}
                             </Button>
+                            {payout?.revises_payout_id && (
+                              <Button size="sm" variant="outline" onClick={() => window.open(`/finance/print/salary/${payout.revises_payout_id}`, '_blank')}>
+                                <History className="h-3.5 w-3.5 mr-1" /> Legacy sheet
+                              </Button>
+                            )}
                             {teacher.payoutStatus === 'paid' && (
                               <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
                                 <Lock className="h-4 w-4" />
@@ -1097,6 +1124,92 @@ export default function SalaryEngine() {
                 setAuditOpen(false);
               }}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Paid Sheet Revision ── */}
+        <Dialog open={!!revisionTeacher} onOpenChange={(open) => !open && setRevisionTeacher(null)}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Review salary revision</DialogTitle>
+              <DialogDescription>
+                This compares the original salary sheet, the payment you actually recorded, and today’s recalculation. It does not assume the receipt amount was wrong.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Original sheet</p>
+                  <p className="font-semibold tabular-nums">PKR {revisionSavedNet.toFixed(2)}</p>
+                </div>
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Actually paid</p>
+                  <p className="font-semibold tabular-nums">PKR {revisionPaid.toFixed(2)}</p>
+                </div>
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Recalculated</p>
+                  <p className="font-semibold tabular-nums">PKR {revisionCalculatedNet.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-amber-900">
+                  {revisionSettlementDelta > 0.01
+                    ? `The recalculated salary is PKR ${revisionSettlementDelta.toFixed(2)} more than the recorded payment.`
+                    : revisionSettlementDelta < -0.01
+                      ? `The recorded payment is PKR ${Math.abs(revisionSettlementDelta).toFixed(2)} more than the recalculated salary.`
+                      : 'The recorded payment matches the recalculated salary.'}
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label>What should happen to this difference?</Label>
+                <Select value={settlementAction} onValueChange={(value) => setSettlementAction(value as SettlementAction)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="settle_separately">Pay / recover separately</SelectItem>
+                    <SelectItem value="carry_forward">Carry to next salary</SelectItem>
+                    <SelectItem value="accept_no_action">Accept rounded payment — no further action</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choosing “no further action” closes the difference as an accepted rounding or management decision; it does not create an adjustment.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Reason for recalculation</Label>
+                <Textarea value={revisionReason} onChange={(event) => setRevisionReason(event.target.value)} placeholder="What changed in the salary calculation?" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Settlement note {settlementAction === 'accept_no_action' ? '(required)' : '(optional)'}</Label>
+                <Textarea value={settlementNote} onChange={(event) => setSettlementNote(event.target.value)} placeholder="e.g. Rounded payment of PKR 3,000 accepted; nothing to carry forward" />
+              </div>
+
+              {revisionPayout?.id && (
+                <Button variant="outline" className="w-full" onClick={() => window.open(`/finance/print/salary/${revisionPayout.id}`, '_blank')}>
+                  <FileText className="h-4 w-4 mr-2" /> Open original paid sheet
+                </Button>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRevisionTeacher(null)}>Cancel</Button>
+              <Button
+                onClick={() => revisionTeacher && savePayout.mutate({
+                  teacher: revisionTeacher,
+                  reason: revisionReason.trim(),
+                  action: settlementAction,
+                  note: settlementNote.trim(),
+                })}
+                disabled={!revisionReason.trim() || (settlementAction === 'accept_no_action' && !settlementNote.trim()) || savePayout.isPending}
+              >
+                {savePayout.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Save revised sheet & decision
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
