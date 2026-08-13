@@ -349,11 +349,26 @@ export default function Assignments() {
         division_id: activeDivision?.id || null,
         branch_id: activeDivision?.branch_id || null,
       }));
+      // Only ONE active assignment may exist per teacher+student; closed/past
+      // periods are preserved for salary history, so we never upsert over them.
+      const { data: existingActive } = await supabase
+        .from('student_teacher_assignments')
+        .select('id, student_id')
+        .eq('teacher_id', teacherId)
+        .in('student_id', studentIds)
+        .eq('status', 'active')
+        .is('effective_to_date', null);
+      const activeStudentIds = new Set((existingActive || []).map((r: any) => r.student_id));
+      const toInsert = records.filter(r => !activeStudentIds.has(r.student_id));
+      if (!toInsert.length) {
+        throw new Error('These students already have an active assignment with this teacher');
+      }
       const { data, error } = await supabase
         .from('student_teacher_assignments')
-        .upsert(records, { onConflict: 'teacher_id,student_id', ignoreDuplicates: false })
+        .insert(toInsert)
         .select();
       if (error) throw error;
+
       // Seed assignment_history for new records
       if (data) {
         const historyRecords = data.map((row: any) => ({
