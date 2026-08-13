@@ -1224,10 +1224,6 @@ export default function SalaryEngine() {
                   />
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label>Settlement note (optional)</Label>
-                <Textarea value={settlementNote} onChange={(event) => setSettlementNote(event.target.value)} placeholder="e.g. Rounded payment of PKR 3,000 accepted; nothing to carry forward" />
-              </div>
 
               {revisionPayout?.id && (
                 <Button variant="outline" className="w-full" onClick={() => window.open(`/finance/print/salary/${revisionPayout.id}`, '_blank')}>
@@ -1243,7 +1239,6 @@ export default function SalaryEngine() {
                   teacher: revisionTeacher,
                   reason: (revisionReason === 'Other' ? revisionReasonOther.trim() : revisionReason),
                   action: settlementAction,
-                  note: settlementNote.trim(),
                 })}
                 disabled={!revisionReason || (revisionReason === 'Other' && !revisionReasonOther.trim()) || savePayout.isPending}
               >
