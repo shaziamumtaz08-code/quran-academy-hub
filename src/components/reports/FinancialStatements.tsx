@@ -453,12 +453,49 @@ export default function FinancialStatements() {
                             )}
                           </td>
                         </tr>
-                      ))}
+                        {mode === "teacher" && isOpen && (
+                          <tr key={`${r.month}-detail`} className="border-b bg-muted/30">
+                            <td colSpan={7} className="p-3">
+                              {r.lines.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No active assignments in this month.</p>
+                              ) : (
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-left text-muted-foreground">
+                                      <th className="py-1">Student</th>
+                                      <th className="py-1">Assignment status</th>
+                                      <th className="py-1 text-right">Payout rate</th>
+                                      <th className="py-1 text-right">Active days</th>
+                                      <th className="py-1 text-right">Expected (prorated)</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {r.lines.map((l) => (
+                                      <tr key={l.id} className="border-t">
+                                        <td className="py-1">{l.studentName}</td>
+                                        <td className="py-1 capitalize">{l.status}</td>
+                                        <td className="py-1 text-right tabular-nums">{money(l.payoutAmount)}</td>
+                                        <td className="py-1 text-right tabular-nums">{l.activeDays}/{l.monthDays}</td>
+                                        <td className="py-1 text-right tabular-nums">{money(l.prorated)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                        </>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 font-semibold">
                         <td className="py-2">Total</td>
                         <td className="py-2 text-right tabular-nums">{money(totals.earned)}</td>
+                        {mode === "teacher" && (
+                          <td className="py-2 text-right tabular-nums">{money(rows.reduce((s, r) => s + r.expected, 0))}</td>
+                        )}
                         <td className="py-2 text-right tabular-nums">{money(totals.paid)}</td>
                         <td className="py-2 text-right tabular-nums">{money(totals.balance)}</td>
                         <td colSpan={2} />
