@@ -145,7 +145,8 @@ export function SalarySheetDialog({
   editAmounts,
   editRoleAmounts = {},
   onEditAmount,
-  onEditRoleAmount,
+  onClearOverride,
+
   onMarkPaid,
   onTopUp,
   onUpdateProofs,
