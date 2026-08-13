@@ -79,6 +79,17 @@ const REVERT_REASONS = [
   'Other',
 ];
 
+const REVISION_REASONS = [
+  'Back-dated salary recalculation',
+  'Assignment start / end date changed',
+  'Attendance corrected after payment',
+  'Leave or absence updated',
+  'Rate or fee plan changed',
+  'Adjustment (bonus / deduction) added',
+  'Rounding difference only',
+  'Other',
+];
+
 type StaffFilter = 'all' | 'teachers' | 'staff';
 type SalaryView = 'active' | 'archived';
 type SettlementAction = 'settle_separately' | 'carry_forward' | 'accept_no_action';
@@ -109,6 +120,7 @@ export default function SalaryEngine() {
   );
   const [revisionTeacher, setRevisionTeacher] = useState<TeacherSalaryRow | null>(null);
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
+  const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
   const [settlementNote, setSettlementNote] = useState('');
 
@@ -1192,10 +1204,24 @@ export default function SalaryEngine() {
 
               <div className="space-y-1.5">
                 <Label>Reason for recalculation</Label>
-                <Textarea value={revisionReason} onChange={(event) => setRevisionReason(event.target.value)} placeholder="What changed in the salary calculation?" />
+                <Select value={revisionReason} onValueChange={setRevisionReason}>
+                  <SelectTrigger><SelectValue placeholder="Select a reason" /></SelectTrigger>
+                  <SelectContent>
+                    {REVISION_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {revisionReason === 'Other' && (
+                  <Textarea
+                    value={revisionReasonOther}
+                    onChange={(event) => setRevisionReasonOther(event.target.value)}
+                    placeholder="Describe what changed in the salary calculation"
+                  />
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label>Settlement note {settlementAction === 'accept_no_action' ? '(required)' : '(optional)'}</Label>
+                <Label>Settlement note (optional)</Label>
                 <Textarea value={settlementNote} onChange={(event) => setSettlementNote(event.target.value)} placeholder="e.g. Rounded payment of PKR 3,000 accepted; nothing to carry forward" />
               </div>
 
@@ -1211,11 +1237,11 @@ export default function SalaryEngine() {
               <Button
                 onClick={() => revisionTeacher && savePayout.mutate({
                   teacher: revisionTeacher,
-                  reason: revisionReason.trim(),
+                  reason: (revisionReason === 'Other' ? revisionReasonOther.trim() : revisionReason),
                   action: settlementAction,
                   note: settlementNote.trim(),
                 })}
-                disabled={!revisionReason.trim() || (settlementAction === 'accept_no_action' && !settlementNote.trim()) || savePayout.isPending}
+                disabled={!revisionReason || (revisionReason === 'Other' && !revisionReasonOther.trim()) || savePayout.isPending}
               >
                 {savePayout.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Save revised sheet & decision
