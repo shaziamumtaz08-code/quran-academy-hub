@@ -168,7 +168,7 @@ export default function FinancialStatements() {
             row.paid += paid;
             row.hasSheet = true;
             row.status = p.status || "—";
-            row.href = `/salary-engine?month=${p.salary_month}&teacher=${personId}`;
+            row.href = `/salary?month=${p.salary_month}&teacher=${personId}`;
           });
 
         // Expected: assignments active in each month (what SHOULD have been billed)
@@ -206,7 +206,7 @@ export default function FinancialStatements() {
             });
             row.expected += prorated;
           });
-          if (!row.href) row.href = `/salary-engine?month=${m}&teacher=${personId}`;
+          if (!row.href) row.href = `/salary?month=${m}&teacher=${personId}`;
         });
       } else {
         let q = supabase
@@ -313,7 +313,7 @@ export default function FinancialStatements() {
             {missingCount} teacher-month{missingCount === 1 ? "" : "s"} missing salary sheets in this date range.
           </p>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/salary-engine?audit=1">Open Salary Sheet Audit</Link>
+            <Link to="/salary?audit=1">Open Salary Sheet Audit</Link>
           </Button>
         </div>
       )}
