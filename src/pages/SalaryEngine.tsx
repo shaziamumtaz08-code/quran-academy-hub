@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle, History, TrendingUp, TrendingDown, FileText
 } from 'lucide-react';
@@ -80,6 +81,7 @@ const REVERT_REASONS = [
 
 type StaffFilter = 'all' | 'teachers' | 'staff';
 type SalaryView = 'active' | 'archived';
+type SettlementAction = 'settle_separately' | 'carry_forward' | 'accept_no_action';
 
 export default function SalaryEngine() {
   const { user, activeRole } = useAuth();
@@ -103,6 +105,10 @@ export default function SalaryEngine() {
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [revisionTeacher, setRevisionTeacher] = useState<TeacherSalaryRow | null>(null);
+  const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
+  const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
+  const [settlementNote, setSettlementNote] = useState('');
 
   
   // Revert modal state
@@ -366,18 +372,13 @@ export default function SalaryEngine() {
   // ── Mutations ──
 
   const savePayout = useMutation({
-    mutationFn: async (teacher: TeacherSalaryRow) => {
+    mutationFn: async ({ teacher, reason, action, note }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction; note?: string }) => {
       const existing = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
       const payload = buildPayoutPayload(teacher, salaryMonth);
 
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
-          // Already paid/locked — revise via RPC: archive old, insert new w/ prior_paid carry-forward
-          const reason = window.prompt(
-            `This payout is ${existing.status}. A revision will archive the current row and create a new one with prior paid amount (${existing.amount_paid}) carried over.\n\nReason for revision:`,
-            'Back-dated salary adjustment'
-          );
-          if (!reason) throw new Error('Revision cancelled');
+          if (!reason || !action) throw new Error('Revision details are required');
           const { data, error } = await (supabase as any).rpc('revise_salary_payout', {
             _payout_id: existing.id,
             _base_salary: payload.base_salary,
@@ -387,15 +388,19 @@ export default function SalaryEngine() {
             _deductions: payload.deductions,
             _calculation_json: payload.calculation_json,
             _change_reason: reason,
+            _settlement_action: action,
+            _settlement_note: note || null,
           });
           if (error) throw error;
           const delta = Number(data?.delta_to_settle ?? 0);
-          if (Math.abs(delta) > 0.01) {
+          if (Math.abs(delta) > 0.01 && action !== 'accept_no_action') {
             toast({
               title: 'Salary revised',
-              description: delta > 0
-                ? `Teacher is owed ${delta.toFixed(2)} — issue a follow-up payout manually.`
-                : `Teacher was overpaid by ${Math.abs(delta).toFixed(2)} — adjust on next month's sheet.`,
+              description: action === 'carry_forward'
+                ? `${delta > 0 ? 'Add' : 'Deduct'} PKR ${Math.abs(delta).toFixed(2)} on the next salary sheet.`
+                : delta > 0
+                  ? `PKR ${delta.toFixed(2)} remains payable separately.`
+                  : `PKR ${Math.abs(delta).toFixed(2)} is recoverable separately.`,
             });
           }
           return;
@@ -417,6 +422,8 @@ export default function SalaryEngine() {
       toast({ title: 'Salary saved & confirmed' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
+      setRevisionTeacher(null);
+      setSettlementNote('');
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -428,7 +435,7 @@ export default function SalaryEngine() {
       if (teacher) {
         const existingPayout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
         if (!existingPayout || (existingPayout.status !== 'locked' && existingPayout.status !== 'paid')) {
-          await savePayout.mutateAsync(teacher);
+          await savePayout.mutateAsync({ teacher });
         }
       }
       const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).or('is_archived.is.null,is_archived.eq.false').single()).data;
