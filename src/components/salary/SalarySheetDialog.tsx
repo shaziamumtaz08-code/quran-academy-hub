@@ -513,11 +513,27 @@ export function SalarySheetDialog({
                           <div className="col-span-2 text-right">
                             <Input
                               type="number"
-                              className="h-8 w-28 text-right text-sm font-semibold ml-auto tabular-nums"
+                              className={`h-8 w-28 text-right text-sm font-semibold ml-auto tabular-nums ${overrideActive ? 'border-amber-400 bg-amber-50' : ''}`}
                               value={finalAmt}
                               onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
                               disabled={!canEditCalculations}
                             />
+                            {overrideActive && (
+                              <div className="flex items-center justify-end gap-1 mt-1">
+                                <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-700 bg-amber-50">
+                                  Manual override
+                                </Badge>
+                                {canEditCalculations && onClearOverride && (
+                                  <button
+                                    type="button"
+                                    className="text-[9px] underline text-muted-foreground hover:text-foreground"
+                                    onClick={() => onClearOverride(s.assignmentId)}
+                                  >
+                                    clear
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                         {!isTeacherView && (
@@ -560,13 +576,24 @@ export function SalarySheetDialog({
                             {isTeacherView ? (
                               <p className="font-semibold tabular-nums">PKR {finalAmt.toFixed(0)}</p>
                             ) : (
-                              <Input
-                                type="number"
-                                className="h-7 w-full text-right text-xs font-semibold tabular-nums"
-                                value={finalAmt}
-                                onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                                disabled={!canEditCalculations}
-                              />
+                              <>
+                                <Input
+                                  type="number"
+                                  className={`h-7 w-full text-right text-xs font-semibold tabular-nums ${overrideActive ? 'border-amber-400 bg-amber-50' : ''}`}
+                                  value={finalAmt}
+                                  onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
+                                  disabled={!canEditCalculations}
+                                />
+                                {overrideActive && canEditCalculations && onClearOverride && (
+                                  <button
+                                    type="button"
+                                    className="text-[9px] underline text-amber-700"
+                                    onClick={() => onClearOverride(s.assignmentId)}
+                                  >
+                                    override — clear
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
