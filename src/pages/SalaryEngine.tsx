@@ -79,6 +79,17 @@ const REVERT_REASONS = [
   'Other',
 ];
 
+const REVISION_REASONS = [
+  'Back-dated salary recalculation',
+  'Assignment start / end date changed',
+  'Attendance corrected after payment',
+  'Leave or absence updated',
+  'Rate or fee plan changed',
+  'Adjustment (bonus / deduction) added',
+  'Rounding difference only',
+  'Other',
+];
+
 type StaffFilter = 'all' | 'teachers' | 'staff';
 type SalaryView = 'active' | 'archived';
 type SettlementAction = 'settle_separately' | 'carry_forward' | 'accept_no_action';
