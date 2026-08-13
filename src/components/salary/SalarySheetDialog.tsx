@@ -50,6 +50,8 @@ interface StudentPayoutRow {
   totalDays: number;
   calculatedAmount: number;
   editedAmount: number | null;
+  overridePersisted?: boolean;
+
   attendanceDays: AttendanceDay[];
   presentCount: number;
   absentCount: number;
