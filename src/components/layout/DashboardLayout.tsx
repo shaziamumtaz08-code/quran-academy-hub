@@ -171,6 +171,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Attendance Reports", href: "/reports?view=attendance" },
               { label: "Fee & Financial", href: "/reports?view=fees" },
               { label: "Salary & Fee Statements", href: "/reports?view=statements" },
+              { label: "Salary Revisions", href: "/reports?view=salary-revisions" },
               { label: "Student Engagement", href: "/reports?view=engagement" },
               { label: "Qaida Progress", href: "/reports?view=qaida" },
               { label: "Teacher Performance", href: "/reports?view=teachers" },
