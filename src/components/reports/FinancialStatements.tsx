@@ -73,6 +73,7 @@ export default function FinancialStatements() {
   const [mode, setMode] = useState<Mode>("teacher");
   const [personId, setPersonId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [monthFrom, setMonthFrom] = useState(format(startOfYear(new Date()), "yyyy-MM"));
   const [monthTo, setMonthTo] = useState(format(startOfMonth(new Date()), "yyyy-MM"));
 
