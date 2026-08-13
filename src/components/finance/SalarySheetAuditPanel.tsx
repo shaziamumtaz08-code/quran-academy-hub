@@ -280,7 +280,7 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
   };
 
   // Rows we are allowed to auto-fix: flagged, and not already paid/locked money.
-  const flaggedRows = rows.filter((r) => r.issues.length);
+  const flaggedRows = scoped.filter((r) => r.issues.length);
   const eligibleRows = flaggedRows.filter((r) => !isPaidLikePayout(r.status));
   const skippedCount = flaggedRows.length - eligibleRows.length;
 
