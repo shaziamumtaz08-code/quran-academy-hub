@@ -237,8 +237,9 @@ export function SalarySheetDialog({
     }
   };
 
-  const teachingBase = teacher.students.reduce((s, r) => s + (editAmounts[r.assignmentId] ?? r.calculatedAmount), 0);
-  const roleBase = (teacher.roleSalaries || []).reduce((s, r) => s + (editRoleAmounts[r.staffSalaryId] ?? r.proratedAmount), 0);
+  const teachingBase = teacher.students.reduce((s, r) => s + (r.editedAmount ?? r.calculatedAmount), 0);
+  const roleBase = (teacher.roleSalaries || []).reduce((s, r) => s + (r.editedAmount ?? r.proratedAmount), 0);
+
   const totalBase = teachingBase + roleBase;
   const grandNet = totalBase + teacher.extraClassAmount + teacher.adjustmentAmount - teacher.deductions;
 
