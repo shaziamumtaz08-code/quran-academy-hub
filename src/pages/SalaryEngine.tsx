@@ -436,7 +436,6 @@ export default function SalaryEngine() {
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
       setRevisionTeacher(null);
-      setSettlementNote('');
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
