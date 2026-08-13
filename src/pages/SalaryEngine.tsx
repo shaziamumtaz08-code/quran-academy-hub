@@ -26,6 +26,7 @@ import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
+import { BulkSalaryDownloadDialog } from '@/components/finance/BulkSalaryDownloadDialog';
 import {
   computeSalaryRows,
   buildPayoutPayload,
