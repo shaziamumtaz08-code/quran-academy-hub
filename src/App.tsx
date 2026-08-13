@@ -85,6 +85,7 @@ const SelectDivision = lazy(() => import("./pages/SelectDivision"));
 const PrintReport = lazy(() => import("./pages/PrintReport"));
 const PrintInvoice = lazy(() => import("./pages/PrintInvoice"));
 const PrintSalary = lazy(() => import("./pages/PrintSalary"));
+const PrintSalaryBulk = lazy(() => import("./pages/PrintSalaryBulk"));
 const WorkHub = lazy(() => import("./pages/WorkHub"));
 const LeadsPipeline = lazy(() => import("./pages/LeadsPipeline"));
 const EnrollmentForm = lazy(() => import("./pages/EnrollmentForm"));
