@@ -576,13 +576,24 @@ export function SalarySheetDialog({
                             {isTeacherView ? (
                               <p className="font-semibold tabular-nums">PKR {finalAmt.toFixed(0)}</p>
                             ) : (
-                              <Input
-                                type="number"
-                                className="h-7 w-full text-right text-xs font-semibold tabular-nums"
-                                value={finalAmt}
-                                onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                                disabled={!canEditCalculations}
-                              />
+                              <>
+                                <Input
+                                  type="number"
+                                  className={`h-7 w-full text-right text-xs font-semibold tabular-nums ${overrideActive ? 'border-amber-400 bg-amber-50' : ''}`}
+                                  value={finalAmt}
+                                  onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
+                                  disabled={!canEditCalculations}
+                                />
+                                {overrideActive && canEditCalculations && onClearOverride && (
+                                  <button
+                                    type="button"
+                                    className="text-[9px] underline text-amber-700"
+                                    onClick={() => onClearOverride(s.assignmentId)}
+                                  >
+                                    override — clear
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
