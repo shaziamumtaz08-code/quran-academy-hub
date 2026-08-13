@@ -354,20 +354,71 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
     );
   }
 
-  const issueCount = rows.filter((r) => r.issues.length).length;
+  const issueCount = scoped.filter((r) => r.issues.length).length;
+  const totalIssueCount = rows.filter((r) => r.issues.length).length;
+  const filtersActive = !!monthFrom || !!monthTo || teacherFilter !== 'all' || issueFilter !== 'all';
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-muted/30 p-3">
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground">From month</label>
+          <Input type="month" value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)} className="h-9 w-[150px]" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground">To month</label>
+          <Input type="month" value={monthTo} onChange={(e) => setMonthTo(e.target.value)} className="h-9 w-[150px]" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground">Staff member</label>
+          <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+            <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="all">All staff</SelectItem>
+              {teacherOptions.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground">Issue type</label>
+          <Select value={issueFilter} onValueChange={setIssueFilter}>
+            <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="all">All issues</SelectItem>
+              {(Object.keys(ISSUE_LABEL) as IssueKind[]).map((k) => (
+                <SelectItem key={k} value={k}>{ISSUE_LABEL[k]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {filtersActive && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => { setMonthFrom(''); setMonthTo(''); setTeacherFilter('all'); setIssueFilter('all'); }}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {issueCount ? (
           <>
             <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <span className="font-medium">{issueCount} teacher-month sheet(s) need review.</span>
+            <span className="font-medium">
+              {issueCount} teacher-month sheet(s) need review
+              {filtersActive ? ` (of ${totalIssueCount} overall)` : ''}.
+            </span>
           </>
         ) : (
           <>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span className="font-medium">Every month reconciles with its active assignments.</span>
+            <span className="font-medium">
+              {filtersActive ? 'No revisions due for this filter.' : 'Every month reconciles with its active assignments.'}
+            </span>
           </>
         )}
         <span className="text-muted-foreground">Open the month, verify, then save to persist the revised sheet.</span>
@@ -388,13 +439,14 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
             )}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setOnlyIssues((v) => !v)}>
-            {onlyIssues ? `Show all ${rows.length}` : 'Show issues only'}
+            {onlyIssues ? `Show all ${scoped.length}` : 'Show issues only'}
           </Button>
           <Button size="sm" variant="outline" onClick={exportCsv} disabled={!visible.length}>
             <Download className="h-3.5 w-3.5 mr-1" /> CSV
           </Button>
         </div>
       </div>
+
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
