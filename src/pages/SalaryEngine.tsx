@@ -385,13 +385,20 @@ export default function SalaryEngine() {
   // ── Mutations ──
 
   const savePayout = useMutation({
-    mutationFn: async ({ teacher, reason, action, note }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction; note?: string }) => {
+    mutationFn: async ({ teacher, reason, action }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction }) => {
       const existing = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
       const payload = buildPayoutPayload(teacher, salaryMonth);
 
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
           if (!reason || !action) throw new Error('Revision details are required');
+          // Auto-generate a settlement note from the reason & action so the audit log stays populated
+          // without burdening the user with an extra field.
+          const autoNote = action === 'accept_no_action'
+            ? `${reason} — rounded payment accepted; no further action`
+            : action === 'carry_forward'
+              ? `${reason} — difference carried to next salary`
+              : `${reason} — difference to be settled separately`;
           const { data, error } = await (supabase as any).rpc('revise_salary_payout', {
             _payout_id: existing.id,
             _base_salary: payload.base_salary,
@@ -402,7 +409,7 @@ export default function SalaryEngine() {
             _calculation_json: payload.calculation_json,
             _change_reason: reason,
             _settlement_action: action,
-            _settlement_note: note || null,
+            _settlement_note: autoNote,
           });
           if (error) throw error;
           const delta = Number(data?.delta_to_settle ?? 0);
