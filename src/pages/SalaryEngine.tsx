@@ -886,7 +886,8 @@ export default function SalaryEngine() {
             </CardHeader>
           )}
           <CardContent className="p-0">
-            <Table>
+            <StickyScrollTable>
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
