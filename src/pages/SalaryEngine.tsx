@@ -117,6 +117,7 @@ export default function SalaryEngine() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [bulkDownloadOpen, setBulkDownloadOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('audit') === '1',
   );
