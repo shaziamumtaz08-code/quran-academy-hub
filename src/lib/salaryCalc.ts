@@ -79,8 +79,13 @@ export interface SalaryCalcInput {
   schedules: any[];
   staffSalaries: any[];
   salaryMonth: string;
-  editAmounts?: Record<string, number>;
-  editRoleAmounts?: Record<string, number>;
+  /**
+   * Session edits. A `null` value means the admin explicitly cleared the manual
+   * override for that line (falls back to the calculated amount).
+   */
+  editAmounts?: Record<string, number | null>;
+  editRoleAmounts?: Record<string, number | null>;
+
 }
 
 /** Month boundaries used everywhere: the register only counts up to today for the current month. */
