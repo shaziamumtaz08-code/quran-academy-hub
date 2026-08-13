@@ -19,6 +19,7 @@ import AccountabilityReport from "@/components/reports/AccountabilityReport";
 import QaidaProgressReport from "@/components/reports/QaidaProgressReport";
 import ComplianceReport from "@/components/reports/ComplianceReport";
 import FinancialStatements from "@/components/reports/FinancialStatements";
+import SalaryRevisionsReport from "@/components/reports/SalaryRevisionsReport";
 
 const allViews = [
   { label: 'Executive', value: 'executive' },
