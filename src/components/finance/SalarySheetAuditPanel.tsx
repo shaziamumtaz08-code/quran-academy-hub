@@ -218,7 +218,26 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
     );
   }, [data]);
 
-  const visible = onlyIssues ? rows.filter((r) => r.issues.length) : rows;
+  const teacherOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => map.set(r.teacherId, r.teacherName));
+    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
+
+  const scoped = useMemo(
+    () =>
+      rows.filter((r) => {
+        if (monthFrom && r.month < monthFrom) return false;
+        if (monthTo && r.month > monthTo) return false;
+        if (teacherFilter !== 'all' && r.teacherId !== teacherFilter) return false;
+        if (issueFilter !== 'all' && !r.issues.includes(issueFilter as IssueKind)) return false;
+        return true;
+      }),
+    [rows, monthFrom, monthTo, teacherFilter, issueFilter],
+  );
+
+  const visible = onlyIssues ? scoped.filter((r) => r.issues.length) : scoped;
+
 
   const exportCsv = () => {
     const header = [
