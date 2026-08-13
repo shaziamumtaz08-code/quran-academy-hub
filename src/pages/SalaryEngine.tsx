@@ -122,7 +122,6 @@ export default function SalaryEngine() {
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
   const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
-  const [settlementNote, setSettlementNote] = useState('');
 
   
   // Revert modal state
