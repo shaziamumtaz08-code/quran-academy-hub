@@ -1065,7 +1065,7 @@ export default function SalaryEngine() {
                 })}
               </TableBody>
             </Table>
-            </StickyScrollTable>
+
 
           </CardContent>
         </Card>
