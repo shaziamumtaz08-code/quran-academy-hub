@@ -23,6 +23,8 @@ export interface StudentPayoutRow {
   totalDays: number;
   calculatedAmount: number;
   editedAmount: number | null;
+  /** True when the editedAmount comes from a saved manual override (not this session's edits). */
+  overridePersisted: boolean;
   attendanceDays: { date: string; status: string }[];
   presentCount: number;
   absentCount: number;
@@ -36,6 +38,7 @@ export interface StudentPayoutRow {
   salaryLinked: boolean;
   isTemporary: boolean;
 }
+
 
 export interface RoleSalaryRow {
   role: string;
