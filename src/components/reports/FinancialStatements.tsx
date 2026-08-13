@@ -239,6 +239,47 @@ export default function FinancialStatements() {
     },
   });
 
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+
+  // ── Missing sheets banner (all teachers in range) ───────────────
+  const { data: missingCount = 0 } = useQuery({
+    queryKey: ["fin-statement-missing-sheets", monthFrom, monthTo],
+    enabled: mode === "teacher",
+    queryFn: async () => {
+      const months = monthsBetween(monthFrom, monthTo);
+      const [{ data: assigns }, { data: payouts }] = await Promise.all([
+        supabase
+          .from("student_teacher_assignments")
+          .select("teacher_id, effective_from_date, effective_to_date, status_effective_date, status, salary_linked")
+          .in("status", [...SALARY_ASSIGNMENT_STATUSES]),
+        supabase
+          .from("salary_payouts")
+          .select("teacher_id, salary_month, is_archived")
+          .gte("salary_month", monthFrom)
+          .lte("salary_month", monthTo),
+      ]);
+      const have = new Set(
+        (payouts || [])
+          .filter((p: any) => !p.is_archived)
+          .map((p: any) => `${p.teacher_id}|${p.salary_month}`),
+      );
+      let missing = 0;
+      months.forEach((m) => {
+        const monthStart = `${m}-01`;
+        const monthEnd = format(endOfMonth(parseISO(monthStart)), "yyyy-MM-dd");
+        const teachers = new Set<string>();
+        (assigns || []).forEach((a: any) => {
+          if (a.salary_linked === false) return;
+          if (assignmentMonthWindow(a, monthStart, monthEnd)) teachers.add(a.teacher_id);
+        });
+        teachers.forEach((t) => {
+          if (!have.has(`${t}|${m}`)) missing += 1;
+        });
+      });
+      return missing;
+    },
+  });
+
   const rows = ledger || [];
   const totals = rows.reduce(
     (acc, r) => ({ earned: acc.earned + r.earned, paid: acc.paid + r.paid, balance: acc.balance + r.balance }),
