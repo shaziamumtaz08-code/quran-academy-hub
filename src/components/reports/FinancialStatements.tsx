@@ -393,6 +393,7 @@ export default function FinancialStatements() {
                       <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="py-2">Month</th>
                         <th className="py-2 text-right">{mode === "teacher" ? "Earned" : "Fee billed"}</th>
+                        {mode === "teacher" && <th className="py-2 text-right">Expected</th>}
                         <th className="py-2 text-right">{mode === "teacher" ? "Paid" : "Received"}</th>
                         <th className="py-2 text-right">Outstanding</th>
                         <th className="py-2">Status</th>
@@ -401,20 +402,48 @@ export default function FinancialStatements() {
                     </thead>
                     <tbody>
                       {isLoading && (
-                        <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">Loading…</td></tr>
+                        <tr><td colSpan={mode === "teacher" ? 7 : 6} className="py-6 text-center text-muted-foreground">Loading…</td></tr>
                       )}
-                      {!isLoading && rows.map((r) => (
+                      {!isLoading && rows.map((r) => {
+                        const isOpen = expandedMonth === r.month;
+                        const showExpected = mode === "teacher" && (!r.hasSheet || r.status === "draft");
+                        return (
+                        <>
                         <tr key={r.month} className="border-b last:border-0">
-                          <td className="py-2 font-medium">{monthLabel(r.month)}</td>
-                          <td className="py-2 text-right tabular-nums">{money(r.earned)}</td>
+                          <td className="py-2 font-medium">
+                            {mode === "teacher" ? (
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 hover:underline"
+                                onClick={() => setExpandedMonth(isOpen ? null : r.month)}
+                              >
+                                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                {monthLabel(r.month)}
+                              </button>
+                            ) : (
+                              monthLabel(r.month)
+                            )}
+                          </td>
+                          <td className={`py-2 text-right tabular-nums ${!r.hasSheet ? "text-muted-foreground" : ""}`}>
+                            {r.hasSheet ? money(r.earned) : "—"}
+                          </td>
+                          {mode === "teacher" && (
+                            <td className={`py-2 text-right tabular-nums ${showExpected && r.expected > 0 ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
+                              {r.expected > 0 ? money(r.expected) : "—"}
+                            </td>
+                          )}
                           <td className="py-2 text-right tabular-nums">{money(r.paid)}</td>
                           <td className={`py-2 text-right tabular-nums ${r.balance > 0 ? "text-destructive font-semibold" : r.balance < 0 ? "text-amber-600 font-semibold" : ""}`}>
                             {money(r.balance)}
                           </td>
                           <td className="py-2">
-                            <Badge variant={r.status === "paid" ? "default" : r.status === "—" ? "outline" : "secondary"}>
-                              {r.status}
-                            </Badge>
+                            {!r.hasSheet ? (
+                              <Badge className="border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/10">
+                                {mode === "teacher" ? "Not generated" : "No invoice"}
+                              </Badge>
+                            ) : (
+                              <Badge variant={r.status === "paid" ? "default" : "secondary"}>{r.status}</Badge>
+                            )}
                           </td>
                           <td className="py-2 text-right">
                             {r.href && (
