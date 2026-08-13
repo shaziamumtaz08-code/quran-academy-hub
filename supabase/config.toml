@@ -87,3 +87,6 @@ verify_jwt = false
 [functions.dispatch-marketing-messages]
 verify_jwt = false
 
+
+[functions.regenerate-salary-sheets]
+verify_jwt = false
