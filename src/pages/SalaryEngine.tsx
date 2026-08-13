@@ -962,22 +962,29 @@ export default function SalaryEngine() {
                             <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
                           )}
                           {getStaffTypeBadge(teacher.staffType)}
-                          {payout?.is_revised && (
-                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">REVISED</Badge>
-                          )}
-                          {payout && (payout.revision_required_at || Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01) && (
-                            <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] leading-4 text-amber-800">
-                              <div className="font-semibold">CALCULATION CHANGED — review before settling</div>
-                              <div>Old sheet PKR {Number(payout.net_salary || 0).toFixed(2)} · Paid PKR {Number(payout.amount_paid || 0).toFixed(2)} · Recalculated PKR {teacher.netSalary.toFixed(2)}</div>
-                              <div className="font-medium">
-                                {teacher.netSalary - Number(payout.amount_paid || 0) > 0.01
-                                  ? `Potential amount still payable: PKR ${(teacher.netSalary - Number(payout.amount_paid || 0)).toFixed(2)}`
-                                  : teacher.netSalary - Number(payout.amount_paid || 0) < -0.01
-                                    ? `Potential overpayment: PKR ${Math.abs(teacher.netSalary - Number(payout.amount_paid || 0)).toFixed(2)}`
-                                    : 'Payment matches the recalculated salary.'}
-                              </div>
-                            </div>
-                          )}
+                          {(() => {
+                            const oldSheet = (archivedPayouts as any[]).find(
+                              (a: any) => a.teacher_id === teacher.teacherId && a.salary_month === salaryMonth,
+                            );
+                            const drifted = payout && (payout.revision_required_at || Math.abs((Number(payout.net_salary) || 0) - teacher.netSalary) > 0.01);
+                            if (!payout?.is_revised && !drifted) return null;
+                            const label = payout?.is_revised ? 'REVISED' : 'REVISION DUE';
+                            const cls = payout?.is_revised
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200';
+                            const title = oldSheet ? 'Open the previous (superseded) sheet' : 'No previous sheet archived yet';
+                            return (
+                              <Badge
+                                variant="outline"
+                                title={title}
+                                className={`text-[10px] ${cls} ${oldSheet ? 'cursor-pointer hover:opacity-80' : ''}`}
+                                onClick={() => oldSheet && window.open(`/finance/print/salary/${oldSheet.id}`, '_blank')}
+                              >
+                                {label}
+                              </Badge>
+                            );
+                          })()}
+
 
                         </div>
 

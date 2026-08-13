@@ -313,8 +313,9 @@ export default function FinancialStatements() {
             {missingCount} teacher-month{missingCount === 1 ? "" : "s"} missing salary sheets in this date range.
           </p>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/salary?audit=1">Open Salary Sheet Audit</Link>
+            <Link to="/salary?audit=1">Generate missing sheets</Link>
           </Button>
+
         </div>
       )}
       <Tabs value={mode} onValueChange={(v) => { setMode(v as Mode); setPersonId(null); setSearch(""); }}>
