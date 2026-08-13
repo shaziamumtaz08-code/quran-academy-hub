@@ -109,7 +109,30 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
 
   const { monthStart, monthEnd, fullMonthEnd, daysInMonth, allDatesInMonth } = salaryMonthBounds(salaryMonth);
 
-  const calculateRoleSalaries = (userId: string): RoleSalaryRow[] => {
+  /**
+   * Manual overrides that were saved on a previous version of the sheet.
+   * Recalculation must NOT silently discard them — they are only replaced when
+   * the admin edits the line again (number) or explicitly clears it (null).
+   */
+  const persistedOverrides = (teacherId: string) => {
+    const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+    const calc: any = payout?.calculation_json || {};
+    const students = new Map<string, number>();
+    const roles = new Map<string, number>();
+    (Array.isArray(calc.students) ? calc.students : []).forEach((s: any) => {
+      if (s?.assignmentId != null && s?.editedAmount !== null && s?.editedAmount !== undefined) {
+        students.set(String(s.assignmentId), Number(s.editedAmount));
+      }
+    });
+    (Array.isArray(calc.roleSalaries) ? calc.roleSalaries : []).forEach((r: any) => {
+      if (r?.staffSalaryId != null && r?.editedAmount !== null && r?.editedAmount !== undefined) {
+        roles.set(String(r.staffSalaryId), Number(r.editedAmount));
+      }
+    });
+    return { students, roles };
+  };
+
+  const calculateRoleSalaries = (userId: string, savedRoles: Map<string, number>): RoleSalaryRow[] => {
     const userStaffSalaries = staffSalaries.filter((s: any) => s.user_id === userId);
     return userStaffSalaries.map((ss: any) => {
       const effFrom = ss.effective_from;
@@ -127,6 +150,11 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
         proratedAmount = (ss.monthly_amount / daysInMonth) * activeDays;
       }
 
+      const hasSessionEdit = Object.prototype.hasOwnProperty.call(editRoleAmounts, ss.id);
+      const editedAmount = hasSessionEdit
+        ? editRoleAmounts[ss.id]
+        : (savedRoles.has(ss.id) ? savedRoles.get(ss.id)! : null);
+
       return {
         role: ss.role,
         monthlyAmount: Number(ss.monthly_amount),
@@ -135,7 +163,7 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
         activeDays,
         totalDays: daysInMonth,
         proratedAmount: Math.round(proratedAmount * 100) / 100,
-        editedAmount: editRoleAmounts[ss.id] !== undefined ? editRoleAmounts[ss.id] : null,
+        editedAmount: editedAmount ?? null,
         staffSalaryId: ss.id,
       } as RoleSalaryRow;
     }).filter((r): r is RoleSalaryRow => r !== null);
@@ -143,8 +171,10 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
 
   return profiles.map((profile: any) => {
     const teacherAssignments = assignments.filter((a: any) => a.teacher_id === profile.id);
+    const saved = persistedOverrides(profile.id);
 
     const studentRows: StudentPayoutRow[] = teacherAssignments.map((assign: any) => {
+
       const payoutAmount = Number(assign.payout_amount) || 0;
       const payoutType = assign.payout_type || 'monthly';
       const studentName = assign.profiles?.full_name || 'Unknown';
