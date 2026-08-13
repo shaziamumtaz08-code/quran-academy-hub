@@ -1178,6 +1178,8 @@ export default function SalaryEngine() {
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
         />
 
+        <BulkSalaryDownloadDialog open={bulkDownloadOpen} onOpenChange={setBulkDownloadOpen} />
+
         {/* ── Cross-month Sheet Audit ── */}
         <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
           <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
