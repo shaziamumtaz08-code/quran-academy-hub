@@ -104,7 +104,9 @@ export default function SalaryEngine() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('audit') === '1',
+  );
   const [revisionTeacher, setRevisionTeacher] = useState<TeacherSalaryRow | null>(null);
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
