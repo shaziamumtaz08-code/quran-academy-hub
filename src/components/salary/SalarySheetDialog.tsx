@@ -108,10 +108,12 @@ interface SalarySheetDialogProps {
   salaryMonth: string;
   year: number;
   month: number;
-  editAmounts: Record<string, number>;
-  editRoleAmounts?: Record<string, number>;
+  editAmounts: Record<string, number | null>;
+  editRoleAmounts?: Record<string, number | null>;
   onEditAmount: (assignmentId: string, amount: number) => void;
+  onClearOverride?: (assignmentId: string) => void;
   onEditRoleAmount?: (staffSalaryId: string, amount: number) => void;
+
   onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[], amountPaid?: number, paymentDate?: string) => void;
   onTopUp?: (amount: number, notes: string, receiptUrls: string[]) => void;
   onUpdateProofs?: (receiptUrls: string[], invoiceNumber?: string) => void;
