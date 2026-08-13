@@ -256,6 +256,11 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
       const isTemporary = assign.is_temporary === true;
       const effectiveCalc = salaryLinked ? calculatedAmount : 0;
 
+      const hasSessionEdit = Object.prototype.hasOwnProperty.call(editAmounts, assign.id);
+      const editedAmount = hasSessionEdit
+        ? (editAmounts[assign.id] ?? null)
+        : (saved.students.has(assign.id) ? saved.students.get(assign.id)! : null);
+
       return {
         studentId: assign.student_id,
         studentName,
@@ -267,7 +272,8 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
         eligibleDays,
         totalDays: totalDaysInRange,
         calculatedAmount: Math.round(effectiveCalc * 100) / 100,
-        editedAmount: editAmounts[assign.id] !== undefined ? editAmounts[assign.id] : null,
+        editedAmount,
+        overridePersisted: !hasSessionEdit && editedAmount !== null,
         attendanceDays,
         presentCount,
         absentCount,
@@ -283,7 +289,8 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
       };
     }).filter((row): row is StudentPayoutRow => row !== null);
 
-    const roleSalaries = calculateRoleSalaries(profile.id);
+    const roleSalaries = calculateRoleSalaries(profile.id, saved.roles);
+
 
     const hasStudents = studentRows.length > 0;
     const hasRoleSalaries = roleSalaries.length > 0;
