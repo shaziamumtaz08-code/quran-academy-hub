@@ -296,30 +296,110 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const months: string[] = body.months || [];
     const dryRun: boolean = body.dryRun === true;
+    // "skip"     -> leave paid/locked sheets untouched (default, previous behaviour)
+    // "revision" -> archive the paid sheet as a previous version and insert a revised sheet
+    const paidMode: "skip" | "revision" = body.paidMode === "revision" ? "revision" : "skip";
+    const changeReason: string = body.changeReason || "Back-dated salary recalculation";
+    const teacherIds: string[] | null = Array.isArray(body.teacherIds) && body.teacherIds.length ? body.teacherIds : null;
     if (!months.length) throw new Error("months[] required (yyyy-MM)");
 
     const summary: any[] = [];
     for (const month of months) {
-      const rows = await computeMonth(supabase, month);
-      let created = 0, updated = 0, skipped = 0, unchanged = 0;
+      let rows = await computeMonth(supabase, month);
+      if (teacherIds) rows = rows.filter((r: any) => teacherIds.includes(r.profile.id));
+      let created = 0, updated = 0, skipped = 0, unchanged = 0, revised = 0;
       const changes: any[] = [];
 
       for (const r of rows) {
         const existing = r.existing;
-        const newNet = r.payload.net_salary;
-        if (existing && PAID_LIKE.includes(existing.status)) {
-          skipped++;
-          continue;
+
+        // Preserve manual per-student overrides recorded on the existing sheet
+        if (existing?.calculation_json?.students?.length) {
+          const overrides = new Map<string, number>();
+          for (const s of existing.calculation_json.students) {
+            if (s?.assignmentId && s.editedAmount !== null && s.editedAmount !== undefined) {
+              overrides.set(s.assignmentId, Number(s.editedAmount));
+            }
+          }
+          if (overrides.size) {
+            let base = 0;
+            for (const s of r.payload.calculation_json.students) {
+              if (overrides.has(s.assignmentId)) {
+                s.editedAmount = overrides.get(s.assignmentId);
+                s.manualOverride = true;
+              }
+              base += s.editedAmount ?? s.calculatedAmount;
+            }
+            base += r.payload.calculation_json.roleSalaries.reduce(
+              (sum: number, x: any) => sum + (x.editedAmount ?? x.proratedAmount), 0);
+            const gross = base + r.payload.extra_class_amount + r.payload.adjustment_amount;
+            r.payload.base_salary = Math.round(base * 100) / 100;
+            r.payload.gross_salary = Math.round(gross * 100) / 100;
+            r.payload.net_salary = Math.round((gross - r.payload.deductions) * 100) / 100;
+          }
         }
+
+        const newNet = r.payload.net_salary;
         const oldNet = existing ? Number(existing.net_salary) : null;
+        const isPaidLike = existing && PAID_LIKE.includes(existing.status);
+
         if (existing && Math.abs((oldNet ?? 0) - newNet) < 0.5) {
           unchanged++;
           continue;
         }
-        changes.push({ teacher: r.profile.full_name, month, oldNet, newNet, delta: Math.round((newNet - (oldNet ?? 0)) * 100) / 100 });
+        if (isPaidLike && paidMode === "skip") {
+          skipped++;
+          continue;
+        }
+
+        changes.push({
+          teacher: r.profile.full_name,
+          month,
+          oldNet,
+          newNet,
+          delta: Math.round((newNet - (oldNet ?? 0)) * 100) / 100,
+          mode: isPaidLike ? "revision" : existing ? "update" : "create",
+        });
         if (dryRun) continue;
 
-        if (existing) {
+        if (isPaidLike) {
+          const priorPaid = Number(existing.amount_paid) || 0;
+          const { data: inserted, error: insErr } = await supabase
+            .from("salary_payouts")
+            .insert({
+              ...r.payload,
+              status: priorPaid >= newNet && newNet > 0 ? "paid" : priorPaid > 0 ? "partially_paid" : "draft",
+              amount_paid: Math.min(priorPaid, newNet),
+              prior_paid_amount: priorPaid,
+              is_revised: true,
+              revises_payout_id: existing.id,
+              change_reason: changeReason,
+              invoice_number: existing.invoice_number,
+              recipient_account_snapshot: existing.recipient_account_snapshot,
+              payment_channel: existing.payment_channel,
+              paid_at: existing.paid_at,
+              payment_method: existing.payment_method,
+              payment_reference: existing.payment_reference,
+              receipt_url: existing.receipt_url,
+              receipt_urls: existing.receipt_urls,
+            })
+            .select("id")
+            .single();
+          if (insErr) throw insErr;
+          const { error: arcErr } = await supabase
+            .from("salary_payouts")
+            .update({
+              is_archived: true,
+              archived_at: new Date().toISOString(),
+              archive_reason: changeReason,
+              superseded_by_payout_id: inserted.id,
+              revision_required_at: null,
+              revision_reason: null,
+            })
+            .eq("id", existing.id);
+          if (arcErr) throw arcErr;
+          revised++;
+        } else if (existing) {
           const { error } = await supabase
             .from("salary_payouts")
             .update({ ...r.payload, revision_required_at: null, revision_reason: null })
@@ -333,8 +413,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      summary.push({ month, teachers: rows.length, created, updated, unchanged, skippedPaid: skipped, changes });
+      summary.push({ month, teachers: rows.length, created, updated, revised, unchanged, skippedPaid: skipped, changes });
     }
+
 
     return new Response(JSON.stringify({ ok: true, dryRun, summary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
