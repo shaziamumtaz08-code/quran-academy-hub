@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download, Printer, Search, Wallet, Receipt, ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Download, Printer, Wallet, Receipt, ChevronRight, ChevronDown, ChevronsUpDown, Check, AlertTriangle } from "lucide-react";
 import { format, startOfMonth, startOfYear, subMonths, endOfMonth, parseISO, differenceInCalendarDays, getDaysInMonth } from "date-fns";
 import { useDivision } from "@/contexts/DivisionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,6 +73,7 @@ export default function FinancialStatements() {
   const [mode, setMode] = useState<Mode>("teacher");
   const [personId, setPersonId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [monthFrom, setMonthFrom] = useState(format(startOfYear(new Date()), "yyyy-MM"));
   const [monthTo, setMonthTo] = useState(format(startOfMonth(new Date()), "yyyy-MM"));
 
@@ -326,44 +329,74 @@ export default function FinancialStatements() {
         <TabsContent value={mode} className="mt-4 space-y-4">
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder={mode === "teacher" ? "Search staff by name or email" : "Search student by name or email"}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {mode === "teacher" ? "Staff member" : "Student"}
+                  </label>
+                  <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={pickerOpen}
+                        className="h-11 w-full justify-between font-normal"
+                      >
+                        <span className="truncate">
+                          {selectedPerson
+                            ? selectedPerson.full_name || selectedPerson.email
+                            : `Select ${mode === "teacher" ? "a staff member" : "a student"}…`}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-50 w-[--radix-popover-trigger-width] bg-popover p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder={mode === "teacher" ? "Search staff…" : "Search student…"}
+                          value={search}
+                          onValueChange={setSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No matching people.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredPeople.map((p: any) => (
+                              <CommandItem
+                                key={p.id}
+                                value={`${p.full_name || ""} ${p.email || ""}`}
+                                onSelect={() => { setPersonId(p.id); setPickerOpen(false); }}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${p.id === personId ? "opacity-100" : "opacity-0"}`} />
+                                <span className="truncate">{p.full_name || p.email}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input type="month" value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)} className="w-[150px]" />
-                  <span className="text-muted-foreground">to</span>
-                  <Input type="month" value={monthTo} onChange={(e) => setMonthTo(e.target.value)} className="w-[150px]" />
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Period</label>
+                  <div className="flex items-center gap-2">
+                    <Input type="month" value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)} className="h-11 flex-1" />
+                    <span className="text-muted-foreground">to</span>
+                    <Input type="month" value={monthTo} onChange={(e) => setMonthTo(e.target.value)} className="h-11 flex-1" />
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                <div className="flex flex-wrap gap-2 md:col-span-2">
                   <Button variant="outline" size="sm" onClick={() => applyPreset("this-month")}>This month</Button>
                   <Button variant="outline" size="sm" onClick={() => applyPreset("last-6")}>6 months</Button>
                   <Button variant="outline" size="sm" onClick={() => applyPreset("last-12")}>12 months</Button>
                   <Button variant="outline" size="sm" onClick={() => applyPreset("ytd")}>Year to date</Button>
+                  {personId && (
+                    <Button variant="ghost" size="sm" onClick={() => setPersonId(null)}>Clear selection</Button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {filteredPeople.map((p: any) => (
-                  <Button
-                    key={p.id}
-                    size="sm"
-                    variant={p.id === personId ? "default" : "outline"}
-                    onClick={() => setPersonId(p.id)}
-                  >
-                    {p.full_name || p.email}
-                  </Button>
-                ))}
-                {!filteredPeople.length && (
-                  <p className="text-sm text-muted-foreground">No matching people.</p>
-                )}
-              </div>
             </CardContent>
           </Card>
 
