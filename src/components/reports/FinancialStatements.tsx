@@ -7,12 +7,23 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download, Printer, Search, Wallet, Receipt } from "lucide-react";
-import { format, startOfMonth, startOfYear, subMonths } from "date-fns";
+import { Download, Printer, Search, Wallet, Receipt, ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
+import { format, startOfMonth, startOfYear, subMonths, endOfMonth, parseISO, differenceInCalendarDays, getDaysInMonth } from "date-fns";
 import { useDivision } from "@/contexts/DivisionContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from "@/lib/salaryWindow";
 
 type Mode = "teacher" | "student";
+
+type ExpectedLine = {
+  id: string;
+  studentName: string;
+  status: string;
+  payoutAmount: number;
+  prorated: number;
+  activeDays: number;
+  monthDays: number;
+};
 
 type MonthRow = {
   month: string;
@@ -21,6 +32,9 @@ type MonthRow = {
   balance: number;
   status: string;
   href: string;
+  hasSheet: boolean;
+  expected: number;
+  lines: ExpectedLine[];
 };
 
 const money = (n: number) =>
