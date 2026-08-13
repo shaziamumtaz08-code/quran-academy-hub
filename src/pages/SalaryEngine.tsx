@@ -841,6 +841,9 @@ export default function SalaryEngine() {
               <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setAuditOpen(true)}>
                 <AlertCircle className="h-4 w-4 mr-1" /> Sheet Audit
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setBulkDownloadOpen(true)}>
+                <FileText className="h-4 w-4 mr-1" /> Download Sheets
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
 
                 <History className="h-4 w-4 mr-1" /> History
