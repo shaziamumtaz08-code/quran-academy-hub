@@ -750,7 +750,6 @@ export default function SalaryEngine() {
       setRevisionTeacher(teacher);
       setRevisionReason(payout.revision_reason || 'Back-dated salary recalculation');
       setSettlementAction('settle_separately');
-      setSettlementNote('');
       return;
     }
     savePayout.mutate({ teacher });
