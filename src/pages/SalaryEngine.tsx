@@ -93,6 +93,7 @@ const REVISION_REASONS = [
 type StaffFilter = 'all' | 'teachers' | 'staff';
 type SalaryView = 'active' | 'archived';
 type SettlementAction = 'settle_separately' | 'carry_forward' | 'accept_no_action';
+type RevisionChangeType = 'payment_adjustment' | 'data_change';
 
 export default function SalaryEngine() {
   const { user, activeRole } = useAuth();
@@ -102,8 +103,8 @@ export default function SalaryEngine() {
 
   const [salaryMonth, setSalaryMonth] = useUrlState('month', currentSalaryMonth);
   const [searchQuery, setSearchQuery] = useUrlState('q', '');
-  const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
-  const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
+  const [editAmounts, setEditAmounts] = useState<Record<string, number | null>>({});
+  const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number | null>>({});
   const [staffFilter, setStaffFilter] = useUrlState<StaffFilter>('staff', 'all');
   const [salaryView, setSalaryView] = useUrlState<SalaryView>('sheet', 'active');
 
@@ -122,6 +123,7 @@ export default function SalaryEngine() {
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
   const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
+  const [revisionChangeType, setRevisionChangeType] = useState<RevisionChangeType>('payment_adjustment');
 
   
   // Revert modal state
@@ -1048,7 +1050,7 @@ export default function SalaryEngine() {
                             </Button>
                             {payout?.revises_payout_id && (
                               <Button size="sm" variant="outline" onClick={() => window.open(`/finance/print/salary/${payout.revises_payout_id}`, '_blank')}>
-                                <History className="h-3.5 w-3.5 mr-1" /> Legacy sheet
+                                <History className="h-3.5 w-3.5 mr-1" /> Previous version (superseded)
                               </Button>
                             )}
                             {teacher.payoutStatus === 'paid' && (
@@ -1101,6 +1103,7 @@ export default function SalaryEngine() {
           editRoleAmounts={editRoleAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
           onEditRoleAmount={(id, amt) => setEditRoleAmounts(prev => ({ ...prev, [id]: amt }))}
+          onClearOverride={(id) => setEditAmounts(prev => ({ ...prev, [id]: null }))}
           onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate) => {
             if (selectedTeacherId) {
               markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate });
