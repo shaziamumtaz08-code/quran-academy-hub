@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.revise_salary_payout(uuid, numeric, numeric, numeric, numeric, numeric, jsonb, text, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.revise_salary_payout(uuid, numeric, numeric, numeric, numeric, numeric, jsonb, text, text, text) TO authenticated, service_role;
