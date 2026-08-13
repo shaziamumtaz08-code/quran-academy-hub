@@ -120,6 +120,7 @@ export default function SalaryEngine() {
   );
   const [revisionTeacher, setRevisionTeacher] = useState<TeacherSalaryRow | null>(null);
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
+  const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
   const [settlementNote, setSettlementNote] = useState('');
 
