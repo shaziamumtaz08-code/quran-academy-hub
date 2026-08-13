@@ -56,6 +56,10 @@ const ISSUE_LABEL: Record<IssueKind, string> = {
  */
 export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
   const [onlyIssues, setOnlyIssues] = useState(true);
+  const [monthFrom, setMonthFrom] = useState('');
+  const [monthTo, setMonthTo] = useState('');
+  const [teacherFilter, setTeacherFilter] = useState('all');
+  const [issueFilter, setIssueFilter] = useState('all');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
