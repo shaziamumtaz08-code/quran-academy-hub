@@ -480,7 +480,9 @@ export function SalarySheetDialog({
                 </div>
 
                 {teacher.students.map((s) => {
-                  const finalAmt = editAmounts[s.assignmentId] ?? s.calculatedAmount;
+                  const finalAmt = s.editedAmount ?? s.calculatedAmount;
+                  const overrideActive = s.editedAmount !== null && Math.abs(s.editedAmount - s.calculatedAmount) > 0.01;
+
                   return (
                     <div key={s.assignmentId} className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
                       {/* Desktop Row */}
