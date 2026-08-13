@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -381,6 +381,18 @@ export default function FinancialStatements() {
                   </div>
                 </div>
 
+                {mode === "teacher" && missingCount > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                    <p className="flex items-center gap-2 text-sm text-amber-800">
+                      <AlertTriangle className="h-4 w-4" />
+                      {missingCount} teacher-month{missingCount === 1 ? "" : "s"} missing salary sheets in this date range.
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/salary-engine?audit=1">Open Salary Sheet Audit</Link>
+                    </Button>
+                  </div>
+                )}
+
                 <div className="grid gap-3 sm:grid-cols-3">
                   <SummaryTile label={mode === "teacher" ? "Total earned" : "Total billed"} value={totals.earned} />
                   <SummaryTile label={mode === "teacher" ? "Total paid" : "Total received"} value={totals.paid} />
@@ -408,8 +420,8 @@ export default function FinancialStatements() {
                         const isOpen = expandedMonth === r.month;
                         const showExpected = mode === "teacher" && (!r.hasSheet || r.status === "draft");
                         return (
-                        <>
-                        <tr key={r.month} className="border-b last:border-0">
+                        <Fragment key={r.month}>
+                        <tr className="border-b last:border-0">
                           <td className="py-2 font-medium">
                             {mode === "teacher" ? (
                               <button
@@ -485,7 +497,7 @@ export default function FinancialStatements() {
                             </td>
                           </tr>
                         )}
-                        </>
+                        </Fragment>
                         );
                       })}
                     </tbody>
