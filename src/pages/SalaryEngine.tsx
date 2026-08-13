@@ -122,7 +122,6 @@ export default function SalaryEngine() {
   const [revisionReason, setRevisionReason] = useState('Back-dated salary recalculation');
   const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
-  const [settlementNote, setSettlementNote] = useState('');
 
   
   // Revert modal state
@@ -386,13 +385,20 @@ export default function SalaryEngine() {
   // ── Mutations ──
 
   const savePayout = useMutation({
-    mutationFn: async ({ teacher, reason, action, note }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction; note?: string }) => {
+    mutationFn: async ({ teacher, reason, action }: { teacher: TeacherSalaryRow; reason?: string; action?: SettlementAction }) => {
       const existing = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
       const payload = buildPayoutPayload(teacher, salaryMonth);
 
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid' || existing.status === 'partially_paid') {
           if (!reason || !action) throw new Error('Revision details are required');
+          // Auto-generate a settlement note from the reason & action so the audit log stays populated
+          // without burdening the user with an extra field.
+          const autoNote = action === 'accept_no_action'
+            ? `${reason} — rounded payment accepted; no further action`
+            : action === 'carry_forward'
+              ? `${reason} — difference carried to next salary`
+              : `${reason} — difference to be settled separately`;
           const { data, error } = await (supabase as any).rpc('revise_salary_payout', {
             _payout_id: existing.id,
             _base_salary: payload.base_salary,
@@ -403,7 +409,7 @@ export default function SalaryEngine() {
             _calculation_json: payload.calculation_json,
             _change_reason: reason,
             _settlement_action: action,
-            _settlement_note: note || null,
+            _settlement_note: autoNote,
           });
           if (error) throw error;
           const delta = Number(data?.delta_to_settle ?? 0);
@@ -437,7 +443,6 @@ export default function SalaryEngine() {
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
       setRevisionTeacher(null);
-      setSettlementNote('');
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -752,7 +757,6 @@ export default function SalaryEngine() {
       setRevisionTeacher(teacher);
       setRevisionReason(payout.revision_reason || 'Back-dated salary recalculation');
       setSettlementAction('settle_separately');
-      setSettlementNote('');
       return;
     }
     savePayout.mutate({ teacher });
@@ -1220,10 +1224,6 @@ export default function SalaryEngine() {
                   />
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label>Settlement note (optional)</Label>
-                <Textarea value={settlementNote} onChange={(event) => setSettlementNote(event.target.value)} placeholder="e.g. Rounded payment of PKR 3,000 accepted; nothing to carry forward" />
-              </div>
 
               {revisionPayout?.id && (
                 <Button variant="outline" className="w-full" onClick={() => window.open(`/finance/print/salary/${revisionPayout.id}`, '_blank')}>
@@ -1239,7 +1239,6 @@ export default function SalaryEngine() {
                   teacher: revisionTeacher,
                   reason: (revisionReason === 'Other' ? revisionReasonOther.trim() : revisionReason),
                   action: settlementAction,
-                  note: settlementNote.trim(),
                 })}
                 disabled={!revisionReason || (revisionReason === 'Other' && !revisionReasonOther.trim()) || savePayout.isPending}
               >
