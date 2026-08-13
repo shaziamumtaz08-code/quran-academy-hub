@@ -26,6 +26,7 @@ import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
+import { BulkSalaryDownloadDialog } from '@/components/finance/BulkSalaryDownloadDialog';
 import {
   computeSalaryRows,
   buildPayoutPayload,
@@ -116,6 +117,7 @@ export default function SalaryEngine() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [bulkDownloadOpen, setBulkDownloadOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('audit') === '1',
   );
@@ -839,6 +841,9 @@ export default function SalaryEngine() {
               <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setAuditOpen(true)}>
                 <AlertCircle className="h-4 w-4 mr-1" /> Sheet Audit
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setBulkDownloadOpen(true)}>
+                <FileText className="h-4 w-4 mr-1" /> Download Sheets
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
 
                 <History className="h-4 w-4 mr-1" /> History
@@ -1172,6 +1177,8 @@ export default function SalaryEngine() {
           existingReceiptUrls={selectedPayout?.receipt_urls || []}
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
         />
+
+        <BulkSalaryDownloadDialog open={bulkDownloadOpen} onOpenChange={setBulkDownloadOpen} />
 
         {/* ── Cross-month Sheet Audit ── */}
         <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
