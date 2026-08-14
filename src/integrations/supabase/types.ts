@@ -5961,6 +5961,186 @@ export type Database = {
           },
         ]
       }
+      mushaf_editions: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_default: boolean
+          lines_per_page: number
+          name: string
+          notes: string | null
+          script: string
+          total_pages: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lines_per_page?: number
+          name: string
+          notes?: string | null
+          script?: string
+          total_pages?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lines_per_page?: number
+          name?: string
+          notes?: string | null
+          script?: string
+          total_pages?: number
+        }
+        Relationships: []
+      }
+      mushaf_lines: {
+        Row: {
+          created_at: string
+          edition_id: string
+          first_ayah: number | null
+          first_surah: number | null
+          first_word_index: number | null
+          id: string
+          is_centered: boolean
+          last_ayah: number | null
+          last_surah: number | null
+          last_word_index: number | null
+          line_number: number
+          line_type: string
+          page_number: number
+          surah_number: number | null
+          text_indopak: string | null
+        }
+        Insert: {
+          created_at?: string
+          edition_id: string
+          first_ayah?: number | null
+          first_surah?: number | null
+          first_word_index?: number | null
+          id?: string
+          is_centered?: boolean
+          last_ayah?: number | null
+          last_surah?: number | null
+          last_word_index?: number | null
+          line_number: number
+          line_type?: string
+          page_number: number
+          surah_number?: number | null
+          text_indopak?: string | null
+        }
+        Update: {
+          created_at?: string
+          edition_id?: string
+          first_ayah?: number | null
+          first_surah?: number | null
+          first_word_index?: number | null
+          id?: string
+          is_centered?: boolean
+          last_ayah?: number | null
+          last_surah?: number | null
+          last_word_index?: number | null
+          line_number?: number
+          line_type?: string
+          page_number?: number
+          surah_number?: number | null
+          text_indopak?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mushaf_lines_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "mushaf_editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mushaf_pages: {
+        Row: {
+          created_at: string
+          edition_id: string
+          id: string
+          juz_number: number | null
+          page_number: number
+          surah_end: number | null
+          surah_start: number | null
+        }
+        Insert: {
+          created_at?: string
+          edition_id: string
+          id?: string
+          juz_number?: number | null
+          page_number: number
+          surah_end?: number | null
+          surah_start?: number | null
+        }
+        Update: {
+          created_at?: string
+          edition_id?: string
+          id?: string
+          juz_number?: number | null
+          page_number?: number
+          surah_end?: number | null
+          surah_start?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mushaf_pages_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "mushaf_editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mushaf_words: {
+        Row: {
+          ayah_number: number
+          created_at: string
+          edition_id: string
+          id: string
+          line_number: number
+          page_number: number
+          surah_number: number
+          text: string | null
+          word_index: number
+        }
+        Insert: {
+          ayah_number: number
+          created_at?: string
+          edition_id: string
+          id?: string
+          line_number: number
+          page_number: number
+          surah_number: number
+          text?: string | null
+          word_index: number
+        }
+        Update: {
+          ayah_number?: number
+          created_at?: string
+          edition_id?: string
+          id?: string
+          line_number?: number
+          page_number?: number
+          surah_number?: number
+          text?: string | null
+          word_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mushaf_words_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "mushaf_editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       noorani_qaida_baabs: {
         Row: {
           baab_number: number
@@ -8311,6 +8491,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quran_ayahs: {
+        Row: {
+          ayah_number: number
+          created_at: string
+          hizb_quarter: number | null
+          id: string
+          juz_number: number | null
+          ruku_number: number | null
+          sajdah: boolean
+          surah_number: number
+          text_indopak: string | null
+          text_uthmani: string | null
+        }
+        Insert: {
+          ayah_number: number
+          created_at?: string
+          hizb_quarter?: number | null
+          id?: string
+          juz_number?: number | null
+          ruku_number?: number | null
+          sajdah?: boolean
+          surah_number: number
+          text_indopak?: string | null
+          text_uthmani?: string | null
+        }
+        Update: {
+          ayah_number?: number
+          created_at?: string
+          hizb_quarter?: number | null
+          id?: string
+          juz_number?: number | null
+          ruku_number?: number | null
+          sajdah?: boolean
+          surah_number?: number
+          text_indopak?: string | null
+          text_uthmani?: string | null
+        }
+        Relationships: []
       }
       registration_form_fields: {
         Row: {
