@@ -145,14 +145,40 @@ export function SabaqSection({
       );
       return { label: 'Total Quarters', value: total };
     }
-    
+
+    if (markerType === 'juz') {
+      const from = parseInt(juzFrom) || 0;
+      const to = parseInt(juzTo) || from;
+      const total = from ? Math.max(0, to - from + 1) : 0;
+      return { label: 'Total Juz', value: total };
+    }
+
     return { label: 'Total', value: 0 };
   }, [
     markerType,
     rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber,
     ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber,
-    quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber
+    quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber,
+    juzFrom, juzTo
   ]);
+
+  // The first segment mirrors the primary (flat) inputs above.
+  const primarySegment: LessonSegment = useMemo(() => {
+    if (markerType === 'ruku') return { markerType, juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber };
+    if (markerType === 'quarter') return { markerType, juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber };
+    if (markerType === 'juz') return { markerType, juzFrom, juzTo };
+    return { markerType: 'ayah', surahFrom: ayahFromSurah, ayahFrom: ayahFromNumber, surahTo: ayahToSurah, ayahTo: ayahToNumber };
+  }, [markerType, rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber, quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber, juzFrom, juzTo, ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber]);
+
+  const normalizedPreview = formatLessonSegments([primarySegment, ...extraSegments]);
+
+  const updateSegment = (idx: number, seg: LessonSegment) => {
+    const next = [...extraSegments];
+    next[idx] = seg;
+    onExtraSegmentsChange?.(next);
+  };
+  const removeSegment = (idx: number) => onExtraSegmentsChange?.(extraSegments.filter((_, i) => i !== idx));
+  const addSegment = () => onExtraSegmentsChange?.([...extraSegments, emptySegment(markerType)]);
 
   // Get max ruku for selected Juz
   const maxRukuFrom = getRukuCountForJuz(parseInt(rukuFromJuz) || 0);
@@ -161,6 +187,7 @@ export function SabaqSection({
   // Get max ayah for selected Surah
   const maxAyahFrom = getSurahByName(ayahFromSurah)?.totalAyahs || 0;
   const maxAyahTo = getSurahByName(ayahToSurah)?.totalAyahs || 0;
+
 
   return (
     <div className="bg-card rounded-xl p-5 space-y-5">
