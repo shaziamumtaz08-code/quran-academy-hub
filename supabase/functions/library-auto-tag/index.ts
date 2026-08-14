@@ -1,3 +1,4 @@
+import { requireRole } from "../_shared/auth.ts";
 // Lovable AI auto-tag + summary for a library item
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -11,6 +12,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const auth = await requireRole(req, ["admin", "super_admin", "teacher", "admin_academic", "admin_division"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { item_id } = await req.json();
     if (!item_id) throw new Error("item_id required");
 
