@@ -51,6 +51,17 @@ interface SabaqSectionProps {
   onQuarterToJuzChange: (value: string) => void;
   quarterToNumber: string;
   onQuarterToNumberChange: (value: string) => void;
+
+  // Whole-Juz mode (Hifz only)
+  allowJuz?: boolean;
+  juzFrom?: string;
+  onJuzFromChange?: (value: string) => void;
+  juzTo?: string;
+  onJuzToChange?: (value: string) => void;
+
+  // Additional lesson segments (same sitting, non-contiguous portions)
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
 }
 
 export function SabaqSection({
@@ -60,6 +71,11 @@ export function SabaqSection({
   onRukuFromJuzChange,
   rukuFromNumber,
   onRukuFromNumberChange,
+  rukuToJuz,
+  onRukuToJuzChange,
+  rukuToNumber,
+  onRukuToNumberChange,
+
   rukuToJuz,
   onRukuToJuzChange,
   rukuToNumber,
