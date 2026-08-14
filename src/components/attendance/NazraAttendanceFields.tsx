@@ -76,7 +76,10 @@ export function NazraAttendanceFields({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
   isRepeatLesson = false,
+
 }: NazraAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
