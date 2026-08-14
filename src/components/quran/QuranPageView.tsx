@@ -32,6 +32,8 @@ interface Props {
   onUseLesson?: (segment: LessonSegment) => void;
   /** Called to append the selection as an additional segment. */
   onAddSegment?: (segment: LessonSegment) => void;
+  /** Screen-share friendly: larger text, calmer chrome. */
+  presentation?: boolean;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export function QuranPageView({
   initialPage = 1,
   onUseLesson,
   onAddSegment,
+  presentation = false,
   className,
 }: Props) {
   const [editionId, setEditionId] = useState<string | null>(null);
@@ -91,6 +94,18 @@ export function QuranPageView({
   const goto = useCallback((p: number) => {
     setPage(Math.min(TOTAL_PAGES, Math.max(1, p)));
   }, []);
+
+  // Arrow-key page turning (RTL mushaf: left = next page)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+      if (e.key === 'ArrowLeft') goto(page + 1);
+      if (e.key === 'ArrowRight') goto(page - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goto, page]);
 
   const handleTap = (line: MushafLine) => {
     if (line.line_type !== 'ayah' || !line.first_surah) return;
@@ -211,7 +226,7 @@ export function QuranPageView({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tap a line to set the start of the lesson, then tap another line to set where it ended.
+        Tap the line where the lesson stopped. Tap a second line to cover a range — use ← / → to turn pages.
       </p>
 
       {/* Page canvas */}
@@ -254,7 +269,7 @@ export function QuranPageView({
                   ) : line.line_type === 'basmallah' ? (
                     <span className="arabic-text text-lg">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
                   ) : (
-                    <span className="arabic-text text-xl sm:text-2xl leading-loose">
+                    <span className={cn('arabic-text leading-loose', presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl')}>
                       {line.text_indopak}
                     </span>
                   )}
