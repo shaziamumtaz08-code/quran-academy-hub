@@ -92,7 +92,7 @@ async function fetchChildData(studentId: string): Promise<ChildData> {
   const sinceMonths = subMonths(new Date(), 6);
   const { data: attendance } = await supabase
     .from('attendance')
-    .select('status, class_date, lesson_covered, homework, surah_name, ayah_from')
+    .select('status, class_date, lesson_covered, lesson_display, homework, surah_name, ayah_from')
     .eq('student_id', studentId)
     .gte('class_date', sinceMonths.toISOString().slice(0,10))
     .order('class_date', { ascending: false });
@@ -197,7 +197,7 @@ async function fetchChildData(studentId: string): Promise<ChildData> {
     attendanceRate: records.length > 0 ? Math.round((present / records.length) * 100) : 0,
     recentLessons: records.slice(0, 4).map(a => ({
       date: format(new Date(a.class_date), 'MMM dd'),
-      lesson: a.lesson_covered || 'No lesson recorded',
+      lesson: (a as any).lesson_display || a.lesson_covered || 'No lesson recorded',
       homework: a.homework || 'No homework',
       status: a.status,
     })),

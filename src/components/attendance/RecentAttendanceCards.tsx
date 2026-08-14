@@ -40,6 +40,7 @@ export function RecentAttendanceCards({ role, limit = 3 }: Props) {
           lesson_notes,
           homework,
           lesson_covered,
+          lesson_display,
           surah_name,
           ayah_from,
           lesson_type,
@@ -115,10 +116,10 @@ export function RecentAttendanceCards({ role, limit = 3 }: Props) {
             </div>
 
             {/* Lesson notes */}
-            {(rec.lesson_notes || rec.lesson_covered || rec.surah_name) && (
+            {(rec.lesson_notes || rec.lesson_display || rec.lesson_covered || rec.surah_name) && (
               <div className="mt-1.5 bg-muted/50 rounded-lg px-2.5 py-1.5">
-                {rec.lesson_covered && (
-                  <p className="text-[11px] text-foreground"><span className="font-semibold">Lesson:</span> {rec.lesson_covered}</p>
+                {(rec.lesson_display || rec.lesson_covered) && (
+                  <p className="text-[11px] text-foreground"><span className="font-semibold">Lesson:</span> {rec.lesson_display || rec.lesson_covered}</p>
                 )}
                 {rec.surah_name && (
                   <p className="text-[11px] text-foreground"><span className="font-semibold">Surah:</span> {rec.surah_name} {rec.ayah_from ? `(Ayah ${rec.ayah_from})` : ''}</p>

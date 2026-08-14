@@ -38,6 +38,14 @@ import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } fr
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
+import {
+  formatLessonSegments,
+  segmentToDbRow,
+  isSegmentComplete,
+  lessonDisplayFromRow,
+  type LessonSegment,
+} from '@/lib/lessonFormat';
+
 import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { TeacherLeaveBulkDialog } from '@/components/attendance/TeacherLeaveBulkDialog';
@@ -64,6 +72,19 @@ interface AttendanceRecord {
   status: AttendanceStatus;
   reason: string | null;
   lesson_covered: string | null;
+  lesson_display?: string | null;
+  lesson_segment_count?: number | null;
+  sabaq_marker_type?: string | null;
+  sabaq_ruku_from_juz?: number | null;
+  sabaq_ruku_from_number?: number | null;
+  sabaq_ruku_to_juz?: number | null;
+  sabaq_ruku_to_number?: number | null;
+  sabaq_quarter_from_juz?: number | null;
+  sabaq_quarter_from_number?: number | null;
+  sabaq_quarter_to_juz?: number | null;
+  sabaq_quarter_to_number?: number | null;
+  [key: string]: any;
+
   homework: string | null;
   student_id: string;
   teacher_id: string;
@@ -209,6 +230,12 @@ export default function Attendance() {
   const [quarterFromNumber, setQuarterFromNumber] = useState('');
   const [quarterToJuz, setQuarterToJuz] = useState('');
   const [quarterToNumber, setQuarterToNumber] = useState('');
+
+  // Whole-Juz mode (Hifz only) + additional lesson segments
+  const [juzFrom, setJuzFrom] = useState('');
+  const [juzTo, setJuzTo] = useState('');
+  const [extraSegments, setExtraSegments] = useState<LessonSegment[]>([]);
+
   
   // Legacy fields kept for compatibility
   const [sabaqSurahFrom, setSabaqSurahFrom] = useState('');
@@ -535,6 +562,18 @@ export default function Attendance() {
           status,
           reason,
           lesson_covered,
+          lesson_display,
+          lesson_segment_count,
+          sabaq_marker_type,
+          sabaq_ruku_from_juz,
+          sabaq_ruku_from_number,
+          sabaq_ruku_to_juz,
+          sabaq_ruku_to_number,
+          sabaq_quarter_from_juz,
+          sabaq_quarter_from_number,
+          sabaq_quarter_to_juz,
+          sabaq_quarter_to_number,
+
           homework,
           student_id,
           teacher_id,
@@ -668,17 +707,33 @@ export default function Attendance() {
         finalReason = `Class rescheduled from ${classDate} ${classTime} to ${rescheduleDate} ${rescheduleTime}`;
       }
 
+      const isHifzOrNazra = currentSubjectType === 'hifz' || currentSubjectType === 'nazra';
+
+      // Normalized lesson segments — segment 0 mirrors the primary inputs
+      const primarySegment: LessonSegment =
+        markerType === 'ruku'
+          ? { markerType: 'ruku', juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber }
+          : markerType === 'quarter'
+          ? { markerType: 'quarter', juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber }
+          : markerType === 'juz'
+          ? { markerType: 'juz', juzFrom, juzTo }
+          : {
+              markerType: 'ayah',
+              surahFrom: ayahFromSurah || sabaqSurahFrom,
+              ayahFrom: ayahFromNumber || sabaqAyahFrom,
+              surahTo: ayahToSurah || sabaqSurahTo,
+              ayahTo: ayahToNumber || sabaqAyahTo,
+            };
+      const allSegments = [primarySegment, ...extraSegments].filter(isSegmentComplete);
+      const normalizedLesson = formatLessonSegments(allSegments);
+
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
         lessonCoveredText = lessonNumber ? `Lesson ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}` : '';
-      } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
-        if (sabaqSurahFrom && sabaqAyahFrom) {
-          lessonCoveredText = `${sabaqSurahFrom} ${sabaqAyahFrom}`;
-          if (sabaqSurahTo && sabaqAyahTo) {
-            lessonCoveredText += ` - ${sabaqSurahTo} ${sabaqAyahTo}`;
-          }
-        }
+      } else if (isHifzOrNazra) {
+        lessonCoveredText = normalizedLesson;
+
       } else {
         // Academic subjects - use lessonTopic and status
         if (academicLessonTopic) {
@@ -696,7 +751,14 @@ export default function Attendance() {
       // Calculate final lines completed from the unit input
       const finalLinesCompleted = lineEquivalent > 0 ? Math.round(lineEquivalent) : null;
 
-      const { error } = await supabase.from('attendance').insert({
+      // Segment 1 mirrored into the legacy flat columns
+      const mSurahFrom = isHifzOrNazra && markerType === 'ayah' ? (primarySegment.surahFrom as string) || '' : '';
+      const mAyahFrom = isHifzOrNazra && markerType === 'ayah' ? String(primarySegment.ayahFrom ?? '') : '';
+      const mSurahTo = isHifzOrNazra && markerType === 'ayah' ? (primarySegment.surahTo as string) || '' : '';
+      const mAyahTo = isHifzOrNazra && markerType === 'ayah' ? String(primarySegment.ayahTo ?? '') : '';
+      const numOrNull = (v: string) => (v ? parseInt(v) : null);
+
+      const { data: inserted, error } = await supabase.from('attendance').insert({
         student_id: studentId || user.id,
         teacher_id: user.id,
         class_date: classDate,
@@ -705,14 +767,16 @@ export default function Attendance() {
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
+        lesson_display: isHifzOrNazra ? (normalizedLesson || null) : (lessonCoveredText || null),
+        lesson_segment_count: isHifzOrNazra ? allSegments.length : null,
         homework: homework || null,
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
         reschedule_time: rescheduleTime || null,
-        surah_name: currentSubjectType === 'qaida' ? null : (sabaqSurahFrom || surahName || null),
-        ayah_from: currentSubjectType === 'qaida' ? null : (sabaqAyahFrom ? parseInt(sabaqAyahFrom) : (ayahFrom ? parseInt(ayahFrom) : null)),
-        ayah_to: currentSubjectType === 'qaida' ? null : (sabaqAyahTo ? parseInt(sabaqAyahTo) : (ayahTo ? parseInt(ayahTo) : null)),
+        surah_name: currentSubjectType === 'qaida' ? null : (mSurahFrom || sabaqSurahFrom || surahName || null),
+        ayah_from: currentSubjectType === 'qaida' ? null : (numOrNull(mAyahFrom) ?? (sabaqAyahFrom ? parseInt(sabaqAyahFrom) : (ayahFrom ? parseInt(ayahFrom) : null))),
+        ayah_to: currentSubjectType === 'qaida' ? null : (numOrNull(mAyahTo) ?? (sabaqAyahTo ? parseInt(sabaqAyahTo) : (ayahTo ? parseInt(ayahTo) : null))),
         lines_completed: finalLinesCompleted,
         variance_reason: needsVarianceReason ? varianceReason : null,
         input_unit: inputUnit,
@@ -720,16 +784,34 @@ export default function Attendance() {
         // New subject-specific fields
         lesson_number: currentSubjectType === 'qaida' && lessonNumber ? parseInt(lessonNumber) : null,
         page_number: currentSubjectType === 'qaida' && pageNumber ? parseInt(pageNumber) : null,
-        sabaq_surah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahFrom || null : null,
-        sabaq_surah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahTo || null : null,
-        sabaq_ayah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahFrom ? parseInt(sabaqAyahFrom) : null,
-        sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahTo ? parseInt(sabaqAyahTo) : null,
+        sabaq_marker_type: isHifzOrNazra ? markerType : null,
+        sabaq_surah_from: mSurahFrom || null,
+        sabaq_surah_to: mSurahTo || null,
+        sabaq_ayah_from: numOrNull(mAyahFrom),
+        sabaq_ayah_to: numOrNull(mAyahTo),
+        sabaq_ruku_from_juz: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuFromJuz) : null,
+        sabaq_ruku_from_number: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuFromNumber) : null,
+        sabaq_ruku_to_juz: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuToJuz) : null,
+        sabaq_ruku_to_number: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuToNumber) : null,
+        sabaq_quarter_from_juz: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterFromJuz) : null,
+        sabaq_quarter_from_number: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterFromNumber) : null,
+        sabaq_quarter_to_juz: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterToJuz) : null,
+        sabaq_quarter_to_number: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterToNumber) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         division_id: activeDivision?.id || null,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+
+      // Persist normalized lesson segments
+      if (inserted?.id && isHifzOrNazra && allSegments.length > 0) {
+        const { error: segErr } = await supabase
+          .from('attendance_lesson_segments')
+          .insert(allSegments.map((seg, i) => segmentToDbRow(seg, inserted.id, i, 'sabaq')));
+        if (segErr) console.warn('[lesson-segments] insert failed', segErr);
+      }
+
 
       // Log reschedule history (best-effort)
       if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
@@ -1455,7 +1537,7 @@ export default function Attendance() {
                         <StatusIndicator status={record.status} size="md" />
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                        {record.lesson_covered || '-'}
+                        {lessonDisplayFromRow(record) || '-'}
                       </TableCell>
                       {(isTeacher || isAdmin) && (
                         <TableCell className="text-muted-foreground max-w-[150px]">

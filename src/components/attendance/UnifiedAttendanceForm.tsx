@@ -21,6 +21,14 @@ import { HifzAttendanceFields } from './HifzAttendanceFields';
 import { NazraAttendanceFields } from './NazraAttendanceFields';
 import { AcademicAttendanceFields, type LessonStatus, type FollowupSuggestion } from './AcademicAttendanceFields';
 import { type MarkerType } from './SabaqSection';
+import {
+  formatLessonSegments,
+  segmentFromDbRow,
+  segmentToDbRow,
+  isSegmentComplete,
+  type LessonSegment,
+} from '@/lib/lessonFormat';
+
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
@@ -253,6 +261,12 @@ export function UnifiedAttendanceForm({
   const [quarterFromNumber, setQuarterFromNumber] = useState('');
   const [quarterToJuz, setQuarterToJuz] = useState('');
   const [quarterToNumber, setQuarterToNumber] = useState('');
+  // Whole-Juz marking (Hifz only)
+  const [juzFrom, setJuzFrom] = useState('');
+  const [juzTo, setJuzTo] = useState('');
+  // Additional lesson segments (non-contiguous portions covered in the same sitting)
+  const [extraSegments, setExtraSegments] = useState<LessonSegment[]>([]);
+
   const [sabqiDone, setSabqiDone] = useState(false);
   const [manzilDone, setManzilDone] = useState(false);
 
@@ -601,6 +615,8 @@ export function UnifiedAttendanceForm({
       setMarkerType('ayah');
       setRukuFromJuz(''); setRukuFromNumber(''); setRukuToJuz(''); setRukuToNumber('');
       setQuarterFromJuz(''); setQuarterFromNumber(''); setQuarterToJuz(''); setQuarterToNumber('');
+      setJuzFrom(''); setJuzTo(''); setExtraSegments([]);
+
       setAyahFromSurah('');
       setAyahFromNumber('');
       setAyahToSurah('');
@@ -667,11 +683,39 @@ export function UnifiedAttendanceForm({
       setLessonType((rAny.lesson_type === 'repeat' || rAny.lesson_type === 'new') ? rAny.lesson_type : '');
       setRepeatReason(rAny.repeat_reason || '');
       setRepeatReasonNote(rAny.repeat_reason_note || '');
+      setJuzFrom(''); setJuzTo(''); setExtraSegments([]);
       return;
     }
 
     if (initialStatus) setSelectedStatus(initialStatus);
   }, [open, initialStatus, isEdit, activeRecord]);
+
+  // Hydrate saved lesson segments in edit mode. Segment 0 mirrors the primary
+  // inputs (already hydrated from the flat sabaq_* columns) except for whole-Juz
+  // marking, which only lives in the segments table.
+  useEffect(() => {
+    if (!open || !isEdit || !activeRecord?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('attendance_lesson_segments')
+        .select('*')
+        .eq('attendance_id', activeRecord.id)
+        .eq('section', 'sabaq')
+        .order('segment_index');
+      if (cancelled || error || !data) return;
+      const segs = data.map(segmentFromDbRow);
+      const primary = segs[0];
+      if (primary?.markerType === 'juz') {
+        setMarkerType('juz');
+        setJuzFrom(primary.juzFrom != null ? String(primary.juzFrom) : '');
+        setJuzTo(primary.juzTo != null ? String(primary.juzTo) : '');
+      }
+      setExtraSegments(segs.slice(1));
+    })();
+    return () => { cancelled = true; };
+  }, [open, isEdit, activeRecord?.id]);
+
 
   const markAttendance = useMutation({
     mutationFn: async () => {
@@ -685,6 +729,18 @@ export function UnifiedAttendanceForm({
       }
       if (!resolvedStudentId) throw new Error('Please select a student');
 
+      // Normalized lesson segments (Hifz/Nazra) — segment 0 mirrors the primary inputs
+      const primarySegment: LessonSegment =
+        markerType === 'ruku'
+          ? { markerType: 'ruku', juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber }
+          : markerType === 'quarter'
+          ? { markerType: 'quarter', juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber }
+          : markerType === 'juz'
+          ? { markerType: 'juz', juzFrom, juzTo }
+          : { markerType: 'ayah', surahFrom: ayahFromSurah, ayahFrom: ayahFromNumber, surahTo: ayahToSurah, ayahTo: ayahToNumber };
+      const allSegments = [primarySegment, ...extraSegments].filter(isSegmentComplete);
+      const normalizedLesson = formatLessonSegments(allSegments);
+
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
@@ -692,12 +748,8 @@ export function UnifiedAttendanceForm({
           ? `Baab ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}${qaidaUnitTo ? `, up to unit ${qaidaUnitTo}` : ''}`
           : '';
       } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
-        if (ayahFromSurah && ayahFromNumber) {
-          lessonCoveredText = `${ayahFromSurah} ${ayahFromNumber}`;
-          if (ayahToSurah && ayahToNumber) {
-            lessonCoveredText += ` - ${ayahToSurah} ${ayahToNumber}`;
-          }
-        }
+        lessonCoveredText = normalizedLesson;
+
       } else {
         if (academicLessonTopic) {
           lessonCoveredText = academicLessonTopic;
@@ -733,6 +785,9 @@ export function UnifiedAttendanceForm({
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
+        lesson_display: isHifzOrNazra ? (normalizedLesson || null) : (lessonCoveredText || null),
+        lesson_segment_count: isHifzOrNazra ? allSegments.length : null,
+
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
@@ -839,6 +894,18 @@ export function UnifiedAttendanceForm({
         if (error) throw error;
         savedId = data?.id;
       }
+
+      // Persist normalized lesson segments (rewrite-in-place: delete then insert).
+      if (savedId && isHifzOrNazra) {
+        await supabase.from('attendance_lesson_segments').delete().eq('attendance_id', savedId).eq('section', 'sabaq');
+        if (allSegments.length > 0) {
+          const segRows = allSegments.map((seg, i) => segmentToDbRow(seg, savedId!, i, 'sabaq'));
+          const { error: segErr } = await supabase.from('attendance_lesson_segments').insert(segRows);
+          if (segErr) console.warn('[lesson-segments] insert failed', segErr);
+        }
+      }
+
+
 
       // Log reschedule history (best-effort; never blocks the save). Create-mode only —
       // edits don't fork a new reschedule record.
@@ -1392,6 +1459,13 @@ export function UnifiedAttendanceForm({
                   onQuarterToJuzChange={setQuarterToJuz}
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
+                  juzFrom={juzFrom}
+                  onJuzFromChange={setJuzFrom}
+                  juzTo={juzTo}
+                  onJuzToChange={setJuzTo}
+                  extraSegments={extraSegments}
+                  onExtraSegmentsChange={setExtraSegments}
+
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
                   manzilDone={manzilDone}
@@ -1427,6 +1501,9 @@ export function UnifiedAttendanceForm({
                   onQuarterToJuzChange={setQuarterToJuz}
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
+                  extraSegments={extraSegments}
+                  onExtraSegmentsChange={setExtraSegments}
+
                 />
               )}
 

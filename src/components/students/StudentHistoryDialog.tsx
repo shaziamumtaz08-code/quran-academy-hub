@@ -37,7 +37,7 @@ export function StudentHistoryDialog({ open, onOpenChange, studentId, studentNam
       
       const { data, error } = await supabase
         .from('attendance')
-        .select('id, class_date, class_time, status, lesson_covered, surah_name, ayah_from, ayah_to, lines_completed, homework')
+        .select('id, class_date, class_time, status, lesson_covered, lesson_display, surah_name, ayah_from, ayah_to, lines_completed, homework')
         .eq('student_id', studentId)
         .gte('class_date', format(weekAgo, 'yyyy-MM-dd'))
         .lte('class_date', format(today, 'yyyy-MM-dd'))

@@ -4,6 +4,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
+import type { LessonSegment } from '@/lib/lessonFormat';
+
 
 interface HifzAttendanceFieldsProps {
   // Marker type selection
@@ -47,10 +49,20 @@ interface HifzAttendanceFieldsProps {
   // Manzil (Old Revision) - Yes/No only
   manzilDone: boolean;
   onManzilDoneChange: (value: boolean) => void;
+  // Whole-Juz mode (Hifz only)
+  juzFrom?: string;
+  onJuzFromChange?: (value: string) => void;
+  juzTo?: string;
+  onJuzToChange?: (value: string) => void;
+
+  // Additional lesson segments
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
 
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
 }
+
 
 export function HifzAttendanceFields({
   markerType,
@@ -79,11 +91,18 @@ export function HifzAttendanceFields({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  juzFrom = '',
+  onJuzFromChange,
+  juzTo = '',
+  onJuzToChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
   sabqiDone,
   onSabqiDoneChange,
   manzilDone,
   onManzilDoneChange,
   isRepeatLesson = false,
+
 }: HifzAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -128,6 +147,14 @@ export function HifzAttendanceFields({
         onQuarterToJuzChange={onQuarterToJuzChange}
         quarterToNumber={quarterToNumber}
         onQuarterToNumberChange={onQuarterToNumberChange}
+        allowJuz
+        juzFrom={juzFrom}
+        onJuzFromChange={onJuzFromChange}
+        juzTo={juzTo}
+        onJuzToChange={onJuzToChange}
+        extraSegments={extraSegments}
+        onExtraSegmentsChange={onExtraSegmentsChange}
+
       />
       
       {/* Sabqi Section - Yes/No Only */}

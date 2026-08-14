@@ -2,6 +2,8 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
+import type { LessonSegment } from '@/lib/lessonFormat';
+
 
 interface NazraAttendanceFieldsProps {
   // Marker type selection
@@ -38,9 +40,14 @@ interface NazraAttendanceFieldsProps {
   quarterToNumber: string;
   onQuarterToNumberChange: (value: string) => void;
   
+  // Additional lesson segments
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
+
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
 }
+
 
 export function NazraAttendanceFields({
   markerType,
@@ -69,7 +76,10 @@ export function NazraAttendanceFields({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
   isRepeatLesson = false,
+
 }: NazraAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -114,6 +124,9 @@ export function NazraAttendanceFields({
         onQuarterToJuzChange={onQuarterToJuzChange}
         quarterToNumber={quarterToNumber}
         onQuarterToNumberChange={onQuarterToNumberChange}
+        extraSegments={extraSegments}
+        onExtraSegmentsChange={onExtraSegmentsChange}
+
       />
       
     </div>
