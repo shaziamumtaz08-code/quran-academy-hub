@@ -60,6 +60,7 @@ const TeacherProfile = lazy(() => import("./pages/TeacherProfile"));
 const StudentProfile = lazy(() => import("./pages/StudentProfile"));
 const MyProfile = lazy(() => import("./pages/MyProfile"));
 const Impersonate = lazy(() => import("./pages/Impersonate"));
+const QuranPageBrowser = lazy(() => import("./pages/QuranPageBrowser"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
@@ -406,6 +407,7 @@ function AppRoutes() {
       <Route path="/legal/policies" element={<PublicPolicies />} />
       <Route path="/policies" element={<ProtectedRoute><DashboardLayout><Policies /></DashboardLayout></ProtectedRoute>} />
       <Route path="/impersonate" element={<Impersonate />} />
+      <Route path="/quran-page" element={<ProtectedRoute><DashboardLayout><QuranPageBrowser /></DashboardLayout></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={

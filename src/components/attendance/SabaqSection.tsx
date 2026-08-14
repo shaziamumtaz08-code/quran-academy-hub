@@ -3,10 +3,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Book, Hash, Grid3X3, Layers, Plus } from 'lucide-react';
+import { Book, Hash, Grid3X3, Layers, Plus, BookOpenCheck } from 'lucide-react';
 import { SURAHS, getSurahByName } from '@/lib/quranData';
 import { JUZ_DATA, getRukuCountForJuz, calculateTotalRukus, calculateTotalQuarters } from '@/lib/juzData';
 import { LessonSegmentEditor } from './LessonSegmentEditor';
+import { QuranPagePickerDialog } from '@/components/quran/QuranPagePickerDialog';
 import {
   formatLessonSegments,
   emptySegment,
@@ -180,6 +181,32 @@ export function SabaqSection({
   const removeSegment = (idx: number) => onExtraSegmentsChange?.(extraSegments.filter((_, i) => i !== idx));
   const addSegment = () => onExtraSegmentsChange?.([...extraSegments, emptySegment(markerType)]);
 
+  // Visual Quran page picker
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  /** Applies a segment picked on the Quran page into the primary inputs. */
+  const applyPickedSegment = (seg: LessonSegment) => {
+    if (seg.markerType === 'juz') {
+      onMarkerTypeChange('juz');
+      onJuzFromChange?.(String(seg.juzFrom ?? ''));
+      onJuzToChange?.(String(seg.juzTo ?? ''));
+      return;
+    }
+    if (seg.markerType === 'ruku') {
+      onMarkerTypeChange('ruku');
+      onRukuFromJuzChange(String(seg.juzFrom ?? ''));
+      onRukuFromNumberChange(String(seg.unitFrom ?? ''));
+      onRukuToJuzChange(String(seg.juzTo ?? ''));
+      onRukuToNumberChange(String(seg.unitTo ?? ''));
+      return;
+    }
+    onMarkerTypeChange('ayah');
+    onAyahFromSurahChange(String(seg.surahFrom ?? ''));
+    onAyahFromNumberChange(String(seg.ayahFrom ?? ''));
+    onAyahToSurahChange(String(seg.surahTo ?? seg.surahFrom ?? ''));
+    onAyahToNumberChange(String(seg.ayahTo ?? ''));
+  };
+
   // Get max ruku for selected Juz
   const maxRukuFrom = getRukuCountForJuz(parseInt(rukuFromJuz) || 0);
   const maxRukuTo = getRukuCountForJuz(parseInt(rukuToJuz) || 0);
@@ -192,10 +219,32 @@ export function SabaqSection({
   return (
     <div className="bg-card rounded-xl p-5 space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Book className="h-5 w-5 text-primary" />
         <h3 className="text-primary font-semibold text-base">Sabaq (New Reading)</h3>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-lg ml-auto"
+          onClick={() => setPickerOpen(true)}
+        >
+          <BookOpenCheck className="h-4 w-4 mr-1.5" />
+          Pick on Quran page
+        </Button>
       </div>
+
+      <QuranPagePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        markerType={markerType}
+        onUseLesson={applyPickedSegment}
+        onAddSegment={
+          onExtraSegmentsChange
+            ? (seg) => onExtraSegmentsChange([...extraSegments, seg])
+            : undefined
+        }
+      />
       
       {/* Marker Toggle Row */}
       <div className="space-y-2">
