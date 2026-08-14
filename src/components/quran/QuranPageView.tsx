@@ -227,11 +227,17 @@ export function QuranPageView({
                 const isStart = start?.page === page && start.line.line_number === line.line_number;
                 const isEnd = end?.page === page && end.line.line_number === line.line_number;
                 return (
-                  <button
+                  <div
                     key={line.id}
-                    type="button"
-                    disabled={!selectable}
-                    onClick={() => handleTap(line)}
+                    role={selectable ? 'button' : undefined}
+                    tabIndex={selectable ? 0 : undefined}
+                    onClick={() => selectable && handleTap(line)}
+                    onKeyDown={(e) => {
+                      if (selectable && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleTap(line);
+                      }
+                    }}
                     className={cn(
                       'relative w-full rounded-md px-3 py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
@@ -241,7 +247,7 @@ export function QuranPageView({
                   >
                     {(isStart || isEnd) && (
                       <span
-                        className="absolute -top-1 left-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
+                        className="absolute -top-1 left-1 z-10 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
                         dir="ltr"
                       >
                         {isStart && isEnd ? 'Start & End' : isStart ? 'Start' : 'End'}
@@ -256,18 +262,46 @@ export function QuranPageView({
                     ) : !line.text_indopak ? (
                       <span className="block h-6" aria-hidden />
                     ) : (
-
                       <span
                         className={cn(
                           'mushaf-text block',
                           presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
                         )}
                       >
-                        {line.text_indopak}
+                        {splitAyahMarks(line).map((tok, i) =>
+                          tok.ayah == null ? (
+                            <React.Fragment key={i}>{tok.text}</React.Fragment>
+                          ) : (
+                            <span
+                              key={i}
+                              role="button"
+                              tabIndex={0}
+                              title={`Mark at ${surahNameByNumber(tok.surah)}, verse ${tok.ayah}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTap(line, { surah: tok.surah!, ayah: tok.ayah! });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleTap(line, { surah: tok.surah!, ayah: tok.ayah! });
+                                }
+                              }}
+                              className={cn(
+                                'ayah-mark',
+                                isAyahMarked(page, tok.surah!, tok.ayah!) && 'ayah-mark-active'
+                              )}
+                            >
+                              {tok.text}
+                            </span>
+                          )
+                        )}
                       </span>
                     )}
-                  </button>
+                  </div>
                 );
+
               })}
             </div>
           )}
