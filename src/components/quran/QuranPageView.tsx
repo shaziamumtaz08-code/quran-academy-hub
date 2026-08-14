@@ -95,6 +95,18 @@ export function QuranPageView({
     setPage(Math.min(TOTAL_PAGES, Math.max(1, p)));
   }, []);
 
+  // Arrow-key page turning (RTL mushaf: left = next page)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+      if (e.key === 'ArrowLeft') goto(page + 1);
+      if (e.key === 'ArrowRight') goto(page - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goto, page]);
+
   const handleTap = (line: MushafLine) => {
     if (line.line_type !== 'ayah' || !line.first_surah) return;
     const point: TapPoint = { page, line };
