@@ -74,6 +74,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
         { label: 'Attendance', href: '/attendance' },
         { label: 'Planning', href: '/monthly-planning' },
         { label: 'Lessons', href: '/lessons' },
+        { label: 'Quran Page', href: '/quran-page' },
         { label: 'Assignments', href: '/assignments' },
       ],
     };
