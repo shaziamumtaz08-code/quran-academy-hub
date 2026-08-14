@@ -615,6 +615,8 @@ export function UnifiedAttendanceForm({
       setMarkerType('ayah');
       setRukuFromJuz(''); setRukuFromNumber(''); setRukuToJuz(''); setRukuToNumber('');
       setQuarterFromJuz(''); setQuarterFromNumber(''); setQuarterToJuz(''); setQuarterToNumber('');
+      setJuzFrom(''); setJuzTo(''); setExtraSegments([]);
+
       setAyahFromSurah('');
       setAyahFromNumber('');
       setAyahToSurah('');
