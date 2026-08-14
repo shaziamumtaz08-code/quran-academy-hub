@@ -491,7 +491,7 @@ export function TransferAssignmentDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 pb-6 pt-2 border-t bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             onClick={() => transferMutation.mutate()}
