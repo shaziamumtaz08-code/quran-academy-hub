@@ -75,11 +75,6 @@ export function SabaqSection({
   onRukuToJuzChange,
   rukuToNumber,
   onRukuToNumberChange,
-
-  rukuToJuz,
-  onRukuToJuzChange,
-  rukuToNumber,
-  onRukuToNumberChange,
   ayahFromSurah,
   onAyahFromSurahChange,
   ayahFromNumber,
@@ -96,7 +91,15 @@ export function SabaqSection({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  allowJuz = false,
+  juzFrom = '',
+  onJuzFromChange,
+  juzTo = '',
+  onJuzToChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
 }: SabaqSectionProps) {
+
   
   // Calculate total based on marker type
   const totalCalculation = useMemo(() => {
