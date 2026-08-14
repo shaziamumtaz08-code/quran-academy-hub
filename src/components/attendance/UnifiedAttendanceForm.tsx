@@ -1459,6 +1459,13 @@ export function UnifiedAttendanceForm({
                   onQuarterToJuzChange={setQuarterToJuz}
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
+                  juzFrom={juzFrom}
+                  onJuzFromChange={setJuzFrom}
+                  juzTo={juzTo}
+                  onJuzToChange={setJuzTo}
+                  extraSegments={extraSegments}
+                  onExtraSegmentsChange={setExtraSegments}
+
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
                   manzilDone={manzilDone}
@@ -1494,6 +1501,9 @@ export function UnifiedAttendanceForm({
                   onQuarterToJuzChange={setQuarterToJuz}
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
+                  extraSegments={extraSegments}
+                  onExtraSegmentsChange={setExtraSegments}
+
                 />
               )}
 
