@@ -1512,7 +1512,7 @@ export default function Attendance() {
                         <StatusIndicator status={record.status} size="md" />
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                        {record.lesson_covered || '-'}
+                        {lessonDisplayFromRow(record) || '-'}
                       </TableCell>
                       {(isTeacher || isAdmin) && (
                         <TableCell className="text-muted-foreground max-w-[150px]">
