@@ -729,6 +729,18 @@ export function UnifiedAttendanceForm({
       }
       if (!resolvedStudentId) throw new Error('Please select a student');
 
+      // Normalized lesson segments (Hifz/Nazra) — segment 0 mirrors the primary inputs
+      const primarySegment: LessonSegment =
+        markerType === 'ruku'
+          ? { markerType: 'ruku', juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber }
+          : markerType === 'quarter'
+          ? { markerType: 'quarter', juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber }
+          : markerType === 'juz'
+          ? { markerType: 'juz', juzFrom, juzTo }
+          : { markerType: 'ayah', surahFrom: ayahFromSurah, ayahFrom: ayahFromNumber, surahTo: ayahToSurah, ayahTo: ayahToNumber };
+      const allSegments = [primarySegment, ...extraSegments].filter(isSegmentComplete);
+      const normalizedLesson = formatLessonSegments(allSegments);
+
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
@@ -736,12 +748,8 @@ export function UnifiedAttendanceForm({
           ? `Baab ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}${qaidaUnitTo ? `, up to unit ${qaidaUnitTo}` : ''}`
           : '';
       } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
-        if (ayahFromSurah && ayahFromNumber) {
-          lessonCoveredText = `${ayahFromSurah} ${ayahFromNumber}`;
-          if (ayahToSurah && ayahToNumber) {
-            lessonCoveredText += ` - ${ayahToSurah} ${ayahToNumber}`;
-          }
-        }
+        lessonCoveredText = normalizedLesson;
+
       } else {
         if (academicLessonTopic) {
           lessonCoveredText = academicLessonTopic;
