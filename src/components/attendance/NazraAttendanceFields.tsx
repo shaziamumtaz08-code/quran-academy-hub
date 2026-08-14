@@ -2,6 +2,8 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
+import type { LessonSegment } from '@/lib/lessonFormat';
+
 
 interface NazraAttendanceFieldsProps {
   // Marker type selection

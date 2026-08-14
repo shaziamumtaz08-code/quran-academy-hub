@@ -4,6 +4,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
+import type { LessonSegment } from '@/lib/lessonFormat';
+
 
 interface HifzAttendanceFieldsProps {
   // Marker type selection
