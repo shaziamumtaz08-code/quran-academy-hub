@@ -370,7 +370,7 @@ export function QuranPageView({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tap the line where the lesson started, then tap the line where it ended. Swipe or use ← / → to turn pages.
+        Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.
       </p>
 
       {/* Selection footer */}
