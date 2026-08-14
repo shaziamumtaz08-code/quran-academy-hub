@@ -726,7 +726,14 @@ export default function Attendance() {
       // Calculate final lines completed from the unit input
       const finalLinesCompleted = lineEquivalent > 0 ? Math.round(lineEquivalent) : null;
 
-      const { error } = await supabase.from('attendance').insert({
+      // Segment 1 mirrored into the legacy flat columns
+      const mSurahFrom = isHifzOrNazra && markerType === 'ayah' ? (primarySegment.surahFrom as string) || '' : '';
+      const mAyahFrom = isHifzOrNazra && markerType === 'ayah' ? String(primarySegment.ayahFrom ?? '') : '';
+      const mSurahTo = isHifzOrNazra && markerType === 'ayah' ? (primarySegment.surahTo as string) || '' : '';
+      const mAyahTo = isHifzOrNazra && markerType === 'ayah' ? String(primarySegment.ayahTo ?? '') : '';
+      const numOrNull = (v: string) => (v ? parseInt(v) : null);
+
+      const { data: inserted, error } = await supabase.from('attendance').insert({
         student_id: studentId || user.id,
         teacher_id: user.id,
         class_date: classDate,
@@ -735,14 +742,16 @@ export default function Attendance() {
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
+        lesson_display: isHifzOrNazra ? (normalizedLesson || null) : (lessonCoveredText || null),
+        lesson_segment_count: isHifzOrNazra ? allSegments.length : null,
         homework: homework || null,
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
         reschedule_time: rescheduleTime || null,
-        surah_name: currentSubjectType === 'qaida' ? null : (sabaqSurahFrom || surahName || null),
-        ayah_from: currentSubjectType === 'qaida' ? null : (sabaqAyahFrom ? parseInt(sabaqAyahFrom) : (ayahFrom ? parseInt(ayahFrom) : null)),
-        ayah_to: currentSubjectType === 'qaida' ? null : (sabaqAyahTo ? parseInt(sabaqAyahTo) : (ayahTo ? parseInt(ayahTo) : null)),
+        surah_name: currentSubjectType === 'qaida' ? null : (mSurahFrom || sabaqSurahFrom || surahName || null),
+        ayah_from: currentSubjectType === 'qaida' ? null : (numOrNull(mAyahFrom) ?? (sabaqAyahFrom ? parseInt(sabaqAyahFrom) : (ayahFrom ? parseInt(ayahFrom) : null))),
+        ayah_to: currentSubjectType === 'qaida' ? null : (numOrNull(mAyahTo) ?? (sabaqAyahTo ? parseInt(sabaqAyahTo) : (ayahTo ? parseInt(ayahTo) : null))),
         lines_completed: finalLinesCompleted,
         variance_reason: needsVarianceReason ? varianceReason : null,
         input_unit: inputUnit,
@@ -750,16 +759,34 @@ export default function Attendance() {
         // New subject-specific fields
         lesson_number: currentSubjectType === 'qaida' && lessonNumber ? parseInt(lessonNumber) : null,
         page_number: currentSubjectType === 'qaida' && pageNumber ? parseInt(pageNumber) : null,
-        sabaq_surah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahFrom || null : null,
-        sabaq_surah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahTo || null : null,
-        sabaq_ayah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahFrom ? parseInt(sabaqAyahFrom) : null,
-        sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahTo ? parseInt(sabaqAyahTo) : null,
+        sabaq_marker_type: isHifzOrNazra ? markerType : null,
+        sabaq_surah_from: mSurahFrom || null,
+        sabaq_surah_to: mSurahTo || null,
+        sabaq_ayah_from: numOrNull(mAyahFrom),
+        sabaq_ayah_to: numOrNull(mAyahTo),
+        sabaq_ruku_from_juz: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuFromJuz) : null,
+        sabaq_ruku_from_number: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuFromNumber) : null,
+        sabaq_ruku_to_juz: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuToJuz) : null,
+        sabaq_ruku_to_number: isHifzOrNazra && markerType === 'ruku' ? numOrNull(rukuToNumber) : null,
+        sabaq_quarter_from_juz: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterFromJuz) : null,
+        sabaq_quarter_from_number: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterFromNumber) : null,
+        sabaq_quarter_to_juz: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterToJuz) : null,
+        sabaq_quarter_to_number: isHifzOrNazra && markerType === 'quarter' ? numOrNull(quarterToNumber) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         division_id: activeDivision?.id || null,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+
+      // Persist normalized lesson segments
+      if (inserted?.id && isHifzOrNazra && allSegments.length > 0) {
+        const { error: segErr } = await supabase
+          .from('attendance_lesson_segments')
+          .insert(allSegments.map((seg, i) => segmentToDbRow(seg, inserted.id, i, 'sabaq')));
+        if (segErr) console.warn('[lesson-segments] insert failed', segErr);
+      }
+
 
       // Log reschedule history (best-effort)
       if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
