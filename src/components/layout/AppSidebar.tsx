@@ -74,6 +74,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
         { label: 'Attendance', href: '/attendance' },
         { label: 'Planning', href: '/monthly-planning' },
         { label: 'Lessons', href: '/lessons' },
+        { label: 'Quran Page', href: '/quran-page' },
         { label: 'Assignments', href: '/assignments' },
       ],
     };
@@ -82,11 +83,13 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
     ? [
         { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
         { label: 'Quiz Engine', href: '/quiz-engine', badgeText: 'AI' },
+        { label: 'Quran Page', href: '/quran-page' },
       ]
     : [
         { label: 'All Courses', href: '/teaching?section=courses' },
         { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
         { label: 'Quiz Engine', href: '/quiz-engine', badgeText: 'AI' },
+        { label: 'Quran Page', href: '/quran-page' },
       ];
   return {
     title: isOneToOne ? '1-to-1 Teaching' : 'Course Management',
