@@ -506,6 +506,37 @@
     animation: page-sheen 520ms ease-out;
   }
 
+  /* Round end-of-verse sign, as printed in an Indo-Pak mushaf */
+  .ayah-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55em;
+    height: 1.55em;
+    margin: 0 0.12em;
+    font-size: 0.62em;
+    line-height: 1;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--primary) / 0.55);
+    background: hsl(var(--primary) / 0.06);
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+
+  .ayah-mark:hover {
+    background: hsl(var(--primary) / 0.18);
+    transform: scale(1.08);
+  }
+
+  .ayah-mark-active {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+
   @media (prefers-reduced-motion: reduce) {
     .animate-page-turn-next,
     .animate-page-turn-prev,
