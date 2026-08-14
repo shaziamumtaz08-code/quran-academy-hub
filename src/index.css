@@ -458,6 +458,64 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* ---- Mushaf book page-flip simulation ---- */
+  .book-stage {
+    perspective: 2200px;
+    perspective-origin: 50% 40%;
+  }
+
+  .book-page {
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  /* RTL book: turning to the NEXT page lifts the sheet from the left spine */
+  @keyframes page-turn-next {
+    0% { transform: rotateY(0deg); box-shadow: 0 10px 24px -12px hsl(var(--foreground) / 0.35); }
+    45% { transform: rotateY(-16deg) translateZ(28px); box-shadow: -28px 22px 44px -18px hsl(var(--foreground) / 0.45); }
+    55% { transform: rotateY(14deg) translateZ(28px); box-shadow: 28px 22px 44px -18px hsl(var(--foreground) / 0.45); }
+    100% { transform: rotateY(0deg); box-shadow: 0 10px 24px -12px hsl(var(--foreground) / 0.35); }
+  }
+
+  @keyframes page-turn-prev {
+    0% { transform: rotateY(0deg); box-shadow: 0 10px 24px -12px hsl(var(--foreground) / 0.35); }
+    45% { transform: rotateY(16deg) translateZ(28px); box-shadow: 28px 22px 44px -18px hsl(var(--foreground) / 0.45); }
+    55% { transform: rotateY(-14deg) translateZ(28px); box-shadow: -28px 22px 44px -18px hsl(var(--foreground) / 0.45); }
+    100% { transform: rotateY(0deg); box-shadow: 0 10px 24px -12px hsl(var(--foreground) / 0.35); }
+  }
+
+  .animate-page-turn-next {
+    transform-origin: left center;
+    animation: page-turn-next 520ms cubic-bezier(0.4, 0.1, 0.2, 1);
+  }
+
+  .animate-page-turn-prev {
+    transform-origin: right center;
+    animation: page-turn-prev 520ms cubic-bezier(0.4, 0.1, 0.2, 1);
+  }
+
+  /* Paper sheen sweeping across the sheet as it turns */
+  @keyframes page-sheen {
+    0% { opacity: 0; transform: translateX(-30%); }
+    40% { opacity: 0.55; }
+    100% { opacity: 0; transform: translateX(130%); }
+  }
+
+  .page-sheen {
+    animation: page-sheen 520ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-page-turn-next,
+    .animate-page-turn-prev,
+    .page-sheen {
+      animation: none;
+    }
+  }
+
+
+
 
 
   /* Combined RTL helper for mixed Urdu/Arabic content */
