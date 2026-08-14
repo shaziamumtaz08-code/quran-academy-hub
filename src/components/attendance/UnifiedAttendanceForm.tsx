@@ -895,6 +895,18 @@ export function UnifiedAttendanceForm({
         savedId = data?.id;
       }
 
+      // Persist normalized lesson segments (rewrite-in-place: delete then insert).
+      if (savedId && isHifzOrNazra) {
+        await supabase.from('attendance_lesson_segments').delete().eq('attendance_id', savedId).eq('section', 'sabaq');
+        if (allSegments.length > 0) {
+          const segRows = allSegments.map((seg, i) => segmentToDbRow(seg, savedId!, i, 'sabaq'));
+          const { error: segErr } = await supabase.from('attendance_lesson_segments').insert(segRows);
+          if (segErr) console.warn('[lesson-segments] insert failed', segErr);
+        }
+      }
+
+
+
       // Log reschedule history (best-effort; never blocks the save). Create-mode only —
       // edits don't fork a new reschedule record.
       if (!isEdit && requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
