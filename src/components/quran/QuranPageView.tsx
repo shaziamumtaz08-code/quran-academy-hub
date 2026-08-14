@@ -167,7 +167,12 @@ export function QuranPageView({
   };
 
   const key = (p: number, l: number) => p * 100 + l;
+  const isAyahMarked = (p: number, surah: number, ayah: number) =>
+    [start, end].some(
+      (m) => m?.page === p && m?.ayahAt?.surah === surah && m?.ayahAt?.ayah === ayah
+    );
   const isSelected = (line: MushafLine) => {
+
     if (!start) return false;
     const e = end ?? start;
     const k = key(page, line.line_number);
