@@ -72,6 +72,19 @@ interface AttendanceRecord {
   status: AttendanceStatus;
   reason: string | null;
   lesson_covered: string | null;
+  lesson_display?: string | null;
+  lesson_segment_count?: number | null;
+  sabaq_marker_type?: string | null;
+  sabaq_ruku_from_juz?: number | null;
+  sabaq_ruku_from_number?: number | null;
+  sabaq_ruku_to_juz?: number | null;
+  sabaq_ruku_to_number?: number | null;
+  sabaq_quarter_from_juz?: number | null;
+  sabaq_quarter_from_number?: number | null;
+  sabaq_quarter_to_juz?: number | null;
+  sabaq_quarter_to_number?: number | null;
+  [key: string]: any;
+
   homework: string | null;
   student_id: string;
   teacher_id: string;
