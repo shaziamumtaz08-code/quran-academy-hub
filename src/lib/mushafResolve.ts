@@ -166,11 +166,13 @@ export async function resolveSegment(
   const ayahSeg = segmentFromTaps(start, end);
   if (markerType === 'ayah' || markerType === 'quarter') return ayahSeg;
 
-  const sFrom = start.line.first_surah;
-  const aFrom = start.line.first_ayah;
-  const endLine = end?.line ?? start.line;
-  const sTo = endLine.last_surah;
-  const aTo = endLine.last_ayah;
+  const from = startOf(start);
+  const to = endOf(end ?? start);
+  const sFrom = from.surah;
+  const aFrom = from.ayah;
+  const sTo = to.surah;
+  const aTo = to.ayah;
+
   if (!sFrom || !aFrom || !sTo || !aTo) return ayahSeg;
 
   if (markerType === 'juz') {
