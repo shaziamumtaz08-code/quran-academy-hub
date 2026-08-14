@@ -373,8 +373,8 @@ export function TransferAssignmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5 text-primary" />
             Transfer / Substitute
@@ -384,7 +384,8 @@ export function TransferAssignmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 flex-1 overflow-y-auto px-6">
+
           {/* Transfer Type */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold">Transfer Type</Label>
