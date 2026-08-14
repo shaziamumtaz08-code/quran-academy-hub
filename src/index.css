@@ -42,6 +42,13 @@
     --card: 0 0% 100%;
     --card-foreground: 216 70% 11%;
 
+    /* Mushaf paper (physical Indo-Pak Quran) */
+    --mushaf-paper: 42 60% 96%;
+    --mushaf-paper-edge: 38 45% 88%;
+    --mushaf-ink: 220 40% 12%;
+    --mushaf-rule: 30 35% 45%;
+
+
     --popover: 0 0% 100%;
     --popover-foreground: 216 70% 11%;
 
