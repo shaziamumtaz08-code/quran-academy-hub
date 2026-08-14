@@ -42,6 +42,13 @@
     --card: 0 0% 100%;
     --card-foreground: 216 70% 11%;
 
+    /* Mushaf paper (physical Indo-Pak Quran) */
+    --mushaf-paper: 42 60% 96%;
+    --mushaf-paper-edge: 38 45% 88%;
+    --mushaf-ink: 220 40% 12%;
+    --mushaf-rule: 30 35% 45%;
+
+
     --popover: 0 0% 100%;
     --popover-foreground: 216 70% 11%;
 
@@ -138,6 +145,12 @@
 
     --card: 220 35% 12%;
     --card-foreground: 210 25% 95%;
+
+    --mushaf-paper: 40 22% 90%;
+    --mushaf-paper-edge: 36 18% 80%;
+    --mushaf-ink: 220 45% 10%;
+    --mushaf-rule: 32 25% 40%;
+
 
     --popover: 220 35% 12%;
     --popover-foreground: 210 25% 95%;
@@ -458,6 +471,64 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* ---- Physical Indo-Pak page layout ---- */
+  .mushaf-paper {
+    background:
+      radial-gradient(120% 90% at 50% 0%, hsl(var(--mushaf-paper)) 0%, hsl(var(--mushaf-paper-edge)) 100%);
+    color: hsl(var(--mushaf-ink));
+  }
+
+  /* Double-ruled frame like a printed mushaf */
+  .mushaf-frame {
+    border: 2px solid hsl(var(--mushaf-rule) / 0.85);
+    box-shadow:
+      inset 0 0 0 3px hsl(var(--mushaf-paper)),
+      inset 0 0 0 5px hsl(var(--mushaf-rule) / 0.55);
+  }
+
+  /* Each ayah line is justified edge-to-edge, as printed */
+  .mushaf-line {
+    display: block;
+    width: 100%;
+    text-align: justify;
+    text-align-last: justify;
+    text-justify: inter-word;
+    white-space: normal;
+    color: hsl(var(--mushaf-ink));
+  }
+
+  /* Ornamental surah banner */
+  .surah-banner {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0.35rem 2.75rem;
+    text-align: center;
+    color: hsl(var(--mushaf-ink));
+    border: 2px solid hsl(var(--mushaf-rule) / 0.85);
+    box-shadow:
+      inset 0 0 0 2px hsl(var(--mushaf-paper)),
+      inset 0 0 0 4px hsl(var(--mushaf-rule) / 0.5);
+    background: hsl(var(--mushaf-paper));
+  }
+
+  .surah-banner::before,
+  .surah-banner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 1.1rem;
+    height: 1.1rem;
+    transform: translateY(-50%) rotate(45deg);
+    border: 2px solid hsl(var(--mushaf-rule) / 0.7);
+    background: hsl(var(--mushaf-paper));
+  }
+
+  .surah-banner::before { right: 0.75rem; }
+  .surah-banner::after { left: 0.75rem; }
+
+
+
   /* ---- Mushaf book page-flip simulation ---- */
   .book-stage {
     perspective: 2200px;
@@ -517,9 +588,9 @@
     font-size: 0.62em;
     line-height: 1;
     border-radius: 9999px;
-    border: 1px solid hsl(var(--primary) / 0.55);
-    background: hsl(var(--primary) / 0.06);
-    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--mushaf-rule) / 0.8);
+    background: transparent;
+    color: hsl(var(--mushaf-ink));
     cursor: pointer;
     vertical-align: middle;
     transition: background-color 150ms ease, transform 150ms ease;

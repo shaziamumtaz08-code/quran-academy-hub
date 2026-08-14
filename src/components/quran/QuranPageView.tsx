@@ -227,7 +227,7 @@ export function QuranPageView({
             touchX.current = null;
           }}
           className={cn(
-            'book-page relative overflow-hidden rounded-[1.25rem] border-4 border-primary/25 bg-[hsl(var(--card))] shadow-lg p-2',
+            'book-page mushaf-paper relative overflow-hidden rounded-[1.25rem] border-4 border-[hsl(var(--mushaf-rule)/0.5)] shadow-lg p-2',
             flip === 'next' && 'animate-page-turn-next',
             flip === 'prev' && 'animate-page-turn-prev'
           )}
@@ -239,13 +239,14 @@ export function QuranPageView({
           {flip && (
             <div className="page-sheen pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-background/70 to-transparent" />
           )}
-        <div className="rounded-[0.9rem] border border-primary/30 px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mushaf-frame rounded-[0.4rem] px-3 py-4 sm:px-6 sm:py-6">
 
           {/* Running head */}
-          <div className="flex items-center justify-between border-b border-primary/20 pb-2 mb-3 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between border-b border-[hsl(var(--mushaf-rule)/0.35)] pb-2 mb-3 text-xs text-[hsl(var(--mushaf-ink)/0.7)]">
             <span className="mushaf-text text-base">{info?.surah_start ? surahNameByNumber(info.surah_start) : ''}</span>
             <span>{info?.juz_number ? `الجزء ${toArabicDigits(info.juz_number)}` : ''}</span>
           </div>
+
 
           {loading ? (
             <div className="space-y-2">
@@ -292,20 +293,21 @@ export function QuranPageView({
                       </span>
                     )}
                     {line.line_type === 'surah_name' ? (
-                      <span className="inline-block rounded-md border border-primary/30 bg-primary/5 px-6 py-1 mushaf-text text-base font-semibold">
+                      <span className="surah-banner mushaf-text text-lg font-semibold">
                         سورة {surahNameByNumber(line.surah_number)}
                       </span>
                     ) : line.line_type === 'basmallah' ? (
-                      <span className="mushaf-text text-lg">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
+                      <span className="mushaf-text block text-center text-lg text-[hsl(var(--mushaf-ink))]">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
                     ) : !line.text_indopak ? (
                       <span className="block h-6" aria-hidden />
                     ) : (
                       <span
                         className={cn(
-                          'mushaf-text block',
+                          'mushaf-text mushaf-line',
                           presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
                         )}
                       >
+
                         {splitAyahMarks(line).map((tok, i) =>
                           tok.ayah == null ? (
                             <React.Fragment key={i}>{tok.text}</React.Fragment>
