@@ -3,10 +3,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Book, Hash, Grid3X3, Layers, Plus } from 'lucide-react';
+import { Book, Hash, Grid3X3, Layers, Plus, BookOpenCheck } from 'lucide-react';
 import { SURAHS, getSurahByName } from '@/lib/quranData';
 import { JUZ_DATA, getRukuCountForJuz, calculateTotalRukus, calculateTotalQuarters } from '@/lib/juzData';
 import { LessonSegmentEditor } from './LessonSegmentEditor';
+import { QuranPagePickerDialog } from '@/components/quran/QuranPagePickerDialog';
 import {
   formatLessonSegments,
   emptySegment,
