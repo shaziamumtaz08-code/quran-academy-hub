@@ -785,6 +785,9 @@ export function UnifiedAttendanceForm({
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
+        lesson_display: isHifzOrNazra ? (normalizedLesson || null) : (lessonCoveredText || null),
+        lesson_segment_count: isHifzOrNazra ? allSegments.length : null,
+
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
