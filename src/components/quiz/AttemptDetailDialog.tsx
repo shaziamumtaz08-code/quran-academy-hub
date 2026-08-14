@@ -188,6 +188,41 @@ export default function AttemptDetailDialog({
   const lang = attempt.quiz_bank?.language || '';
   const isRTL = ['ar', 'ur'].includes(lang);
 
+  // The stored score is authoritative (server-side grading, incl. AI-graded
+  // fill-in-the-blank). When per-question results were not persisted we grade
+  // locally with a stricter matcher, which can undercount. Reconcile the local
+  // grading against the stored score so this dialog, the report card PDF and
+  // the results export never disagree.
+  const answeredIdx: number[] = [];
+  items.forEach((it, i) => {
+    const a = it.userAnswer !== undefined ? it.userAnswer : answers[String(i)];
+    if (!(a === undefined || a === null || a === '')) answeredIdx.push(i);
+  });
+
+  if (storedResults.length === 0) {
+    const storedScore = Math.min(Number(attempt.score) || 0, answeredIdx.length);
+    let localCorrect = answeredIdx.filter((i) => items[i].correct).length;
+    // Server marked more answers correct than the strict local matcher: promote
+    // the lenient candidates (free-text answers first, then the rest).
+    const candidates = answeredIdx
+      .filter((i) => !items[i].correct)
+      .sort((a, b) => Number(items[b].type === 'fib' || items[b].type === 'fill') - Number(items[a].type === 'fib' || items[a].type === 'fill'));
+    for (const i of candidates) {
+      if (localCorrect >= storedScore) break;
+      items[i] = { ...items[i], correct: true, reconciled: true };
+      localCorrect++;
+    }
+    // Server marked fewer correct: demote strict-matched free-text answers.
+    const demotable = answeredIdx
+      .filter((i) => items[i].correct)
+      .sort((a, b) => Number(items[b].type === 'fib' || items[b].type === 'fill') - Number(items[a].type === 'fib' || items[a].type === 'fill'));
+    for (const i of demotable) {
+      if (localCorrect <= storedScore) break;
+      items[i] = { ...items[i], correct: false, reconciled: true };
+      localCorrect--;
+    }
+  }
+
   let correctCount = 0;
   let wrongCount = 0;
   let skippedCount = 0;
@@ -197,6 +232,7 @@ export default function AttemptDetailDialog({
     else if (it.correct) correctCount++;
     else wrongCount++;
   });
+
 
   const prev = () => {
     const nextIndex = Math.max(0, activeQuestionIndex - 1);
