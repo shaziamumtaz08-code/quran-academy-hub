@@ -32,6 +32,8 @@ interface Props {
   onUseLesson?: (segment: LessonSegment) => void;
   /** Called to append the selection as an additional segment. */
   onAddSegment?: (segment: LessonSegment) => void;
+  /** Screen-share friendly: larger text, calmer chrome. */
+  presentation?: boolean;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export function QuranPageView({
   initialPage = 1,
   onUseLesson,
   onAddSegment,
+  presentation = false,
   className,
 }: Props) {
   const [editionId, setEditionId] = useState<string | null>(null);
