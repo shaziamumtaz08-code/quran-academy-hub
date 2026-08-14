@@ -683,11 +683,39 @@ export function UnifiedAttendanceForm({
       setLessonType((rAny.lesson_type === 'repeat' || rAny.lesson_type === 'new') ? rAny.lesson_type : '');
       setRepeatReason(rAny.repeat_reason || '');
       setRepeatReasonNote(rAny.repeat_reason_note || '');
+      setJuzFrom(''); setJuzTo(''); setExtraSegments([]);
       return;
     }
 
     if (initialStatus) setSelectedStatus(initialStatus);
   }, [open, initialStatus, isEdit, activeRecord]);
+
+  // Hydrate saved lesson segments in edit mode. Segment 0 mirrors the primary
+  // inputs (already hydrated from the flat sabaq_* columns) except for whole-Juz
+  // marking, which only lives in the segments table.
+  useEffect(() => {
+    if (!open || !isEdit || !activeRecord?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('attendance_lesson_segments')
+        .select('*')
+        .eq('attendance_id', activeRecord.id)
+        .eq('section', 'sabaq')
+        .order('segment_index');
+      if (cancelled || error || !data) return;
+      const segs = data.map(segmentFromDbRow);
+      const primary = segs[0];
+      if (primary?.markerType === 'juz') {
+        setMarkerType('juz');
+        setJuzFrom(primary.juzFrom != null ? String(primary.juzFrom) : '');
+        setJuzTo(primary.juzTo != null ? String(primary.juzTo) : '');
+      }
+      setExtraSegments(segs.slice(1));
+    })();
+    return () => { cancelled = true; };
+  }, [open, isEdit, activeRecord?.id]);
+
 
   const markAttendance = useMutation({
     mutationFn: async () => {
