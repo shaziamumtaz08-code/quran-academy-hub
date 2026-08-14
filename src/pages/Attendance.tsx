@@ -38,6 +38,14 @@ import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } fr
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
+import {
+  formatLessonSegments,
+  segmentToDbRow,
+  isSegmentComplete,
+  lessonDisplayFromRow,
+  type LessonSegment,
+} from '@/lib/lessonFormat';
+
 import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { TeacherLeaveBulkDialog } from '@/components/attendance/TeacherLeaveBulkDialog';
@@ -209,6 +217,12 @@ export default function Attendance() {
   const [quarterFromNumber, setQuarterFromNumber] = useState('');
   const [quarterToJuz, setQuarterToJuz] = useState('');
   const [quarterToNumber, setQuarterToNumber] = useState('');
+
+  // Whole-Juz mode (Hifz only) + additional lesson segments
+  const [juzFrom, setJuzFrom] = useState('');
+  const [juzTo, setJuzTo] = useState('');
+  const [extraSegments, setExtraSegments] = useState<LessonSegment[]>([]);
+
   
   // Legacy fields kept for compatibility
   const [sabaqSurahFrom, setSabaqSurahFrom] = useState('');
