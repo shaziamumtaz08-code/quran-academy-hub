@@ -21,6 +21,14 @@ import { HifzAttendanceFields } from './HifzAttendanceFields';
 import { NazraAttendanceFields } from './NazraAttendanceFields';
 import { AcademicAttendanceFields, type LessonStatus, type FollowupSuggestion } from './AcademicAttendanceFields';
 import { type MarkerType } from './SabaqSection';
+import {
+  formatLessonSegments,
+  segmentFromDbRow,
+  segmentToDbRow,
+  isSegmentComplete,
+  type LessonSegment,
+} from '@/lib/lessonFormat';
+
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
@@ -253,6 +261,12 @@ export function UnifiedAttendanceForm({
   const [quarterFromNumber, setQuarterFromNumber] = useState('');
   const [quarterToJuz, setQuarterToJuz] = useState('');
   const [quarterToNumber, setQuarterToNumber] = useState('');
+  // Whole-Juz marking (Hifz only)
+  const [juzFrom, setJuzFrom] = useState('');
+  const [juzTo, setJuzTo] = useState('');
+  // Additional lesson segments (non-contiguous portions covered in the same sitting)
+  const [extraSegments, setExtraSegments] = useState<LessonSegment[]>([]);
+
   const [sabqiDone, setSabqiDone] = useState(false);
   const [manzilDone, setManzilDone] = useState(false);
 
