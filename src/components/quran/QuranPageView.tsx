@@ -173,22 +173,30 @@ export function QuranPageView({
       </div>
 
       {/* Mushaf page */}
-      <div
-        onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
-        onTouchEnd={(e) => {
-          if (touchX.current === null) return;
-          const dx = e.changedTouches[0].clientX - touchX.current;
-          if (Math.abs(dx) > 60) goto(dx > 0 ? page - 1 : page + 1);
-          touchX.current = null;
-        }}
-        className={cn(
-          'relative rounded-[1.25rem] border-4 border-primary/25 bg-[hsl(var(--card))] shadow-lg p-2 transition-transform duration-300',
-          flip === 'next' && '-translate-x-1 opacity-95',
-          flip === 'prev' && 'translate-x-1 opacity-95'
-        )}
-        dir="rtl"
-      >
+      <div className="book-stage">
+        <div
+          onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (touchX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchX.current;
+            if (Math.abs(dx) > 60) goto(dx > 0 ? page - 1 : page + 1);
+            touchX.current = null;
+          }}
+          className={cn(
+            'book-page relative overflow-hidden rounded-[1.25rem] border-4 border-primary/25 bg-[hsl(var(--card))] shadow-lg p-2',
+            flip === 'next' && 'animate-page-turn-next',
+            flip === 'prev' && 'animate-page-turn-prev'
+          )}
+          dir="rtl"
+        >
+          {/* Spine shading — the gutter of the bound book */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-foreground/15 to-transparent rounded-l-[1.1rem]" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-3 bg-gradient-to-l from-foreground/5 to-transparent rounded-r-[1.1rem]" />
+          {flip && (
+            <div className="page-sheen pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-background/70 to-transparent" />
+          )}
         <div className="rounded-[0.9rem] border border-primary/30 px-3 py-4 sm:px-6 sm:py-6">
+
           {/* Running head */}
           <div className="flex items-center justify-between border-b border-primary/20 pb-2 mb-3 text-xs text-muted-foreground">
             <span className="mushaf-text text-base">{info?.surah_start ? surahNameByNumber(info.surah_start) : ''}</span>
