@@ -94,19 +94,33 @@ export async function findPageForJuz(editionId: string, juz: number): Promise<nu
 export interface TapPoint {
   page: number;
   line: MushafLine;
+  /** Exact ayah tapped (its round end-marker), overriding the line boundary. */
+  ayahAt?: { surah: number; ayah: number } | null;
 }
+
+const startOf = (p: TapPoint) => ({
+  surah: p.ayahAt?.surah ?? p.line.first_surah,
+  ayah: p.ayahAt?.ayah ?? p.line.first_ayah,
+});
+
+const endOf = (p: TapPoint) => ({
+  surah: p.ayahAt?.surah ?? p.line.last_surah,
+  ayah: p.ayahAt?.ayah ?? p.line.last_ayah,
+});
 
 /** Ayah-mode segment built straight from the tapped start/end lines. */
 export function segmentFromTaps(start: TapPoint, end: TapPoint | null): LessonSegment {
-  const endLine = end?.line ?? start.line;
+  const from = startOf(start);
+  const to = endOf(end ?? start);
   return {
     markerType: 'ayah',
-    surahFrom: surahNameByNumber(start.line.first_surah),
-    ayahFrom: start.line.first_ayah,
-    surahTo: surahNameByNumber(endLine.last_surah),
-    ayahTo: endLine.last_ayah,
+    surahFrom: surahNameByNumber(from.surah),
+    ayahFrom: from.ayah,
+    surahTo: surahNameByNumber(to.surah),
+    ayahTo: to.ayah,
   };
 }
+
 
 /** Juz numbers covering the tapped range. */
 async function juzForAyah(surah: number, ayah: number): Promise<number | null> {
