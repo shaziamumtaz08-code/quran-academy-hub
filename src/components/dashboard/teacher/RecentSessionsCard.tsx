@@ -17,7 +17,7 @@ export function RecentSessionsCard() {
       const { data } = await supabase
         .from('attendance')
         .select(`
-          id, status, class_date, class_time, surah_name, ayah_from, lesson_covered,
+          id, status, class_date, class_time, surah_name, ayah_from, lesson_covered, lesson_display,
           student:profiles!attendance_student_id_fkey(full_name)
         `)
         .eq('teacher_id', user!.id)
@@ -71,7 +71,7 @@ export function RecentSessionsCard() {
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                     {format(new Date(r.class_date), 'EEE, MMM d')} · {r.class_time?.slice(0, 5)}
-                    {r.lesson_covered ? ` · ${r.lesson_covered}` : ''}
+                    {(r.lesson_display || r.lesson_covered) ? ` · ${r.lesson_display || r.lesson_covered}` : ''}
                     {r.surah_name ? ` · ${r.surah_name}${r.ayah_from ? ` (Ayah ${r.ayah_from})` : ''}` : ''}
                   </p>
                 </div>

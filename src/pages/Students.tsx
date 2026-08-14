@@ -178,7 +178,7 @@ export default function Students() {
       // Latest attendance for last lesson + homework (only meaningful for 1:1)
       const { data: attendanceData } = await supabase
         .from('attendance')
-        .select('student_id, lesson_covered, surah_name, ayah_from, ayah_to, homework, class_date')
+        .select('student_id, lesson_covered, lesson_display, surah_name, ayah_from, ayah_to, homework, class_date')
         .eq('teacher_id', user.id)
         .in('student_id', studentIds)
         .eq('status', 'present')
@@ -187,7 +187,7 @@ export default function Students() {
       const latestAttendance = new Map<string, { lesson: string | null; homework: string | null }>();
       (attendanceData || []).forEach(record => {
         if (!latestAttendance.has(record.student_id)) {
-          let lesson = record.lesson_covered;
+          let lesson = (record as any).lesson_display || record.lesson_covered;
           if (!lesson && record.surah_name) {
             lesson = record.surah_name;
             if (record.ayah_from) {

@@ -234,7 +234,7 @@ export function StudentDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('id, status, class_date, lesson_covered, homework')
+        .select('id, status, class_date, lesson_covered, lesson_display, homework')
         .eq('student_id', activeStudentId!)
         .order('class_date', { ascending: false })
         .limit(200);
@@ -488,7 +488,7 @@ export function StudentDashboard() {
     return `${d}d ${h % 24}h away`;
   }, [sched]);
 
-  const lastLessonText = (recentLessons[0] as any)?.lesson_covered || null;
+  const lastLessonText = (recentLessons[0] as any)?.lesson_display || (recentLessons[0] as any)?.lesson_covered || null;
   const scheduleStr = sched ? `${String(sched.day_of_week).charAt(0).toUpperCase()}${String(sched.day_of_week).slice(1)} ${fmtTime12(sched.student_local_time)}` : null;
   const hasUpcoming = !!sched || isLive;
 
@@ -783,7 +783,7 @@ export function StudentDashboard() {
             <div key={l.id} className={`flex items-start gap-2.5 py-2 ${idx < recentLessons.length - 1 ? 'border-b border-border/60' : ''}`}>
               <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] font-medium text-foreground truncate">{l.lesson_covered || 'No lesson recorded'}</div>
+                <div className="text-[12px] font-medium text-foreground truncate">{(l as any).lesson_display || l.lesson_covered || 'No lesson recorded'}</div>
                 {l.homework && (
                   <div
                     className="text-[13px] text-foreground/80 truncate"
