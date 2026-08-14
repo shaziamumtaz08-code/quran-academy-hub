@@ -682,17 +682,33 @@ export default function Attendance() {
         finalReason = `Class rescheduled from ${classDate} ${classTime} to ${rescheduleDate} ${rescheduleTime}`;
       }
 
+      const isHifzOrNazra = currentSubjectType === 'hifz' || currentSubjectType === 'nazra';
+
+      // Normalized lesson segments — segment 0 mirrors the primary inputs
+      const primarySegment: LessonSegment =
+        markerType === 'ruku'
+          ? { markerType: 'ruku', juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber }
+          : markerType === 'quarter'
+          ? { markerType: 'quarter', juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber }
+          : markerType === 'juz'
+          ? { markerType: 'juz', juzFrom, juzTo }
+          : {
+              markerType: 'ayah',
+              surahFrom: ayahFromSurah || sabaqSurahFrom,
+              ayahFrom: ayahFromNumber || sabaqAyahFrom,
+              surahTo: ayahToSurah || sabaqSurahTo,
+              ayahTo: ayahToNumber || sabaqAyahTo,
+            };
+      const allSegments = [primarySegment, ...extraSegments].filter(isSegmentComplete);
+      const normalizedLesson = formatLessonSegments(allSegments);
+
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
         lessonCoveredText = lessonNumber ? `Lesson ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}` : '';
-      } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
-        if (sabaqSurahFrom && sabaqAyahFrom) {
-          lessonCoveredText = `${sabaqSurahFrom} ${sabaqAyahFrom}`;
-          if (sabaqSurahTo && sabaqAyahTo) {
-            lessonCoveredText += ` - ${sabaqSurahTo} ${sabaqAyahTo}`;
-          }
-        }
+      } else if (isHifzOrNazra) {
+        lessonCoveredText = normalizedLesson;
+
       } else {
         // Academic subjects - use lessonTopic and status
         if (academicLessonTopic) {
