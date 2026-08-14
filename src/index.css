@@ -588,9 +588,9 @@
     font-size: 0.62em;
     line-height: 1;
     border-radius: 9999px;
-    border: 1px solid hsl(var(--primary) / 0.55);
-    background: hsl(var(--primary) / 0.06);
-    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--mushaf-rule) / 0.8);
+    background: transparent;
+    color: hsl(var(--mushaf-ink));
     cursor: pointer;
     vertical-align: middle;
     transition: background-color 150ms ease, transform 150ms ease;
