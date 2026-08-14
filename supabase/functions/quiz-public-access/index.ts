@@ -296,11 +296,13 @@ Deno.serve(async (req) => {
         .from("quiz_attempts")
         .update({
           answers, score, percentage,
+          results: gradedResults,
           time_taken_seconds: time_taken_seconds || null,
           status: "completed",
           completed_at: new Date().toISOString(),
         })
         .eq("id", attempt_id);
+
 
       if (upErr) throw upErr;
 
