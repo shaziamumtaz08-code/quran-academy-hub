@@ -247,7 +247,10 @@ export function QuranPageView({
                       </span>
                     ) : line.line_type === 'basmallah' ? (
                       <span className="mushaf-text text-lg">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
+                    ) : !line.text_indopak ? (
+                      <span className="block h-6" aria-hidden />
                     ) : (
+
                       <span
                         className={cn(
                           'mushaf-text block',
