@@ -141,12 +141,13 @@ Deno.serve(async (req) => {
         let nextAyahLine: Record<string, unknown> | undefined;
         for (let k = ln + 1; k <= 15; k++) { if (built.has(k)) { nextAyahLine = built.get(k); break; } }
         const startsSurah = nextAyahLine && Number(nextAyahLine.first_ayah) === 1;
-        const gapBefore = built.has(ln - 1) === false && ln > 1;
+        // a heading block is "surah name" then "bismillah": the second gap line of a pair
+        const prevIsHeading = ln > 1 && !byLine.has(ln - 1);
         built.set(ln, {
           edition_id: editionId,
           page_number: page,
           line_number: ln,
-          line_type: startsSurah ? (gapBefore ? "basmallah" : "surah_name") : "blank",
+          line_type: startsSurah ? (prevIsHeading ? "basmallah" : "surah_name") : "blank",
           surah_number: startsSurah ? Number(nextAyahLine!.first_surah) : null,
           first_surah: null, first_ayah: null, first_word_index: null,
           last_surah: null, last_ayah: null, last_word_index: null,
