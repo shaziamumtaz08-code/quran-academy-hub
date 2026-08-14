@@ -22,6 +22,39 @@ const TOTAL_PAGES = 610;
 const toArabicDigits = (n: number) =>
   String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 
+const fromArabicDigits = (s: string) =>
+  Number(s.replace(/[٠-٩۰-۹]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d) >= 0
+    ? '٠١٢٣٤٥٦٧٨٩'.indexOf(d)
+    : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))));
+
+interface LineToken {
+  text: string;
+  ayah?: number | null;
+  surah?: number | null;
+}
+
+/**
+ * Splits an IndoPak line into plain text and the round end-of-verse marks,
+ * so each verse sign becomes its own tappable medallion.
+ */
+function splitAyahMarks(line: MushafLine): LineToken[] {
+  const text = line.text_indopak ?? '';
+  const parts = text.split(/([٠-٩۰-۹]+)/);
+  let surah = line.first_surah ?? null;
+  let prev: number | null = null;
+  return parts
+    .filter((p) => p !== '')
+    .map((p) => {
+      if (!/^[٠-٩۰-۹]+$/.test(p)) return { text: p };
+      const ayah = fromArabicDigits(p);
+      // a number lower than the previous one means a new surah started on this line
+      if (prev !== null && ayah <= prev) surah = (surah ?? 0) + 1;
+      prev = ayah;
+      return { text: p, ayah, surah };
+    });
+}
+
+
 interface Props {
   /** Marker type the teacher is using — the emitted segment matches it. */
   markerType?: LessonMarkerType;
@@ -113,9 +146,9 @@ export function QuranPageView({
     return () => window.removeEventListener('keydown', onKey);
   }, [goto, page]);
 
-  const handleTap = (line: MushafLine) => {
+  const handleTap = (line: MushafLine, ayahAt?: { surah: number; ayah: number } | null) => {
     if (line.line_type !== 'ayah' || !line.first_surah) return;
-    const point: TapPoint = { page, line };
+    const point: TapPoint = { page, line, ayahAt: ayahAt ?? null };
     if (!start || (start && end)) {
       setStart(point);
       setEnd(null);
@@ -134,7 +167,12 @@ export function QuranPageView({
   };
 
   const key = (p: number, l: number) => p * 100 + l;
+  const isAyahMarked = (p: number, surah: number, ayah: number) =>
+    [start, end].some(
+      (m) => m?.page === p && m?.ayahAt?.surah === surah && m?.ayahAt?.ayah === ayah
+    );
   const isSelected = (line: MushafLine) => {
+
     if (!start) return false;
     const e = end ?? start;
     const k = key(page, line.line_number);
@@ -147,12 +185,18 @@ export function QuranPageView({
     setEnd(null);
   };
 
-  const startLabel = start ? `Page ${start.page}, line ${start.line.line_number}` : null;
+  const pointLabel = (p: TapPoint) =>
+    p.ayahAt
+      ? `${surahNameByNumber(p.ayahAt.surah)}, verse ${p.ayahAt.ayah} (page ${p.page})`
+      : `End of line ${p.line.line_number}, page ${p.page}`;
+
+  const startLabel = start ? pointLabel(start) : null;
   const endLabel = end
-    ? `Page ${end.page}, line ${end.line.line_number}`
+    ? pointLabel(end)
     : start
-      ? 'Same line (tap another line to extend)'
+      ? 'Same line (tap another line or verse sign to extend)'
       : null;
+
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -221,11 +265,17 @@ export function QuranPageView({
                 const isStart = start?.page === page && start.line.line_number === line.line_number;
                 const isEnd = end?.page === page && end.line.line_number === line.line_number;
                 return (
-                  <button
+                  <div
                     key={line.id}
-                    type="button"
-                    disabled={!selectable}
-                    onClick={() => handleTap(line)}
+                    role={selectable ? 'button' : undefined}
+                    tabIndex={selectable ? 0 : undefined}
+                    onClick={() => selectable && handleTap(line)}
+                    onKeyDown={(e) => {
+                      if (selectable && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleTap(line);
+                      }
+                    }}
                     className={cn(
                       'relative w-full rounded-md px-3 py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
@@ -235,7 +285,7 @@ export function QuranPageView({
                   >
                     {(isStart || isEnd) && (
                       <span
-                        className="absolute -top-1 left-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
+                        className="absolute -top-1 left-1 z-10 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
                         dir="ltr"
                       >
                         {isStart && isEnd ? 'Start & End' : isStart ? 'Start' : 'End'}
@@ -250,18 +300,46 @@ export function QuranPageView({
                     ) : !line.text_indopak ? (
                       <span className="block h-6" aria-hidden />
                     ) : (
-
                       <span
                         className={cn(
                           'mushaf-text block',
                           presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
                         )}
                       >
-                        {line.text_indopak}
+                        {splitAyahMarks(line).map((tok, i) =>
+                          tok.ayah == null ? (
+                            <React.Fragment key={i}>{tok.text}</React.Fragment>
+                          ) : (
+                            <span
+                              key={i}
+                              role="button"
+                              tabIndex={0}
+                              title={`Mark at ${surahNameByNumber(tok.surah)}, verse ${tok.ayah}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTap(line, { surah: tok.surah!, ayah: tok.ayah! });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleTap(line, { surah: tok.surah!, ayah: tok.ayah! });
+                                }
+                              }}
+                              className={cn(
+                                'ayah-mark',
+                                isAyahMarked(page, tok.surah!, tok.ayah!) && 'ayah-mark-active'
+                              )}
+                            >
+                              {tok.text}
+                            </span>
+                          )
+                        )}
                       </span>
                     )}
-                  </button>
+                  </div>
                 );
+
               })}
             </div>
           )}
@@ -292,7 +370,7 @@ export function QuranPageView({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tap the line where the lesson started, then tap the line where it ended. Swipe or use ← / → to turn pages.
+        Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.
       </p>
 
       {/* Selection footer */}
