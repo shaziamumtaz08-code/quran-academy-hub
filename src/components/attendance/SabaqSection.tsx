@@ -439,6 +439,71 @@ export function SabaqSection({
         </div>
       )}
 
+      {/* Whole-Juz Mode Inputs (Hifz only) */}
+      {markerType === 'juz' && allowJuz && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs font-medium">From Juz</Label>
+              <Select value={juzFrom} onValueChange={(v) => onJuzFromChange?.(v)}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Select Juz" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  {JUZ_DATA.map((juz) => (
+                    <SelectItem key={juz.number} value={juz.number.toString()}>
+                      Juz {juz.number} - {juz.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs font-medium">To Juz</Label>
+              <Select value={juzTo} onValueChange={(v) => onJuzToChange?.(v)}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Same as From" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  {JUZ_DATA.map((juz) => (
+                    <SelectItem key={juz.number} value={juz.number.toString()}>
+                      Juz {juz.number} - {juz.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Use whole-Juz marking for complete Juz or a range of Juz.
+          </p>
+        </div>
+      )}
+
+      {/* Additional segments (non-contiguous portions in the same sitting) */}
+      {onExtraSegmentsChange && (
+        <div className="space-y-3">
+          {extraSegments.length > 0 && (
+            <div className="space-y-3">
+              {extraSegments.map((seg, i) => (
+                <LessonSegmentEditor
+                  key={i}
+                  index={i + 1}
+                  segment={seg}
+                  allowJuz={allowJuz}
+                  onChange={(s) => updateSegment(i, s)}
+                  onRemove={() => removeSegment(i)}
+                />
+              ))}
+            </div>
+          )}
+          <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={addSegment}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add another segment
+          </Button>
+        </div>
+      )}
+
       {/* Total Calculation Row */}
       <div className="pt-3 border-t border-sky-700">
         <div className="grid grid-cols-2 gap-3">
@@ -452,6 +517,15 @@ export function SabaqSection({
           </div>
         </div>
       </div>
+
+      {/* Normalized preview — exactly what will be saved and shown everywhere */}
+      {normalizedPreview && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Lesson will be recorded as</p>
+          <p className="text-sm font-semibold text-foreground">{normalizedPreview}</p>
+        </div>
+      )}
     </div>
+
   );
 }
