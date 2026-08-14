@@ -34,16 +34,20 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // --- auth: admins only ---
+    // --- auth: admins (or trusted service-role invocation) only ---
     const authHeader = req.headers.get("Authorization") ?? "";
-    const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await anon.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const { data: roles } = await service.from("user_roles").select("role").eq("user_id", user.id);
-    const isAdmin = (roles ?? []).some((r: { role: string }) => ["admin", "super_admin"].includes(r.role));
-    if (!isAdmin) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const isServiceCall = token.length > 0 && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!isServiceCall) {
+      const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await anon.auth.getUser();
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await service.from("user_roles").select("role").eq("user_id", user.id);
+      const isAdmin = (roles ?? []).some((r: { role: string }) => ["admin", "super_admin"].includes(r.role));
+      if (!isAdmin) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const body = await req.json().catch(() => ({}));
     const fromPage = Math.max(1, Number(body.fromPage ?? 1));
