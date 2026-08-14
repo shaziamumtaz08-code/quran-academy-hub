@@ -22,6 +22,39 @@ const TOTAL_PAGES = 610;
 const toArabicDigits = (n: number) =>
   String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 
+const fromArabicDigits = (s: string) =>
+  Number(s.replace(/[٠-٩۰-۹]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d) >= 0
+    ? '٠١٢٣٤٥٦٧٨٩'.indexOf(d)
+    : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))));
+
+interface LineToken {
+  text: string;
+  ayah?: number | null;
+  surah?: number | null;
+}
+
+/**
+ * Splits an IndoPak line into plain text and the round end-of-verse marks,
+ * so each verse sign becomes its own tappable medallion.
+ */
+function splitAyahMarks(line: MushafLine): LineToken[] {
+  const text = line.text_indopak ?? '';
+  const parts = text.split(/([٠-٩۰-۹]+)/);
+  let surah = line.first_surah ?? null;
+  let prev: number | null = null;
+  return parts
+    .filter((p) => p !== '')
+    .map((p) => {
+      if (!/^[٠-٩۰-۹]+$/.test(p)) return { text: p };
+      const ayah = fromArabicDigits(p);
+      // a number lower than the previous one means a new surah started on this line
+      if (prev !== null && ayah <= prev) surah = (surah ?? 0) + 1;
+      prev = ayah;
+      return { text: p, ayah, surah };
+    });
+}
+
+
 interface Props {
   /** Marker type the teacher is using — the emitted segment matches it. */
   markerType?: LessonMarkerType;
