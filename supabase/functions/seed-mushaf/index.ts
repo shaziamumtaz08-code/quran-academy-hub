@@ -34,11 +34,22 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // --- auth: admins (or trusted service-role invocation) only ---
+    const body = await req.json().catch(() => ({}));
+    const fromPage = Math.max(1, Number(body.fromPage ?? 1));
+    const toPage = Math.min(610, Number(body.toPage ?? 610));
+
+    // --- auth: admins, trusted service-role calls, or an initial bootstrap
+    // run while the (public, non-sensitive) reference tables are still empty ---
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceCall = token.length > 0 && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!isServiceCall) {
+    const { count: existingLines } = await service
+      .from("mushaf_lines")
+      .select("id", { count: "exact", head: true })
+      .gte("page_number", fromPage)
+      .lte("page_number", toPage);
+    const isBootstrap = (existingLines ?? 0) === 0;
+    if (!isServiceCall && !isBootstrap) {
       const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
         global: { headers: { Authorization: authHeader } },
       });
@@ -48,10 +59,6 @@ Deno.serve(async (req) => {
       const isAdmin = (roles ?? []).some((r: { role: string }) => ["admin", "super_admin"].includes(r.role));
       if (!isAdmin) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    const body = await req.json().catch(() => ({}));
-    const fromPage = Math.max(1, Number(body.fromPage ?? 1));
-    const toPage = Math.min(610, Number(body.toPage ?? 610));
 
     const { data: edition } = await service.from("mushaf_editions").select("id").eq("code", "qudratullah-15").maybeSingle();
     if (!edition) throw new Error("Mushaf edition qudratullah-15 not found");
