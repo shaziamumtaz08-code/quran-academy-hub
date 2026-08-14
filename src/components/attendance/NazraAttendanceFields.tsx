@@ -40,9 +40,14 @@ interface NazraAttendanceFieldsProps {
   quarterToNumber: string;
   onQuarterToNumberChange: (value: string) => void;
   
+  // Additional lesson segments
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
+
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
 }
+
 
 export function NazraAttendanceFields({
   markerType,
@@ -116,6 +121,9 @@ export function NazraAttendanceFields({
         onQuarterToJuzChange={onQuarterToJuzChange}
         quarterToNumber={quarterToNumber}
         onQuarterToNumberChange={onQuarterToNumberChange}
+        extraSegments={extraSegments}
+        onExtraSegmentsChange={onExtraSegmentsChange}
+
       />
       
     </div>

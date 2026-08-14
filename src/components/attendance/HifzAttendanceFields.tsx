@@ -147,6 +147,14 @@ export function HifzAttendanceFields({
         onQuarterToJuzChange={onQuarterToJuzChange}
         quarterToNumber={quarterToNumber}
         onQuarterToNumberChange={onQuarterToNumberChange}
+        allowJuz
+        juzFrom={juzFrom}
+        onJuzFromChange={onJuzFromChange}
+        juzTo={juzTo}
+        onJuzToChange={onJuzToChange}
+        extraSegments={extraSegments}
+        onExtraSegmentsChange={onExtraSegmentsChange}
+
       />
       
       {/* Sabqi Section - Yes/No Only */}
