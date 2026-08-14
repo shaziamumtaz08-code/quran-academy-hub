@@ -1,99 +1,91 @@
-# Quran Lesson Marking — Juz unit, multi-segment entry, normalized display
+# Visual Quran Page View for Lesson Marking (Teacher-only)
 
-## What exists today (verified)
+## 1. What exists today (verified)
 
-- All lesson marking lives on the single `attendance` row. Sabaq is stored as flat "from/to" columns: `sabaq_marker_type` (`ruku` | `ayah` | `quarter`), `sabaq_surah_from/to`, `sabaq_ayah_from/to`, `sabaq_ruku_from_juz/number`, `sabaq_ruku_to_juz/number`, `sabaq_quarter_from_juz/number`, `sabaq_quarter_to_juz/number`, plus legacy `surah_name`, `ayah_from`, `ayah_to`.
-- Entry UI: `UnifiedAttendanceForm.tsx` holds all the state and passes it to `NazraAttendanceFields` / `HifzAttendanceFields`, which both render the same `SabaqSection.tsx` (Ruku / Ayah / Quarter toggle, each with a From row and a To row). One range per lesson, no Juz option.
-- Display: `lesson_covered` is a free-text string built at save time, and it is built in **two** places with different rules — `UnifiedAttendanceForm.tsx` (~line 688) and `src/pages/Attendance.tsx` (~line 671). Both only handle the ayah case (`"Al-Jinn 1 - Al-Jinn 7"`); ruku and quarter entries save an empty lesson string. Roughly 15 screens read `lesson_covered` for history, dashboards, and reports.
+- `surahs` — 114 rows (name, ayah count, juz range). Usable as-is.
+- `rukus` — table exists (surah_number, ruku_number, ayah_from/to, juz_number) but is **empty (0 rows)**.
+- `noorani_qaida_baabs / _pages / _words` — Qaida only, 312 words. Not Quran text.
+- `attendance_lesson_segments` — the normalized segment store built last phase.
+- Code: `src/lib/quranData.ts` (surah list + unit conversion), `src/lib/juzData.ts` (juz names, ruku counts), `src/lib/lessonFormat.ts` (normalizer).
 
-That split builder is the root of the inconsistent display today, so the normalization work (item 3) also fixes existing ruku/quarter lessons showing blank.
+Conclusion: **no Quran text, no ayah-level data, and no mushaf page/line layout exists anywhere.** All of it has to be imported. `rukus` also needs seeding (556 rows) since ruku marking currently relies on hardcoded counts only.
 
-## Assumptions (correct me if wrong)
+## 2. Data model — new reference tables
 
-- Multi-segment is needed for **both** Hifz and Nazra (a Nazra teacher can also read two spots in one sitting); Juz stays Hifz-only.
-- The Juz unit means "whole Juz / range of Juz" (e.g. Juz 5, or Juz 5–6), not a partial Juz.
-- Existing records stay as they are; they get a normalized display generated on read, and are rewritten only when the row is next edited.
+All read-only reference data: `GRANT SELECT` to `authenticated`, RLS enabled with a simple "any authenticated user can read" policy, writes restricted to `service_role`.
 
-## 1. Data model
+```
+quran_ayahs
+  id, surah_number, ayah_number, text_indopak, text_uthmani (nullable),
+  juz_number, hizb_quarter, ruku_number, sajdah boolean, unique(surah,ayah)
 
-**New child table `attendance_lesson_segments`** — one row per segment, ordered:
+mushaf_editions
+  id, code ('qudratullah-15'), name, lines_per_page, total_pages, script
 
-- `attendance_id` (FK, cascade delete), `segment_index`, `section` (`sabaq` for now; leaves room for sabqi/manzil later)
-- `marker_type`: `ayah` | `ruku` | `quarter` | `juz`
-- `surah_from`, `ayah_from`, `surah_to`, `ayah_to`
-- `juz_from`, `unit_from`, `juz_to`, `unit_to` (used by ruku/quarter/juz)
-- `display_text` — the normalized string for this segment
-- Standard `id`, `created_at`, plus grants for `authenticated` / `service_role` and RLS that mirrors the existing `attendance` policies (a user may read/write a segment when they may read/write its parent attendance row).
+mushaf_pages
+  id, edition_id, page_number, juz_number, surah_start, surah_end,
+  unique(edition_id, page_number)
 
-**Two new columns on `attendance`**:
+mushaf_lines
+  id, edition_id, page_number, line_number (1..15),
+  line_type ('ayah' | 'surah_name' | 'basmallah'),
+  surah_number (for headers),
+  first_surah, first_ayah, first_word_index,
+  last_surah,  last_ayah,  last_word_index,
+  is_centered, unique(edition_id, page_number, line_number)
 
-- `lesson_display` — the full normalized lesson string for the row (all segments joined with `+`), the single value reports and history should read.
-- `lesson_segment_count` — convenience for showing a "2 segments" badge without a join.
-
-**Back-compat, extend-only**: the existing `sabaq_*` columns stay and keep being written from **segment 1**, so every current query, report, and dashboard keeps working untouched. `lesson_covered` also keeps being written (same value as `lesson_display`) so nothing that reads it breaks; new code reads `lesson_display`.
-
-## 2. UI
-
-**Juz option (Hifz only)** — a fourth toggle "Juz" appears in `SabaqSection` next to Ruku / Ayah / Quarter, rendered only when the subject is Hifz. It shows a single "From Juz" select and an optional "To Juz" select (30 entries, showing `Juz 5 — Wal Mohsanat`), with a live total of "Juz covered". Nazra keeps the current three toggles.
-
-**Multi-segment entry** — the Sabaq block becomes a list of segment cards:
-
-```text
-Sabaq (New Reading)
-┌ Segment 1 ─────────────────────────── [x remove] ┐
-│ [Ruku][Ayah][Quarter][Juz]  From … → To …        │
-└──────────────────────────────────────────────────┘
-┌ Segment 2 ─────────────────────────── [x remove] ┐
-│ [Ruku][Ayah][Quarter][Juz]  From … → To …        │
-└──────────────────────────────────────────────────┘
-        [ + Add another segment ]
-Total: 12 ayahs · 2 segments
-Preview: Surah Al-Baqarah, verse 1-5 + Surah Al-Baqarah, verse 280-286
+mushaf_words            -- optional, phase 2 (word-level tap accuracy)
+  id, edition_id, page_number, line_number, word_index,
+  surah_number, ayah_number, text
 ```
 
-- One segment by default, so the form looks the same as today for the normal case.
-- Each segment picks its own marker type, so "a few ayahs at the start of the Para plus a ruku at the end" is expressible.
-- Remove is hidden when only one segment exists; a soft cap of 5 segments.
-- A live normalized preview sits under the list, so the teacher sees exactly what will be saved.
-- History and report rows show the joined string, with segment 2+ on a second line on mobile.
+`mushaf_lines` alone is enough for "tap a line → know the exact ayah range on it". `mushaf_words` is only needed if teachers must stop mid-line on a specific word.
 
-## 3. Normalized display string
+Also seed `rukus` (556 rows) so Ruku marking becomes data-driven and a tapped line can be resolved to its ruku.
 
-A single new module `src/lib/lessonFormat.ts` becomes the only place a lesson string is built, replacing both existing inline builders:
+## 3. Sourcing & import
 
-- `formatSegment(segment)` → one segment string
-- `formatLesson(segments)` → segments joined with ` + `
-- `formatLessonFromRow(row)` → builds the string from a legacy `attendance` row (old `sabaq_*` columns), so historic records render in the new format without any data migration
+Source: **QUL — Quranic Universal Library (qul.tarteel.ai)**, which publishes free downloadable exports of exactly this: IndoPak/Qudratullah 15-line mushaf layouts (610 pages × 15 lines) as SQLite/JSON, plus IndoPak ayah text and ayah metadata (juz, hizb, ruku, sajdah). Fallback/cross-check sources: `quran-align`/`quran.com` API v4 (`/verses/by_page` with `mushaf=indopak-15`), and the open `quran-json` datasets.
 
-Rules, using the existing `SURAHS` and `JUZ_DATA` tables:
+Import approach:
+1. Download the QUL layout + IndoPak text exports into a scratch folder (not committed).
+2. A one-off Node script converts them into CSV/JSON batches.
+3. Load via a set of migrations (batched inserts) or a `service_role` seeding edge function for the large text tables (~6,236 ayahs, ~9,150 lines, ~78k words if word table is included).
+4. Validation pass after import: 610 pages present, every page has 15 lines, ayah coverage 1..end for all 114 surahs, no gaps between consecutive line ranges.
 
-| Input style | Normalized output |
-| --- | --- |
-| Ayah, same surah | `Surah Al-Jinn, verse 1-7` |
-| Ayah, single verse | `Surah Al-Jinn, verse 5` |
-| Ayah, crossing surahs | `Surah Al-Jinn, verse 20 – Surah Al-Muzzammil, verse 4` |
-| Ruku, one | `Juz 15, Ruku 3` |
-| Ruku, range in one Juz | `Juz 15, Ruku 3-5` |
-| Ruku, crossing Juz | `Juz 15, Ruku 20 – Juz 16, Ruku 2` |
-| Quarter | `Juz 7, 2nd Quarter` / `Juz 7, 2nd–4th Quarter` |
-| Juz (Hifz) | `Juz 5` / `Juz 5-6` |
-| Multi-segment | segments joined with ` + ` |
+Licensing: QUL data is openly licensed; store attribution in `mushaf_editions.name`/notes.
 
-The string is computed once on save and stored in `lesson_display` (and each segment's `display_text`), so reports, PDFs, and WhatsApp messages all read the same stored text rather than re-deriving it. `formatLessonFromRow` covers rows saved before this change.
+## 4. Page-view screen (teacher-only)
 
-## Technical notes
+New route `/quran-page` (also openable as a dialog from the attendance form). Guarded to teacher/admin roles only; not linked in student or parent navigation.
 
-- Migration: create `attendance_lesson_segments` (create → grants → enable RLS → policies), add `lesson_display` and `lesson_segment_count` to `attendance`. No column is renamed or dropped.
-- `UnifiedAttendanceForm.tsx` moves from ~16 flat sabaq state variables to a `segments: LessonSegment[]` array; on save it writes the segment rows, mirrors segment 1 into the existing `sabaq_*` columns, and writes `lesson_display`/`lesson_covered` from `formatLesson`.
-- `src/pages/Attendance.tsx` drops its own lesson-string builder and calls `formatLesson` instead.
-- Read paths (`RecentAttendanceCards`, `StudentHistoryDialog`, `DetailedProgressView`, dashboards, `AttendanceReports`, report PDFs) switch to `lesson_display ?? formatLessonFromRow(row) ?? lesson_covered`.
-- Editing an existing lesson loads its segments if present, otherwise seeds one segment from the legacy columns.
-- Validation: `to` must not precede `from`, ayah numbers bounded by the surah length, ruku numbers bounded by `getRukuCountForJuz`, and duplicate/overlapping segments flagged with a warning rather than a hard block.
+- Header: edition badge, Juz / Surah / page-number jump, prev/next page.
+- Page canvas: renders 15 lines of IndoPak text right-to-left in a mushaf-like frame, using the existing Arabic/Naskh font stack. Each line is a tappable row.
+- Tap behaviour: first tap sets **start**, second tap sets **end** (or "start from previous lesson's end" when a prior record exists). Selected range is highlighted.
+- Footer bar: live normalized preview from `formatLessonSegments`, "Add as another segment", and "Use this lesson" — which returns segments to the caller.
+- Optional bookmark: remember last page per teacher/student pair for fast resume.
 
-## Sequence
+Mobile: same layout, larger tap targets, page swipe left/right.
 
-1. Migration (segments table + two attendance columns).
-2. `src/lib/lessonFormat.ts` with unit tests over each input style.
-3. Segment-list UI in `SabaqSection` + Juz toggle gated to Hifz.
-4. Save/hydrate rewiring in `UnifiedAttendanceForm.tsx` and `src/pages/Attendance.tsx`.
-5. Read paths switched to the normalized string.
+## 5. Feeding the existing marking system
+
+The page view is a **generator of `LessonSegment` objects** — nothing about storage changes.
+
+- Tapped start line → `first_surah/first_ayah`; tapped end line → `last_surah/last_ayah`.
+- Emit `{ markerType: 'ayah', surahFrom, ayahFrom, surahTo, ayahTo }` from `src/lib/lessonFormat.ts`.
+- A small `src/lib/mushafResolve.ts` maps the same tapped range to `ruku` or `juz` segments when the teacher's marker preference is Ruku/Juz (using the seeded `rukus` table and `juz_number`), so Hifz teachers marking by Juz get an equivalent auto-filled segment.
+- `SabaqSection.tsx` gets a "Pick on Quran page" button. Its result populates the existing primary-segment state (or appends to `extraSegments`), so save/hydrate paths, `lesson_display`, `lesson_segment_count`, and legacy `sabaq_*` mirroring all continue to work untouched.
+- Dropdowns stay as a fallback for anyone who prefers them or when offline.
+
+## 6. Suggested build order
+
+1. Reference schema migration + `rukus` seeding.
+2. Import script + validated load of ayahs, pages, lines.
+3. Read-only page-view screen (browse only).
+4. Tap-to-select + segment emission wired into `SabaqSection`.
+5. Optional word-level precision (`mushaf_words`).
+
+## Open questions
+
+- Should the tapped stop-point default to "end of line" or should teachers also pick a word (needs `mushaf_words`)?
+- Should students/parents ever see a read-only page view of what was covered, or strictly teacher-only?
