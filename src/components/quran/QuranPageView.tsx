@@ -269,7 +269,7 @@ export function QuranPageView({
                   ) : line.line_type === 'basmallah' ? (
                     <span className="arabic-text text-lg">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
                   ) : (
-                    <span className="arabic-text text-xl sm:text-2xl leading-loose">
+                    <span className={cn('arabic-text leading-loose', presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl')}>
                       {line.text_indopak}
                     </span>
                   )}
