@@ -18,6 +18,17 @@
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* IndoPak mushaf font used by the Quran page view */
+@font-face {
+  font-family: 'PDMS Saleem Quran';
+  src: url('/fonts/PDMSSaleemQuran.woff2') format('woff2'),
+       url('/fonts/PDMSSaleemQuran.woff') format('woff');
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+
+
 @layer base {
   :root {
     /* Al-Quran Time Academy - Premium Brand Theme */
