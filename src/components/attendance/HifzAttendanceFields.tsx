@@ -47,10 +47,20 @@ interface HifzAttendanceFieldsProps {
   // Manzil (Old Revision) - Yes/No only
   manzilDone: boolean;
   onManzilDoneChange: (value: boolean) => void;
+  // Whole-Juz mode (Hifz only)
+  juzFrom?: string;
+  onJuzFromChange?: (value: string) => void;
+  juzTo?: string;
+  onJuzToChange?: (value: string) => void;
+
+  // Additional lesson segments
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
 
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
 }
+
 
 export function HifzAttendanceFields({
   markerType,
