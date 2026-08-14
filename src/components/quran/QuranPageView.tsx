@@ -293,20 +293,21 @@ export function QuranPageView({
                       </span>
                     )}
                     {line.line_type === 'surah_name' ? (
-                      <span className="inline-block rounded-md border border-primary/30 bg-primary/5 px-6 py-1 mushaf-text text-base font-semibold">
+                      <span className="surah-banner mushaf-text text-lg font-semibold">
                         سورة {surahNameByNumber(line.surah_number)}
                       </span>
                     ) : line.line_type === 'basmallah' ? (
-                      <span className="mushaf-text text-lg">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
+                      <span className="mushaf-text block text-center text-lg text-[hsl(var(--mushaf-ink))]">بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ</span>
                     ) : !line.text_indopak ? (
                       <span className="block h-6" aria-hidden />
                     ) : (
                       <span
                         className={cn(
-                          'mushaf-text block',
+                          'mushaf-text mushaf-line',
                           presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
                         )}
                       >
+
                         {splitAyahMarks(line).map((tok, i) =>
                           tok.ayah == null ? (
                             <React.Fragment key={i}>{tok.text}</React.Fragment>
