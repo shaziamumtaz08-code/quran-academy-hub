@@ -407,6 +407,7 @@ function AppRoutes() {
       <Route path="/legal/policies" element={<PublicPolicies />} />
       <Route path="/policies" element={<ProtectedRoute><DashboardLayout><Policies /></DashboardLayout></ProtectedRoute>} />
       <Route path="/impersonate" element={<Impersonate />} />
+      <Route path="/quran-page" element={<ProtectedRoute><DashboardLayout><QuranPageBrowser /></DashboardLayout></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
