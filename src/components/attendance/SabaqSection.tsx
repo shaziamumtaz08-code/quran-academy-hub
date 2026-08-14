@@ -227,7 +227,17 @@ export function SabaqSection({
             <Grid3X3 className="h-4 w-4 mr-1.5" />
             Quarter
           </ToggleGroupItem>
+          {allowJuz && (
+            <ToggleGroupItem
+              value="juz"
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
+            >
+              <Layers className="h-4 w-4 mr-1.5" />
+              Juz
+            </ToggleGroupItem>
+          )}
         </ToggleGroup>
+
       </div>
 
       {/* Ruku Mode Inputs */}
