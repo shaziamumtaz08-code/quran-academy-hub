@@ -146,6 +146,12 @@
     --card: 220 35% 12%;
     --card-foreground: 210 25% 95%;
 
+    --mushaf-paper: 40 22% 90%;
+    --mushaf-paper-edge: 36 18% 80%;
+    --mushaf-ink: 220 45% 10%;
+    --mushaf-rule: 32 25% 40%;
+
+
     --popover: 220 35% 12%;
     --popover-foreground: 210 25% 95%;
 
