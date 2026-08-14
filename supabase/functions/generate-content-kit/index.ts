@@ -1,3 +1,4 @@
+import { requireUser } from "../_shared/auth.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
@@ -7,6 +8,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const auth = await requireUser(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt, stylePrompt } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

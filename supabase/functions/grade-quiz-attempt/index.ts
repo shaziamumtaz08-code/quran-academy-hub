@@ -1,3 +1,4 @@
+import { requireUser, userHasRole } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -91,6 +92,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const auth = await requireUser(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { attempt_id, answers, time_taken_seconds } = await req.json();
     if (!attempt_id || !answers) {
       return new Response(JSON.stringify({ error: "attempt_id and answers required" }), {
@@ -98,9 +106,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = auth.adminClient;
 
     const { data: attempt } = await supabase
       .from("quiz_attempts")
@@ -112,6 +118,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Attempt not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Only the attempt owner, or teaching/admin staff, may grade this attempt
+    const isOwner = (attempt as any).student_id === auth.userId;
+    if (!isOwner) {
+      const isStaff = await userHasRole(supabase, auth.userId, [
+        "admin", "super_admin", "teacher", "examiner", "admin_academic", "admin_division",
+      ]);
+      if (!isStaff) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: bankData } = await supabase
