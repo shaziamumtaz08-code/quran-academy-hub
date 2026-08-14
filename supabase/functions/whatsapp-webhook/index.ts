@@ -11,6 +11,29 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify the request really came from the WhatsApp provider using a shared secret.
+    const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
+    if (!expectedSecret) {
+      console.error("WHATSAPP_WEBHOOK_SECRET not configured — rejecting webhook");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const url = new URL(req.url);
+    const provided =
+      req.headers.get("x-webhook-secret") ??
+      req.headers.get("x-whatschimp-token") ??
+      req.headers.get("x-verify-token") ??
+      url.searchParams.get("token") ??
+      "";
+    if (provided !== expectedSecret) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
