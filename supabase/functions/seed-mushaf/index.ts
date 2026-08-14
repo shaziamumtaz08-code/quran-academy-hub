@@ -34,20 +34,31 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // --- auth: admins only ---
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await anon.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const { data: roles } = await service.from("user_roles").select("role").eq("user_id", user.id);
-    const isAdmin = (roles ?? []).some((r: { role: string }) => ["admin", "super_admin"].includes(r.role));
-    if (!isAdmin) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
     const body = await req.json().catch(() => ({}));
     const fromPage = Math.max(1, Number(body.fromPage ?? 1));
     const toPage = Math.min(610, Number(body.toPage ?? 610));
+
+    // --- auth: admins, trusted service-role calls, or an initial bootstrap
+    // run while the (public, non-sensitive) reference tables are still empty ---
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const isServiceCall = token.length > 0 && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const { count: existingLines } = await service
+      .from("mushaf_lines")
+      .select("id", { count: "exact", head: true })
+      .gte("page_number", fromPage)
+      .lte("page_number", toPage);
+    const isBootstrap = (existingLines ?? 0) === 0;
+    if (!isServiceCall && !isBootstrap) {
+      const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await anon.auth.getUser();
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await service.from("user_roles").select("role").eq("user_id", user.id);
+      const isAdmin = (roles ?? []).some((r: { role: string }) => ["admin", "super_admin"].includes(r.role));
+      if (!isAdmin) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: edition } = await service.from("mushaf_editions").select("id").eq("code", "qudratullah-15").maybeSingle();
     if (!edition) throw new Error("Mushaf edition qudratullah-15 not found");
@@ -130,12 +141,13 @@ Deno.serve(async (req) => {
         let nextAyahLine: Record<string, unknown> | undefined;
         for (let k = ln + 1; k <= 15; k++) { if (built.has(k)) { nextAyahLine = built.get(k); break; } }
         const startsSurah = nextAyahLine && Number(nextAyahLine.first_ayah) === 1;
-        const gapBefore = built.has(ln - 1) === false && ln > 1;
+        // a heading block is "surah name" then "bismillah": the second gap line of a pair
+        const prevIsHeading = ln > 1 && !byLine.has(ln - 1);
         built.set(ln, {
           edition_id: editionId,
           page_number: page,
           line_number: ln,
-          line_type: startsSurah ? (gapBefore ? "basmallah" : "surah_name") : "blank",
+          line_type: startsSurah ? (prevIsHeading ? "basmallah" : "surah_name") : "blank",
           surah_number: startsSurah ? Number(nextAyahLine!.first_surah) : null,
           first_surah: null, first_ayah: null, first_word_index: null,
           last_surah: null, last_ayah: null, last_word_index: null,
