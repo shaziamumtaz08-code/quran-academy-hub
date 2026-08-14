@@ -93,11 +93,13 @@ export function QuranPageView({
       const next = Math.min(TOTAL_PAGES, Math.max(1, p));
       if (next === page) return;
       setFlip(next > page ? 'next' : 'prev');
-      setPage(next);
-      window.setTimeout(() => setFlip(null), 320);
+      // swap the content mid-turn, while the sheet is nearly edge-on
+      window.setTimeout(() => setPage(next), 240);
+      window.setTimeout(() => setFlip(null), 520);
     },
     [page]
   );
+
 
   // Arrow-key page turning (RTL mushaf: left arrow = next page)
   useEffect(() => {
