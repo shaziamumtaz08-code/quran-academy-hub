@@ -525,8 +525,10 @@ export type Database = {
           id: string
           input_unit: string | null
           lesson_covered: string | null
+          lesson_display: string | null
           lesson_notes: string | null
           lesson_number: number | null
+          lesson_segment_count: number | null
           lesson_type: string | null
           lines_completed: number | null
           manzil_completed: boolean | null
@@ -594,8 +596,10 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_display?: string | null
           lesson_notes?: string | null
           lesson_number?: number | null
+          lesson_segment_count?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
           manzil_completed?: boolean | null
@@ -663,8 +667,10 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_display?: string | null
           lesson_notes?: string | null
           lesson_number?: number | null
+          lesson_segment_count?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
           manzil_completed?: boolean | null
@@ -851,6 +857,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "attendance_comments_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_lesson_segments: {
+        Row: {
+          attendance_id: string
+          ayah_from: number | null
+          ayah_to: number | null
+          created_at: string
+          display_text: string | null
+          id: string
+          juz_from: number | null
+          juz_to: number | null
+          marker_type: string
+          section: string
+          segment_index: number
+          surah_from: string | null
+          surah_to: string | null
+          unit_from: number | null
+          unit_to: number | null
+        }
+        Insert: {
+          attendance_id: string
+          ayah_from?: number | null
+          ayah_to?: number | null
+          created_at?: string
+          display_text?: string | null
+          id?: string
+          juz_from?: number | null
+          juz_to?: number | null
+          marker_type: string
+          section?: string
+          segment_index?: number
+          surah_from?: string | null
+          surah_to?: string | null
+          unit_from?: number | null
+          unit_to?: number | null
+        }
+        Update: {
+          attendance_id?: string
+          ayah_from?: number | null
+          ayah_to?: number | null
+          created_at?: string
+          display_text?: string | null
+          id?: string
+          juz_from?: number | null
+          juz_to?: number | null
+          marker_type?: string
+          section?: string
+          segment_index?: number
+          surah_from?: string | null
+          surah_to?: string | null
+          unit_from?: number | null
+          unit_to?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_lesson_segments_attendance_id_fkey"
             columns: ["attendance_id"]
             isOneToOne: false
             referencedRelation: "attendance"
