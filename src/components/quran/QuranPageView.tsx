@@ -113,9 +113,9 @@ export function QuranPageView({
     return () => window.removeEventListener('keydown', onKey);
   }, [goto, page]);
 
-  const handleTap = (line: MushafLine) => {
+  const handleTap = (line: MushafLine, ayahAt?: { surah: number; ayah: number } | null) => {
     if (line.line_type !== 'ayah' || !line.first_surah) return;
-    const point: TapPoint = { page, line };
+    const point: TapPoint = { page, line, ayahAt: ayahAt ?? null };
     if (!start || (start && end)) {
       setStart(point);
       setEnd(null);
@@ -147,12 +147,18 @@ export function QuranPageView({
     setEnd(null);
   };
 
-  const startLabel = start ? `Page ${start.page}, line ${start.line.line_number}` : null;
+  const pointLabel = (p: TapPoint) =>
+    p.ayahAt
+      ? `${surahNameByNumber(p.ayahAt.surah)}, verse ${p.ayahAt.ayah} (page ${p.page})`
+      : `End of line ${p.line.line_number}, page ${p.page}`;
+
+  const startLabel = start ? pointLabel(start) : null;
   const endLabel = end
-    ? `Page ${end.page}, line ${end.line.line_number}`
+    ? pointLabel(end)
     : start
-      ? 'Same line (tap another line to extend)'
+      ? 'Same line (tap another line or verse sign to extend)'
       : null;
+
 
   return (
     <div className={cn('space-y-4', className)}>
