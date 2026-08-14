@@ -91,11 +91,18 @@ export function HifzAttendanceFields({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  juzFrom = '',
+  onJuzFromChange,
+  juzTo = '',
+  onJuzToChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
   sabqiDone,
   onSabqiDoneChange,
   manzilDone,
   onManzilDoneChange,
   isRepeatLesson = false,
+
 }: HifzAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
