@@ -36,6 +36,24 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Only staff may send outbound WhatsApp messages from the academy number
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const staffRoles = [
+        "admin", "super_admin", "teacher", "examiner",
+        "admin_admissions", "admin_fees", "admin_academic", "admin_division",
+      ];
+      const isStaff = (roles ?? []).some((r: { role: string }) => staffRoles.includes(r.role));
+      if (!isStaff) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       senderId = user.id;
     }
 
