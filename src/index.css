@@ -437,6 +437,18 @@
     font-size: 1.15em;
   }
 
+  /* IndoPak mushaf script (PDMS Saleem Quran) — matches printed Indo-Pak Qurans */
+  .mushaf-text {
+    font-family: 'PDMS Saleem Quran', 'Noto Naskh Arabic', 'Amiri', serif;
+    direction: rtl;
+    unicode-bidi: embed;
+    line-height: 2.05;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+    text-rendering: optimizeLegibility;
+  }
+
+
+
   /* Combined RTL helper for mixed Urdu/Arabic content */
   .rtl-text {
     direction: rtl;
