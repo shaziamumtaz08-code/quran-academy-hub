@@ -226,7 +226,7 @@ export function QuranPageView({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tap a line to set the start of the lesson, then tap another line to set where it ended.
+        Tap the line where the lesson stopped. Tap a second line to cover a range — use ← / → to turn pages.
       </p>
 
       {/* Page canvas */}
