@@ -1,12 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Book, Hash, Grid3X3 } from 'lucide-react';
+import { Book, Hash, Grid3X3, Layers, Plus } from 'lucide-react';
 import { SURAHS, getSurahByName } from '@/lib/quranData';
 import { JUZ_DATA, getRukuCountForJuz, calculateTotalRukus, calculateTotalQuarters } from '@/lib/juzData';
+import { LessonSegmentEditor } from './LessonSegmentEditor';
+import {
+  formatLessonSegments,
+  emptySegment,
+  type LessonSegment,
+  type LessonMarkerType,
+} from '@/lib/lessonFormat';
 
-export type MarkerType = 'ruku' | 'ayah' | 'quarter';
+export type MarkerType = LessonMarkerType;
+
 
 interface SabaqSectionProps {
   // Marker type
@@ -42,6 +51,17 @@ interface SabaqSectionProps {
   onQuarterToJuzChange: (value: string) => void;
   quarterToNumber: string;
   onQuarterToNumberChange: (value: string) => void;
+
+  // Whole-Juz mode (Hifz only)
+  allowJuz?: boolean;
+  juzFrom?: string;
+  onJuzFromChange?: (value: string) => void;
+  juzTo?: string;
+  onJuzToChange?: (value: string) => void;
+
+  // Additional lesson segments (same sitting, non-contiguous portions)
+  extraSegments?: LessonSegment[];
+  onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
 }
 
 export function SabaqSection({
@@ -71,7 +91,15 @@ export function SabaqSection({
   onQuarterToJuzChange,
   quarterToNumber,
   onQuarterToNumberChange,
+  allowJuz = false,
+  juzFrom = '',
+  onJuzFromChange,
+  juzTo = '',
+  onJuzToChange,
+  extraSegments = [],
+  onExtraSegmentsChange,
 }: SabaqSectionProps) {
+
   
   // Calculate total based on marker type
   const totalCalculation = useMemo(() => {
@@ -117,14 +145,40 @@ export function SabaqSection({
       );
       return { label: 'Total Quarters', value: total };
     }
-    
+
+    if (markerType === 'juz') {
+      const from = parseInt(juzFrom) || 0;
+      const to = parseInt(juzTo) || from;
+      const total = from ? Math.max(0, to - from + 1) : 0;
+      return { label: 'Total Juz', value: total };
+    }
+
     return { label: 'Total', value: 0 };
   }, [
     markerType,
     rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber,
     ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber,
-    quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber
+    quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber,
+    juzFrom, juzTo
   ]);
+
+  // The first segment mirrors the primary (flat) inputs above.
+  const primarySegment: LessonSegment = useMemo(() => {
+    if (markerType === 'ruku') return { markerType, juzFrom: rukuFromJuz, unitFrom: rukuFromNumber, juzTo: rukuToJuz, unitTo: rukuToNumber };
+    if (markerType === 'quarter') return { markerType, juzFrom: quarterFromJuz, unitFrom: quarterFromNumber, juzTo: quarterToJuz, unitTo: quarterToNumber };
+    if (markerType === 'juz') return { markerType, juzFrom, juzTo };
+    return { markerType: 'ayah', surahFrom: ayahFromSurah, ayahFrom: ayahFromNumber, surahTo: ayahToSurah, ayahTo: ayahToNumber };
+  }, [markerType, rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber, quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber, juzFrom, juzTo, ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber]);
+
+  const normalizedPreview = formatLessonSegments([primarySegment, ...extraSegments]);
+
+  const updateSegment = (idx: number, seg: LessonSegment) => {
+    const next = [...extraSegments];
+    next[idx] = seg;
+    onExtraSegmentsChange?.(next);
+  };
+  const removeSegment = (idx: number) => onExtraSegmentsChange?.(extraSegments.filter((_, i) => i !== idx));
+  const addSegment = () => onExtraSegmentsChange?.([...extraSegments, emptySegment(markerType)]);
 
   // Get max ruku for selected Juz
   const maxRukuFrom = getRukuCountForJuz(parseInt(rukuFromJuz) || 0);
@@ -133,6 +187,7 @@ export function SabaqSection({
   // Get max ayah for selected Surah
   const maxAyahFrom = getSurahByName(ayahFromSurah)?.totalAyahs || 0;
   const maxAyahTo = getSurahByName(ayahToSurah)?.totalAyahs || 0;
+
 
   return (
     <div className="bg-card rounded-xl p-5 space-y-5">
@@ -172,7 +227,17 @@ export function SabaqSection({
             <Grid3X3 className="h-4 w-4 mr-1.5" />
             Quarter
           </ToggleGroupItem>
+          {allowJuz && (
+            <ToggleGroupItem
+              value="juz"
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
+            >
+              <Layers className="h-4 w-4 mr-1.5" />
+              Juz
+            </ToggleGroupItem>
+          )}
         </ToggleGroup>
+
       </div>
 
       {/* Ruku Mode Inputs */}
