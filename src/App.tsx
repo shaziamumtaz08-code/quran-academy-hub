@@ -60,6 +60,7 @@ const TeacherProfile = lazy(() => import("./pages/TeacherProfile"));
 const StudentProfile = lazy(() => import("./pages/StudentProfile"));
 const MyProfile = lazy(() => import("./pages/MyProfile"));
 const Impersonate = lazy(() => import("./pages/Impersonate"));
+const QuranPageBrowser = lazy(() => import("./pages/QuranPageBrowser"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
