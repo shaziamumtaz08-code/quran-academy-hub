@@ -96,19 +96,36 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       let q = supabase
         .from('student_teacher_assignments')
         .select(`id, student_id, created_at, status,
-                 student:profiles!student_teacher_assignments_student_id_fkey(full_name, registration_id),
+                 student:profiles!student_teacher_assignments_student_id_fkey(full_name, registration_id, archived_at),
                  teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
                  subjects(name)`)
         .eq('status', 'active');
       if (divisionId) q = q.eq('division_id', divisionId);
       const { data, error } = await q;
       if (error) throw error;
-      const billedIds = new Set(plans.filter(p => p.is_active).map(p => p.student_id));
-      const map = new Map<string, UnbilledStudent>();
+
+      // Billing is per ASSIGNMENT, not per student. A student with two active
+      // assignments needs two plans. Legacy plans with no assignment link are
+      // credited against one of that student's assignments so they are not
+      // double-flagged.
+      const livePlans = plans.filter(p => p.is_active && (p as any).lifecycle_status !== 'closed');
+      const billedAssignmentIds = new Set(livePlans.filter(p => p.assignment_id).map(p => p.assignment_id as string));
+      const unlinkedCredits = new Map<string, number>();
+      livePlans.filter(p => !p.assignment_id).forEach(p => {
+        unlinkedCredits.set(p.student_id, (unlinkedCredits.get(p.student_id) || 0) + 1);
+      });
+
+      const out: UnbilledStudent[] = [];
       (data || []).forEach((a: any) => {
-        if (billedIds.has(a.student_id)) return;
-        if (map.has(a.student_id)) return;
-        map.set(a.student_id, {
+        if (a.student?.archived_at) return;
+        if (billedAssignmentIds.has(a.id)) return;
+        const credit = unlinkedCredits.get(a.student_id) || 0;
+        if (credit > 0) {
+          unlinkedCredits.set(a.student_id, credit - 1);
+          return;
+        }
+        out.push({
+          assignment_id: a.id,
           student_id: a.student_id,
           full_name: a.student?.full_name || 'Unknown',
           registration_id: a.student?.registration_id || null,
@@ -117,10 +134,11 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
           active_since: a.created_at,
         });
       });
-      return [...map.values()].sort((x, y) => x.full_name.localeCompare(y.full_name));
+      return out.sort((x, y) => x.full_name.localeCompare(y.full_name) || x.subject_name.localeCompare(y.subject_name));
     },
     enabled: !!branchId,
   });
+
 
   const { duplicateGroups, activeCount } = useMemo(() => {
     // A student may legitimately have MULTIPLE plans — one per class/assignment.
