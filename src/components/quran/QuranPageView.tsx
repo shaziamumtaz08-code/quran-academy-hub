@@ -467,6 +467,33 @@ export function QuranPageView({
         <span className="text-xs text-muted-foreground w-10 text-right">{TOTAL_PAGES}</span>
       </div>
 
+      {/* Bottom page turner — quick next/previous in addition to the scrubber */}
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full gap-1 shrink-0"
+          onClick={() => goto(page - 1)}
+          disabled={page <= 1}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span>Previous</span>
+        </Button>
+        <span className="text-xs text-muted-foreground">Page {page} of {TOTAL_PAGES}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full gap-1 shrink-0"
+          onClick={() => goto(page + 1)}
+          disabled={page >= TOTAL_PAGES}
+        >
+          <span>Next</span>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      </div>
+
       <p className="text-xs text-muted-foreground">
         Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.
       </p>
