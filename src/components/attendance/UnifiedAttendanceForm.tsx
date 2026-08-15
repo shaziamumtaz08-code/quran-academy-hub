@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { getSurahByName } from '@/lib/quranData';
+
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -421,6 +423,17 @@ export function UnifiedAttendanceForm({
     },
     enabled: open && !!student.id,
   });
+
+  // Where this student stopped last class — the Quran page view opens right there.
+  const resumeAyah = React.useMemo(() => {
+    const p: any = previousLesson;
+    const surah = p?.sabaq_surah_to || p?.sabaq_surah_from;
+    const ayah = p?.sabaq_ayah_to ?? p?.sabaq_ayah_from;
+    const num = getSurahByName(surah || '')?.number;
+    if (!num || !ayah) return null;
+    return { surah: num, ayah: Number(ayah) };
+  }, [previousLesson]);
+
 
   // When user switches to "repeat", prefill the lesson fields from the previous class.
   const applyPreviousLesson = () => {
@@ -1465,6 +1478,8 @@ export function UnifiedAttendanceForm({
                   onJuzToChange={setJuzTo}
                   extraSegments={extraSegments}
                   onExtraSegmentsChange={setExtraSegments}
+                  resumeAyah={resumeAyah}
+                  resumeKey={student.id}
 
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
@@ -1503,6 +1518,8 @@ export function UnifiedAttendanceForm({
                   onQuarterToNumberChange={setQuarterToNumber}
                   extraSegments={extraSegments}
                   onExtraSegmentsChange={setExtraSegments}
+                  resumeAyah={resumeAyah}
+                  resumeKey={student.id}
 
                 />
               )}
