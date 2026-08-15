@@ -1170,6 +1170,31 @@ export function UnifiedAttendanceForm({
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
 
+  /** Switching status must never leave stale reschedule data behind (unchanged rule). */
+  const changeStatus = (next: AttendanceStatus) => {
+    if (!requiresReschedule(next)) {
+      setRescheduleDate('');
+      setRescheduleTime('');
+    }
+    setSelectedStatus(next);
+  };
+
+  const isAdminUser = profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
+  /** The four everyday statuses. Everything else stays reachable under "More". */
+  const PRIMARY_STATUSES = [
+    { value: 'present' as AttendanceStatus, label: 'Present', icon: <CheckCircle2 className="h-3.5 w-3.5" />, activeClass: 'bg-emerald-600 text-white' },
+    { value: 'student_absent' as AttendanceStatus, label: 'Absent', icon: <XCircle className="h-3.5 w-3.5" />, activeClass: 'bg-rose-600 text-white' },
+    { value: 'student_leave' as AttendanceStatus, label: 'Leave', icon: <PauseCircle className="h-3.5 w-3.5" />, activeClass: 'bg-amber-500 text-white' },
+    { value: 'rescheduled' as AttendanceStatus, label: 'Rescheduled', icon: <CalendarClock className="h-3.5 w-3.5" />, activeClass: 'bg-slate-600 text-white' },
+  ];
+  const primaryValues = PRIMARY_STATUSES.map(s => s.value);
+  const secondaryStatuses = STATUS_OPTIONS.filter((opt) => {
+    if (primaryValues.includes(opt.value)) return false;
+    if (opt.value === 'holiday') return isAdminUser;
+    return true;
+  });
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl w-[calc(100vw-1rem)] max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden bg-card border-border text-foreground">
