@@ -228,7 +228,7 @@ export function QuranPageView({
             touchX.current = null;
           }}
           className={cn(
-            'book-page mushaf-paper relative overflow-hidden rounded-[1.25rem] border-4 border-[hsl(var(--mushaf-rule)/0.5)] shadow-lg p-2',
+            'book-page mushaf-paper relative overflow-hidden rounded-[1rem] sm:rounded-[1.25rem] border-2 sm:border-4 border-[hsl(var(--mushaf-rule)/0.5)] shadow-lg p-1 sm:p-2',
             flip === 'next' && 'animate-page-turn-next',
             flip === 'prev' && 'animate-page-turn-prev'
           )}
