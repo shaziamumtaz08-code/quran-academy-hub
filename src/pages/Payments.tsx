@@ -1038,6 +1038,8 @@ export default function Payments() {
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['unbilled-students-audit'] });
+      queryClient.invalidateQueries({ queryKey: ['billed-assignment-ids'] });
       if (editingPlanId) queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
       toast({ title: editingPlanId ? `Billing plan revised — effective ${effectiveFrom}. Affected month is prorated, future pending invoices reissued.` : `${count} billing plan(s) saved successfully` });
       if (editingPlanId) {
@@ -1053,6 +1055,8 @@ export default function Payments() {
 
   const resetFeeForm = () => {
     setSelectedStudentIds([]);
+    setSelectedAssignmentId('');
+    setLockAssignment(false);
     setStudentSearch('');
     setSelectionMode('individual');
     setBulkSearch('');
