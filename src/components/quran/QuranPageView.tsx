@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Check } from 'lucide-react';
 import { formatLessonSegment, type LessonMarkerType, type LessonSegment } from '@/lib/lessonFormat';
 import {
   fetchPage,
+  findPageForAyah,
   getDefaultEditionId,
   resolveSegment,
   surahNameByNumber,
@@ -14,7 +15,9 @@ import {
   type MushafPageInfo,
   type TapPoint,
 } from '@/lib/mushafResolve';
+import { MushafSearchBar } from './MushafSearchBar';
 import { cn } from '@/lib/utils';
+
 
 const TOTAL_PAGES = 610;
 
