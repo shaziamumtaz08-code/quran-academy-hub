@@ -305,7 +305,9 @@ export function QuranPageView({
                       <span
                         className={cn(
                           'mushaf-text mushaf-line',
-                          presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
+                          presentation
+                            ? 'text-[1.35rem] sm:text-4xl'
+                            : 'text-[1.05rem] xs:text-lg sm:text-2xl'
                         )}
                       >
 
