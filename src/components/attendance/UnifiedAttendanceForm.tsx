@@ -399,6 +399,28 @@ export function UnifiedAttendanceForm({
 
   const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
 
+  // Academy holidays / off days — attendance must not be marked on these by default.
+  const { data: holidayRow } = useQuery({
+    queryKey: ['attendance-holiday-check', classDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date, name')
+        .eq('holiday_date', classDate)
+        .maybeSingle();
+      if (error) return null;
+      return data as unknown as { holiday_date: string; name: string } | null;
+    },
+    enabled: open && !!classDate,
+  });
+  const isHolidayDate = !!holidayRow;
+
+  /** Teacher explicitly confirmed an extra / make-up class on an off day. */
+  const [allowOffDay, setAllowOffDay] = useState(false);
+  useEffect(() => { setAllowOffDay(false); }, [classDate, open]);
+
+
+
 
   // Fetch the student's most recent prior attendance with lesson coverage — used to
   // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
@@ -534,16 +556,33 @@ export function UnifiedAttendanceForm({
   const { activeModelType } = useDivision();
   const isOneToOne = activeModelType === 'one_to_one';
 
-  // Check if selected date is a scheduled day.
-  // One-to-one division: weekends/off-days are NEVER frozen — teachers can mark any day
-  // (covers ad-hoc lessons + reschedules to Sat/Sun).
+  // Check if selected date is a scheduled day for this student.
+  // Off days (weekends / non-slot days) are no longer silently allowed — the teacher
+  // must tick the "extra / make-up class" confirmation to mark them.
   const isScheduledDay = useMemo(() => {
-    if (isOneToOne) return true;
     if (!classDate || scheduledDays.length === 0) return true;
     const dayIndex = getDay(parseISO(classDate));
     const dayName = DAY_NAMES[dayIndex];
     return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays, isOneToOne]);
+  }, [classDate, scheduledDays]);
+
+  /** Default the date to the latest scheduled, non-holiday day on/before today. */
+  useEffect(() => {
+    if (!open || isEdit || scheduledDays.length === 0) return;
+    const today = new Date();
+    const todayName = DAY_NAMES[getDay(today)];
+    if (scheduledDays.includes(todayName)) return; // today is fine
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (scheduledDays.includes(DAY_NAMES[getDay(d)])) {
+        setClassDate(format(d, 'yyyy-MM-dd'));
+        return;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, scheduledDays.join(',')]);
+
 
   // Get scheduled time for the selected day. Falls back to the student's usual slot
   // (their other active schedule rows) so ad-hoc / make-up days still auto-fill and the
@@ -1046,8 +1085,16 @@ export function UnifiedAttendanceForm({
     if (!isLeaveStatus && hasDuplicateAttendance) {
       reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
     }
-    // Non-scheduled day is shown as a soft warning only — teachers can still mark
-    // attendance (covers make-ups, ad-hoc lessons, and teachers without schedules).
+    // Off days and academy holidays are blocked by default — the teacher must confirm
+    // it was an extra / make-up class. Leave, holiday and reschedule rows are exempt.
+    const offDayExempt = isLeaveStatus || selectedStatus === 'holiday' || requiresReschedule(selectedStatus) || isEdit;
+    if (!offDayExempt && isHolidayDate && !allowOffDay) {
+      reasons.push(`${format(parseISO(classDate), 'dd MMM yyyy')} is an academy holiday${holidayRow?.name ? ` (${holidayRow.name})` : ''} — tick "extra / make-up class" if a class really ran.`);
+    }
+    if (!offDayExempt && !isScheduledDay && !allowOffDay) {
+      reasons.push(`This is not a scheduled day for ${student.full_name || 'this student'} — tick "extra / make-up class" to mark it anyway.`);
+    }
+
     if (requiresReason(selectedStatus) && !reasonCategory) reasons.push('Choose a reason for this absence or leave.');
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) reasons.push('Describe the reason (you selected "Other").');
     if (requiresReschedule(selectedStatus) && !rescheduleDate) reasons.push('Set the rescheduled date.');
@@ -1063,7 +1110,7 @@ export function UnifiedAttendanceForm({
     // When repeating, a written explanation (reason + what was done) is required.
     if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
     return reasons;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, allowOffDay, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
   const isFormValid = blockingReasons.length === 0;
 
@@ -1158,15 +1205,30 @@ export function UnifiedAttendanceForm({
           )}
 
 
-          {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
-          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
+          {/* Off day / holiday guard — hidden for leave, holiday and reschedule rows */}
+          {(isHolidayDate || !isScheduledDay) && !isEdit && !hasDuplicateAttendance && !isFutureDate
+            && !isLeaveStatus && selectedStatus !== 'holiday' && !requiresReschedule(selectedStatus) && (
             <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.
+              <AlertDescription className="space-y-2">
+                <p>
+                  {isHolidayDate
+                    ? <>This date is an academy holiday{holidayRow?.name ? ` — ${holidayRow.name}` : ''}. Classes are off.</>
+                    : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
+                </p>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowOffDay}
+                    onChange={(e) => setAllowOffDay(e.target.checked)}
+                    className="h-4 w-4 accent-amber-600"
+                  />
+                  This was an extra / make-up class — let me mark it
+                </label>
               </AlertDescription>
             </Alert>
           )}
+
 
           {/* Future Date Warning */}
           {isFutureDate && !canAssignFutureDate && (
