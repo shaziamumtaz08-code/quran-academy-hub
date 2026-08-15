@@ -534,6 +534,31 @@ export function MissingAttendanceSection({
         )}
       </CardContent>
 
+      {/* Quick "Mark now" — prefilled attendance form for that student + missed date */}
+      {markRecord && (
+        <UnifiedAttendanceForm
+          open={!!markRecord}
+          onOpenChange={(open) => { if (!open) setMarkRecord(null); }}
+          student={{
+            id: markRecord.studentId,
+            full_name: markRecord.studentName,
+            subject_name: markRecord.subjectName,
+            subject_id: markRecord.subjectId,
+            assignment_id: markRecord.assignmentId,
+            last_lesson: null,
+            teacher_id: markRecord.teacherId,
+          }}
+          teacherId={markRecord.teacherId}
+          initialDate={markRecord.date}
+          allowTimeEdit={isAdmin}
+          onSuccess={() => {
+            setMarkRecord(null);
+            queryClient.invalidateQueries({ queryKey: ['attendance-for-missing'] });
+            queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+          }}
+        />
+      )}
+
       {/* Park assignment dialog — requires manual effective date */}
       <Dialog open={!!parkDialog} onOpenChange={(open) => { if (!open) { setParkDialog(null); setEffectiveDate(undefined); } }}>
         <DialogContent className="sm:max-w-md">
