@@ -292,6 +292,10 @@ export function QuranPageView({
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-center">
           {info?.juz_number && <Badge variant="secondary" className="text-[10px] sm:text-xs">Juz {info.juz_number}</Badge>}
           {info?.surah_start && <Badge variant="outline" className="text-[10px] sm:text-xs truncate max-w-[9rem]">{surahNameByNumber(info.surah_start)}</Badge>}
+          {resumedAt === page && (
+            <Badge className="text-[10px] sm:text-xs">Resumed here</Badge>
+          )}
+
         </div>
         <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
           <span className="hidden sm:inline">Next</span>
