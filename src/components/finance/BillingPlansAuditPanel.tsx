@@ -46,6 +46,7 @@ interface InvoiceRow {
 }
 
 interface UnbilledStudent {
+  assignment_id: string;
   student_id: string;
   full_name: string;
   registration_id: string | null;
