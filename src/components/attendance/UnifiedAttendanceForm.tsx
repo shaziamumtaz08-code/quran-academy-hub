@@ -418,12 +418,12 @@ export function UnifiedAttendanceForm({
   });
   const isHolidayDate = !!holidayRow;
 
-  // Recent holidays, used so the auto-selected default date never lands on an off day.
+  // Recent holidays, used so the date choices never land on an off day.
   const { data: recentHolidays } = useQuery({
     queryKey: ['attendance-recent-holidays'],
     queryFn: async () => {
       const from = new Date();
-      from.setDate(from.getDate() - 40);
+      from.setDate(from.getDate() - 70);
       const { data } = await supabase
         .from('holidays' as any)
         .select('holiday_date')
@@ -433,11 +433,6 @@ export function UnifiedAttendanceForm({
     enabled: open,
   });
   const recentHolidaySet = useMemo(() => new Set(recentHolidays || []), [recentHolidays]);
-
-
-  /** Teacher explicitly confirmed an extra / make-up class on an off day. */
-  const [allowOffDay, setAllowOffDay] = useState(false);
-  useEffect(() => { setAllowOffDay(false); }, [classDate, open]);
 
 
 
