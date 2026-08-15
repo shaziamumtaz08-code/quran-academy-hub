@@ -2543,7 +2543,47 @@ export default function Payments() {
                   )}
                 </div>
 
+                {/* Class (assignment) this plan bills — one plan per assignment */}
+                {!editingPlanId && selectedStudentIds.length === 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Class (assignment) *</Label>
+                    {currentStudentAssignments.length === 0 ? (
+                      <p className="text-xs text-destructive">
+                        This student has no active assignment. Create the assignment first — billing is attached to a class.
+                      </p>
+                    ) : (
+                      <>
+                        <Select value={selectedAssignmentId} onValueChange={setSelectedAssignmentId} disabled={lockAssignment}>
+                          <SelectTrigger><SelectValue placeholder="Select the class this plan bills" /></SelectTrigger>
+                          <SelectContent>
+                            {currentStudentAssignments.map(a => {
+                              const taken = billedAssignmentSet.has(a.id) && a.id !== selectedAssignmentId;
+                              return (
+                                <SelectItem key={a.id} value={a.id} disabled={taken}>
+                                  {a.subject_name} · {a.teacher_name}
+                                  {a.started_at ? ` · since ${format(new Date(a.started_at), 'dd MMM yyyy')}` : ''}
+                                  {taken ? ' — already has a plan' : ''}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Each active class is billed by exactly one plan. A student with two classes needs two plans.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {!editingPlanId && selectedStudentIds.length > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Bulk mode attaches each plan to the student's single unbilled active class. Students with more than one
+                    unbilled class are skipped — set those up individually.
+                  </p>
+                )}
+
                 <Separator />
+
 
                 {/* Manual Fee Toggle */}
                 <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
