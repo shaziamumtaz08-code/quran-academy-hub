@@ -100,8 +100,10 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [plans]);
 
+  const isArchivedPlan = (p: any) => !!p.superseded_by || p.lifecycle_status === 'closed';
+
   const filtered = useMemo(() => {
-    let result = plans.filter(p => archiveView === 'archived' ? !!p.superseded_by : !p.superseded_by);
+    let result = plans.filter(p => archiveView === 'archived' ? isArchivedPlan(p) : !isArchivedPlan(p));
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p =>
