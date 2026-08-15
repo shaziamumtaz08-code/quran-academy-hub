@@ -512,6 +512,7 @@ export function QuranPageView({
 
 
       {/* Page scrubber — turn through the book */}
+      {!compact && (
       <div className="flex items-center gap-3 px-1" dir="ltr">
         <span className="text-xs text-muted-foreground w-14">Page {page}</span>
         <Slider
@@ -524,8 +525,10 @@ export function QuranPageView({
         />
         <span className="text-xs text-muted-foreground w-10 text-right">{TOTAL_PAGES}</span>
       </div>
+      )}
 
       {/* Bottom page turner — quick next/previous in addition to the scrubber */}
+      {!compact && (
       <div className="flex items-center justify-between gap-2">
         <Button
           type="button"
@@ -551,9 +554,13 @@ export function QuranPageView({
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
-        Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.
+        {compact
+          ? 'First tap = start, second tap = end. Tap a round verse sign for an exact verse.'
+          : 'Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.'}
+
       </p>
 
       {/* Selection footer */}
