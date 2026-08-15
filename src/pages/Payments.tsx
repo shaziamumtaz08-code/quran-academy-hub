@@ -2290,13 +2290,15 @@ export default function Payments() {
                 </TabsList>
                 <TabsContent value="student-plans" className="space-y-4">
                   <BillingPlansAuditPanel
-                    onSetupForStudent={(sid) => {
+                    onSetupForStudent={(sid, assignmentId) => {
                       resetFeeForm();
                       setSelectedStudentIds([sid]);
                       setSelectionMode('individual');
+                      if (assignmentId) { setSelectedAssignmentId(assignmentId); setLockAssignment(true); }
                       setSetupOpen(true);
                     }}
                   />
+
                   <BillingLifecyclePanel />
                   <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
                 </TabsContent>
