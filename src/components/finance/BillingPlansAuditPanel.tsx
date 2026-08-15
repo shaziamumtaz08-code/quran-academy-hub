@@ -307,7 +307,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (duplicateGroups.length === 0 && unbilled.length === 0) {
+  if (duplicateGroups.length === 0 && unbilled.length === 0 && unlinkedCount === 0) {
     return (
       <div className="flex items-center gap-3 mb-4">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -335,7 +335,13 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
             <span className="h-2 w-2 rounded-full bg-amber-500" /> {unbilled.length} Unbilled Assignment{unbilled.length === 1 ? '' : 's'}
           </span>
         )}
+        {unlinkedCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-slate-400" /> {unlinkedCount} Plan{unlinkedCount === 1 ? '' : 's'} Not Linked To A Class
+          </span>
+        )}
       </div>
+
 
       {duplicateGroups.length > 0 && (
         <div className="rounded-lg p-4 bg-red-100 text-red-700 border-l-4 border-red-500 flex justify-between items-start gap-4">
