@@ -159,6 +159,8 @@ interface UnifiedAttendanceFormProps {
   students?: StudentInfo[];
   /** Initial status to start with (e.g. 'teacher_leave' from a quick-action). */
   initialStatus?: AttendanceStatus;
+  /** Pre-selected class date (yyyy-MM-dd), e.g. when marking a specific missed slot. */
+  initialDate?: string;
   teacherId?: string;
   teacherTimezone?: string;
   /** When true, Class Time is editable (admins). Defaults to false. */
