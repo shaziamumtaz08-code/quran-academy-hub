@@ -76,7 +76,7 @@ export default function RevisePlanDialog({ open, onOpenChange, plan }: RevisePla
         _net_recurring_fee: Number(newFee),
         _currency: plan.currency,
         _effective_from: effectiveFrom,
-        _change_reason: reason || null,
+        _change_reason: reason.trim(),
         _assignment_id: plan.assignment_id ?? null,
         _branch_id: plan.branch_id ?? null,
         _division_id: plan.division_id ?? null,
@@ -152,7 +152,8 @@ export default function RevisePlanDialog({ open, onOpenChange, plan }: RevisePla
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="reason">Reason (optional, for audit)</Label>
+            <Label htmlFor="reason">Reason for this revision <span className="text-destructive">*</span></Label>
+            <p className="text-xs text-muted-foreground">Required — stored in the billing audit trail (min 4 characters).</p>
             <Textarea
               id="reason"
               placeholder="e.g. Promotion applied, duration changed, discount agreed…"
