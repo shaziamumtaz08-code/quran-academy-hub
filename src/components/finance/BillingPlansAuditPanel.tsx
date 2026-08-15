@@ -57,7 +57,7 @@ interface UnbilledStudent {
 }
 
 interface Props {
-  onSetupForStudent: (studentId: string) => void;
+  onSetupForStudent: (studentId: string, assignmentId?: string) => void;
 }
 
 export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
