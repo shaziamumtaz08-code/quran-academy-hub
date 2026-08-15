@@ -295,6 +295,64 @@ export default function Payments() {
     enabled: setupOpen,
   });
 
+  // Active assignments (one billing plan belongs to exactly one assignment)
+  const { data: activeAssignments = [] } = useQuery({
+    queryKey: ['active-assignments-for-fees', branchId, divisionId, setupOpen],
+    queryFn: async () => {
+      let q = supabase
+        .from('student_teacher_assignments')
+        .select(`id, student_id, created_at, effective_from_date,
+                 teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
+                 subjects!student_teacher_assignments_subject_id_fkey(name)`)
+        .eq('status', 'active');
+      if (divisionId) q = q.eq('division_id', divisionId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []).map((a: any) => ({
+        id: a.id as string,
+        student_id: a.student_id as string,
+        teacher_name: a.teacher?.full_name || '—',
+        subject_name: a.subjects?.name || '—',
+        started_at: (a.effective_from_date || a.created_at) as string,
+      }));
+    },
+    enabled: setupOpen,
+  });
+
+  // Assignments that already carry a live plan — cannot be double-billed
+  const { data: billedAssignmentIds = [] } = useQuery({
+    queryKey: ['billed-assignment-ids', setupOpen],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_billing_plans')
+        .select('assignment_id, lifecycle_status')
+        .eq('is_active', true)
+        .not('assignment_id', 'is', null);
+      if (error) throw error;
+      return (data || [])
+        .filter((p: any) => p.lifecycle_status !== 'closed')
+        .map((p: any) => p.assignment_id as string);
+    },
+    enabled: setupOpen,
+  });
+  const billedAssignmentSet = useMemo(() => new Set(billedAssignmentIds), [billedAssignmentIds]);
+
+  const currentStudentAssignments = useMemo(() => {
+    if (selectedStudentIds.length !== 1) return [];
+    return activeAssignments.filter(a => a.student_id === selectedStudentIds[0]);
+  }, [activeAssignments, selectedStudentIds]);
+
+  // Auto-select when the student has exactly one free assignment
+  useEffect(() => {
+    if (editingPlanId || lockAssignment) return;
+    if (selectedStudentIds.length !== 1) { setSelectedAssignmentId(''); return; }
+    const free = currentStudentAssignments.filter(a => !billedAssignmentSet.has(a.id));
+    if (free.length === 1) setSelectedAssignmentId(free[0].id);
+    else if (!currentStudentAssignments.some(a => a.id === selectedAssignmentId)) setSelectedAssignmentId('');
+  }, [currentStudentAssignments, billedAssignmentSet, selectedStudentIds, editingPlanId, lockAssignment]);
+
+
+
   const { data: packages = [] } = useQuery({
     queryKey: ['fee-packages-for-setup', branchId, divisionId],
     queryFn: async () => {
