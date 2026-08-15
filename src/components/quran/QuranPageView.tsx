@@ -98,6 +98,17 @@ export function QuranPageView({
   const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
   const [searching, setSearching] = useState(false);
   const [resumedAt, setResumedAt] = useState<number | null>(null);
+  // Reader font size (persisted). 1 = default, up to 1.8x for older/low-vision readers.
+  const [fontScale, setFontScale] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1.15;
+    const saved = Number(window.localStorage.getItem('mushaf:fontScale'));
+    return saved >= 0.8 && saved <= 2 ? saved : 1.15;
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('mushaf:fontScale', String(fontScale)); } catch { /* ignore */ }
+  }, [fontScale]);
+  const baseFontRem = (presentation ? 1.6 : 1.25) * fontScale;
+
   const resumed = useRef(false);
   const touchX = useRef<number | null>(null);
 
