@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertTriangle, UserX, ChevronDown, ChevronUp, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { trackActivity } from '@/lib/activityLogger';
@@ -328,7 +328,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
         )}
         {unbilled.length > 0 && (
           <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
-            <span className="h-2 w-2 rounded-full bg-amber-500" /> {unbilled.length} Unbilled Student{unbilled.length === 1 ? '' : 's'}
+            <span className="h-2 w-2 rounded-full bg-amber-500" /> {unbilled.length} Unbilled Assignment{unbilled.length === 1 ? '' : 's'}
           </span>
         )}
       </div>
@@ -361,8 +361,8 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
           <div className="flex gap-3">
             <UserX className="h-5 w-5 mt-0.5 shrink-0 text-amber-600" />
             <div>
-              <div className="font-bold">{unbilled.length} student{unbilled.length === 1 ? '' : 's'} are not being billed</div>
-              <div className="text-sm text-amber-700/80 mt-0.5">These students have active assignments but no fee plan set up.</div>
+              <div className="font-bold">{unbilled.length} active assignment{unbilled.length === 1 ? '' : 's'} have no billing plan</div>
+              <div className="text-sm text-amber-700/80 mt-0.5">Billing is per assignment — a student with two active classes needs two plans.</div>
             </div>
           </div>
           <Button
@@ -371,7 +371,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
             className="border-amber-300 text-amber-700 hover:bg-amber-200 shrink-0"
             onClick={() => setUnbilledOpen(true)}
           >
-            View Unbilled Students
+            Review Unbilled
           </Button>
         </div>
       )}
@@ -508,55 +508,51 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
         </div>
       )}
 
-      <Sheet open={unbilledOpen} onOpenChange={setUnbilledOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              Unbilled Students
-              <Badge variant="secondary" className="ml-1">{unbilled.length}</Badge>
-            </SheetTitle>
-            <SheetDescription>Set up a billing plan for each student to start generating invoices</SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 space-y-0">
+      <Dialog open={unbilledOpen} onOpenChange={setUnbilledOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Assignments without a billing plan
+              <Badge variant="secondary">{unbilled.length}</Badge>
+            </DialogTitle>
+            <DialogDescription>
+              Billing follows the assignment: a student needs one plan per active assignment (class).
+              Set the fee for each one to start generating invoices.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {unbilled.map(s => {
               const initials = s.full_name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
               return (
-                <div key={s.student_id} className="py-3 border-b last:border-0 flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs font-semibold shrink-0">
+                <div key={s.assignment_id} className="rounded-xl border bg-card p-3 flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-semibold shrink-0">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm truncate">{s.full_name}</div>
                     <div className="text-[11px] text-muted-foreground truncate">{s.registration_id || '—'}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {s.teacher_name} · {s.subject_name}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Active since {new Date(s.active_since).toLocaleDateString()}
-                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 truncate">{s.teacher_name} · {s.subject_name}</div>
+                    <div className="text-[11px] text-muted-foreground">Active since {new Date(s.active_since).toLocaleDateString()}</div>
+                    <Button
+                      size="sm"
+                      className="h-7 mt-2 text-xs"
+                      onClick={() => {
+                        setUnbilledOpen(false);
+                        onSetupForStudent(s.student_id);
+                      }}
+                    >
+                      Set Up Plan
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    className="h-8 bg-amber-500 hover:bg-amber-600 text-white shrink-0"
-                    onClick={() => {
-                      setUnbilledOpen(false);
-                      onSetupForStudent(s.student_id);
-                    }}
-                  >
-                    Set Up Plan
-                  </Button>
                 </div>
               );
             })}
             {unbilled.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">All students with active assignments have billing plans.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center sm:col-span-2">Every active assignment has a billing plan.</p>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-6 italic">
-            Plans must be set up individually to confirm the correct fee per student
-          </p>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
