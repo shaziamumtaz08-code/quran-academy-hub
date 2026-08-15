@@ -13364,6 +13364,13 @@ export type Database = {
         Args: { _parent_id: string }
         Returns: string[]
       }
+      get_payout_rates: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          default_payout_rate: number
+          user_id: string
+        }[]
+      }
       get_plan_for_month: {
         Args: { _billing_month: string; _student_id: string }
         Returns: string
