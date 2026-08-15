@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchPayoutRate } from '@/lib/payoutRates';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -84,7 +85,7 @@ export function ProfileEditorPanel({ userId }: Props) {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, default_payout_rate, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
+        .select('id, full_name, email, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
         .eq('id', userId)
         .maybeSingle();
       if (error) throw error;
@@ -93,7 +94,8 @@ export function ProfileEditorPanel({ userId }: Props) {
         .select('bank_account_number, bank_iban, bank_name, bank_account_title, gov_id_number, gov_id_doc_url, emergency_contact_phone, whatsapp_number, date_of_birth')
         .eq('user_id', userId)
         .maybeSingle();
-      return { ...(data as any), ...(sensitive || {}) };
+      const rate = await fetchPayoutRate(userId);
+      return { ...(data as any), ...(sensitive || {}), default_payout_rate: rate };
     },
     enabled: !!userId,
   });

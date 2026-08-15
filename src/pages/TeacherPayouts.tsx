@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchPayoutRates } from '@/lib/payoutRates';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,10 +73,11 @@ export default function TeacherPayouts() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('course_class_staff')
-        .select('*, class:class_id(name, course_id, fee_amount, course:course_id(name)), profile:user_id(id, full_name, email, default_payout_rate)')
+        .select('*, class:class_id(name, course_id, fee_amount, course:course_id(name)), profile:user_id(id, full_name, email)')
         .in('staff_role', ['teacher', 'moderator']);
       if (error) throw error;
-      return data || [];
+      const rates = await fetchPayoutRates((data || []).map((r: any) => r.user_id));
+      return (data || []).map((r: any) => ({ ...r, default_payout_rate: rates.get(r.user_id) ?? null }));
     },
   });
 
@@ -110,7 +112,7 @@ export default function TeacherPayouts() {
 
       for (const staff of classStaff) {
         const pt = staff.payout_type || 'per_session';
-        const rate = Number(staff.profile?.default_payout_rate || 0);
+        const rate = Number(staff.default_payout_rate || 0);
         let amount = 0;
         let sessions = 0;
         let students = 0;

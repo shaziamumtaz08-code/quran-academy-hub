@@ -287,6 +287,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       division_id: plan.division_id,
       global_discount_id: plan.global_discount_id,
       manual_discount_reason: plan.manual_discount_reason,
+      change_reason: 'Undo of accidental billing plan deletion',
       created_at: plan.created_at,
     } as any);
     if (pErr) {

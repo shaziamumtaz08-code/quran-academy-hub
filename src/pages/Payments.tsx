@@ -168,6 +168,7 @@ export default function Payments() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planChangeReason, setPlanChangeReason] = useState('');
   const [viewingPlan, setViewingPlan] = useState<any | null>(null);
 
   // Invoice action modals state
@@ -651,7 +652,9 @@ export default function Payments() {
 
   const flatDiscountNeedsReason = !feeForm.manual_fee && flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
   const assignmentRequired = !editingPlanId && selectedStudentIds.length === 1;
+  const planReasonMissing = !!editingPlanId && planChangeReason.trim().length < 4;
   const canSavePlan = (editingPlanId || selectedStudentIds.length > 0)
+    && !planReasonMissing
     && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0))
     && !flatDiscountNeedsReason
     && (!assignmentRequired || !!selectedAssignmentId);
@@ -984,7 +987,7 @@ export default function Payments() {
           _net_recurring_fee: planFields.net_recurring_fee,
           _currency: planFields.currency,
           _effective_from: effectiveFrom,
-          _change_reason: 'Edited via plan editor',
+          _change_reason: planChangeReason.trim(),
           _assignment_id: (cur as any).assignment_id ?? null,
           _branch_id: (cur as any).branch_id ?? null,
           _division_id: (cur as any).division_id ?? null,
@@ -1022,6 +1025,7 @@ export default function Payments() {
           branch_id: branchId,
           division_id: divisionId,
           effective_from: effectiveFrom,
+          change_reason: `New billing plan created effective ${effectiveFrom}`,
         });
       }
       if (rows.length === 0) throw new Error('No plan created — the selected students have no unbilled active class, or more than one. Set those up individually.');
@@ -1066,6 +1070,7 @@ export default function Payments() {
     setBulkSearch('');
     setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '', manual_fee: false, manual_amount: '', manual_currency: 'USD' });
+    setPlanChangeReason('');
     setEditingPlanId(null);
     setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
   };
@@ -2752,6 +2757,19 @@ export default function Payments() {
                       </div>
                     );
                   })()}
+                  {editingPlanId && (
+                    <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
+                      <Label className="text-xs font-medium">Reason for this change <span className="text-destructive">*</span></Label>
+                      <p className="text-xs text-muted-foreground">Stored permanently in the billing audit trail. Minimum 4 characters.</p>
+                      <Textarea
+                        rows={2}
+                        value={planChangeReason}
+                        onChange={(e) => setPlanChangeReason(e.target.value)}
+                        placeholder="e.g. Fee revised after switching to 45-min sessions"
+                        className={planReasonMissing ? 'border-destructive' : ''}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="mt-8 space-y-3">
                   <Button onClick={() => savePlanMutation.mutate()} disabled={!canSavePlan || savePlanMutation.isPending} className="w-full gap-2" size="lg">

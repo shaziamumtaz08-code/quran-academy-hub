@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye, Sparkles, CalendarCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -63,6 +65,8 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
   const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [togglePlan, setTogglePlan] = useState<{ plan: BillingPlan; is_active: boolean } | null>(null);
+  const [toggleReason, setToggleReason] = useState('');
 
   const toggleSort = (col: 'student' | 'duration') => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -132,8 +136,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase.from('student_billing_plans').update({ is_active }).eq('id', id);
+    mutationFn: async ({ id, is_active, reason }: { id: string; is_active: boolean; reason: string }) => {
+      const { error } = await supabase
+        .from('student_billing_plans')
+        .update({ is_active, change_reason: reason } as any)
+        .eq('id', id);
       if (error) throw error;
       return { id, is_active };
     },
@@ -141,7 +148,11 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
       trackActivity({ action: 'billing_plan_updated', entityType: 'billing_plan', entityId: id, details: { toggled_active: is_active } });
+      setTogglePlan(null);
+      setToggleReason('');
+      toast({ title: is_active ? 'Plan activated' : 'Plan paused' });
     },
+    onError: (e: any) => toast({ title: 'Could not update plan', description: e.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
@@ -255,7 +266,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     {Number(plan.flat_discount) > 0 ? Number(plan.flat_discount).toLocaleString() : '—'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={plan.is_active} disabled={isArchivedPlan(plan)} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
+                    <Switch checked={plan.is_active} disabled={isArchivedPlan(plan)} onCheckedChange={checked => { setToggleReason(''); setTogglePlan({ plan, is_active: checked }); }} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {plan.effective_from ? new Date(plan.effective_from).toLocaleDateString() : '—'}
@@ -290,6 +301,36 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
       </div>
 
       {/* Delete Confirmation */}
+      <Dialog open={!!togglePlan} onOpenChange={o => { if (!o) { setTogglePlan(null); setToggleReason(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{togglePlan?.is_active ? 'Activate billing plan' : 'Pause billing plan'}</DialogTitle>
+            <DialogDescription>
+              Billing plan changes are financial records — a reason is stored in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="toggle-reason">Reason for change</Label>
+            <Textarea
+              id="toggle-reason"
+              value={toggleReason}
+              onChange={e => setToggleReason(e.target.value)}
+              placeholder="e.g. Student paused classes for Ramadan"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setTogglePlan(null); setToggleReason(''); }}>Cancel</Button>
+            <Button
+              disabled={toggleReason.trim().length < 4 || toggleMutation.isPending}
+              onClick={() => togglePlan && toggleMutation.mutate({ id: togglePlan.plan.id, is_active: togglePlan.is_active, reason: toggleReason.trim() })}
+            >
+              Save change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>

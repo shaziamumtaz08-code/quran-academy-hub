@@ -16,6 +16,7 @@ import { OrgPaymentAccountsTab } from '@/components/payment-accounts/OrgPaymentA
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchPayoutRates } from '@/lib/payoutRates';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -32,7 +33,7 @@ function DefaultPayoutRatesSection() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('profiles')
-        .select('id, full_name, email, default_payout_rate')
+        .select('id, full_name, email')
         .order('full_name');
       // filter to teachers via user_roles
       const { data: roles } = await (supabase as any)
@@ -40,7 +41,9 @@ function DefaultPayoutRatesSection() {
         .select('user_id')
         .eq('role', 'teacher');
       const teacherIds = new Set((roles || []).map((r: any) => r.user_id));
-      return (data || []).filter((p: any) => teacherIds.has(p.id));
+      const list = (data || []).filter((p: any) => teacherIds.has(p.id));
+      const rates = await fetchPayoutRates(list.map((p: any) => p.id));
+      return list.map((p: any) => ({ ...p, default_payout_rate: rates.get(p.id) ?? null }));
     },
   });
 

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchPayoutRate } from '@/lib/payoutRates';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,12 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
       // student's own teacher) can read it through this RPC.
       const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: teacherId! });
       if (profile && Array.isArray(wellbeing) && wellbeing[0]) profile = { ...profile, ...wellbeing[0] };
+
+      // Payout rate is admin/self only — never readable straight off profiles.
+      const payoutRate = await fetchPayoutRate(teacherId!);
+      if (profile) profile = { ...profile, default_payout_rate: payoutRate };
+
+
 
       const { data: sensitive } = await (supabase as any)
         .from('profile_sensitive_data')

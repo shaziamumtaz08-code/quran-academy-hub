@@ -52,7 +52,6 @@ export const PROFILE_SAFE_COLUMNS = [
   'gov_id_verified',
   'gov_id_verified_at',
   'gov_id_verified_by',
-  'default_payout_rate',
   // professional / employment
   'qualification',
   'specialization',
