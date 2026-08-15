@@ -13136,6 +13136,12 @@ export type Database = {
         Args: { _plan_id: string }
         Returns: undefined
       }
+      billing_plan_snapshot: {
+        Args: {
+          p: Database["public"]["Tables"]["student_billing_plans"]["Row"]
+        }
+        Returns: Json
+      }
       book_pool_seat: {
         Args: {
           end_time: string
