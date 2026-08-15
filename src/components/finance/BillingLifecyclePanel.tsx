@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Link2Off, CalendarX2, Receipt, Wallet, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Loader2, Link2Off, CalendarX2, Receipt, Wallet, ChevronDown, ChevronUp, CheckCircle2, FileWarning } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import CloseBillingPlanDialog from './CloseBillingPlanDialog';
 
@@ -77,7 +77,29 @@ export default function BillingLifecyclePanel() {
       return (data || []).filter((i: any) => {
         const plan = closed.find(p => p.id === i.plan_id);
         return plan && i.billing_month > String(plan.billing_close_date).slice(0, 7);
-      });
+  });
+
+  // Unpaid invoices on an assignment that already has a live plan, but which carry no plan_id.
+  // These predate the current plan and must be reviewed rather than left silently active.
+  const { data: orphanInvoices = [] } = useQuery({
+    queryKey: ['billing-orphan-invoices', plans.map(p => p.id).join(',')],
+    queryFn: async () => {
+      const live = plans.filter(p => p.assignment_id && ['open', 'pending_closure'].includes(p.lifecycle_status));
+      if (live.length === 0) return [];
+      const { data, error } = await supabase
+        .from('fee_invoices')
+        .select('id, assignment_id, student_id, billing_month, amount, amount_paid, currency, status')
+        .in('assignment_id', live.map(p => p.assignment_id))
+        .is('plan_id', null)
+        .in('status', ['pending', 'overdue'])
+        .is('voided_at', null)
+        .eq('is_archived', false);
+      if (error) throw error;
+      // Never surface anything that already carries a payment.
+      return (data || []).filter((i: any) => Number(i.amount_paid || 0) === 0);
+    },
+    enabled: plans.some(p => p.assignment_id),
+  });
     },
     enabled: plans.some(p => p.billing_close_date),
   });
@@ -141,6 +163,17 @@ export default function BillingLifecyclePanel() {
       })),
     });
 
+    if (orphanInvoices.length) out.push({
+      key: 'orphaned', severity: 'error', icon: FileWarning,
+      title: `${orphanInvoices.length} orphaned invoice${orphanInvoices.length === 1 ? '' : 's'} — predates current plan`,
+      hint: 'These unpaid invoices sit on an assignment that now has a live plan, but were raised before it. Void or correct each one.',
+      rows: orphanInvoices.map((i: any) => ({
+        id: i.id,
+        label: plans.find(p => p.assignment_id === i.assignment_id)?.profiles?.full_name || 'Unknown',
+        detail: `${i.billing_month} · ${i.currency} ${Number(i.amount).toLocaleString()} · ${i.status} · no plan link`,
+      })),
+    });
+
     if (pendingCredits.length) out.push({
       key: 'credits', severity: 'error', icon: Wallet,
       title: `${pendingCredits.length} credit/refund${pendingCredits.length === 1 ? '' : 's'} pending`,
@@ -164,7 +197,7 @@ export default function BillingLifecyclePanel() {
     });
 
     return out;
-  }, [plans, credits, overdueInvoices]);
+  }, [plans, credits, overdueInvoices, orphanInvoices]);
 
   if (isLoading) return null;
 
