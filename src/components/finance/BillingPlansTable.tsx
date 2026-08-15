@@ -204,7 +204,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
 
       {archiveView === 'archived' && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          Showing superseded billing plans only. These are read-only audit records created when a plan was revised from an effective date.
+          Showing archived billing plans: closed plans (student left / assignment ended) and superseded revisions. These are read-only audit records.
         </div>
       )}
 
