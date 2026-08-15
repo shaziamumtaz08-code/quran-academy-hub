@@ -1127,6 +1127,10 @@ export default function Payments() {
       }
     };
 
+    // Org default currency — invoices must never fall back to a hardcoded USD.
+    const { data: orgRow } = await supabase.from('organizations').select('settings').limit(1).maybeSingle();
+    const orgDefaultCurrency = ((orgRow?.settings as any)?.default_currency as string) || 'PKR';
+
     // 1) Billing plans
     let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id, effective_from').eq('is_active', true);
     if (branchId) pq = pq.eq('branch_id', branchId);
@@ -1146,6 +1150,11 @@ export default function Payments() {
     }
 
     const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
+    // Active plan keyed by assignment — every generated invoice must carry the plan that produced it.
+    const activePlanByAssignment = new Map<string, any>();
+    (plans || []).forEach((p: any) => {
+      if (p.assignment_id && !activePlanByAssignment.has(p.assignment_id)) activePlanByAssignment.set(p.assignment_id, p);
+    });
     let planAssignmentMap: Record<string, any> = {};
     if (planAssignmentIds.length > 0) {
       const { data: planAssigns } = await supabase.from('student_teacher_assignments')
@@ -1212,10 +1221,12 @@ export default function Payments() {
         const prorated = computeProration(Number(a.calculated_monthly_fee), startDate, endDate, targetMonth);
         if (!prorated) return;
         const existingInv = existingAssignmentMap.get(a.id);
-        if (existingInv) { evaluateExisting(existingInv, prorated, a.fee_packages?.currency || 'USD'); return; }
+        const linkedPlan = activePlanByAssignment.get(a.id) || null;
+        const assignCurrency = linkedPlan?.currency || a.fee_packages?.currency || orgDefaultCurrency;
+        if (existingInv) { evaluateExisting(existingInv, prorated, assignCurrency); return; }
         newInvoices.push({
-          assignment_id: a.id, student_id: a.student_id,
-          amount: prorated.amount, currency: a.fee_packages?.currency || 'USD',
+          assignment_id: a.id, plan_id: linkedPlan?.id ?? null, student_id: a.student_id,
+          amount: prorated.amount, currency: assignCurrency,
           billing_month: targetMonth, due_date: `${targetMonth}-10`,
           branch_id: a.branch_id, division_id: a.division_id,
           period_from: prorated.period_from, period_to: prorated.period_to,
