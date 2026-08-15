@@ -418,6 +418,23 @@ export function UnifiedAttendanceForm({
   });
   const isHolidayDate = !!holidayRow;
 
+  // Recent holidays, used so the auto-selected default date never lands on an off day.
+  const { data: recentHolidays } = useQuery({
+    queryKey: ['attendance-recent-holidays'],
+    queryFn: async () => {
+      const from = new Date();
+      from.setDate(from.getDate() - 40);
+      const { data } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date')
+        .gte('holiday_date', format(from, 'yyyy-MM-dd'));
+      return ((data || []) as unknown as { holiday_date: string }[]).map(h => h.holiday_date);
+    },
+    enabled: open,
+  });
+  const recentHolidaySet = useMemo(() => new Set(recentHolidays || []), [recentHolidays]);
+
+
   /** Teacher explicitly confirmed an extra / make-up class on an off day. */
   const [allowOffDay, setAllowOffDay] = useState(false);
   useEffect(() => { setAllowOffDay(false); }, [classDate, open]);
@@ -551,23 +568,29 @@ export function UnifiedAttendanceForm({
 
 
   // Get scheduled days array
+  const scheduleLoaded = scheduleData !== undefined;
   const scheduledDays = useMemo(() => {
     if (!scheduleData) return [];
-    return scheduleData.map(s => s.day_of_week.toLowerCase());
+    return Array.from(new Set(scheduleData.map(s => s.day_of_week.toLowerCase())));
   }, [scheduleData]);
+  /** Student has no active weekly slot at all — every day is an off day for them. */
+  const hasNoSchedule = scheduleLoaded && scheduledDays.length === 0;
 
   const { activeModelType } = useDivision();
   const isOneToOne = activeModelType === 'one_to_one';
 
   // Check if selected date is a scheduled day for this student.
-  // Off days (weekends / non-slot days) are no longer silently allowed — the teacher
-  // must tick the "extra / make-up class" confirmation to mark them.
+  // Off days (weekends / non-slot days) are never silently allowed — the teacher
+  // must tick the "extra / make-up class" confirmation to mark them. A student with
+  // no active schedule rows counts as unscheduled too (previously this silently
+  // allowed any date).
   const isScheduledDay = useMemo(() => {
-    if (!classDate || scheduledDays.length === 0) return true;
+    if (!classDate || !scheduleLoaded) return true;
+    if (scheduledDays.length === 0) return false;
     const dayIndex = getDay(parseISO(classDate));
     const dayName = DAY_NAMES[dayIndex];
     return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays]);
+  }, [classDate, scheduledDays, scheduleLoaded]);
 
   /** Explicit date passed in (e.g. "Mark now" on a missed slot) wins over any default. */
   useEffect(() => {
@@ -579,18 +602,20 @@ export function UnifiedAttendanceForm({
   useEffect(() => {
     if (!open || isEdit || initialDate || scheduledDays.length === 0) return;
     const today = new Date();
-    const todayName = DAY_NAMES[getDay(today)];
-    if (scheduledDays.includes(todayName)) return; // today is fine
-    for (let i = 1; i <= 7; i++) {
+    const isUsable = (d: Date) =>
+      scheduledDays.includes(DAY_NAMES[getDay(d)]) && !recentHolidaySet.has(format(d, 'yyyy-MM-dd'));
+    if (isUsable(today)) return; // today is fine
+    for (let i = 1; i <= 14; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      if (scheduledDays.includes(DAY_NAMES[getDay(d)])) {
+      if (isUsable(d)) {
         setClassDate(format(d, 'yyyy-MM-dd'));
         return;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEdit, initialDate, scheduledDays.join(',')]);
+  }, [open, isEdit, initialDate, scheduledDays.join(','), recentHolidays]);
+
 
 
   // Get scheduled time for the selected day. Falls back to the student's usual slot
@@ -1223,7 +1248,9 @@ export function UnifiedAttendanceForm({
                 <p>
                   {isHolidayDate
                     ? <>This date is an academy holiday{holidayRow?.name ? ` — ${holidayRow.name}` : ''}. Classes are off.</>
-                    : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
+                    : hasNoSchedule
+                      ? <>This student has no active weekly schedule, so no day counts as a class day. Set up their schedule first.</>
+                      : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
                 </p>
                 <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
                   <input
