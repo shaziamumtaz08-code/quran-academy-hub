@@ -1205,15 +1205,30 @@ export function UnifiedAttendanceForm({
           )}
 
 
-          {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
-          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
+          {/* Off day / holiday guard — hidden for leave, holiday and reschedule rows */}
+          {(isHolidayDate || !isScheduledDay) && !isEdit && !hasDuplicateAttendance && !isFutureDate
+            && !isLeaveStatus && selectedStatus !== 'holiday' && !requiresReschedule(selectedStatus) && (
             <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.
+              <AlertDescription className="space-y-2">
+                <p>
+                  {isHolidayDate
+                    ? <>This date is an academy holiday{holidayRow?.name ? ` — ${holidayRow.name}` : ''}. Classes are off.</>
+                    : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
+                </p>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowOffDay}
+                    onChange={(e) => setAllowOffDay(e.target.checked)}
+                    className="h-4 w-4 accent-amber-600"
+                  />
+                  This was an extra / make-up class — let me mark it
+                </label>
               </AlertDescription>
             </Alert>
           )}
+
 
           {/* Future Date Warning */}
           {isFutureDate && !canAssignFutureDate && (
