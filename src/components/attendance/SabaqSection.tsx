@@ -226,84 +226,67 @@ export function SabaqSection({
 
 
   return (
-    <div className="bg-card rounded-xl p-5 space-y-5">
+    <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3 shadow-sm">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <Book className="h-5 w-5 text-primary" />
-        <h3 className="text-primary font-semibold text-base">Sabaq (New Reading)</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-lg ml-auto"
-          onClick={() => setPickerOpen(true)}
-        >
-          <BookOpenCheck className="h-4 w-4 mr-1.5" />
-          Pick on Quran page
-        </Button>
+      <div className="flex items-center gap-2">
+        <Book className="h-4 w-4 text-teal-600" />
+        <h3 className="font-semibold text-sm text-foreground">Today's Lesson</h3>
+        {totalCalculation.value > 0 && (
+          <span className="ml-auto rounded-full bg-teal-600/10 text-teal-700 dark:text-teal-300 px-2.5 py-0.5 text-[11px] font-semibold">
+            {totalCalculation.value} {totalCalculation.label.replace('Total ', '')}
+          </span>
+        )}
       </div>
 
-      <QuranPagePickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        markerType={markerType}
-        resumeKey={resumeKey}
-        resumeAyah={
-          getSurahByName(ayahToSurah)?.number && parseInt(ayahToNumber) > 0
-            ? { surah: getSurahByName(ayahToSurah)!.number, ayah: parseInt(ayahToNumber) }
-            : resumeAyah
-        }
-
-        onUseLesson={applyPickedSegment}
-        onAddSegment={
-          onExtraSegmentsChange
-            ? (seg) => onExtraSegmentsChange([...extraSegments, seg])
-            : undefined
-        }
+      {/* Two views of the same field */}
+      <SegmentedControl
+        size="sm"
+        aria-label="Lesson entry method"
+        value={tab}
+        onChange={(v) => setTab(v)}
+        options={[
+          { value: 'type', label: 'Type it', icon: <Hash className="h-3.5 w-3.5" /> },
+          { value: 'page', label: 'Tap on page', icon: <BookOpenCheck className="h-3.5 w-3.5" /> },
+        ]}
       />
-      
-      {/* Marker Toggle Row */}
-      <div className="space-y-2">
-        <Label className="text-muted-foreground text-xs font-medium">Select Marker</Label>
-        <ToggleGroup 
-          type="single" 
-          value={markerType} 
-          onValueChange={(v) => v && onMarkerTypeChange(v as MarkerType)}
-          className="justify-start gap-2"
-        >
-          <ToggleGroupItem 
-            value="ruku" 
-            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
-          >
-            <Grid3X3 className="h-4 w-4 mr-1.5" />
-            Ruku
-          </ToggleGroupItem>
-          <ToggleGroupItem 
-            value="ayah" 
-            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
-          >
-            <Hash className="h-4 w-4 mr-1.5" />
-            Ayah
-          </ToggleGroupItem>
-          <ToggleGroupItem 
-            value="quarter" 
-            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
-          >
-            <Grid3X3 className="h-4 w-4 mr-1.5" />
-            Quarter
-          </ToggleGroupItem>
-          {allowJuz && (
-            <ToggleGroupItem
-              value="juz"
-              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
-            >
-              <Layers className="h-4 w-4 mr-1.5" />
-              Juz
-            </ToggleGroupItem>
-          )}
-        </ToggleGroup>
 
-      </div>
+      {tab === 'page' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-900/50 p-2 sm:p-3">
+          <QuranPageView
+            compact
+            markerType={markerType}
+            resumeKey={resumeKey}
+            resumeAyah={
+              getSurahByName(ayahToSurah)?.number && parseInt(ayahToNumber) > 0
+                ? { surah: getSurahByName(ayahToSurah)!.number, ayah: parseInt(ayahToNumber) }
+                : resumeAyah
+            }
+            onUseLesson={(seg) => { applyPickedSegment(seg); setTab('type'); }}
+            onAddSegment={
+              onExtraSegmentsChange
+                ? (seg) => onExtraSegmentsChange([...extraSegments, seg])
+                : undefined
+            }
+          />
+        </div>
+      )}
+
+      {tab === 'type' && (
+      <div className="space-y-3">
+      {/* Marker */}
+      <SegmentedControl
+        size="sm"
+        aria-label="Lesson marker"
+        value={markerType}
+        onChange={(v) => onMarkerTypeChange(v as MarkerType)}
+        options={[
+          { value: 'ruku', label: 'Ruku' },
+          { value: 'ayah', label: 'Ayah' },
+          { value: 'quarter', label: 'Quarter' },
+          ...(allowJuz ? [{ value: 'juz', label: 'Juz' }] : []),
+        ] as any}
+      />
+
 
       {/* Ruku Mode Inputs */}
       {markerType === 'ruku' && (
