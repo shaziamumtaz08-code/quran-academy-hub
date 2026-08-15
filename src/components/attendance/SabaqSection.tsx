@@ -551,25 +551,13 @@ export function SabaqSection({
           </Button>
         </div>
       )}
-
-      {/* Total Calculation Row */}
-      <div className="pt-3 border-t border-sky-700">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-sky-900/50 rounded-lg px-4 py-3">
-            <span className="text-muted-foreground text-sm font-medium">{totalCalculation.label}</span>
-          </div>
-          <div className="bg-card rounded-lg px-4 py-3 text-center">
-            <span className="text-foreground font-bold text-lg">
-              {totalCalculation.value > 0 ? totalCalculation.value : '—'}
-            </span>
-          </div>
-        </div>
       </div>
+      )}
 
       {/* Normalized preview — exactly what will be saved and shown everywhere */}
       {normalizedPreview && (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Lesson will be recorded as</p>
+        <div className="rounded-xl border border-teal-600/30 bg-teal-600/5 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Will be recorded as</p>
           <p className="text-sm font-semibold text-foreground">{normalizedPreview}</p>
         </div>
       )}
@@ -577,3 +565,4 @@ export function SabaqSection({
 
   );
 }
+
