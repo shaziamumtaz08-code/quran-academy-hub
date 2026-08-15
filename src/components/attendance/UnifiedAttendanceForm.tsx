@@ -1161,7 +1161,7 @@ export function UnifiedAttendanceForm({
     // When repeating, a written explanation (reason + what was done) is required.
     if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
     return reasons;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, allowOffDay, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
   const isFormValid = blockingReasons.length === 0;
 
@@ -1269,15 +1269,10 @@ export function UnifiedAttendanceForm({
                       ? <>This student has no active weekly schedule, so no day counts as a class day. Set up their schedule first.</>
                       : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
                 </p>
-                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allowOffDay}
-                    onChange={(e) => setAllowOffDay(e.target.checked)}
-                    className="h-4 w-4 accent-amber-600"
-                  />
-                  This was an extra / make-up class — let me mark it
-                </label>
+                <p className="text-xs">
+                  Attendance can only be marked on class days. If a make-up class ran,
+                  set the status to <span className="font-medium">Rescheduled</span> instead.
+                </p>
               </AlertDescription>
             </Alert>
           )}
@@ -1333,13 +1328,33 @@ export function UnifiedAttendanceForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-foreground">Class Date <span className="text-destructive">*</span></Label>
-                <Input
-                  type="date"
-                  value={classDate}
-                  onChange={(e) => setClassDate(e.target.value)}
-                  max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
-                  className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
-                />
+                {!isEdit && !isLeaveStatus && selectedStatus !== 'holiday' && eligibleDates.length > 0 ? (
+                  <>
+                    <Select value={classDate} onValueChange={setClassDate}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pick a class day" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {format(parseISO(d), 'EEE, dd MMM yyyy')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Only this student's scheduled class days are listed.
+                    </p>
+                  </>
+                ) : (
+                  <Input
+                    type="date"
+                    value={classDate}
+                    onChange={(e) => setClassDate(e.target.value)}
+                    max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
+                    className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
