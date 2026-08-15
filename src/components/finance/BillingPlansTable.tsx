@@ -255,7 +255,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     {Number(plan.flat_discount) > 0 ? Number(plan.flat_discount).toLocaleString() : '—'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={plan.is_active} disabled={!!plan.superseded_by} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
+                    <Switch checked={plan.is_active} disabled={isArchivedPlan(plan)} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {plan.effective_from ? new Date(plan.effective_from).toLocaleDateString() : '—'}
