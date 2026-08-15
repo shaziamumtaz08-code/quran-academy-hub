@@ -49,7 +49,7 @@ export type AttendanceStatus =
   | 'student_rescheduled' 
   | 'holiday';
 
-type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'periods' | 'family' | 'travel' | 'other';
+type ReasonCategory = string;
 type RescheduleReason = 'teacher_unavailable' | 'student_unavailable' | 'tech_issue' | 'power_outage' | 'emergency' | 'holiday_overlap' | 'other';
 
 export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
@@ -63,16 +63,56 @@ export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'holiday', label: 'Holiday' },
 ];
 
-const REASON_CATEGORIES: { value: ReasonCategory; label: string; femaleOnly?: boolean }[] = [
-  { value: 'sick', label: 'Sick' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'emergency', label: 'Emergency' },
-  { value: 'family', label: 'Family Matter' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'internet_issue', label: 'Internet Issue' },
-  { value: 'periods', label: 'Periods', femaleOnly: true },
-  { value: 'other', label: 'Other' },
-];
+type ReasonOption = { value: ReasonCategory; label: string; femaleOnly?: boolean };
+
+/** Label lookup for any legacy value that may exist in older records. */
+const REASON_LABELS: Record<string, string> = {
+  sick: 'Sick / unwell',
+  personal: 'Personal',
+  emergency: 'Emergency',
+  family: 'Family matter',
+  travel: 'Travel',
+  internet_issue: 'Internet issue',
+  power_outage: 'Power outage / load-shedding',
+  periods: 'Periods',
+  school_exam: 'School / college exams',
+  religious: 'Religious occasion',
+  medical_appointment: 'Medical appointment',
+  no_response: 'No response / did not join',
+  overslept: 'Overslept / woke up late',
+  guests: 'Guests at home',
+  other: 'Other',
+};
+
+const opt = (value: string, femaleOnly?: boolean): ReasonOption => ({
+  value,
+  label: REASON_LABELS[value] || value,
+  femaleOnly,
+});
+
+/** Reason lists differ per status — restored from the legacy attendance forms. */
+const REASONS_BY_STATUS: Record<string, ReasonOption[]> = {
+  student_absent: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('internet_issue'), opt('power_outage'),
+    opt('no_response'), opt('overslept'), opt('school_exam'),
+    opt('periods', true), opt('other'),
+  ],
+  student_leave: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('school_exam'), opt('religious'),
+    opt('periods', true), opt('other'),
+  ],
+  teacher_absent: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('internet_issue'), opt('power_outage'), opt('other'),
+  ],
+  teacher_leave: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('medical_appointment'), opt('religious'),
+    opt('guests'), opt('other'),
+  ],
+};
 
 const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
   { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
@@ -354,14 +394,29 @@ export function UnifiedAttendanceForm({
   });
   const studentGender = (student.gender || (studentProfile as any)?.gender || '').toString().toLowerCase();
   const visibleReasonCategories = useMemo(() => {
-    return REASON_CATEGORIES.filter(r => !r.femaleOnly || studentGender === 'female');
-  }, [studentGender]);
+    const base = (REASONS_BY_STATUS[selectedStatus] || REASONS_BY_STATUS.student_absent)
+      .filter(r => !r.femaleOnly || studentGender === 'female');
+    // Keep any legacy value already saved on the record selectable.
+    if (reasonCategory && !base.some(r => r.value === reasonCategory)) {
+      return [...base, { value: reasonCategory, label: REASON_LABELS[reasonCategory] || reasonCategory }];
+    }
+    return base;
+  }, [studentGender, selectedStatus, reasonCategory]);
 
   // Sync rescheduleBy with selected status
   useEffect(() => {
     if (selectedStatus === 'rescheduled') setRescheduleBy('teacher');
     else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
   }, [selectedStatus]);
+
+  // Drop a reason that isn't offered for the newly selected status
+  useEffect(() => {
+    if (!reasonCategory) return;
+    const list = REASONS_BY_STATUS[selectedStatus];
+    if (list && !list.some(r => r.value === reasonCategory)) setReasonCategory('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStatus]);
+
 
   // Fetch student's schedule
   const { data: scheduleData } = useQuery({
@@ -1487,7 +1542,13 @@ export function UnifiedAttendanceForm({
                 </div>
               )}
               <div className="space-y-2">
-                <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
+                <Label className="text-foreground">
+                  {selectedStatus === 'student_absent' && 'Why was the student absent?'}
+                  {selectedStatus === 'student_leave' && 'Reason for student leave'}
+                  {selectedStatus === 'teacher_absent' && 'Why was the teacher absent?'}
+                  {selectedStatus === 'teacher_leave' && 'Reason for teacher leave'}
+                  {' '}<span className="text-destructive">*</span>
+                </Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
                   <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
                   <SelectContent>
