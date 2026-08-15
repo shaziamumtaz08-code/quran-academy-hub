@@ -98,6 +98,17 @@ export function QuranPageView({
   const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
   const [searching, setSearching] = useState(false);
   const [resumedAt, setResumedAt] = useState<number | null>(null);
+  // Reader font size (persisted). 1 = default, up to 1.8x for older/low-vision readers.
+  const [fontScale, setFontScale] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1.15;
+    const saved = Number(window.localStorage.getItem('mushaf:fontScale'));
+    return saved >= 0.8 && saved <= 2 ? saved : 1.15;
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('mushaf:fontScale', String(fontScale)); } catch { /* ignore */ }
+  }, [fontScale]);
+  const baseFontRem = (presentation ? 1.6 : 1.25) * fontScale;
+
   const resumed = useRef(false);
   const touchX = useRef<number | null>(null);
 
@@ -303,6 +314,44 @@ export function QuranPageView({
         </Button>
       </div>
 
+      {/* Text size control */}
+      <div className="flex items-center justify-end gap-2" dir="ltr">
+        <span className="text-xs text-muted-foreground">Text size</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          aria-label="Decrease Quran text size"
+          disabled={fontScale <= 0.8}
+          onClick={() => setFontScale((s) => Math.max(0.8, Number((s - 0.1).toFixed(2))))}
+        >
+          <span className="text-sm">A-</span>
+        </Button>
+        <span className="text-xs tabular-nums w-10 text-center text-muted-foreground">{Math.round(fontScale * 100)}%</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          aria-label="Increase Quran text size"
+          disabled={fontScale >= 2}
+          onClick={() => setFontScale((s) => Math.min(2, Number((s + 0.1).toFixed(2))))}
+        >
+          <span className="text-base">A+</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => setFontScale(1.15)}
+        >
+          Reset
+        </Button>
+      </div>
+
+
 
       {/* Mushaf page */}
       <div className="book-stage">
@@ -396,13 +445,12 @@ export function QuranPageView({
                       <span className="block h-6" aria-hidden />
                     ) : (
                       <span
-                        className={cn(
-                          'mushaf-text mushaf-line',
-                          presentation
-                            ? 'text-[1.35rem] sm:text-4xl'
-                            : 'text-[1.05rem] sm:text-2xl'
-                        )}
+                        className="mushaf-text mushaf-line"
+                        style={{
+                          fontSize: `clamp(${(baseFontRem * 0.72).toFixed(2)}rem, ${(baseFontRem * 0.42).toFixed(2)}rem + 2.4vw, ${baseFontRem.toFixed(2)}rem)`,
+                        }}
                       >
+
 
                         {splitAyahMarks(line).map((tok, i) =>
                           tok.ayah == null ? (
