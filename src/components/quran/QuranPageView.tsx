@@ -309,9 +309,13 @@ export function QuranPageView({
                 const selected = isSelected(line);
                 const isStart = start?.page === page && start.line.line_number === line.line_number;
                 const isEnd = end?.page === page && end.line.line_number === line.line_number;
+                const found = isHighlighted(line);
                 return (
                   <div
                     key={line.id}
+                    ref={(el) => {
+                      if (found && el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }}
                     role={selectable ? 'button' : undefined}
                     tabIndex={selectable ? 0 : undefined}
                     onClick={() => selectable && handleTap(line)}
@@ -325,9 +329,11 @@ export function QuranPageView({
                       'relative w-full rounded-md px-1 sm:px-3 py-1 sm:py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
                       selected && 'bg-primary/10',
+                      found && 'bg-accent/25 ring-2 ring-accent',
                       (isStart || isEnd) && 'bg-primary/15 ring-1 ring-primary/50'
                     )}
                   >
+
                     {(isStart || isEnd) && (
                       <span
                         className="absolute -top-1 left-1 z-10 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
