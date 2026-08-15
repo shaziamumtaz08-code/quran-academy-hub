@@ -279,7 +279,7 @@ export function QuranPageView({
                       }
                     }}
                     className={cn(
-                      'relative w-full rounded-md px-3 py-1.5 transition-colors text-center',
+                      'relative w-full rounded-md px-1 sm:px-3 py-1 sm:py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
                       selected && 'bg-primary/10',
                       (isStart || isEnd) && 'bg-primary/15 ring-1 ring-primary/50'
