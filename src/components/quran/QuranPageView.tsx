@@ -62,6 +62,10 @@ interface Props {
   /** Marker type the teacher is using — the emitted segment matches it. */
   markerType?: LessonMarkerType;
   initialPage?: number;
+  /** Where the teacher stopped last time — the view opens there. */
+  resumeAyah?: { surah: number; ayah: number } | null;
+  /** Scopes the remembered page (e.g. per student). */
+  resumeKey?: string;
   /** Called with the normalized segment when the teacher confirms. */
   onUseLesson?: (segment: LessonSegment) => void;
   /** Called to append the selection as an additional segment. */
@@ -74,11 +78,14 @@ interface Props {
 export function QuranPageView({
   markerType = 'ayah',
   initialPage = 1,
+  resumeAyah = null,
+  resumeKey = 'default',
   onUseLesson,
   onAddSegment,
   presentation = false,
   className,
 }: Props) {
+  const storageKey = `mushaf:lastPage:${resumeKey}`;
   const [editionId, setEditionId] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
@@ -90,7 +97,10 @@ export function QuranPageView({
   const [preview, setPreview] = useState<LessonSegment | null>(null);
   const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
   const [searching, setSearching] = useState(false);
+  const [resumedAt, setResumedAt] = useState<number | null>(null);
+  const resumed = useRef(false);
   const touchX = useRef<number | null>(null);
+
 
 
   useEffect(() => {
