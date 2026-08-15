@@ -197,6 +197,8 @@ export default function Payments() {
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
+  const [lockAssignment, setLockAssignment] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [feeForm, setFeeForm] = useState({
     base_package_id: '',
@@ -292,6 +294,64 @@ export default function Payments() {
     },
     enabled: setupOpen,
   });
+
+  // Active assignments (one billing plan belongs to exactly one assignment)
+  const { data: activeAssignments = [] } = useQuery({
+    queryKey: ['active-assignments-for-fees', branchId, divisionId, setupOpen],
+    queryFn: async () => {
+      let q = supabase
+        .from('student_teacher_assignments')
+        .select(`id, student_id, created_at, effective_from_date,
+                 teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
+                 subjects!student_teacher_assignments_subject_id_fkey(name)`)
+        .eq('status', 'active');
+      if (divisionId) q = q.eq('division_id', divisionId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []).map((a: any) => ({
+        id: a.id as string,
+        student_id: a.student_id as string,
+        teacher_name: a.teacher?.full_name || '—',
+        subject_name: a.subjects?.name || '—',
+        started_at: (a.effective_from_date || a.created_at) as string,
+      }));
+    },
+    enabled: setupOpen,
+  });
+
+  // Assignments that already carry a live plan — cannot be double-billed
+  const { data: billedAssignmentIds = [] } = useQuery({
+    queryKey: ['billed-assignment-ids', setupOpen],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_billing_plans')
+        .select('assignment_id, lifecycle_status')
+        .eq('is_active', true)
+        .not('assignment_id', 'is', null);
+      if (error) throw error;
+      return (data || [])
+        .filter((p: any) => p.lifecycle_status !== 'closed')
+        .map((p: any) => p.assignment_id as string);
+    },
+    enabled: setupOpen,
+  });
+  const billedAssignmentSet = useMemo(() => new Set(billedAssignmentIds), [billedAssignmentIds]);
+
+  const currentStudentAssignments = useMemo(() => {
+    if (selectedStudentIds.length !== 1) return [];
+    return activeAssignments.filter(a => a.student_id === selectedStudentIds[0]);
+  }, [activeAssignments, selectedStudentIds]);
+
+  // Auto-select when the student has exactly one free assignment
+  useEffect(() => {
+    if (editingPlanId || lockAssignment) return;
+    if (selectedStudentIds.length !== 1) { setSelectedAssignmentId(''); return; }
+    const free = currentStudentAssignments.filter(a => !billedAssignmentSet.has(a.id));
+    if (free.length === 1) setSelectedAssignmentId(free[0].id);
+    else if (!currentStudentAssignments.some(a => a.id === selectedAssignmentId)) setSelectedAssignmentId('');
+  }, [currentStudentAssignments, billedAssignmentSet, selectedStudentIds, editingPlanId, lockAssignment]);
+
+
 
   const { data: packages = [] } = useQuery({
     queryKey: ['fee-packages-for-setup', branchId, divisionId],
@@ -590,7 +650,11 @@ export default function Payments() {
   const feeCurrency = feeForm.manual_fee ? feeForm.manual_currency : (selectedPkg?.currency || 'USD');
 
   const flatDiscountNeedsReason = !feeForm.manual_fee && flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
-  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0) && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0)) && !flatDiscountNeedsReason;
+  const assignmentRequired = !editingPlanId && selectedStudentIds.length === 1;
+  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0)
+    && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0))
+    && !flatDiscountNeedsReason
+    && (!assignmentRequired || !!selectedAssignmentId);
 
   const filteredStudents = useMemo(() => {
     const search = studentSearch.toLowerCase();
@@ -905,11 +969,9 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
-        // Billing is independent from teaching assignments. The RPC creates a new
-        // version, archives the old plan and affected unpaid invoices, then generates
-        // replacement invoices from the plan's own effective date. Paid invoices stay locked.
+        // A plan belongs to exactly one assignment — the revision keeps that link.
         const { data: cur, error: curErr } = await supabase.from('student_billing_plans')
-          .select('student_id, branch_id, division_id, duration_surcharge')
+          .select('student_id, branch_id, division_id, duration_surcharge, assignment_id')
           .eq('id', editingPlanId).single();
         if (curErr) throw curErr;
 
@@ -923,7 +985,7 @@ export default function Payments() {
           _currency: planFields.currency,
           _effective_from: effectiveFrom,
           _change_reason: 'Edited via plan editor',
-          _assignment_id: null,
+          _assignment_id: (cur as any).assignment_id ?? null,
           _branch_id: (cur as any).branch_id ?? null,
           _division_id: (cur as any).division_id ?? null,
           _duration_surcharge: planFields.duration_surcharge ?? (cur as any).duration_surcharge ?? 0,
@@ -932,21 +994,56 @@ export default function Payments() {
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
-      const rows = selectedStudentIds.map(sid => ({
-        student_id: sid,
-        ...planFields,
-        is_active: true,
-        branch_id: branchId,
-        division_id: divisionId,
-        effective_from: effectiveFrom,
-      }));
+
+      // Every plan must be attached to exactly one active assignment (class).
+      const skipped: string[] = [];
+      const rows: any[] = [];
+      for (const sid of selectedStudentIds) {
+        let assignmentId: string | null = null;
+        if (selectedStudentIds.length === 1) {
+          assignmentId = selectedAssignmentId || null;
+          if (!assignmentId) throw new Error('Select the class (assignment) this plan bills.');
+        } else {
+          const free = activeAssignments.filter(a => a.student_id === sid && !billedAssignmentSet.has(a.id));
+          if (free.length === 1) assignmentId = free[0].id;
+          else {
+            skipped.push(sid);
+            continue;
+          }
+        }
+        if (billedAssignmentSet.has(assignmentId)) {
+          throw new Error('That class already has a live billing plan. Edit the existing plan instead.');
+        }
+        rows.push({
+          student_id: sid,
+          assignment_id: assignmentId,
+          ...planFields,
+          is_active: true,
+          branch_id: branchId,
+          division_id: divisionId,
+          effective_from: effectiveFrom,
+        });
+      }
+      if (rows.length === 0) throw new Error('No plan created — the selected students have no unbilled active class, or more than one. Set those up individually.');
       const { error } = await supabase.from('student_billing_plans').insert(rows);
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === '23505') throw new Error('A live billing plan already exists for that class.');
+        throw error;
+      }
+      if (skipped.length > 0) {
+        toast({
+          title: `${skipped.length} student(s) skipped`,
+          description: 'They have no unbilled active class, or more than one — set those up individually so each plan is linked to the right class.',
+        });
+      }
       return rows.length;
+
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['unbilled-students-audit'] });
+      queryClient.invalidateQueries({ queryKey: ['billed-assignment-ids'] });
       if (editingPlanId) queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
       toast({ title: editingPlanId ? `Billing plan revised — effective ${effectiveFrom}. Affected month is prorated, future pending invoices reissued.` : `${count} billing plan(s) saved successfully` });
       if (editingPlanId) {
@@ -962,6 +1059,8 @@ export default function Payments() {
 
   const resetFeeForm = () => {
     setSelectedStudentIds([]);
+    setSelectedAssignmentId('');
+    setLockAssignment(false);
     setStudentSearch('');
     setSelectionMode('individual');
     setBulkSearch('');
@@ -2444,7 +2543,47 @@ export default function Payments() {
                   )}
                 </div>
 
+                {/* Class (assignment) this plan bills — one plan per assignment */}
+                {!editingPlanId && selectedStudentIds.length === 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Class (assignment) *</Label>
+                    {currentStudentAssignments.length === 0 ? (
+                      <p className="text-xs text-destructive">
+                        This student has no active assignment. Create the assignment first — billing is attached to a class.
+                      </p>
+                    ) : (
+                      <>
+                        <Select value={selectedAssignmentId} onValueChange={setSelectedAssignmentId} disabled={lockAssignment}>
+                          <SelectTrigger><SelectValue placeholder="Select the class this plan bills" /></SelectTrigger>
+                          <SelectContent>
+                            {currentStudentAssignments.map(a => {
+                              const taken = billedAssignmentSet.has(a.id) && a.id !== selectedAssignmentId;
+                              return (
+                                <SelectItem key={a.id} value={a.id} disabled={taken}>
+                                  {a.subject_name} · {a.teacher_name}
+                                  {a.started_at ? ` · since ${format(new Date(a.started_at), 'dd MMM yyyy')}` : ''}
+                                  {taken ? ' — already has a plan' : ''}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Each active class is billed by exactly one plan. A student with two classes needs two plans.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {!editingPlanId && selectedStudentIds.length > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Bulk mode attaches each plan to the student's single unbilled active class. Students with more than one
+                    unbilled class are skipped — set those up individually.
+                  </p>
+                )}
+
                 <Separator />
+
 
                 {/* Manual Fee Toggle */}
                 <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
