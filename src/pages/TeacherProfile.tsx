@@ -80,6 +80,12 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
       const { data: wellbeing } = await (supabase as any).rpc('get_profile_wellbeing', { _user_id: teacherId! });
       if (profile && Array.isArray(wellbeing) && wellbeing[0]) profile = { ...profile, ...wellbeing[0] };
 
+      // Payout rate is admin/self only — never readable straight off profiles.
+      const payoutRate = await fetchPayoutRate(teacherId!);
+      if (profile) profile = { ...profile, default_payout_rate: payoutRate };
+
+
+
       const { data: sensitive } = await (supabase as any)
         .from('profile_sensitive_data')
         .select('bank_name, bank_account_title, bank_account_number, bank_iban')
