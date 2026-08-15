@@ -1684,59 +1684,56 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Voice Note */}
-          <VoiceNoteRecorder
-            onUploadComplete={setVoiceNoteUrl}
-            uploadPath={`${student.id}/${classDate}`}
-          />
-
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Remarks</Label>
-            <Textarea 
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Any additional notes..."
-              className=""
-            />
-          </div>
+          {/* Voice note & remarks — collapsed by default */}
+          <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card shadow-sm px-3">
+            <AccordionItem value="notes" className="border-0">
+              <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                Voice note &amp; remarks (optional)
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pb-4">
+                <VoiceNoteRecorder
+                  onUploadComplete={setVoiceNoteUrl}
+                  uploadPath={`${student.id}/${classDate}`}
+                />
+                <div className="space-y-1.5">
+                  <Label className="text-foreground text-xs">Remarks</Label>
+                  <Textarea
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Any additional notes..."
+                    rows={3}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
         </div>
 
-        {/* Why the save is blocked — never leave the button silently disabled */}
-        {!isFormValid && (
-          <Alert className="mt-4 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <p className="font-medium mb-1">Cannot save yet:</p>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {blockingReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            className="border-primary/30 text-muted-foreground hover:bg-muted/80"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => markAttendance.mutate()}
-            disabled={!isFormValid || markAttendance.isPending}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {isEdit ? 'Save Changes' : 'Mark Attendance'}
-          </Button>
+        {/* Sticky footer */}
+        <div className="shrink-0 border-t border-border bg-card px-4 sm:px-6 py-3 space-y-2">
+          {!isFormValid && blockingReasons.length > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{blockingReasons[0]}</span>
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => markAttendance.mutate()}
+              disabled={!isFormValid || markAttendance.isPending}
+              className="bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50"
+            >
+              {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isEdit ? 'Save Changes' : `Mark ${STATUS_OPTIONS.find(s => s.value === selectedStatus)?.label || 'Attendance'}`}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
