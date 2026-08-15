@@ -100,8 +100,10 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [plans]);
 
+  const isArchivedPlan = (p: any) => !!p.superseded_by || p.lifecycle_status === 'closed';
+
   const filtered = useMemo(() => {
-    let result = plans.filter(p => archiveView === 'archived' ? !!p.superseded_by : !p.superseded_by);
+    let result = plans.filter(p => archiveView === 'archived' ? isArchivedPlan(p) : !isArchivedPlan(p));
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p =>
@@ -125,8 +127,8 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
     return result;
   }, [plans, archiveView, search, currencyFilter, studentFilter, sortCol, sortDir]);
 
-  const activePlanCount = useMemo(() => plans.filter(p => !p.superseded_by).length, [plans]);
-  const archivedPlanCount = useMemo(() => plans.filter(p => !!p.superseded_by).length, [plans]);
+  const activePlanCount = useMemo(() => plans.filter(p => !isArchivedPlan(p)).length, [plans]);
+  const archivedPlanCount = useMemo(() => plans.filter(p => isArchivedPlan(p)).length, [plans]);
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
@@ -202,7 +204,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
 
       {archiveView === 'archived' && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          Showing superseded billing plans only. These are read-only audit records created when a plan was revised from an effective date.
+          Showing archived billing plans: closed plans (student left / assignment ended) and superseded revisions. These are read-only audit records.
         </div>
       )}
 
@@ -253,7 +255,7 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                     {Number(plan.flat_discount) > 0 ? Number(plan.flat_discount).toLocaleString() : '—'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={plan.is_active} disabled={!!plan.superseded_by} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
+                    <Switch checked={plan.is_active} disabled={isArchivedPlan(plan)} onCheckedChange={checked => toggleMutation.mutate({ id: plan.id, is_active: checked })} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {plan.effective_from ? new Date(plan.effective_from).toLocaleDateString() : '—'}
