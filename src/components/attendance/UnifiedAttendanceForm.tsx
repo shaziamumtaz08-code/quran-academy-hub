@@ -1135,14 +1135,15 @@ export function UnifiedAttendanceForm({
     if (!isLeaveStatus && hasDuplicateAttendance) {
       reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
     }
-    // Off days and academy holidays are blocked by default — the teacher must confirm
-    // it was an extra / make-up class. Leave, holiday and reschedule rows are exempt.
+    // Only scheduled class days can carry a regular attendance record. Off days and
+    // holidays are handled through the Rescheduled status instead. Leave, holiday and
+    // reschedule rows are exempt.
     const offDayExempt = isLeaveStatus || selectedStatus === 'holiday' || requiresReschedule(selectedStatus) || isEdit;
-    if (!offDayExempt && isHolidayDate && !allowOffDay) {
-      reasons.push(`${format(parseISO(classDate), 'dd MMM yyyy')} is an academy holiday${holidayRow?.name ? ` (${holidayRow.name})` : ''} — tick "extra / make-up class" if a class really ran.`);
+    if (!offDayExempt && isHolidayDate) {
+      reasons.push(`${format(parseISO(classDate), 'dd MMM yyyy')} is an academy holiday${holidayRow?.name ? ` (${holidayRow.name})` : ''} — use the "Rescheduled" status if a make-up class ran.`);
     }
-    if (!offDayExempt && !isScheduledDay && !allowOffDay) {
-      reasons.push(`This is not a scheduled day for ${student.full_name || 'this student'} — tick "extra / make-up class" to mark it anyway.`);
+    if (!offDayExempt && !isScheduledDay) {
+      reasons.push(`This is not a scheduled class day for ${student.full_name || 'this student'} — pick a scheduled day, or use the "Rescheduled" status for a make-up class.`);
     }
 
     if (requiresReason(selectedStatus) && !reasonCategory) reasons.push('Choose a reason for this absence or leave.');
