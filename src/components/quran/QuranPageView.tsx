@@ -239,7 +239,11 @@ export function QuranPageView({
 
   return (
     <div className={cn('w-full max-w-full min-w-0 space-y-4', className)}>
+      {/* Jump straight to a surah + verse */}
+      <MushafSearchBar onJump={jumpToAyah} busy={searching || !editionId} />
+
       {/* Book chrome: page turner, no dropdowns */}
+
       <div className="flex items-center justify-between gap-2">
         <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page - 1)} disabled={page <= 1}>
           <ChevronRight className="h-4 w-4" />
