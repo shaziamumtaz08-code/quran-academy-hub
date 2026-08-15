@@ -1170,32 +1170,36 @@ export function UnifiedAttendanceForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl text-foreground flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+      <DialogContent className="sm:max-w-2xl w-[calc(100vw-1rem)] max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden bg-card border-border text-foreground">
+        {/* Sticky header */}
+        <DialogHeader className="shrink-0 border-b border-border px-4 sm:px-6 py-3 space-y-1 text-left">
+          <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-full bg-teal-600/10 flex items-center justify-center shrink-0">
+              <User className="h-4.5 w-4.5 text-teal-600" />
             </div>
-            {isEdit ? 'Edit Attendance' : 'Mark Attendance'}
+            <span className="truncate">{student.full_name || (isEdit ? 'Edit Attendance' : 'Mark Attendance')}</span>
+            {resolvedSubjectName && (
+              <Badge className="ml-auto shrink-0 bg-teal-600/10 text-teal-700 dark:text-teal-300 border-teal-600/30">
+                <BookOpen className="h-3 w-3 mr-1" />
+                {resolvedSubjectName}
+              </Badge>
+            )}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            {isEdit
-              ? <>
-                  {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
-                  {activeRecord?.created_at && (
-                    <span className="block text-xs text-muted-foreground mt-1">
-                      Created: {format(parseISO(activeRecord.created_at), 'dd MMM yyyy h:mm a')}
-                    </span>
-                  )}
-                </>
-              : (student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class')}
+          <DialogDescription className="text-xs text-muted-foreground">
+            {classDate ? format(parseISO(classDate), 'EEE, dd MMM yyyy') : '—'}
+            {classTime ? ` · ${classTime}` : ''}
+            {!isLeaveStatus && duration ? ` · ${duration} min` : ''}
+            {student.last_lesson ? ` · Last: ${student.last_lesson}` : ''}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Scrollable middle */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 space-y-4">
+
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
-          <div className="bg-muted rounded-xl p-4 space-y-2">
-            <Label className="text-foreground">Student <span className="text-destructive">*</span></Label>
+          <div className="bg-muted rounded-2xl p-3 space-y-2">
+            <Label className="text-foreground text-xs">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
               <SelectTrigger className="">
                 <SelectValue placeholder="Select a student" />
@@ -1211,26 +1215,6 @@ export function UnifiedAttendanceForm({
           </div>
         )}
 
-        {/* Student Info Header (when student is known) */}
-        {student.id && needsStudent && (
-          <div className="bg-muted rounded-xl p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-lg">{student.full_name}</span>
-              {resolvedSubjectName && (
-                <Badge className="bg-primary/10 text-muted-foreground border-primary/30">
-                  <BookOpen className="h-3 w-3 mr-1" />
-                  {resolvedSubjectName}
-                </Badge>
-              )}
-            </div>
-            {student.last_lesson && (
-              <div className="text-sm text-muted-foreground">
-                <Clock className="h-3 w-3 inline mr-1" />
-                Last: {student.last_lesson}
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="space-y-4 py-2">
           {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
