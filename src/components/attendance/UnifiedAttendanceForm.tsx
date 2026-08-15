@@ -399,6 +399,28 @@ export function UnifiedAttendanceForm({
 
   const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
 
+  // Academy holidays / off days — attendance must not be marked on these by default.
+  const { data: holidayRow } = useQuery({
+    queryKey: ['attendance-holiday-check', classDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date, name')
+        .eq('holiday_date', classDate)
+        .maybeSingle();
+      if (error) return null;
+      return data as unknown as { holiday_date: string; name: string } | null;
+    },
+    enabled: open && !!classDate,
+  });
+  const isHolidayDate = !!holidayRow;
+
+  /** Teacher explicitly confirmed an extra / make-up class on an off day. */
+  const [allowOffDay, setAllowOffDay] = useState(false);
+  useEffect(() => { setAllowOffDay(false); }, [classDate, open]);
+
+
+
 
   // Fetch the student's most recent prior attendance with lesson coverage — used to
   // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
