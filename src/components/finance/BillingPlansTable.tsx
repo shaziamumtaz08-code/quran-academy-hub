@@ -127,8 +127,8 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
     return result;
   }, [plans, archiveView, search, currencyFilter, studentFilter, sortCol, sortDir]);
 
-  const activePlanCount = useMemo(() => plans.filter(p => !p.superseded_by).length, [plans]);
-  const archivedPlanCount = useMemo(() => plans.filter(p => !!p.superseded_by).length, [plans]);
+  const activePlanCount = useMemo(() => plans.filter(p => !isArchivedPlan(p)).length, [plans]);
+  const archivedPlanCount = useMemo(() => plans.filter(p => isArchivedPlan(p)).length, [plans]);
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
