@@ -1328,13 +1328,33 @@ export function UnifiedAttendanceForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-foreground">Class Date <span className="text-destructive">*</span></Label>
-                <Input
-                  type="date"
-                  value={classDate}
-                  onChange={(e) => setClassDate(e.target.value)}
-                  max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
-                  className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
-                />
+                {!isEdit && !isLeaveStatus && selectedStatus !== 'holiday' && eligibleDates.length > 0 ? (
+                  <>
+                    <Select value={classDate} onValueChange={setClassDate}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pick a class day" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {format(parseISO(d), 'EEE, dd MMM yyyy')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Only this student's scheduled class days are listed.
+                    </p>
+                  </>
+                ) : (
+                  <Input
+                    type="date"
+                    value={classDate}
+                    onChange={(e) => setClassDate(e.target.value)}
+                    max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
+                    className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
