@@ -154,7 +154,7 @@ export function MissingAttendanceSection({
               effective_to_date,
               requires_attendance,
               division_id,
-              subject:subjects(name),
+              subject:subjects(id, name),
               student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
             )
@@ -278,6 +278,7 @@ export function MissingAttendanceSection({
               teacherId: assignment.teacher_id,
               teacherName: assignment.teacher.full_name,
               subjectName: assignment.subject?.name || null,
+              subjectId: assignment.subject?.id || null,
               scheduledTime: schedule.teacher_local_time?.substring(0, 5) || '-',
               assignmentId: assignment.id,
             });
