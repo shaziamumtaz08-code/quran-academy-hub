@@ -407,13 +407,12 @@ export function QuranPageView({
                       <span className="block h-6" aria-hidden />
                     ) : (
                       <span
-                        className={cn(
-                          'mushaf-text mushaf-line',
-                          presentation
-                            ? 'text-[1.35rem] sm:text-4xl'
-                            : 'text-[1.05rem] sm:text-2xl'
-                        )}
+                        className="mushaf-text mushaf-line"
+                        style={{
+                          fontSize: `clamp(${(baseFontRem * 0.72).toFixed(2)}rem, ${(baseFontRem * 0.42).toFixed(2)}rem + 2.4vw, ${baseFontRem.toFixed(2)}rem)`,
+                        }}
                       >
+
 
                         {splitAyahMarks(line).map((tok, i) =>
                           tok.ayah == null ? (
