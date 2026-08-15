@@ -199,22 +199,23 @@ export function QuranPageView({
 
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('w-full max-w-full min-w-0 space-y-4', className)}>
       {/* Book chrome: page turner, no dropdowns */}
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" className="rounded-full gap-1" onClick={() => goto(page - 1)} disabled={page <= 1}>
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page - 1)} disabled={page <= 1}>
           <ChevronRight className="h-4 w-4" />
-          Previous
+          <span className="hidden sm:inline">Previous</span>
         </Button>
-        <div className="flex items-center gap-2">
-          {info?.juz_number && <Badge variant="secondary">Juz {info.juz_number}</Badge>}
-          {info?.surah_start && <Badge variant="outline">{surahNameByNumber(info.surah_start)}</Badge>}
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-center">
+          {info?.juz_number && <Badge variant="secondary" className="text-[10px] sm:text-xs">Juz {info.juz_number}</Badge>}
+          {info?.surah_start && <Badge variant="outline" className="text-[10px] sm:text-xs truncate max-w-[9rem]">{surahNameByNumber(info.surah_start)}</Badge>}
         </div>
-        <Button type="button" variant="outline" className="rounded-full gap-1" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
-          Next
+        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
+          <span className="hidden sm:inline">Next</span>
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
+
 
       {/* Mushaf page */}
       <div className="book-stage">
