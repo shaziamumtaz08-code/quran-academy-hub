@@ -611,7 +611,11 @@ export default function Assignments() {
       
       if (status === 'completed' || status === 'left') {
         await supabase.from('student_billing_plans')
-          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .update({
+            is_active: false,
+            change_reason: `Assignment marked ${status}${effectiveDate ? ` effective ${effectiveDate}` : ''}`,
+            updated_at: new Date().toISOString(),
+          })
           .eq('assignment_id', id);
 
         // Cascade to existing UNPAID invoices for this student tied to this assignment
@@ -675,7 +679,11 @@ export default function Assignments() {
         }
       } else if (status === 'active' && (fromStatus === 'on_hold' || fromStatus === 'completed')) {
         await supabase.from('student_billing_plans')
-          .update({ is_active: true, updated_at: new Date().toISOString() })
+          .update({
+            is_active: true,
+            change_reason: `Assignment resumed to active${effectiveDate ? ` effective ${effectiveDate}` : ''}`,
+            updated_at: new Date().toISOString(),
+          })
           .eq('assignment_id', id);
       }
 
