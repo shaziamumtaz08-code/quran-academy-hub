@@ -480,8 +480,18 @@ export function MissingAttendanceSection({
                       ) : '-'}
                     </TableCell>
                     <TableCell>{record.scheduledTime}</TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-right">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => setMarkRecord(record)}
+                          title={`Mark attendance for ${record.studentName} on ${format(parseISO(record.date), 'dd MMM yyyy')}`}
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          <span className="ml-1 text-xs">Mark now</span>
+                        </Button>
+                        {isAdmin && (
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 px-2" title="Park assignment">
