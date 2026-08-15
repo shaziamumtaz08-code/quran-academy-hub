@@ -650,7 +650,11 @@ export default function Payments() {
   const feeCurrency = feeForm.manual_fee ? feeForm.manual_currency : (selectedPkg?.currency || 'USD');
 
   const flatDiscountNeedsReason = !feeForm.manual_fee && flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
-  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0) && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0)) && !flatDiscountNeedsReason;
+  const assignmentRequired = !editingPlanId && selectedStudentIds.length === 1;
+  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0)
+    && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0))
+    && !flatDiscountNeedsReason
+    && (!assignmentRequired || !!selectedAssignmentId);
 
   const filteredStudents = useMemo(() => {
     const search = studentSearch.toLowerCase();
