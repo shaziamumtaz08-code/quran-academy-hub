@@ -523,8 +523,9 @@ export function MissingAttendanceSection({
                             </button>
                           </PopoverContent>
                         </Popover>
-                      </TableCell>
-                    )}
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
