@@ -141,22 +141,26 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
   });
 
 
-  const { duplicateGroups, activeCount } = useMemo(() => {
+  const { duplicateGroups, activeCount, unlinkedCount } = useMemo(() => {
     // A student may legitimately have MULTIPLE plans — one per class/assignment.
-    // A true duplicate is two live plans billing the SAME assignment (or two
-    // legacy plans with no assignment link at all). Plans tied to on_hold /
-    // completed / left assignments are historical records and are never flagged.
+    // A true duplicate is two live plans billing the SAME assignment. Plans with
+    // no assignment link are reported separately as "needs linking", never as a
+    // duplicate. Plans tied to on_hold / completed / left assignments are
+    // historical records and are never flagged.
     const isStillBilling = (p: PlanRow) => {
       const status = p.assignment?.status;
       if (!p.assignment_id || !status) return p.is_active;
       return status === 'active' && p.is_active;
     };
 
+    const unlinked = plans.filter(p => p.is_active && !p.assignment_id && (p as any).lifecycle_status !== 'closed').length;
+
     // Key on the assignment so different classes never collide.
     const byKey = new Map<string, PlanRow[]>();
     plans.forEach(p => {
       if (!isStillBilling(p)) return;
-      const key = `${p.student_id}::${p.assignment_id || 'unlinked'}`;
+      if (!p.assignment_id) return;
+      const key = `${p.student_id}::${p.assignment_id}`;
       const arr = byKey.get(key) || [];
       arr.push(p);
       byKey.set(key, arr);
@@ -182,7 +186,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       });
     });
     groups.sort((a, b) => a.full_name.localeCompare(b.full_name));
-    return { duplicateGroups: groups, activeCount: plans.filter(p => p.is_active).length };
+    return { duplicateGroups: groups, activeCount: plans.filter(p => p.is_active).length, unlinkedCount: unlinked };
   }, [plans]);
 
 
