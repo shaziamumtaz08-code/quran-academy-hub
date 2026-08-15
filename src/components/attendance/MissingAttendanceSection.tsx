@@ -455,7 +455,7 @@ export function MissingAttendanceSection({
                       </span>
                     </TableHead>
                   ))}
-                  {isAdmin && <TableHead className="text-right">Action</TableHead>}
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
