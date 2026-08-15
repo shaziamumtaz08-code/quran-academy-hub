@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Check } from 'lucide-react';
 import { formatLessonSegment, type LessonMarkerType, type LessonSegment } from '@/lib/lessonFormat';
 import {
   fetchPage,
+  findPageForAyah,
   getDefaultEditionId,
   resolveSegment,
   surahNameByNumber,
@@ -14,7 +15,9 @@ import {
   type MushafPageInfo,
   type TapPoint,
 } from '@/lib/mushafResolve';
+import { MushafSearchBar } from './MushafSearchBar';
 import { cn } from '@/lib/utils';
+
 
 const TOTAL_PAGES = 610;
 
@@ -85,7 +88,10 @@ export function QuranPageView({
   const [start, setStart] = useState<TapPoint | null>(null);
   const [end, setEnd] = useState<TapPoint | null>(null);
   const [preview, setPreview] = useState<LessonSegment | null>(null);
+  const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
+  const [searching, setSearching] = useState(false);
   const touchX = useRef<number | null>(null);
+
 
   useEffect(() => {
     getDefaultEditionId().then(setEditionId);
@@ -132,6 +138,39 @@ export function QuranPageView({
     },
     [page]
   );
+
+  /** Search: jump straight to the page holding a surah + verse. */
+  const jumpToAyah = useCallback(
+    async (surah: number, ayah: number) => {
+      if (!editionId) return;
+      setSearching(true);
+      try {
+        const target = await findPageForAyah(editionId, surah, ayah);
+        if (!target) return;
+        setHighlight({ surah, ayah });
+        goto(target);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [editionId, goto]
+  );
+
+  // The highlight is a temporary "here it is" flash, not a selection
+  useEffect(() => {
+    if (!highlight) return;
+    const t = window.setTimeout(() => setHighlight(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [highlight]);
+
+  const isHighlighted = (line: MushafLine) =>
+    !!highlight &&
+    line.line_type === 'ayah' &&
+    line.first_surah === highlight.surah &&
+    (line.first_ayah ?? 0) <= highlight.ayah &&
+    (line.last_ayah ?? 0) >= highlight.ayah;
+
+
 
 
   // Arrow-key page turning (RTL mushaf: left arrow = next page)
@@ -200,7 +239,11 @@ export function QuranPageView({
 
   return (
     <div className={cn('w-full max-w-full min-w-0 space-y-4', className)}>
+      {/* Jump straight to a surah + verse */}
+      <MushafSearchBar onJump={jumpToAyah} busy={searching || !editionId} />
+
       {/* Book chrome: page turner, no dropdowns */}
+
       <div className="flex items-center justify-between gap-2">
         <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page - 1)} disabled={page <= 1}>
           <ChevronRight className="h-4 w-4" />
@@ -266,9 +309,13 @@ export function QuranPageView({
                 const selected = isSelected(line);
                 const isStart = start?.page === page && start.line.line_number === line.line_number;
                 const isEnd = end?.page === page && end.line.line_number === line.line_number;
+                const found = isHighlighted(line);
                 return (
                   <div
                     key={line.id}
+                    ref={(el) => {
+                      if (found && el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }}
                     role={selectable ? 'button' : undefined}
                     tabIndex={selectable ? 0 : undefined}
                     onClick={() => selectable && handleTap(line)}
@@ -282,9 +329,11 @@ export function QuranPageView({
                       'relative w-full rounded-md px-1 sm:px-3 py-1 sm:py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
                       selected && 'bg-primary/10',
+                      found && 'bg-accent/25 ring-2 ring-accent',
                       (isStart || isEnd) && 'bg-primary/15 ring-1 ring-primary/50'
                     )}
                   >
+
                     {(isStart || isEnd) && (
                       <span
                         className="absolute -top-1 left-1 z-10 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
