@@ -1248,7 +1248,9 @@ export function UnifiedAttendanceForm({
                 <p>
                   {isHolidayDate
                     ? <>This date is an academy holiday{holidayRow?.name ? ` — ${holidayRow.name}` : ''}. Classes are off.</>
-                    : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
+                    : hasNoSchedule
+                      ? <>This student has no active weekly schedule, so no day counts as a class day. Set up their schedule first.</>
+                      : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
                 </p>
                 <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
                   <input
