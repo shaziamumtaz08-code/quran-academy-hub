@@ -569,9 +569,15 @@ export function UnifiedAttendanceForm({
     return scheduledDays.includes(dayName);
   }, [classDate, scheduledDays]);
 
+  /** Explicit date passed in (e.g. "Mark now" on a missed slot) wins over any default. */
+  useEffect(() => {
+    if (!open || isEdit || !initialDate) return;
+    setClassDate(initialDate);
+  }, [open, isEdit, initialDate]);
+
   /** Default the date to the latest scheduled, non-holiday day on/before today. */
   useEffect(() => {
-    if (!open || isEdit || scheduledDays.length === 0) return;
+    if (!open || isEdit || initialDate || scheduledDays.length === 0) return;
     const today = new Date();
     const todayName = DAY_NAMES[getDay(today)];
     if (scheduledDays.includes(todayName)) return; // today is fine
