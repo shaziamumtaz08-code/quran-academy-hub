@@ -62,6 +62,10 @@ interface Props {
   /** Marker type the teacher is using — the emitted segment matches it. */
   markerType?: LessonMarkerType;
   initialPage?: number;
+  /** Where the teacher stopped last time — the view opens there. */
+  resumeAyah?: { surah: number; ayah: number } | null;
+  /** Scopes the remembered page (e.g. per student). */
+  resumeKey?: string;
   /** Called with the normalized segment when the teacher confirms. */
   onUseLesson?: (segment: LessonSegment) => void;
   /** Called to append the selection as an additional segment. */
@@ -74,11 +78,14 @@ interface Props {
 export function QuranPageView({
   markerType = 'ayah',
   initialPage = 1,
+  resumeAyah = null,
+  resumeKey = 'default',
   onUseLesson,
   onAddSegment,
   presentation = false,
   className,
 }: Props) {
+  const storageKey = `mushaf:lastPage:${resumeKey}`;
   const [editionId, setEditionId] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
@@ -90,7 +97,10 @@ export function QuranPageView({
   const [preview, setPreview] = useState<LessonSegment | null>(null);
   const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
   const [searching, setSearching] = useState(false);
+  const [resumedAt, setResumedAt] = useState<number | null>(null);
+  const resumed = useRef(false);
   const touchX = useRef<number | null>(null);
+
 
 
   useEffect(() => {
@@ -170,7 +180,37 @@ export function QuranPageView({
     (line.first_ayah ?? 0) <= highlight.ayah &&
     (line.last_ayah ?? 0) >= highlight.ayah;
 
+  // Resume: open where the teacher stopped last time
+  useEffect(() => {
+    if (!editionId || resumed.current) return;
+    resumed.current = true;
+    let cancelled = false;
+    const run = async () => {
+      if (resumeAyah?.surah && resumeAyah?.ayah) {
+        const target = await findPageForAyah(editionId, resumeAyah.surah, resumeAyah.ayah);
+        if (!cancelled && target) {
+          setPage(target);
+          setHighlight({ surah: resumeAyah.surah, ayah: resumeAyah.ayah });
+          setResumedAt(target);
+          return;
+        }
+      }
+      const saved = Number(localStorage.getItem(storageKey) || '');
+      if (!cancelled && saved >= 1 && saved <= TOTAL_PAGES) {
+        setPage(saved);
+        setResumedAt(saved);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [editionId, resumeAyah, storageKey]);
 
+  // Remember the page being read so the next attendance opens here
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(page));
+  }, [page, storageKey]);
 
 
   // Arrow-key page turning (RTL mushaf: left arrow = next page)
@@ -252,6 +292,10 @@ export function QuranPageView({
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-center">
           {info?.juz_number && <Badge variant="secondary" className="text-[10px] sm:text-xs">Juz {info.juz_number}</Badge>}
           {info?.surah_start && <Badge variant="outline" className="text-[10px] sm:text-xs truncate max-w-[9rem]">{surahNameByNumber(info.surah_start)}</Badge>}
+          {resumedAt === page && (
+            <Badge className="text-[10px] sm:text-xs">Resumed here</Badge>
+          )}
+
         </div>
         <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
           <span className="hidden sm:inline">Next</span>

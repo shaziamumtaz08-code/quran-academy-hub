@@ -8,6 +8,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   markerType?: LessonMarkerType;
   initialPage?: number;
+  /** Where the teacher last stopped — the mushaf opens there. */
+  resumeAyah?: { surah: number; ayah: number } | null;
+  /** Scopes the remembered page (e.g. per student). */
+  resumeKey?: string;
   onUseLesson: (segment: LessonSegment) => void;
   onAddSegment?: (segment: LessonSegment) => void;
 }
@@ -17,6 +21,8 @@ export function QuranPagePickerDialog({
   onOpenChange,
   markerType = 'ayah',
   initialPage = 1,
+  resumeAyah = null,
+  resumeKey,
   onUseLesson,
   onAddSegment,
 }: Props) {
@@ -29,9 +35,12 @@ export function QuranPagePickerDialog({
             Qudratullah 15-line IndoPak Mushaf — tap the start and end lines of today's lesson.
           </DialogDescription>
         </DialogHeader>
+        {open && (
         <QuranPageView
           markerType={markerType}
           initialPage={initialPage}
+          resumeAyah={resumeAyah}
+          resumeKey={resumeKey}
           onUseLesson={(seg) => {
             onUseLesson(seg);
             onOpenChange(false);
@@ -45,6 +54,8 @@ export function QuranPagePickerDialog({
               : undefined
           }
         />
+        )}
+
       </DialogContent>
     </Dialog>
   );
