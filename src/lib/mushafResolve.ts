@@ -191,3 +191,22 @@ export async function resolveSegment(
     unitTo: rTo?.unit ?? rFrom.unit,
   };
 }
+
+/** Page containing a specific surah + ayah (falls back to the surah's opening page). */
+export async function findPageForAyah(
+  editionId: string,
+  surah: number,
+  ayah: number
+): Promise<number | null> {
+  const { data } = await supabase
+    .from('mushaf_lines')
+    .select('page_number')
+    .eq('edition_id', editionId)
+    .eq('first_surah', surah)
+    .lte('first_ayah', ayah)
+    .gte('last_ayah', ayah)
+    .order('page_number')
+    .limit(1);
+  if (data?.[0]?.page_number) return data[0].page_number;
+  return findPageForSurah(editionId, surah);
+}
