@@ -190,8 +190,9 @@ export function SabaqSection({
   const removeSegment = (idx: number) => onExtraSegmentsChange?.(extraSegments.filter((_, i) => i !== idx));
   const addSegment = () => onExtraSegmentsChange?.([...extraSegments, emptySegment(markerType)]);
 
-  // Visual Quran page picker
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Two views of the same lesson field: manual entry vs tapping the mushaf page
+  const [tab, setTab] = useState<'type' | 'page'>('type');
+
 
   /** Applies a segment picked on the Quran page into the primary inputs. */
   const applyPickedSegment = (seg: LessonSegment) => {
