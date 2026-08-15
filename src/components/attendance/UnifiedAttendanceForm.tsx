@@ -1542,7 +1542,13 @@ export function UnifiedAttendanceForm({
                 </div>
               )}
               <div className="space-y-2">
-                <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
+                <Label className="text-foreground">
+                  {selectedStatus === 'student_absent' && 'Why was the student absent?'}
+                  {selectedStatus === 'student_leave' && 'Reason for student leave'}
+                  {selectedStatus === 'teacher_absent' && 'Why was the teacher absent?'}
+                  {selectedStatus === 'teacher_leave' && 'Reason for teacher leave'}
+                  {' '}<span className="text-destructive">*</span>
+                </Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
                   <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
                   <SelectContent>
