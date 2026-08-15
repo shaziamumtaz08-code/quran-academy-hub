@@ -582,14 +582,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.55em;
-    height: 1.55em;
-    margin: 0 0.12em;
-    font-size: 0.62em;
+    min-width: 1.9em;
+    height: 1.9em;
+    padding: 0 0.18em;
+    margin: 0 0.18em;
+    font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+    font-size: 0.78em;
+    font-weight: 600;
     line-height: 1;
     border-radius: 9999px;
-    border: 1px solid hsl(var(--mushaf-rule) / 0.8);
-    background: transparent;
+    border: 1.5px solid hsl(var(--mushaf-rule) / 0.9);
+    box-shadow: inset 0 0 0 2px hsl(var(--mushaf-paper)), inset 0 0 0 3px hsl(var(--mushaf-rule) / 0.35);
+    background: hsl(var(--mushaf-paper));
     color: hsl(var(--mushaf-ink));
     cursor: pointer;
     vertical-align: middle;
@@ -605,7 +609,31 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border-color: hsl(var(--primary));
+    box-shadow: none;
   }
+
+  /* Small screens: keep the whole page inside the viewport */
+  @media (max-width: 640px) {
+    .mushaf-frame {
+      border-width: 1.5px;
+      box-shadow:
+        inset 0 0 0 2px hsl(var(--mushaf-paper)),
+        inset 0 0 0 3.5px hsl(var(--mushaf-rule) / 0.55);
+    }
+    .mushaf-line {
+      word-spacing: -0.04em;
+      letter-spacing: 0;
+    }
+    .ayah-mark {
+      min-width: 1.7em;
+      height: 1.7em;
+      font-size: 0.72em;
+    }
+    .surah-banner {
+      padding: 0.3rem 1.75rem;
+    }
+  }
+
 
 
   @media (prefers-reduced-motion: reduce) {

@@ -199,22 +199,23 @@ export function QuranPageView({
 
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('w-full max-w-full min-w-0 space-y-4', className)}>
       {/* Book chrome: page turner, no dropdowns */}
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" className="rounded-full gap-1" onClick={() => goto(page - 1)} disabled={page <= 1}>
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page - 1)} disabled={page <= 1}>
           <ChevronRight className="h-4 w-4" />
-          Previous
+          <span className="hidden sm:inline">Previous</span>
         </Button>
-        <div className="flex items-center gap-2">
-          {info?.juz_number && <Badge variant="secondary">Juz {info.juz_number}</Badge>}
-          {info?.surah_start && <Badge variant="outline">{surahNameByNumber(info.surah_start)}</Badge>}
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-center">
+          {info?.juz_number && <Badge variant="secondary" className="text-[10px] sm:text-xs">Juz {info.juz_number}</Badge>}
+          {info?.surah_start && <Badge variant="outline" className="text-[10px] sm:text-xs truncate max-w-[9rem]">{surahNameByNumber(info.surah_start)}</Badge>}
         </div>
-        <Button type="button" variant="outline" className="rounded-full gap-1" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
-          Next
+        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
+          <span className="hidden sm:inline">Next</span>
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
+
 
       {/* Mushaf page */}
       <div className="book-stage">
@@ -227,7 +228,7 @@ export function QuranPageView({
             touchX.current = null;
           }}
           className={cn(
-            'book-page mushaf-paper relative overflow-hidden rounded-[1.25rem] border-4 border-[hsl(var(--mushaf-rule)/0.5)] shadow-lg p-2',
+            'book-page mushaf-paper relative overflow-hidden rounded-[1rem] sm:rounded-[1.25rem] border-2 sm:border-4 border-[hsl(var(--mushaf-rule)/0.5)] shadow-lg p-1 sm:p-2',
             flip === 'next' && 'animate-page-turn-next',
             flip === 'prev' && 'animate-page-turn-prev'
           )}
@@ -239,7 +240,7 @@ export function QuranPageView({
           {flip && (
             <div className="page-sheen pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-background/70 to-transparent" />
           )}
-        <div className="mushaf-frame rounded-[0.4rem] px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mushaf-frame rounded-[0.4rem] px-1.5 py-3 sm:px-6 sm:py-6">
 
           {/* Running head */}
           <div className="flex items-center justify-between border-b border-[hsl(var(--mushaf-rule)/0.35)] pb-2 mb-3 text-xs text-[hsl(var(--mushaf-ink)/0.7)]">
@@ -278,7 +279,7 @@ export function QuranPageView({
                       }
                     }}
                     className={cn(
-                      'relative w-full rounded-md px-3 py-1.5 transition-colors text-center',
+                      'relative w-full rounded-md px-1 sm:px-3 py-1 sm:py-1.5 transition-colors text-center',
                       selectable ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default',
                       selected && 'bg-primary/10',
                       (isStart || isEnd) && 'bg-primary/15 ring-1 ring-primary/50'
@@ -304,7 +305,9 @@ export function QuranPageView({
                       <span
                         className={cn(
                           'mushaf-text mushaf-line',
-                          presentation ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'
+                          presentation
+                            ? 'text-[1.35rem] sm:text-4xl'
+                            : 'text-[1.05rem] sm:text-2xl'
                         )}
                       >
 
@@ -387,14 +390,14 @@ export function QuranPageView({
             <p className="text-sm font-semibold">{endLabel || 'Not set'}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Selected lesson</p>
-            <p className="text-sm font-semibold text-foreground truncate">
+            <p className="text-sm font-semibold text-foreground break-words">
               {previewText || 'Nothing selected yet'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={!start}>
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Clear
@@ -407,11 +410,17 @@ export function QuranPageView({
                 disabled={!preview}
                 onClick={() => preview && onAddSegment(preview)}
               >
-                Add as another segment
+                Add segment
               </Button>
             )}
             {onUseLesson && (
-              <Button type="button" size="sm" disabled={!preview} onClick={() => preview && onUseLesson(preview)}>
+              <Button
+                type="button"
+                size="sm"
+                className="col-span-2 sm:col-auto"
+                disabled={!preview}
+                onClick={() => preview && onUseLesson(preview)}
+              >
                 <Check className="h-4 w-4 mr-1.5" />
                 Use this lesson
               </Button>
@@ -420,6 +429,7 @@ export function QuranPageView({
         </div>
       </div>
     </div>
+
   );
 }
 
