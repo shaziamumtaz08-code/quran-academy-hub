@@ -197,6 +197,8 @@ export default function Payments() {
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
+  const [lockAssignment, setLockAssignment] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [feeForm, setFeeForm] = useState({
     base_package_id: '',
