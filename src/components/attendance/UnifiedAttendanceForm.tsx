@@ -587,6 +587,27 @@ export function UnifiedAttendanceForm({
     return scheduledDays.includes(dayName);
   }, [classDate, scheduledDays, scheduleLoaded]);
 
+  /**
+   * The only dates a regular attendance record may use: the student's scheduled
+   * class days in the last 60 days that are not academy holidays. Rescheduling is a
+   * separate flow, so off days never appear here.
+   */
+  const eligibleDates = useMemo(() => {
+    if (scheduledDays.length === 0) return [] as string[];
+    const out: string[] = [];
+    const today = new Date();
+    for (let i = 0; i <= 60; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const iso = format(d, 'yyyy-MM-dd');
+      if (!scheduledDays.includes(DAY_NAMES[getDay(d)])) continue;
+      if (recentHolidaySet.has(iso)) continue;
+      out.push(iso);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduledDays.join(','), recentHolidays]);
+
   /** Explicit date passed in (e.g. "Mark now" on a missed slot) wins over any default. */
   useEffect(() => {
     if (!open || isEdit || !initialDate) return;
