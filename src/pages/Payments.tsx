@@ -965,11 +965,9 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
-        // Billing is independent from teaching assignments. The RPC creates a new
-        // version, archives the old plan and affected unpaid invoices, then generates
-        // replacement invoices from the plan's own effective date. Paid invoices stay locked.
+        // A plan belongs to exactly one assignment — the revision keeps that link.
         const { data: cur, error: curErr } = await supabase.from('student_billing_plans')
-          .select('student_id, branch_id, division_id, duration_surcharge')
+          .select('student_id, branch_id, division_id, duration_surcharge, assignment_id')
           .eq('id', editingPlanId).single();
         if (curErr) throw curErr;
 
@@ -983,7 +981,7 @@ export default function Payments() {
           _currency: planFields.currency,
           _effective_from: effectiveFrom,
           _change_reason: 'Edited via plan editor',
-          _assignment_id: null,
+          _assignment_id: (cur as any).assignment_id ?? null,
           _branch_id: (cur as any).branch_id ?? null,
           _division_id: (cur as any).division_id ?? null,
           _duration_surcharge: planFields.duration_surcharge ?? (cur as any).duration_surcharge ?? 0,
@@ -992,17 +990,50 @@ export default function Payments() {
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
-      const rows = selectedStudentIds.map(sid => ({
-        student_id: sid,
-        ...planFields,
-        is_active: true,
-        branch_id: branchId,
-        division_id: divisionId,
-        effective_from: effectiveFrom,
-      }));
+
+      // Every plan must be attached to exactly one active assignment (class).
+      const skipped: string[] = [];
+      const rows: any[] = [];
+      for (const sid of selectedStudentIds) {
+        let assignmentId: string | null = null;
+        if (selectedStudentIds.length === 1) {
+          assignmentId = selectedAssignmentId || null;
+          if (!assignmentId) throw new Error('Select the class (assignment) this plan bills.');
+        } else {
+          const free = activeAssignments.filter(a => a.student_id === sid && !billedAssignmentSet.has(a.id));
+          if (free.length === 1) assignmentId = free[0].id;
+          else {
+            skipped.push(sid);
+            continue;
+          }
+        }
+        if (billedAssignmentSet.has(assignmentId)) {
+          throw new Error('That class already has a live billing plan. Edit the existing plan instead.');
+        }
+        rows.push({
+          student_id: sid,
+          assignment_id: assignmentId,
+          ...planFields,
+          is_active: true,
+          branch_id: branchId,
+          division_id: divisionId,
+          effective_from: effectiveFrom,
+        });
+      }
+      if (rows.length === 0) throw new Error('No plan created — the selected students have no unbilled active class, or more than one. Set those up individually.');
       const { error } = await supabase.from('student_billing_plans').insert(rows);
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === '23505') throw new Error('A live billing plan already exists for that class.');
+        throw error;
+      }
+      if (skipped.length > 0) {
+        toast({
+          title: `${skipped.length} student(s) skipped`,
+          description: 'They have no unbilled active class, or more than one — set those up individually so each plan is linked to the right class.',
+        });
+      }
       return rows.length;
+
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
