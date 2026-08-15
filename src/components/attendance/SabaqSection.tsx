@@ -105,7 +105,10 @@ export function SabaqSection({
   onJuzToChange,
   extraSegments = [],
   onExtraSegmentsChange,
+  resumeAyah = null,
+  resumeKey,
 }: SabaqSectionProps) {
+
 
   
   // Calculate total based on marker type
