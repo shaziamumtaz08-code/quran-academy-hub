@@ -61,6 +61,8 @@ interface HifzAttendanceFieldsProps {
 
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
+  resumeAyah?: { surah: number; ayah: number } | null;
+  resumeKey?: string;
 }
 
 
@@ -102,6 +104,8 @@ export function HifzAttendanceFields({
   manzilDone,
   onManzilDoneChange,
   isRepeatLesson = false,
+  resumeAyah = null,
+  resumeKey,
 
 }: HifzAttendanceFieldsProps) {
   return (
@@ -154,6 +158,8 @@ export function HifzAttendanceFields({
         onJuzToChange={onJuzToChange}
         extraSegments={extraSegments}
         onExtraSegmentsChange={onExtraSegmentsChange}
+        resumeAyah={resumeAyah}
+        resumeKey={resumeKey}
 
       />
       

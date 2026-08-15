@@ -46,6 +46,8 @@ interface NazraAttendanceFieldsProps {
 
   // Repeat lesson flag (optional)
   isRepeatLesson?: boolean;
+  resumeAyah?: { surah: number; ayah: number } | null;
+  resumeKey?: string;
 }
 
 
@@ -79,6 +81,8 @@ export function NazraAttendanceFields({
   extraSegments = [],
   onExtraSegmentsChange,
   isRepeatLesson = false,
+  resumeAyah = null,
+  resumeKey,
 
 }: NazraAttendanceFieldsProps) {
   return (
@@ -126,6 +130,8 @@ export function NazraAttendanceFields({
         onQuarterToNumberChange={onQuarterToNumberChange}
         extraSegments={extraSegments}
         onExtraSegmentsChange={onExtraSegmentsChange}
+        resumeAyah={resumeAyah}
+        resumeKey={resumeKey}
 
       />
       
