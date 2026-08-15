@@ -72,6 +72,8 @@ interface Props {
   onAddSegment?: (segment: LessonSegment) => void;
   /** Screen-share friendly: larger text, calmer chrome. */
   presentation?: boolean;
+  /** Embedded in the attendance form: single nav row, no scrubber, no duplicate turner. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -83,6 +85,7 @@ export function QuranPageView({
   onUseLesson,
   onAddSegment,
   presentation = false,
+  compact = false,
   className,
 }: Props) {
   const storageKey = `mushaf:lastPage:${resumeKey}`;
@@ -288,68 +291,75 @@ export function QuranPageView({
       : null;
 
 
+  const sizeControls = (
+    <div className="flex items-center gap-1 shrink-0" dir="ltr">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-7 w-7 rounded-full"
+        aria-label="Decrease Quran text size"
+        disabled={fontScale <= 0.8}
+        onClick={() => setFontScale((s) => Math.max(0.8, Number((s - 0.1).toFixed(2))))}
+      >
+        <span className="text-sm">A-</span>
+      </Button>
+      {!compact && (
+        <span className="text-xs tabular-nums w-10 text-center text-muted-foreground">{Math.round(fontScale * 100)}%</span>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-7 w-7 rounded-full"
+        aria-label="Increase Quran text size"
+        disabled={fontScale >= 2}
+        onClick={() => setFontScale((s) => Math.min(2, Number((s + 0.1).toFixed(2))))}
+      >
+        <span className="text-base">A+</span>
+      </Button>
+      {!compact && (
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setFontScale(1.15)}>
+          Reset
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className={cn('w-full max-w-full min-w-0 space-y-4', className)}>
+    <div className={cn('w-full max-w-full min-w-0', compact ? 'space-y-2.5' : 'space-y-4', className)}>
       {/* Jump straight to a surah + verse */}
       <MushafSearchBar onJump={jumpToAyah} busy={searching || !editionId} />
 
-      {/* Book chrome: page turner, no dropdowns */}
-
+      {/* Book chrome: one navigation row (prev / context / next) */}
       <div className="flex items-center justify-between gap-2">
-        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page - 1)} disabled={page <= 1}>
+        <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full shrink-0" aria-label="Previous page" onClick={() => goto(page - 1)} disabled={page <= 1}>
           <ChevronRight className="h-4 w-4" />
-          <span className="hidden sm:inline">Previous</span>
         </Button>
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-center">
           {info?.juz_number && <Badge variant="secondary" className="text-[10px] sm:text-xs">Juz {info.juz_number}</Badge>}
           {info?.surah_start && <Badge variant="outline" className="text-[10px] sm:text-xs truncate max-w-[9rem]">{surahNameByNumber(info.surah_start)}</Badge>}
+          <Badge variant="outline" className="text-[10px] sm:text-xs">Page {page}</Badge>
           {resumedAt === page && (
             <Badge className="text-[10px] sm:text-xs">Resumed here</Badge>
           )}
-
         </div>
-        <Button type="button" variant="outline" size="sm" className="rounded-full gap-1 shrink-0" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
-          <span className="hidden sm:inline">Next</span>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          {compact && sizeControls}
+          <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full shrink-0" aria-label="Next page" onClick={() => goto(page + 1)} disabled={page >= TOTAL_PAGES}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Text size control */}
-      <div className="flex items-center justify-end gap-2" dir="ltr">
-        <span className="text-xs text-muted-foreground">Text size</span>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-7 w-7 rounded-full"
-          aria-label="Decrease Quran text size"
-          disabled={fontScale <= 0.8}
-          onClick={() => setFontScale((s) => Math.max(0.8, Number((s - 0.1).toFixed(2))))}
-        >
-          <span className="text-sm">A-</span>
-        </Button>
-        <span className="text-xs tabular-nums w-10 text-center text-muted-foreground">{Math.round(fontScale * 100)}%</span>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-7 w-7 rounded-full"
-          aria-label="Increase Quran text size"
-          disabled={fontScale >= 2}
-          onClick={() => setFontScale((s) => Math.min(2, Number((s + 0.1).toFixed(2))))}
-        >
-          <span className="text-base">A+</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={() => setFontScale(1.15)}
-        >
-          Reset
-        </Button>
-      </div>
+      {/* Text size control (full view only — compact tucks it into the nav row) */}
+      {!compact && (
+        <div className="flex items-center justify-end gap-2" dir="ltr">
+          <span className="text-xs text-muted-foreground">Text size</span>
+          {sizeControls}
+        </div>
+      )}
+
 
 
 
@@ -502,6 +512,7 @@ export function QuranPageView({
 
 
       {/* Page scrubber — turn through the book */}
+      {!compact && (
       <div className="flex items-center gap-3 px-1" dir="ltr">
         <span className="text-xs text-muted-foreground w-14">Page {page}</span>
         <Slider
@@ -514,8 +525,10 @@ export function QuranPageView({
         />
         <span className="text-xs text-muted-foreground w-10 text-right">{TOTAL_PAGES}</span>
       </div>
+      )}
 
       {/* Bottom page turner — quick next/previous in addition to the scrubber */}
+      {!compact && (
       <div className="flex items-center justify-between gap-2">
         <Button
           type="button"
@@ -541,9 +554,13 @@ export function QuranPageView({
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
-        Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.
+        {compact
+          ? 'First tap = start, second tap = end. Tap a round verse sign for an exact verse.'
+          : 'Tap a round verse sign to mark that exact verse, or tap anywhere else on a line to mark the end of that line. First tap = start, second tap = end. Swipe or use ← / → to turn pages.'}
+
       </p>
 
       {/* Selection footer */}

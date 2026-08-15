@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SegmentedControl } from './SegmentedControl';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -1168,34 +1170,63 @@ export function UnifiedAttendanceForm({
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
 
+  /** Switching status must never leave stale reschedule data behind (unchanged rule). */
+  const changeStatus = (next: AttendanceStatus) => {
+    if (!requiresReschedule(next)) {
+      setRescheduleDate('');
+      setRescheduleTime('');
+    }
+    setSelectedStatus(next);
+  };
+
+  const isAdminUser = profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
+  /** The four everyday statuses. Everything else stays reachable under "More". */
+  const PRIMARY_STATUSES = [
+    { value: 'present' as AttendanceStatus, label: 'Present', icon: <CheckCircle2 className="h-3.5 w-3.5" />, activeClass: 'bg-emerald-600 text-white' },
+    { value: 'student_absent' as AttendanceStatus, label: 'Absent', icon: <XCircle className="h-3.5 w-3.5" />, activeClass: 'bg-rose-600 text-white' },
+    { value: 'student_leave' as AttendanceStatus, label: 'Leave', icon: <PauseCircle className="h-3.5 w-3.5" />, activeClass: 'bg-amber-500 text-white' },
+    { value: 'rescheduled' as AttendanceStatus, label: 'Rescheduled', icon: <CalendarClock className="h-3.5 w-3.5" />, activeClass: 'bg-slate-600 text-white' },
+  ];
+  const primaryValues = PRIMARY_STATUSES.map(s => s.value);
+  const secondaryStatuses = STATUS_OPTIONS.filter((opt) => {
+    if (primaryValues.includes(opt.value)) return false;
+    if (opt.value === 'holiday') return isAdminUser;
+    return true;
+  });
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl text-foreground flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+      <DialogContent className="sm:max-w-2xl w-[calc(100vw-1rem)] max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden bg-card border-border text-foreground">
+        {/* Sticky header */}
+        <DialogHeader className="shrink-0 border-b border-border px-4 sm:px-6 py-3 space-y-1 text-left">
+          <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-full bg-teal-600/10 flex items-center justify-center shrink-0">
+              <User className="h-4.5 w-4.5 text-teal-600" />
             </div>
-            {isEdit ? 'Edit Attendance' : 'Mark Attendance'}
+            <span className="truncate">{student.full_name || (isEdit ? 'Edit Attendance' : 'Mark Attendance')}</span>
+            {resolvedSubjectName && (
+              <Badge className="ml-auto shrink-0 bg-teal-600/10 text-teal-700 dark:text-teal-300 border-teal-600/30">
+                <BookOpen className="h-3 w-3 mr-1" />
+                {resolvedSubjectName}
+              </Badge>
+            )}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            {isEdit
-              ? <>
-                  {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
-                  {activeRecord?.created_at && (
-                    <span className="block text-xs text-muted-foreground mt-1">
-                      Created: {format(parseISO(activeRecord.created_at), 'dd MMM yyyy h:mm a')}
-                    </span>
-                  )}
-                </>
-              : (student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class')}
+          <DialogDescription className="text-xs text-muted-foreground">
+            {classDate ? format(parseISO(classDate), 'EEE, dd MMM yyyy') : '—'}
+            {classTime ? ` · ${classTime}` : ''}
+            {!isLeaveStatus && duration ? ` · ${duration} min` : ''}
+            {student.last_lesson ? ` · Last: ${student.last_lesson}` : ''}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Scrollable middle */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 space-y-4">
+
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
-          <div className="bg-muted rounded-xl p-4 space-y-2">
-            <Label className="text-foreground">Student <span className="text-destructive">*</span></Label>
+          <div className="bg-muted rounded-2xl p-3 space-y-2">
+            <Label className="text-foreground text-xs">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
               <SelectTrigger className="">
                 <SelectValue placeholder="Select a student" />
@@ -1211,26 +1242,6 @@ export function UnifiedAttendanceForm({
           </div>
         )}
 
-        {/* Student Info Header (when student is known) */}
-        {student.id && needsStudent && (
-          <div className="bg-muted rounded-xl p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-lg">{student.full_name}</span>
-              {resolvedSubjectName && (
-                <Badge className="bg-primary/10 text-muted-foreground border-primary/30">
-                  <BookOpen className="h-3 w-3 mr-1" />
-                  {resolvedSubjectName}
-                </Badge>
-              )}
-            </div>
-            {student.last_lesson && (
-              <div className="text-sm text-muted-foreground">
-                <Clock className="h-3 w-3 inline mr-1" />
-                Last: {student.last_lesson}
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="space-y-4 py-2">
           {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
@@ -1288,39 +1299,33 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Status Selection */}
+          {/* Status Selection — 4 primary pills + "More" for the rest */}
           <div className="space-y-2">
-            <Label className="text-foreground">Status <span className="text-destructive">*</span></Label>
-            <Select
-              value={selectedStatus}
-              onValueChange={(v) => {
-                const next = v as AttendanceStatus;
-                // Silently clear reschedule fields when leaving a reschedule status
-                if (!requiresReschedule(next)) {
-                  setRescheduleDate('');
-                  setRescheduleTime('');
-                }
-                setSelectedStatus(next);
-              }}
-            >
-              <SelectTrigger className="">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS
-                  .filter((opt) => {
-                    // Holiday remains admin-only; Leave is available to everyone so teachers can mark it inline
-                    if (opt.value === 'holiday') {
-                      return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
-                    }
-                    return true;
-                  })
-                  .map((opt) => (
+            <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
+            <SegmentedControl
+              aria-label="Attendance status"
+              value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
+              onChange={(v) => changeStatus(v as AttendanceStatus)}
+              options={PRIMARY_STATUSES}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground shrink-0">More</span>
+              <Select
+                value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
+                onValueChange={(v) => changeStatus(v as AttendanceStatus)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {secondaryStatuses.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
 
           {/* Adaptive Date Block ---------------------------------------- */}
           {!requiresReschedule(selectedStatus) ? (
@@ -1684,59 +1689,56 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Voice Note */}
-          <VoiceNoteRecorder
-            onUploadComplete={setVoiceNoteUrl}
-            uploadPath={`${student.id}/${classDate}`}
-          />
-
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Remarks</Label>
-            <Textarea 
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Any additional notes..."
-              className=""
-            />
-          </div>
+          {/* Voice note & remarks — collapsed by default */}
+          <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card shadow-sm px-3">
+            <AccordionItem value="notes" className="border-0">
+              <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
+                Voice note &amp; remarks (optional)
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pb-4">
+                <VoiceNoteRecorder
+                  onUploadComplete={setVoiceNoteUrl}
+                  uploadPath={`${student.id}/${classDate}`}
+                />
+                <div className="space-y-1.5">
+                  <Label className="text-foreground text-xs">Remarks</Label>
+                  <Textarea
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Any additional notes..."
+                    rows={3}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
         </div>
 
-        {/* Why the save is blocked — never leave the button silently disabled */}
-        {!isFormValid && (
-          <Alert className="mt-4 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <p className="font-medium mb-1">Cannot save yet:</p>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {blockingReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            className="border-primary/30 text-muted-foreground hover:bg-muted/80"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => markAttendance.mutate()}
-            disabled={!isFormValid || markAttendance.isPending}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {isEdit ? 'Save Changes' : 'Mark Attendance'}
-          </Button>
+        {/* Sticky footer */}
+        <div className="shrink-0 border-t border-border bg-card px-4 sm:px-6 py-3 space-y-2">
+          {!isFormValid && blockingReasons.length > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{blockingReasons[0]}</span>
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => markAttendance.mutate()}
+              disabled={!isFormValid || markAttendance.isPending}
+              className="bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50"
+            >
+              {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isEdit ? 'Save Changes' : `Mark ${STATUS_OPTIONS.find(s => s.value === selectedStatus)?.label || 'Attendance'}`}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
