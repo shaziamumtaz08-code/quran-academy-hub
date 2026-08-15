@@ -390,14 +390,14 @@ export function QuranPageView({
             <p className="text-sm font-semibold">{endLabel || 'Not set'}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Selected lesson</p>
-            <p className="text-sm font-semibold text-foreground truncate">
+            <p className="text-sm font-semibold text-foreground break-words">
               {previewText || 'Nothing selected yet'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={!start}>
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Clear
@@ -410,16 +410,24 @@ export function QuranPageView({
                 disabled={!preview}
                 onClick={() => preview && onAddSegment(preview)}
               >
-                Add as another segment
+                Add segment
               </Button>
             )}
             {onUseLesson && (
-              <Button type="button" size="sm" disabled={!preview} onClick={() => preview && onUseLesson(preview)}>
+              <Button
+                type="button"
+                size="sm"
+                className="col-span-2 sm:col-auto"
+                disabled={!preview}
+                onClick={() => preview && onUseLesson(preview)}
+              >
                 <Check className="h-4 w-4 mr-1.5" />
                 Use this lesson
               </Button>
             )}
           </div>
+        </div>
+
         </div>
       </div>
     </div>
