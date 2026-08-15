@@ -427,10 +427,9 @@ export function QuranPageView({
             )}
           </div>
         </div>
-
-        </div>
       </div>
     </div>
+
   );
 }
 
