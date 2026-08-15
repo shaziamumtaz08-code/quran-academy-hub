@@ -180,7 +180,37 @@ export function QuranPageView({
     (line.first_ayah ?? 0) <= highlight.ayah &&
     (line.last_ayah ?? 0) >= highlight.ayah;
 
+  // Resume: open where the teacher stopped last time
+  useEffect(() => {
+    if (!editionId || resumed.current) return;
+    resumed.current = true;
+    let cancelled = false;
+    const run = async () => {
+      if (resumeAyah?.surah && resumeAyah?.ayah) {
+        const target = await findPageForAyah(editionId, resumeAyah.surah, resumeAyah.ayah);
+        if (!cancelled && target) {
+          setPage(target);
+          setHighlight({ surah: resumeAyah.surah, ayah: resumeAyah.ayah });
+          setResumedAt(target);
+          return;
+        }
+      }
+      const saved = Number(localStorage.getItem(storageKey) || '');
+      if (!cancelled && saved >= 1 && saved <= TOTAL_PAGES) {
+        setPage(saved);
+        setResumedAt(saved);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [editionId, resumeAyah, storageKey]);
 
+  // Remember the page being read so the next attendance opens here
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(page));
+  }, [page, storageKey]);
 
 
   // Arrow-key page turning (RTL mushaf: left arrow = next page)
