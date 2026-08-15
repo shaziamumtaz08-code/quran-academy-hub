@@ -538,7 +538,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
                       className="h-7 mt-2 text-xs"
                       onClick={() => {
                         setUnbilledOpen(false);
-                        onSetupForStudent(s.student_id);
+                        onSetupForStudent(s.student_id, s.assignment_id);
                       }}
                     >
                       Set Up Plan
