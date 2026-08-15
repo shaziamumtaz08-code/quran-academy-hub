@@ -240,7 +240,7 @@ export function QuranPageView({
           {flip && (
             <div className="page-sheen pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-background/70 to-transparent" />
           )}
-        <div className="mushaf-frame rounded-[0.4rem] px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mushaf-frame rounded-[0.4rem] px-1.5 py-3 sm:px-6 sm:py-6">
 
           {/* Running head */}
           <div className="flex items-center justify-between border-b border-[hsl(var(--mushaf-rule)/0.35)] pb-2 mb-3 text-xs text-[hsl(var(--mushaf-ink)/0.7)]">
