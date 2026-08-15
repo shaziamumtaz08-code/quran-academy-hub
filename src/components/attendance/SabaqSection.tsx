@@ -63,7 +63,13 @@ interface SabaqSectionProps {
   // Additional lesson segments (same sitting, non-contiguous portions)
   extraSegments?: LessonSegment[];
   onExtraSegmentsChange?: (segments: LessonSegment[]) => void;
+
+  /** Where the student stopped last class — the Quran page view opens there. */
+  resumeAyah?: { surah: number; ayah: number } | null;
+  /** Scopes the remembered Quran page (usually the student id). */
+  resumeKey?: string;
 }
+
 
 export function SabaqSection({
   markerType,
