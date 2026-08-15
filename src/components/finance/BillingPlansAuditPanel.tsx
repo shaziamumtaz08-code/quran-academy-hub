@@ -20,6 +20,7 @@ interface PlanRow {
   net_recurring_fee: number;
   currency: string;
   is_active: boolean;
+  lifecycle_status?: string;
   branch_id: string | null;
   division_id: string | null;
   global_discount_id: string | null;
@@ -77,7 +78,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       let q = supabase
         .from('student_billing_plans')
         .select(`id, student_id, base_package_id, assignment_id, session_duration, duration_surcharge, flat_discount,
-                 net_recurring_fee, currency, is_active, branch_id, division_id, global_discount_id, manual_discount_reason, created_at,
+                 net_recurring_fee, currency, is_active, lifecycle_status, branch_id, division_id, global_discount_id, manual_discount_reason, created_at,
                  profiles!student_billing_plans_student_id_fkey(full_name, registration_id),
                  assignment:student_teacher_assignments!student_billing_plans_assignment_id_fkey(id, status, effective_from_date, effective_to_date)`)
         .order('created_at', { ascending: false });
