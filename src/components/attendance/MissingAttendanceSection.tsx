@@ -68,6 +68,8 @@ export function MissingAttendanceSection({
   const { profile } = useAuth();
   const isAdmin = (profile?.roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
 
+  const [markRecord, setMarkRecord] = useState<MissingRecord | null>(null);
+
   type ParkStatus = 'on_hold' | 'left' | 'completed';
   const [parkDialog, setParkDialog] = useState<{
     record: MissingRecord;
