@@ -203,7 +203,7 @@ export default function RevisePlanDialog({ open, onOpenChange, plan }: RevisePla
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => reviseMutation.mutate()} disabled={reviseMutation.isPending || !newFee}>
+          <Button onClick={() => reviseMutation.mutate()} disabled={reviseMutation.isPending || !newFee || reason.trim().length < 4}>
             {reviseMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirm revision
           </Button>
