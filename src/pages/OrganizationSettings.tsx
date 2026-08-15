@@ -129,7 +129,7 @@ function SpotlightSettingsSection() {
   }
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { setting_key: 'featured_spotlight', setting_value: form as any };
+      const payload = { setting_key: 'featured_spotlight', setting_value: form as any, is_public: true } as any;
       if (row) {
         const { error } = await supabase.from('app_settings').update(payload).eq('id', (row as any).id);
         if (error) throw error;
