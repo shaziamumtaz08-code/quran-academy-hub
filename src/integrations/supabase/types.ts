@@ -230,6 +230,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_public: boolean
           setting_key: string
           setting_value: Json
           updated_at: string
@@ -238,6 +239,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_public?: boolean
           setting_key: string
           setting_value?: Json
           updated_at?: string
@@ -246,6 +248,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_public?: boolean
           setting_key?: string
           setting_value?: Json
           updated_at?: string
@@ -13507,6 +13510,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      guest_email_is_unclaimed: { Args: { _email: string }; Returns: boolean }
       has_module_access: {
         Args: { _module_id: string; _user_id: string }
         Returns: boolean
