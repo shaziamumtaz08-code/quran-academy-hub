@@ -422,6 +422,17 @@ export function UnifiedAttendanceForm({
     enabled: open && !!student.id,
   });
 
+  // Where this student stopped last class — the Quran page view opens right there.
+  const resumeAyah = React.useMemo(() => {
+    const p: any = previousLesson;
+    const surah = p?.sabaq_surah_to || p?.sabaq_surah_from;
+    const ayah = p?.sabaq_ayah_to ?? p?.sabaq_ayah_from;
+    const num = getSurahByName(surah || '')?.number;
+    if (!num || !ayah) return null;
+    return { surah: num, ayah: Number(ayah) };
+  }, [previousLesson]);
+
+
   // When user switches to "repeat", prefill the lesson fields from the previous class.
   const applyPreviousLesson = () => {
     if (!previousLesson) return;
