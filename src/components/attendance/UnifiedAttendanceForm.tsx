@@ -63,16 +63,56 @@ export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'holiday', label: 'Holiday' },
 ];
 
-const REASON_CATEGORIES: { value: ReasonCategory; label: string; femaleOnly?: boolean }[] = [
-  { value: 'sick', label: 'Sick' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'emergency', label: 'Emergency' },
-  { value: 'family', label: 'Family Matter' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'internet_issue', label: 'Internet Issue' },
-  { value: 'periods', label: 'Periods', femaleOnly: true },
-  { value: 'other', label: 'Other' },
-];
+type ReasonOption = { value: ReasonCategory; label: string; femaleOnly?: boolean };
+
+/** Label lookup for any legacy value that may exist in older records. */
+const REASON_LABELS: Record<string, string> = {
+  sick: 'Sick / unwell',
+  personal: 'Personal',
+  emergency: 'Emergency',
+  family: 'Family matter',
+  travel: 'Travel',
+  internet_issue: 'Internet issue',
+  power_outage: 'Power outage / load-shedding',
+  periods: 'Periods',
+  school_exam: 'School / college exams',
+  religious: 'Religious occasion',
+  medical_appointment: 'Medical appointment',
+  no_response: 'No response / did not join',
+  overslept: 'Overslept / woke up late',
+  guests: 'Guests at home',
+  other: 'Other',
+};
+
+const opt = (value: string, femaleOnly?: boolean): ReasonOption => ({
+  value,
+  label: REASON_LABELS[value] || value,
+  femaleOnly,
+});
+
+/** Reason lists differ per status — restored from the legacy attendance forms. */
+const REASONS_BY_STATUS: Record<string, ReasonOption[]> = {
+  student_absent: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('internet_issue'), opt('power_outage'),
+    opt('no_response'), opt('overslept'), opt('school_exam'),
+    opt('periods', true), opt('other'),
+  ],
+  student_leave: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('school_exam'), opt('religious'),
+    opt('periods', true), opt('other'),
+  ],
+  teacher_absent: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('internet_issue'), opt('power_outage'), opt('other'),
+  ],
+  teacher_leave: [
+    opt('sick'), opt('personal'), opt('emergency'), opt('family'),
+    opt('travel'), opt('medical_appointment'), opt('religious'),
+    opt('guests'), opt('other'),
+  ],
+};
 
 const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
   { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
