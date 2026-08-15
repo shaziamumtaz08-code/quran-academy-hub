@@ -139,6 +139,39 @@ export function QuranPageView({
     [page]
   );
 
+  /** Search: jump straight to the page holding a surah + verse. */
+  const jumpToAyah = useCallback(
+    async (surah: number, ayah: number) => {
+      if (!editionId) return;
+      setSearching(true);
+      try {
+        const target = await findPageForAyah(editionId, surah, ayah);
+        if (!target) return;
+        setHighlight({ surah, ayah });
+        goto(target);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [editionId, goto]
+  );
+
+  // The highlight is a temporary "here it is" flash, not a selection
+  useEffect(() => {
+    if (!highlight) return;
+    const t = window.setTimeout(() => setHighlight(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [highlight]);
+
+  const isHighlighted = (line: MushafLine) =>
+    !!highlight &&
+    line.line_type === 'ayah' &&
+    line.first_surah === highlight.surah &&
+    (line.first_ayah ?? 0) <= highlight.ayah &&
+    (line.last_ayah ?? 0) >= highlight.ayah;
+
+
+
 
   // Arrow-key page turning (RTL mushaf: left arrow = next page)
   useEffect(() => {
