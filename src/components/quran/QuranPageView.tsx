@@ -307,7 +307,7 @@ export function QuranPageView({
                           'mushaf-text mushaf-line',
                           presentation
                             ? 'text-[1.35rem] sm:text-4xl'
-                            : 'text-[1.05rem] xs:text-lg sm:text-2xl'
+                            : 'text-[1.05rem] sm:text-2xl'
                         )}
                       >
 
