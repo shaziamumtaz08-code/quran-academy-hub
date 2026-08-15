@@ -88,7 +88,10 @@ export function QuranPageView({
   const [start, setStart] = useState<TapPoint | null>(null);
   const [end, setEnd] = useState<TapPoint | null>(null);
   const [preview, setPreview] = useState<LessonSegment | null>(null);
+  const [highlight, setHighlight] = useState<{ surah: number; ayah: number } | null>(null);
+  const [searching, setSearching] = useState(false);
   const touchX = useRef<number | null>(null);
+
 
   useEffect(() => {
     getDefaultEditionId().then(setEditionId);
