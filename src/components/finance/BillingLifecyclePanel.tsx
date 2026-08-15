@@ -77,6 +77,9 @@ export default function BillingLifecyclePanel() {
       return (data || []).filter((i: any) => {
         const plan = closed.find(p => p.id === i.plan_id);
         return plan && i.billing_month > String(plan.billing_close_date).slice(0, 7);
+      });
+    },
+    enabled: plans.some(p => p.billing_close_date),
   });
 
   // Unpaid invoices on an assignment that already has a live plan, but which carry no plan_id.
@@ -99,9 +102,6 @@ export default function BillingLifecyclePanel() {
       return (data || []).filter((i: any) => Number(i.amount_paid || 0) === 0);
     },
     enabled: plans.some(p => p.assignment_id),
-  });
-    },
-    enabled: plans.some(p => p.billing_close_date),
   });
 
   const confirmCredit = useMutation({
