@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertTriangle, UserX, ChevronDown, ChevronUp, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { trackActivity } from '@/lib/activityLogger';
@@ -20,6 +20,7 @@ interface PlanRow {
   net_recurring_fee: number;
   currency: string;
   is_active: boolean;
+  lifecycle_status?: string;
   branch_id: string | null;
   division_id: string | null;
   global_discount_id: string | null;
@@ -46,6 +47,7 @@ interface InvoiceRow {
 }
 
 interface UnbilledStudent {
+  assignment_id: string;
   student_id: string;
   full_name: string;
   registration_id: string | null;
@@ -76,7 +78,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       let q = supabase
         .from('student_billing_plans')
         .select(`id, student_id, base_package_id, assignment_id, session_duration, duration_surcharge, flat_discount,
-                 net_recurring_fee, currency, is_active, branch_id, division_id, global_discount_id, manual_discount_reason, created_at,
+                 net_recurring_fee, currency, is_active, lifecycle_status, branch_id, division_id, global_discount_id, manual_discount_reason, created_at,
                  profiles!student_billing_plans_student_id_fkey(full_name, registration_id),
                  assignment:student_teacher_assignments!student_billing_plans_assignment_id_fkey(id, status, effective_from_date, effective_to_date)`)
         .order('created_at', { ascending: false });
@@ -95,19 +97,36 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
       let q = supabase
         .from('student_teacher_assignments')
         .select(`id, student_id, created_at, status,
-                 student:profiles!student_teacher_assignments_student_id_fkey(full_name, registration_id),
+                 student:profiles!student_teacher_assignments_student_id_fkey(full_name, registration_id, archived_at),
                  teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
                  subjects(name)`)
         .eq('status', 'active');
       if (divisionId) q = q.eq('division_id', divisionId);
       const { data, error } = await q;
       if (error) throw error;
-      const billedIds = new Set(plans.filter(p => p.is_active).map(p => p.student_id));
-      const map = new Map<string, UnbilledStudent>();
+
+      // Billing is per ASSIGNMENT, not per student. A student with two active
+      // assignments needs two plans. Legacy plans with no assignment link are
+      // credited against one of that student's assignments so they are not
+      // double-flagged.
+      const livePlans = plans.filter(p => p.is_active && (p as any).lifecycle_status !== 'closed');
+      const billedAssignmentIds = new Set(livePlans.filter(p => p.assignment_id).map(p => p.assignment_id as string));
+      const unlinkedCredits = new Map<string, number>();
+      livePlans.filter(p => !p.assignment_id).forEach(p => {
+        unlinkedCredits.set(p.student_id, (unlinkedCredits.get(p.student_id) || 0) + 1);
+      });
+
+      const out: UnbilledStudent[] = [];
       (data || []).forEach((a: any) => {
-        if (billedIds.has(a.student_id)) return;
-        if (map.has(a.student_id)) return;
-        map.set(a.student_id, {
+        if (a.student?.archived_at) return;
+        if (billedAssignmentIds.has(a.id)) return;
+        const credit = unlinkedCredits.get(a.student_id) || 0;
+        if (credit > 0) {
+          unlinkedCredits.set(a.student_id, credit - 1);
+          return;
+        }
+        out.push({
+          assignment_id: a.id,
           student_id: a.student_id,
           full_name: a.student?.full_name || 'Unknown',
           registration_id: a.student?.registration_id || null,
@@ -116,10 +135,11 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
           active_since: a.created_at,
         });
       });
-      return [...map.values()].sort((x, y) => x.full_name.localeCompare(y.full_name));
+      return out.sort((x, y) => x.full_name.localeCompare(y.full_name) || x.subject_name.localeCompare(y.subject_name));
     },
     enabled: !!branchId,
   });
+
 
   const { duplicateGroups, activeCount } = useMemo(() => {
     // A student may legitimately have MULTIPLE plans — one per class/assignment.
@@ -308,7 +328,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
         )}
         {unbilled.length > 0 && (
           <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
-            <span className="h-2 w-2 rounded-full bg-amber-500" /> {unbilled.length} Unbilled Student{unbilled.length === 1 ? '' : 's'}
+            <span className="h-2 w-2 rounded-full bg-amber-500" /> {unbilled.length} Unbilled Assignment{unbilled.length === 1 ? '' : 's'}
           </span>
         )}
       </div>
@@ -341,8 +361,8 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
           <div className="flex gap-3">
             <UserX className="h-5 w-5 mt-0.5 shrink-0 text-amber-600" />
             <div>
-              <div className="font-bold">{unbilled.length} student{unbilled.length === 1 ? '' : 's'} are not being billed</div>
-              <div className="text-sm text-amber-700/80 mt-0.5">These students have active assignments but no fee plan set up.</div>
+              <div className="font-bold">{unbilled.length} active assignment{unbilled.length === 1 ? '' : 's'} have no billing plan</div>
+              <div className="text-sm text-amber-700/80 mt-0.5">Billing is per assignment — a student with two active classes needs two plans.</div>
             </div>
           </div>
           <Button
@@ -351,7 +371,7 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
             className="border-amber-300 text-amber-700 hover:bg-amber-200 shrink-0"
             onClick={() => setUnbilledOpen(true)}
           >
-            View Unbilled Students
+            Review Unbilled
           </Button>
         </div>
       )}
@@ -488,55 +508,51 @@ export default function BillingPlansAuditPanel({ onSetupForStudent }: Props) {
         </div>
       )}
 
-      <Sheet open={unbilledOpen} onOpenChange={setUnbilledOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              Unbilled Students
-              <Badge variant="secondary" className="ml-1">{unbilled.length}</Badge>
-            </SheetTitle>
-            <SheetDescription>Set up a billing plan for each student to start generating invoices</SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 space-y-0">
+      <Dialog open={unbilledOpen} onOpenChange={setUnbilledOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Assignments without a billing plan
+              <Badge variant="secondary">{unbilled.length}</Badge>
+            </DialogTitle>
+            <DialogDescription>
+              Billing follows the assignment: a student needs one plan per active assignment (class).
+              Set the fee for each one to start generating invoices.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {unbilled.map(s => {
               const initials = s.full_name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
               return (
-                <div key={s.student_id} className="py-3 border-b last:border-0 flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs font-semibold shrink-0">
+                <div key={s.assignment_id} className="rounded-xl border bg-card p-3 flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-semibold shrink-0">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm truncate">{s.full_name}</div>
                     <div className="text-[11px] text-muted-foreground truncate">{s.registration_id || '—'}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {s.teacher_name} · {s.subject_name}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Active since {new Date(s.active_since).toLocaleDateString()}
-                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 truncate">{s.teacher_name} · {s.subject_name}</div>
+                    <div className="text-[11px] text-muted-foreground">Active since {new Date(s.active_since).toLocaleDateString()}</div>
+                    <Button
+                      size="sm"
+                      className="h-7 mt-2 text-xs"
+                      onClick={() => {
+                        setUnbilledOpen(false);
+                        onSetupForStudent(s.student_id);
+                      }}
+                    >
+                      Set Up Plan
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    className="h-8 bg-amber-500 hover:bg-amber-600 text-white shrink-0"
-                    onClick={() => {
-                      setUnbilledOpen(false);
-                      onSetupForStudent(s.student_id);
-                    }}
-                  >
-                    Set Up Plan
-                  </Button>
                 </div>
               );
             })}
             {unbilled.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">All students with active assignments have billing plans.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center sm:col-span-2">Every active assignment has a billing plan.</p>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-6 italic">
-            Plans must be set up individually to confirm the correct fee per student
-          </p>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
