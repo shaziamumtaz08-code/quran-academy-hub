@@ -1478,6 +1478,8 @@ export function UnifiedAttendanceForm({
                   onJuzToChange={setJuzTo}
                   extraSegments={extraSegments}
                   onExtraSegmentsChange={setExtraSegments}
+                  resumeAyah={resumeAyah}
+                  resumeKey={student.id}
 
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
@@ -1516,6 +1518,8 @@ export function UnifiedAttendanceForm({
                   onQuarterToNumberChange={setQuarterToNumber}
                   extraSegments={extraSegments}
                   onExtraSegmentsChange={setExtraSegments}
+                  resumeAyah={resumeAyah}
+                  resumeKey={student.id}
 
                 />
               )}
