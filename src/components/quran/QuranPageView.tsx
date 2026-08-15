@@ -72,6 +72,8 @@ interface Props {
   onAddSegment?: (segment: LessonSegment) => void;
   /** Screen-share friendly: larger text, calmer chrome. */
   presentation?: boolean;
+  /** Embedded in the attendance form: single nav row, no scrubber, no duplicate turner. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -83,6 +85,7 @@ export function QuranPageView({
   onUseLesson,
   onAddSegment,
   presentation = false,
+  compact = false,
   className,
 }: Props) {
   const storageKey = `mushaf:lastPage:${resumeKey}`;
