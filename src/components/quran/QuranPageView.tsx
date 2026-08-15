@@ -314,6 +314,44 @@ export function QuranPageView({
         </Button>
       </div>
 
+      {/* Text size control */}
+      <div className="flex items-center justify-end gap-2" dir="ltr">
+        <span className="text-xs text-muted-foreground">Text size</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          aria-label="Decrease Quran text size"
+          disabled={fontScale <= 0.8}
+          onClick={() => setFontScale((s) => Math.max(0.8, Number((s - 0.1).toFixed(2))))}
+        >
+          <span className="text-sm">A-</span>
+        </Button>
+        <span className="text-xs tabular-nums w-10 text-center text-muted-foreground">{Math.round(fontScale * 100)}%</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          aria-label="Increase Quran text size"
+          disabled={fontScale >= 2}
+          onClick={() => setFontScale((s) => Math.min(2, Number((s + 0.1).toFixed(2))))}
+        >
+          <span className="text-base">A+</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => setFontScale(1.15)}
+        >
+          Reset
+        </Button>
+      </div>
+
+
 
       {/* Mushaf page */}
       <div className="book-stage">
