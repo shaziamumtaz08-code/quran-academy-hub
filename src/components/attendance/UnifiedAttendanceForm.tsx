@@ -590,7 +590,7 @@ export function UnifiedAttendanceForm({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEdit, scheduledDays.join(',')]);
+  }, [open, isEdit, initialDate, scheduledDays.join(',')]);
 
 
   // Get scheduled time for the selected day. Falls back to the student's usual slot
