@@ -1269,15 +1269,10 @@ export function UnifiedAttendanceForm({
                       ? <>This student has no active weekly schedule, so no day counts as a class day. Set up their schedule first.</>
                       : <>This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.</>}
                 </p>
-                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allowOffDay}
-                    onChange={(e) => setAllowOffDay(e.target.checked)}
-                    className="h-4 w-4 accent-amber-600"
-                  />
-                  This was an extra / make-up class — let me mark it
-                </label>
+                <p className="text-xs">
+                  Attendance can only be marked on class days. If a make-up class ran,
+                  set the status to <span className="font-medium">Rescheduled</span> instead.
+                </p>
               </AlertDescription>
             </Alert>
           )}
