@@ -159,6 +159,8 @@ interface UnifiedAttendanceFormProps {
   students?: StudentInfo[];
   /** Initial status to start with (e.g. 'teacher_leave' from a quick-action). */
   initialStatus?: AttendanceStatus;
+  /** Pre-selected class date (yyyy-MM-dd), e.g. when marking a specific missed slot. */
+  initialDate?: string;
   teacherId?: string;
   teacherTimezone?: string;
   /** When true, Class Time is editable (admins). Defaults to false. */
@@ -174,6 +176,7 @@ export function UnifiedAttendanceForm({
   student: presetStudent,
   students,
   initialStatus,
+  initialDate,
   teacherId,
   teacherTimezone,
   allowTimeEdit = false,
@@ -566,9 +569,15 @@ export function UnifiedAttendanceForm({
     return scheduledDays.includes(dayName);
   }, [classDate, scheduledDays]);
 
+  /** Explicit date passed in (e.g. "Mark now" on a missed slot) wins over any default. */
+  useEffect(() => {
+    if (!open || isEdit || !initialDate) return;
+    setClassDate(initialDate);
+  }, [open, isEdit, initialDate]);
+
   /** Default the date to the latest scheduled, non-holiday day on/before today. */
   useEffect(() => {
-    if (!open || isEdit || scheduledDays.length === 0) return;
+    if (!open || isEdit || initialDate || scheduledDays.length === 0) return;
     const today = new Date();
     const todayName = DAY_NAMES[getDay(today)];
     if (scheduledDays.includes(todayName)) return; // today is fine
@@ -581,7 +590,7 @@ export function UnifiedAttendanceForm({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEdit, scheduledDays.join(',')]);
+  }, [open, isEdit, initialDate, scheduledDays.join(',')]);
 
 
   // Get scheduled time for the selected day. Falls back to the student's usual slot

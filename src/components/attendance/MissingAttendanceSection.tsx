@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar as CalendarIcon, User, Search, Filter, ArrowUpDown, Pause, LogOut, CheckCircle2, MoreHorizontal, Loader2 } from 'lucide-react';
+import { AlertTriangle, Calendar as CalendarIcon, User, Search, Filter, ArrowUpDown, Pause, LogOut, CheckCircle2, MoreHorizontal, Loader2, ClipboardCheck } from 'lucide-react';
+import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,6 +27,7 @@ interface MissingRecord {
   teacherId: string;
   teacherName: string;
   subjectName: string | null;
+  subjectId: string | null;
   scheduledTime: string;
   assignmentId: string;
 }
@@ -65,6 +67,8 @@ export function MissingAttendanceSection({
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const isAdmin = (profile?.roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
+
+  const [markRecord, setMarkRecord] = useState<MissingRecord | null>(null);
 
   type ParkStatus = 'on_hold' | 'left' | 'completed';
   const [parkDialog, setParkDialog] = useState<{
@@ -152,7 +156,7 @@ export function MissingAttendanceSection({
               effective_to_date,
               requires_attendance,
               division_id,
-              subject:subjects(name),
+              subject:subjects(id, name),
               student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
             )
@@ -276,6 +280,7 @@ export function MissingAttendanceSection({
               teacherId: assignment.teacher_id,
               teacherName: assignment.teacher.full_name,
               subjectName: assignment.subject?.name || null,
+              subjectId: assignment.subject?.id || null,
               scheduledTime: schedule.teacher_local_time?.substring(0, 5) || '-',
               assignmentId: assignment.id,
             });
@@ -450,7 +455,7 @@ export function MissingAttendanceSection({
                       </span>
                     </TableHead>
                   ))}
-                  {isAdmin && <TableHead className="text-right">Action</TableHead>}
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -475,8 +480,18 @@ export function MissingAttendanceSection({
                       ) : '-'}
                     </TableCell>
                     <TableCell>{record.scheduledTime}</TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-right">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => setMarkRecord(record)}
+                          title={`Mark attendance for ${record.studentName} on ${format(parseISO(record.date), 'dd MMM yyyy')}`}
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          <span className="ml-1 text-xs">Mark now</span>
+                        </Button>
+                        {isAdmin && (
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 px-2" title="Park assignment">
@@ -508,8 +523,9 @@ export function MissingAttendanceSection({
                             </button>
                           </PopoverContent>
                         </Popover>
-                      </TableCell>
-                    )}
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -517,6 +533,31 @@ export function MissingAttendanceSection({
           </div>
         )}
       </CardContent>
+
+      {/* Quick "Mark now" — prefilled attendance form for that student + missed date */}
+      {markRecord && (
+        <UnifiedAttendanceForm
+          open={!!markRecord}
+          onOpenChange={(open) => { if (!open) setMarkRecord(null); }}
+          student={{
+            id: markRecord.studentId,
+            full_name: markRecord.studentName,
+            subject_name: markRecord.subjectName,
+            subject_id: markRecord.subjectId,
+            assignment_id: markRecord.assignmentId,
+            last_lesson: null,
+            teacher_id: markRecord.teacherId,
+          }}
+          teacherId={markRecord.teacherId}
+          initialDate={markRecord.date}
+          allowTimeEdit={isAdmin}
+          onSuccess={() => {
+            setMarkRecord(null);
+            queryClient.invalidateQueries({ queryKey: ['attendance-for-missing'] });
+            queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+          }}
+        />
+      )}
 
       {/* Park assignment dialog — requires manual effective date */}
       <Dialog open={!!parkDialog} onOpenChange={(open) => { if (!open) { setParkDialog(null); setEffectiveDate(undefined); } }}>
