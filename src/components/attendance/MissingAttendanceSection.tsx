@@ -27,6 +27,7 @@ interface MissingRecord {
   teacherId: string;
   teacherName: string;
   subjectName: string | null;
+  subjectId: string | null;
   scheduledTime: string;
   assignmentId: string;
 }
