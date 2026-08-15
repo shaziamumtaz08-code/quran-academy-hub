@@ -556,16 +556,33 @@ export function UnifiedAttendanceForm({
   const { activeModelType } = useDivision();
   const isOneToOne = activeModelType === 'one_to_one';
 
-  // Check if selected date is a scheduled day.
-  // One-to-one division: weekends/off-days are NEVER frozen — teachers can mark any day
-  // (covers ad-hoc lessons + reschedules to Sat/Sun).
+  // Check if selected date is a scheduled day for this student.
+  // Off days (weekends / non-slot days) are no longer silently allowed — the teacher
+  // must tick the "extra / make-up class" confirmation to mark them.
   const isScheduledDay = useMemo(() => {
-    if (isOneToOne) return true;
     if (!classDate || scheduledDays.length === 0) return true;
     const dayIndex = getDay(parseISO(classDate));
     const dayName = DAY_NAMES[dayIndex];
     return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays, isOneToOne]);
+  }, [classDate, scheduledDays]);
+
+  /** Default the date to the latest scheduled, non-holiday day on/before today. */
+  useEffect(() => {
+    if (!open || isEdit || scheduledDays.length === 0) return;
+    const today = new Date();
+    const todayName = DAY_NAMES[getDay(today)];
+    if (scheduledDays.includes(todayName)) return; // today is fine
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (scheduledDays.includes(DAY_NAMES[getDay(d)])) {
+        setClassDate(format(d, 'yyyy-MM-dd'));
+        return;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, scheduledDays.join(',')]);
+
 
   // Get scheduled time for the selected day. Falls back to the student's usual slot
   // (their other active schedule rows) so ad-hoc / make-up days still auto-fill and the
