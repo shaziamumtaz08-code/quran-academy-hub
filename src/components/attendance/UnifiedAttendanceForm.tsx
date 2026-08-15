@@ -49,7 +49,7 @@ export type AttendanceStatus =
   | 'student_rescheduled' 
   | 'holiday';
 
-type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'periods' | 'family' | 'travel' | 'other';
+type ReasonCategory = string;
 type RescheduleReason = 'teacher_unavailable' | 'student_unavailable' | 'tech_issue' | 'power_outage' | 'emergency' | 'holiday_overlap' | 'other';
 
 export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
