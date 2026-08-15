@@ -1274,39 +1274,33 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Status Selection */}
+          {/* Status Selection — 4 primary pills + "More" for the rest */}
           <div className="space-y-2">
-            <Label className="text-foreground">Status <span className="text-destructive">*</span></Label>
-            <Select
-              value={selectedStatus}
-              onValueChange={(v) => {
-                const next = v as AttendanceStatus;
-                // Silently clear reschedule fields when leaving a reschedule status
-                if (!requiresReschedule(next)) {
-                  setRescheduleDate('');
-                  setRescheduleTime('');
-                }
-                setSelectedStatus(next);
-              }}
-            >
-              <SelectTrigger className="">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS
-                  .filter((opt) => {
-                    // Holiday remains admin-only; Leave is available to everyone so teachers can mark it inline
-                    if (opt.value === 'holiday') {
-                      return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
-                    }
-                    return true;
-                  })
-                  .map((opt) => (
+            <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
+            <SegmentedControl
+              aria-label="Attendance status"
+              value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
+              onChange={(v) => changeStatus(v as AttendanceStatus)}
+              options={PRIMARY_STATUSES}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground shrink-0">More</span>
+              <Select
+                value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
+                onValueChange={(v) => changeStatus(v as AttendanceStatus)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {secondaryStatuses.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
 
           {/* Adaptive Date Block ---------------------------------------- */}
           {!requiresReschedule(selectedStatus) ? (
