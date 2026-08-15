@@ -409,6 +409,15 @@ export function UnifiedAttendanceForm({
     else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
   }, [selectedStatus]);
 
+  // Drop a reason that isn't offered for the newly selected status
+  useEffect(() => {
+    if (!reasonCategory) return;
+    const list = REASONS_BY_STATUS[selectedStatus];
+    if (list && !list.some(r => r.value === reasonCategory)) setReasonCategory('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStatus]);
+
+
   // Fetch student's schedule
   const { data: scheduleData } = useQuery({
     queryKey: ['student-schedule-unified', student.id, resolvedAssignmentId],
