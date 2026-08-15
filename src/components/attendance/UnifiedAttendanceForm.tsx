@@ -176,6 +176,7 @@ export function UnifiedAttendanceForm({
   student: presetStudent,
   students,
   initialStatus,
+  initialDate,
   teacherId,
   teacherTimezone,
   allowTimeEdit = false,
