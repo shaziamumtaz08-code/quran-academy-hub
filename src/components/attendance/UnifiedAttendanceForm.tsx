@@ -394,8 +394,14 @@ export function UnifiedAttendanceForm({
   });
   const studentGender = (student.gender || (studentProfile as any)?.gender || '').toString().toLowerCase();
   const visibleReasonCategories = useMemo(() => {
-    return REASON_CATEGORIES.filter(r => !r.femaleOnly || studentGender === 'female');
-  }, [studentGender]);
+    const base = (REASONS_BY_STATUS[selectedStatus] || REASONS_BY_STATUS.student_absent)
+      .filter(r => !r.femaleOnly || studentGender === 'female');
+    // Keep any legacy value already saved on the record selectable.
+    if (reasonCategory && !base.some(r => r.value === reasonCategory)) {
+      return [...base, { value: reasonCategory, label: REASON_LABELS[reasonCategory] || reasonCategory }];
+    }
+    return base;
+  }, [studentGender, selectedStatus, reasonCategory]);
 
   // Sync rescheduleBy with selected status
   useEffect(() => {
