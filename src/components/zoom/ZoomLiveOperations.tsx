@@ -123,14 +123,22 @@ export function ZoomLiveOperations() {
     });
   }, [todayClasses, todaySessions, nowMinutes]);
 
+  // A live session that isn't linked to a scheduled slot (e.g. a teacher started
+  // their dedicated Zoom room directly) must still be counted as "in progress",
+  // otherwise the tile reads 0 while the On air panel shows the class.
+  const unlinkedLive = React.useMemo(() => {
+    const linkedIds = new Set(slots.map((s) => s.session?.id).filter(Boolean));
+    return (liveSessions || []).filter((s: any) => !linkedIds.has(s.id));
+  }, [slots, liveSessions]);
+
   const counts = React.useMemo(
     () => ({
-      live: slots.filter((s) => s.state === 'live').length,
+      live: slots.filter((s) => s.state === 'live').length + unlinkedLive.length,
       upcoming: slots.filter((s) => s.state === 'upcoming').length,
       completed: slots.filter((s) => s.state === 'completed').length,
       overdue: slots.filter((s) => s.state === 'overdue').length,
     }),
-    [slots],
+    [slots, unlinkedLive],
   );
 
   const liveNow = liveSessions?.length || 0;
