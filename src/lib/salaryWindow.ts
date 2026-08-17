@@ -1,4 +1,3 @@
-import { endOfMonth, format, parseISO } from 'date-fns';
 
 /**
  * SINGLE SOURCE OF TRUTH for "which months does an assignment earn salary in".
@@ -6,8 +5,8 @@ import { endOfMonth, format, parseISO } from 'date-fns';
  * Business rules (do not weaken without updating salaryWindow.test.ts):
  * 1. Ended assignments ('left' / 'completed') STILL earn salary for every month they
  *    were active. They must never be filtered out of historical sheets.
- * 2. End dates are MONTH-GRANULAR: an assignment ending on any day of June is paid the
- *    whole of June.
+ * 2. End dates are DAY-GRANULAR: an assignment ending on 10 June is paid up to 10 June
+ *    only, prorated as (rate / days_in_month) * active_days — matching invoice proration.
  * 3. When no explicit effective_to_date exists, status_effective_date is the end date.
  */
 export const SALARY_ASSIGNMENT_STATUSES = ['active', 'completed', 'left'] as const;
@@ -27,7 +26,7 @@ export function resolveAssignmentEnd(assign: AssignmentWindowInput): string | nu
       ? assign.status_effective_date
       : null);
   if (!rawEnd) return null;
-  return format(endOfMonth(parseISO(rawEnd)), 'yyyy-MM-dd');
+  return rawEnd;
 }
 
 /** Clipped [from, to] window of an assignment inside a month, or null if inactive that month. */
