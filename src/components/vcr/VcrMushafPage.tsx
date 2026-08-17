@@ -239,7 +239,7 @@ export function VcrMushafPage({
             {lines.map((line) => {
               if (line.line_type !== 'ayah') {
                 return (
-                  <div key={line.id} className="text-center py-2 font-quran text-primary"
+                  <div key={line.id} className="text-center py-2 mushaf-text text-primary"
                     style={{ fontSize: `${zoom * 1.4}rem` }}>
                     {line.text_indopak}
                   </div>
@@ -249,7 +249,7 @@ export function VcrMushafPage({
                 <div
                   key={line.id}
                   className={cn(
-                    'rounded-lg px-2 py-1 leading-[2.4] transition-colors font-quran',
+                    'rounded-lg px-2 py-1 leading-[2.4] transition-colors mushaf-text',
                     isSelectedLine(line) && 'bg-primary/10 ring-2 ring-primary'
                   )}
                   style={{ fontSize: `${zoom * 1.5}rem` }}
