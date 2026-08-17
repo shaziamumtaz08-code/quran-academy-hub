@@ -16,6 +16,13 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['Amiri', 'serif'],
+        display: ['Fraunces', 'Lora', 'serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        uthmani: ['"Amiri Quran"', '"PDMS Saleem Quran"', '"Noto Naskh Arabic"', 'serif'],
+      },
+      boxShadow: {
+        "vcr-1": "0 1px 2px rgba(0,0,0,.35), 0 6px 16px -8px rgba(0,0,0,.45)",
+        "vcr-3": "0 24px 60px -18px rgba(0,0,0,.75), 0 8px 24px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.85)",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -67,6 +74,16 @@ export default {
         "lms-warning": "#8a5c00",
         "lms-danger": "#b42a2a",
         /* ── Tajweed teaching colours (Virtual Class Room) ── */
+        /* ── VCR "manuscript under lamp light" palette ── */
+        vcr: {
+          canvas: "#0C1B1E",
+          parchment: "#FBF6EA",
+          gold: "#C9A227",
+          emerald: "#1F5C4E",
+          oxide: "#A8452C",
+          ink: "#211C12",
+          chrome: "#EDE6D2",
+        },
         tajweed: {
           ghunnah: "#0f766e",
           qalqalah: "#b45309",
