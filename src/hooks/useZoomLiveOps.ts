@@ -63,9 +63,12 @@ export function useLiveSessionsMonitor() {
       const allProfileIds = [...new Set([...teacherIds, ...studentIds])];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, meeting_link')
         .in('id', allProfileIds);
       const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
+      const teacherLinkMap = new Map(
+        (profiles || []).map((p: any) => [p.id, p.meeting_link as string | null]),
+      );
 
       const sessionIds = sessions.map((s) => s.id);
       const { data: attendanceLogs } = await supabase
