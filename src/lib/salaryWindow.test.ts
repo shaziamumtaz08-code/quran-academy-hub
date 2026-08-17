@@ -18,10 +18,10 @@ describe('salary assignment windows', () => {
     expect(SALARY_ASSIGNMENT_STATUSES).toContain('active');
   });
 
-  it('treats end dates as month-granular', () => {
+  it('treats end dates as day-granular', () => {
     expect(
       resolveAssignmentEnd({ status: 'left', status_effective_date: '2026-06-09' }),
-    ).toBe('2026-06-30');
+    ).toBe('2026-06-09');
   });
 
   // Hira: enrolled April, left June -> paid Apr, May, Jun (full June), not July
@@ -50,7 +50,7 @@ describe('salary assignment windows', () => {
     });
     expect(assignmentMonthWindow(neha, ...MAY)).toEqual({
       dateFrom: '2026-05-01',
-      dateTo: '2026-05-31',
+      dateTo: '2026-05-20',
     });
     expect(assignmentMonthWindow(neha, ...JUN)).toBeNull();
   });
@@ -73,6 +73,6 @@ describe('salary assignment windows', () => {
         effective_to_date: '2026-05-10',
         status_effective_date: '2026-06-09',
       }),
-    ).toBe('2026-05-31');
+    ).toBe('2026-05-10');
   });
 });
