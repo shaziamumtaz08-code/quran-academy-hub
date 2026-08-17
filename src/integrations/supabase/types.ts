@@ -13303,6 +13303,14 @@ export type Database = {
           zoom_email: string
         }[]
       }
+      get_assignment_payouts: {
+        Args: { _assignment_ids: string[] }
+        Returns: {
+          assignment_id: string
+          payout_amount: number
+          payout_type: string
+        }[]
+      }
       get_course_quiz_questions_for_student: {
         Args: { _quiz_id: string }
         Returns: {
