@@ -184,16 +184,19 @@ export function BulkReportCardDialog({
     setIsValidating(true);
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter((line) => line.trim());
+      // Remarks columns routinely contain commas and line breaks (Urdu feedback),
+      // so the whole file must be tokenised, not split line-by-line.
+      const records = parseCSV(text);
 
-      if (lines.length < 2) {
+      if (records.length < 2) {
         toast({ title: 'Error', description: 'CSV must have header row and at least one data row', variant: 'destructive' });
         setIsValidating(false);
         return;
       }
 
-      const headers = lines[0].split(',').map((h) => h.trim());
+      const headers = records[0].map((h) => h.trim());
       const rows: ParsedRow[] = [];
+
 
       // Map criteria names from headers (extract name without max info)
       const criteriaHeaders = headers.slice(2, -2).map((h) => {
