@@ -1354,22 +1354,25 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Status Selection — 4 primary pills + "More" for the rest */}
-          <div className="space-y-2">
-            <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
-            <SegmentedControl
-              aria-label="Attendance status"
-              value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
-              onChange={(v) => changeStatus(v as AttendanceStatus)}
-              options={PRIMARY_STATUSES}
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground shrink-0">More</span>
+          {/* ── Status card ─────────────────────────────────────────── */}
+          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-3">
+            <div className="space-y-2">
+              <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
+              <SegmentedControl
+                aria-label="Attendance status"
+                value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
+                onChange={(v) => changeStatus(v as AttendanceStatus)}
+                options={PRIMARY_STATUSES}
+                gridClassName="grid-cols-2 sm:grid-cols-4"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-foreground text-xs">More statuses</Label>
               <Select
                 value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
                 onValueChange={(v) => changeStatus(v as AttendanceStatus)}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1379,7 +1382,12 @@ export function UnifiedAttendanceForm({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </section>
+
+          {/* ── Class details card ──────────────────────────────────── */}
+          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
+
 
 
           {/* Adaptive Date Block ---------------------------------------- */}
