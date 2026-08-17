@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,7 @@ export function CoverManagementPanel({ originalAssignmentId }: Props) {
         .eq('status', 'active')
         .order('temp_start_date', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as CoverRow[];
+      return (await withAssignmentPayouts(((data || []) as any[]))) as unknown as CoverRow[];
     },
   });
 

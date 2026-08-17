@@ -183,6 +183,7 @@ export default function FinancialStatements() {
           .eq("teacher_id", personId as string)
           .in("status", [...SALARY_ASSIGNMENT_STATUSES]);
         if (aErr) throw aErr;
+        const assignsWithPay = await withAssignmentPayouts(((assigns || []) as any[]));
 
         months.forEach((m) => {
           const row = byMonth.get(m)!;
@@ -190,7 +191,7 @@ export default function FinancialStatements() {
           const monthEndDate = endOfMonth(parseISO(monthStart));
           const monthEnd = format(monthEndDate, "yyyy-MM-dd");
           const monthDays = getDaysInMonth(monthEndDate);
-          (assigns || []).forEach((a: any) => {
+          assignsWithPay.forEach((a: any) => {
             if (a.salary_linked === false) return;
             const win = assignmentMonthWindow(a, monthStart, monthEnd);
             if (!win) return;

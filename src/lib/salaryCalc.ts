@@ -1,5 +1,6 @@
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
 import { normalizeAttendanceStatus } from '@/lib/attendanceStatus';
 
@@ -401,6 +402,9 @@ export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<
       supabase.from('fee_invoices').select('id, student_id, assignment_id, status, paid_at').is('voided_at', null).eq('is_archived', false).eq('billing_month', salaryMonth),
       supabase.from('schedules').select('assignment_id, day_of_week').eq('is_active', true),
     ]);
+
+  const assignmentsWithPayouts = await withAssignmentPayouts(((assignmentsRes.data || []) as any[]));
+  (assignmentsRes as any).data = assignmentsWithPayouts;
 
   const staffSalaries = staffSalariesRes.data || [];
   const teacherIds = (roleRows.data || []).map((r: any) => r.user_id);

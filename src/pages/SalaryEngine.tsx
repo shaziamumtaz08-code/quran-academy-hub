@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -208,7 +209,7 @@ export default function SalaryEngine() {
         // 'left'/'completed' assignments still earn salary for the months they were active —
         // the effective date window below decides inclusion, not the current status.
         .in('status', [...SALARY_ASSIGNMENT_STATUSES]);
-      return data || [];
+      return await withAssignmentPayouts(((data || []) as any[]));
     },
   });
 
