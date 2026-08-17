@@ -124,6 +124,8 @@ const QuizInviteAccept = lazy(() => import("./pages/QuizInviteAccept"));
 
 const StudentQuizView = lazy(() => import("./pages/StudentQuizView"));
 const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
+const VcrRoom = lazy(() => import("./pages/VcrRoom"));
+const StudentSyllabus = lazy(() => import("./pages/StudentSyllabus"));
 const LiveClasses = lazy(() => import("./pages/LiveClasses"));
 const SchemaExplorer = lazy(() => import("./pages/SchemaExplorer"));
 const QATestMate = lazy(() => import("./pages/QATestMate"));
@@ -550,6 +552,8 @@ function AppRoutes() {
       <Route path="/quiz-invite/:token" element={<QuizInviteAccept />} />
 
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
+      <Route path="/vcr/:studentId" element={<ProtectedRoute><VcrRoom /></ProtectedRoute>} />
+      <Route path="/syllabus/:studentId" element={<ProtectedRoute><StudentSyllabus /></ProtectedRoute>} />
       <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
       <Route path="/qa-testmate" element={<ProtectedRoute><RouteGuard moduleId="qa_testmate"><QATestMate /></RouteGuard></ProtectedRoute>} />
