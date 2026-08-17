@@ -5964,6 +5964,41 @@ export type Database = {
           },
         ]
       }
+      mistake_log: {
+        Row: {
+          created_at: string
+          id: string
+          mistake_type: string
+          note: string | null
+          reference: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mistake_type: string
+          note?: string | null
+          reference: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mistake_type?: string
+          note?: string | null
+          reference?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mistake_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "vcr_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mushaf_editions: {
         Row: {
           code: string
@@ -10574,6 +10609,44 @@ export type Database = {
           },
         ]
       }
+      student_progress: {
+        Row: {
+          created_at: string
+          current_item_id: string | null
+          current_page_or_ayah: string | null
+          id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_item_id?: string | null
+          current_page_or_ayah?: string | null
+          id?: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_item_id?: string | null
+          current_page_or_ayah?: string | null
+          id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_progress_current_item_id_fkey"
+            columns: ["current_item_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_signals: {
         Row: {
           created_at: string
@@ -10979,6 +11052,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      syllabus_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          level: string
+          reference: Json
+          sequence_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level: string
+          reference?: Json
+          sequence_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string
+          reference?: Json
+          sequence_order?: number
+          title?: string
+        }
+        Relationships: []
       }
       system_logs: {
         Row: {
@@ -12042,6 +12145,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vcr_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          item_covered_id: string | null
+          notes: string | null
+          reference_covered: string | null
+          started_at: string
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          item_covered_id?: string | null
+          notes?: string | null
+          reference_covered?: string | null
+          started_at?: string
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          item_covered_id?: string | null
+          notes?: string | null
+          reference_covered?: string | null
+          started_at?: string
+          student_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vcr_sessions_item_covered_id_fkey"
+            columns: ["item_covered_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_items"
             referencedColumns: ["id"]
           },
         ]
