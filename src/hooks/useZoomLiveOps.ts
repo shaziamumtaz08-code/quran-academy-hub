@@ -107,6 +107,13 @@ export function useLiveSessionsMonitor() {
         ...session,
         teacherName: profileMap.get(session.teacher_id) || 'Unknown',
         studentName: session.student_id ? profileMap.get(session.student_id) || 'Student' : null,
+        // A session started on a teacher's dedicated Zoom account has no pooled
+        // licence, so fall back to the teacher's own personal meeting link.
+        joinUrl:
+          session.license?.meeting_link ||
+          teacherLinkMap.get(session.teacher_id) ||
+          session.stream_url ||
+          null,
         participants: participantsMap.get(session.id) || [],
         activeCount: participantsMap.get(session.id)?.length || 0,
       }));
