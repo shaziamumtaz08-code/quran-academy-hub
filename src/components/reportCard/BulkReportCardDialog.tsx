@@ -204,9 +204,9 @@ export function BulkReportCardDialog({
         return match ? match[1].trim() : h;
       });
 
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        if (values.length < 3) continue;
+      for (let i = 1; i < records.length; i++) {
+        const values = records[i];
+        if (values.length < 3 || values.every((v) => !v.trim())) continue;
 
         const studentName = values[0]?.trim() || '';
         const examDate = values[1]?.trim() || '';
