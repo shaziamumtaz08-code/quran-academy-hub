@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
@@ -199,7 +200,7 @@ export default function Assignments() {
         .from('student_teacher_assignments')
         .select(`
           id, teacher_id, student_id, subject_id, status, created_at,
-          payout_amount, payout_type, effective_from_date, effective_to_date,
+          effective_from_date, effective_to_date,
           transfer_type, parent_assignment_id, substitute_end_date,
           requires_schedule, requires_planning, requires_attendance,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
@@ -212,6 +213,7 @@ export default function Assignments() {
       }
       const { data, error } = await query;
       if (error) throw error;
+      const payoutMap = await fetchAssignmentPayouts((data || []).map((r: any) => r.id));
       return (data || []).map((row: any) => ({
         id: row.id,
         teacher_id: row.teacher_id,
@@ -222,8 +224,8 @@ export default function Assignments() {
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
         created_at: row.created_at,
-        payout_amount: row.payout_amount || 0,
-        payout_type: row.payout_type || 'monthly',
+        payout_amount: payoutMap.get(row.id)?.payout_amount || 0,
+        payout_type: payoutMap.get(row.id)?.payout_type || 'monthly',
         effective_from_date: row.effective_from_date,
         effective_to_date: row.effective_to_date,
         transfer_type: row.transfer_type,
@@ -366,7 +368,7 @@ export default function Assignments() {
       const { data, error } = await supabase
         .from('student_teacher_assignments')
         .insert(toInsert)
-        .select();
+        .select('id, student_id, teacher_id');
       if (error) throw error;
 
       // Seed assignment_history for new records
@@ -768,15 +770,20 @@ export default function Assignments() {
 
       const { data: currentAssign, error: currentErr } = await sb
         .from('student_teacher_assignments')
-        .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+        .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
         .eq('id', id)
         .single();
       if (currentErr) throw currentErr;
+      const payoutLookup = await fetchAssignmentPayouts([id, currentAssign?.parent_assignment_id]);
+      const currentPayout = payoutLookup.get(id) || { payout_amount: null, payout_type: null };
+      const parentPayout = currentAssign?.parent_assignment_id
+        ? payoutLookup.get(currentAssign.parent_assignment_id) || { payout_amount: null, payout_type: null }
+        : { payout_amount: null, payout_type: null };
 
       const { data: parentAssign, error: parentErr } = currentAssign?.parent_assignment_id
         ? await sb
             .from('student_teacher_assignments')
-            .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+            .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
             .eq('id', currentAssign.parent_assignment_id)
             .single()
         : { data: null, error: null };
@@ -875,8 +882,8 @@ export default function Assignments() {
             branch_id: oldAssign?.branch_id ?? activeDivision?.branch_id ?? null,
             division_id: oldAssign?.division_id ?? activeDivision?.id ?? null,
             duration_minutes: oldAssign?.duration_minutes ?? null,
-            payout_amount: pa && pa > 0 ? pa : (oldAssign?.payout_amount ?? assignment.payout_amount),
-            payout_type: pt || oldAssign?.payout_type || assignment.payout_type,
+            payout_amount: pa && pa > 0 ? pa : (currentPayout.payout_amount ?? assignment.payout_amount),
+            payout_type: pt || currentPayout.payout_type || assignment.payout_type,
             fee_package_id: oldAssign?.fee_package_id ?? null,
             status: 'active',
             effective_from_date: effDate,
@@ -953,8 +960,8 @@ export default function Assignments() {
             branch_id: baseAssign?.branch_id ?? activeDivision?.branch_id ?? null,
             division_id: baseAssign?.division_id ?? activeDivision?.id ?? null,
             duration_minutes: baseAssign?.duration_minutes ?? null,
-            payout_amount: pa && pa > 0 ? pa : (baseAssign?.payout_amount ?? assignment.payout_amount),
-            payout_type: pt || baseAssign?.payout_type || assignment.payout_type,
+            payout_amount: pa && pa > 0 ? pa : (parentPayout.payout_amount ?? currentPayout.payout_amount ?? assignment.payout_amount),
+            payout_type: pt || parentPayout.payout_type || currentPayout.payout_type || assignment.payout_type,
             fee_package_id: baseAssign?.fee_package_id ?? null,
             status: 'active',
             effective_from_date: effDate,

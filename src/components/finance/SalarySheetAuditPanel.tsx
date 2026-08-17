@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,9 +78,11 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
           .select('id, teacher_id, salary_month, status, net_salary, base_salary, calculation_json, is_archived, voided_at'),
         supabase
           .from('student_teacher_assignments')
-          .select('id, teacher_id, student_id, status, salary_linked, payout_amount, payout_type, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+          .select('id, teacher_id, student_id, status, salary_linked, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)')
           .in('status', [...SALARY_ASSIGNMENT_STATUSES]),
       ]);
+
+      (assignRes as any).data = await withAssignmentPayouts(((assignRes.data || []) as any[]));
 
       const teacherIds = Array.from(
         new Set([

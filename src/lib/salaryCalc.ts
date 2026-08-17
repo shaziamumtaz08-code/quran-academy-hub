@@ -1,5 +1,6 @@
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
 import { normalizeAttendanceStatus } from '@/lib/attendanceStatus';
 
@@ -391,7 +392,7 @@ export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<
       supabase.from('staff_salaries').select('*').lte('effective_from', fullMonthEnd).or(`effective_to.is.null,effective_to.gte.${monthStart}`),
       supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status_effective_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+        .select('id, teacher_id, student_id, effective_from_date, effective_to_date, status_effective_date, status, salary_linked, is_temporary, original_assignment_id, profiles!student_teacher_assignments_student_id_fkey(full_name)')
         .in('status', [...SALARY_ASSIGNMENT_STATUSES]),
       supabase.from('attendance').select('id, teacher_id, student_id, class_date, status').gte('class_date', monthStart).lte('class_date', monthEnd),
       supabase.from('leave_events').select('*').lte('start_date', monthEnd).gte('end_date', monthStart).eq('status', 'approved'),
@@ -401,6 +402,9 @@ export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<
       supabase.from('fee_invoices').select('id, student_id, assignment_id, status, paid_at').is('voided_at', null).eq('is_archived', false).eq('billing_month', salaryMonth),
       supabase.from('schedules').select('assignment_id, day_of_week').eq('is_active', true),
     ]);
+
+  const assignmentsWithPayouts = await withAssignmentPayouts(((assignmentsRes.data || []) as any[]));
+  (assignmentsRes as any).data = assignmentsWithPayouts;
 
   const staffSalaries = staffSalariesRes.data || [];
   const teacherIds = (roleRows.data || []).map((r: any) => r.user_id);

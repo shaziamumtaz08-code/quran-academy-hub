@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -37,13 +38,13 @@ export function CoverManagementPanel({ originalAssignmentId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, temp_start_date, temp_end_date, payout_amount, salary_linked, status, status_change_reason, profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
+        .select('id, teacher_id, temp_start_date, temp_end_date, salary_linked, status, status_change_reason, profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
         .eq('original_assignment_id', originalAssignmentId)
         .eq('is_temporary', true)
         .eq('status', 'active')
         .order('temp_start_date', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as CoverRow[];
+      return (await withAssignmentPayouts(((data || []) as any[]))) as unknown as CoverRow[];
     },
   });
 

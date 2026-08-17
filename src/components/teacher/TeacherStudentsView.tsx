@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,7 +25,7 @@ export default function TeacherStudentsView() {
       let query = supabase
         .from('student_teacher_assignments')
         .select(`
-          id, status, created_at, payout_amount, payout_type,
+          id, status, created_at,
           requires_schedule, requires_planning, requires_attendance,
           student_id, teacher_id, subject_id
         `)
@@ -38,8 +39,9 @@ export default function TeacherStudentsView() {
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
 
-      const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
-      const subjectIds = [...new Set((data || []).map((a: any) => a.subject_id).filter(Boolean))];
+      const rows = await withAssignmentPayouts(((data || []) as any[]));
+      const studentIds = [...new Set((rows || []).map((a: any) => a.student_id))];
+      const subjectIds = [...new Set((rows || []).map((a: any) => a.subject_id).filter(Boolean))];
 
       const [studentsRes, subjectsRes] = await Promise.all([
         studentIds.length > 0
