@@ -66,6 +66,12 @@ export default {
         "lms-success": "#1a7340",
         "lms-warning": "#8a5c00",
         "lms-danger": "#b42a2a",
+        /* ── Tajweed teaching colours (Virtual Class Room) ── */
+        tajweed: {
+          ghunnah: "#0f766e",
+          qalqalah: "#b45309",
+          madd: "#b42a2a",
+        },
         /* ── Preserved legacy tokens ── */
         navy: {
           DEFAULT: "hsl(var(--navy))",
