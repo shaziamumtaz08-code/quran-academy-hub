@@ -25,7 +25,7 @@ const clock = (secs: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-export default function VirtualClassRoom() {
+export default function VcrRoom() {
   const { studentId = '' } = useParams();
   const navigate = useNavigate();
   const { user, activeRole, profile } = useAuth();
