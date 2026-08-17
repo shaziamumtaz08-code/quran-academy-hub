@@ -1748,21 +1748,22 @@ export function UnifiedAttendanceForm({
 
               {/* Inline lesson-details validation error — appears directly under the offending fields */}
               {lessonRequired && !hasLessonDetails && (
-                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Lesson details are required when the class was conducted.
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Lesson details are required when the class was conducted.</span>
                 </p>
               )}
 
               {/* Manzil must be explicitly answered for Hifz/Nazra */}
               {lessonRequired && currentSubjectType === 'hifz' && !manzilAnswered && (
-                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Please answer Manzil / Revision (Yes or No) before saving.
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Please answer Manzil / Revision (Yes or No) before saving.</span>
                 </p>
               )}
 
-            </div>
+            </section>
+
           )}
 
           {/* Voice note & remarks — collapsed by default */}
