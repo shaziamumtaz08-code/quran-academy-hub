@@ -216,9 +216,10 @@ export function BulkReportCardDialog({
         const errors: string[] = [];
         const criteriaMarks: Record<string, number> = {};
 
-        // Find student
+        // Find student — tolerate stray tabs / double spaces pasted from sheets
+        const normaliseName = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase();
         const matchedStudent = students.find(
-          (s) => s.full_name.toLowerCase() === studentName.toLowerCase()
+          (s) => normaliseName(s.full_name) === normaliseName(studentName)
         );
         if (!matchedStudent) {
           errors.push(`Student "${studentName}" not found`);
