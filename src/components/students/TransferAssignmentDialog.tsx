@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, UserCheck, Loader2, AlertTriangle, Calendar } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
+import { fetchAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { trackActivity } from '@/lib/activityLogger';
@@ -89,6 +89,9 @@ export function TransferAssignmentDialog({
             .single()
         : { data: null, error: null };
       if (parentErr) throw parentErr;
+      const payoutLookup = await fetchAssignmentPayouts([assignmentId, currentAssign?.parent_assignment_id]);
+      const payoutFor = (aid?: string | null) =>
+        (aid && payoutLookup.get(aid)) || { payout_amount: null, payout_type: null };
 
       const isSubstituteAssignment = currentAssign?.transfer_type === 'substitute' && !!currentAssign?.parent_assignment_id;
       const isReturnToOriginal = isSubstituteAssignment && !!parentAssign && newTeacherId === parentAssign.teacher_id;
@@ -192,8 +195,8 @@ export function TransferAssignmentDialog({
             branch_id: oldAssign.branch_id,
             division_id: oldAssign.division_id,
             duration_minutes: oldAssign.duration_minutes,
-            payout_amount: oldAssign.payout_amount,
-            payout_type: oldAssign.payout_type,
+            payout_amount: payoutFor(oldAssign.id).payout_amount,
+            payout_type: payoutFor(oldAssign.id).payout_type,
             fee_package_id: oldAssign.fee_package_id,
             status: 'active',
             effective_from_date: effectiveDate,
@@ -282,8 +285,8 @@ export function TransferAssignmentDialog({
             branch_id: oldAssign.branch_id,
             division_id: oldAssign.division_id,
             duration_minutes: oldAssign.duration_minutes,
-            payout_amount: oldAssign.payout_amount,
-            payout_type: oldAssign.payout_type,
+            payout_amount: payoutFor(oldAssign.id).payout_amount,
+            payout_type: payoutFor(oldAssign.id).payout_type,
             fee_package_id: oldAssign.fee_package_id,
             status: 'active',
             effective_from_date: effectiveDate,
