@@ -1615,9 +1615,11 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
+          {/* ── Lesson card ─────────────────────────────────────────── */}
           {lessonRequired && (!needsStudent || !!student.id) && (
-            <div className="space-y-4">
+            <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lesson</p>
+
               {/* Lesson Today: New vs Same as last class + reason */}
               <LessonTypeSection
                 lessonType={lessonType}
