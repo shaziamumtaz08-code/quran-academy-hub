@@ -24,7 +24,7 @@ export default function TeacherStudentsView() {
       let query = supabase
         .from('student_teacher_assignments')
         .select(`
-          id, status, created_at, payout_amount, payout_type,
+          id, status, created_at,
           requires_schedule, requires_planning, requires_attendance,
           student_id, teacher_id, subject_id
         `)

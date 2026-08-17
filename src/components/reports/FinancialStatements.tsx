@@ -178,7 +178,7 @@ export default function FinancialStatements() {
         const { data: assigns, error: aErr } = await supabase
           .from("student_teacher_assignments")
           .select(
-            "id, student_id, payout_amount, status, effective_from_date, effective_to_date, status_effective_date, salary_linked, profiles!student_teacher_assignments_student_id_fkey(full_name)",
+            "id, student_id, status, effective_from_date, effective_to_date, status_effective_date, salary_linked, profiles!student_teacher_assignments_student_id_fkey(full_name)",
           )
           .eq("teacher_id", personId as string)
           .in("status", [...SALARY_ASSIGNMENT_STATUSES]);

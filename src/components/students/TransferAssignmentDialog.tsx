@@ -75,7 +75,7 @@ export function TransferAssignmentDialog({
       const oldEndDate = prevDay(effectiveDate);
       const { data: currentAssign, error: currentErr } = await sb
         .from('student_teacher_assignments')
-        .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+        .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
         .eq('id', assignmentId)
         .single();
       if (currentErr) throw currentErr;
@@ -83,7 +83,7 @@ export function TransferAssignmentDialog({
       const { data: parentAssign, error: parentErr } = currentAssign?.parent_assignment_id
         ? await sb
             .from('student_teacher_assignments')
-            .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+            .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
             .eq('id', currentAssign.parent_assignment_id)
             .single()
         : { data: null, error: null };
