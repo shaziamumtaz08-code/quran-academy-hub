@@ -341,6 +341,7 @@ export function ZoomLiveOperations() {
               <div className="grid gap-3 md:grid-cols-2">
                 {liveSessions.map((session: any) => {
                   const license = session.license as any;
+                  const joinUrl: string | null = session.joinUrl || license?.meeting_link || null;
                   const elapsedSec = session.actual_start
                     ? Math.max(0, differenceInSeconds(now, new Date(session.actual_start)))
                     : 0;
