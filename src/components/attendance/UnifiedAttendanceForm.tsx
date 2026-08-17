@@ -1526,12 +1526,15 @@ export function UnifiedAttendanceForm({
                 onChange={(e) => setDuration(e.target.value)}
                 readOnly={!requiresReschedule(selectedStatus) && !isEdit}
                 disabled={!requiresReschedule(selectedStatus) && !isEdit}
-                className={(requiresReschedule(selectedStatus) || isEdit)
-                  ? ""
-                  : "bg-muted cursor-not-allowed"}
+                className={cn(
+                  duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
+                  !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
+                )}
               />
             </div>
           )}
+          </section>
+
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
