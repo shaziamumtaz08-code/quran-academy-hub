@@ -49,6 +49,7 @@ export function useLiveSessionsMonitor() {
           assignment_id,
           zoom_meeting_uuid,
           session_source,
+          stream_url,
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
         .eq('status', 'live')
@@ -63,9 +64,12 @@ export function useLiveSessionsMonitor() {
       const allProfileIds = [...new Set([...teacherIds, ...studentIds])];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, meeting_link')
         .in('id', allProfileIds);
       const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
+      const teacherLinkMap = new Map(
+        (profiles || []).map((p: any) => [p.id, p.meeting_link as string | null]),
+      );
 
       const sessionIds = sessions.map((s) => s.id);
       const { data: attendanceLogs } = await supabase
@@ -104,6 +108,13 @@ export function useLiveSessionsMonitor() {
         ...session,
         teacherName: profileMap.get(session.teacher_id) || 'Unknown',
         studentName: session.student_id ? profileMap.get(session.student_id) || 'Student' : null,
+        // A session started on a teacher's dedicated Zoom account has no pooled
+        // licence, so fall back to the teacher's own personal meeting link.
+        joinUrl:
+          session.license?.meeting_link ||
+          teacherLinkMap.get(session.teacher_id) ||
+          session.stream_url ||
+          null,
         participants: participantsMap.get(session.id) || [],
         activeCount: participantsMap.get(session.id)?.length || 0,
       }));

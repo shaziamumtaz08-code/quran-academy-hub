@@ -123,14 +123,22 @@ export function ZoomLiveOperations() {
     });
   }, [todayClasses, todaySessions, nowMinutes]);
 
+  // A live session that isn't linked to a scheduled slot (e.g. a teacher started
+  // their dedicated Zoom room directly) must still be counted as "in progress",
+  // otherwise the tile reads 0 while the On air panel shows the class.
+  const unlinkedLive = React.useMemo(() => {
+    const linkedIds = new Set(slots.map((s) => s.session?.id).filter(Boolean));
+    return (liveSessions || []).filter((s: any) => !linkedIds.has(s.id));
+  }, [slots, liveSessions]);
+
   const counts = React.useMemo(
     () => ({
-      live: slots.filter((s) => s.state === 'live').length,
+      live: slots.filter((s) => s.state === 'live').length + unlinkedLive.length,
       upcoming: slots.filter((s) => s.state === 'upcoming').length,
       completed: slots.filter((s) => s.state === 'completed').length,
       overdue: slots.filter((s) => s.state === 'overdue').length,
     }),
-    [slots],
+    [slots, unlinkedLive],
   );
 
   const liveNow = liveSessions?.length || 0;
@@ -333,6 +341,7 @@ export function ZoomLiveOperations() {
               <div className="grid gap-3 md:grid-cols-2">
                 {liveSessions.map((session: any) => {
                   const license = session.license as any;
+                  const joinUrl: string | null = session.joinUrl || license?.meeting_link || null;
                   const elapsedSec = session.actual_start
                     ? Math.max(0, differenceInSeconds(now, new Date(session.actual_start)))
                     : 0;
@@ -400,16 +409,31 @@ export function ZoomLiveOperations() {
                       </div>
 
                       <div className="mt-4 flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          className="gap-1 border-0 font-mono text-xs font-semibold uppercase tracking-wider hover:opacity-90"
-                          style={{ background: 'var(--mc-green)', color: '#04140E' }}
-                          disabled={!license?.meeting_link}
-                          onClick={() => window.open(license?.meeting_link, '_blank', 'noopener,noreferrer')}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Join
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                size="sm"
+                                className="gap-1 border-0 font-mono text-xs font-semibold uppercase tracking-wider hover:opacity-90"
+                                style={{ background: 'var(--mc-green)', color: '#04140E' }}
+                                disabled={!joinUrl}
+                                onClick={() => joinUrl && window.open(joinUrl, '_blank', 'noopener,noreferrer')}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Join
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {!joinUrl && (
+                            <TooltipContent
+                              className="font-mono text-xs"
+                              style={{ background: 'var(--mc-panel)', borderColor: 'var(--mc-border)', color: 'var(--mc-text)' }}
+                            >
+                              No meeting link on file for this teacher. Add one on their Zoom profile
+                              or assign a licence.
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
