@@ -184,16 +184,19 @@ export function BulkReportCardDialog({
     setIsValidating(true);
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter((line) => line.trim());
+      // Remarks columns routinely contain commas and line breaks (Urdu feedback),
+      // so the whole file must be tokenised, not split line-by-line.
+      const records = parseCSV(text);
 
-      if (lines.length < 2) {
+      if (records.length < 2) {
         toast({ title: 'Error', description: 'CSV must have header row and at least one data row', variant: 'destructive' });
         setIsValidating(false);
         return;
       }
 
-      const headers = lines[0].split(',').map((h) => h.trim());
+      const headers = records[0].map((h) => h.trim());
       const rows: ParsedRow[] = [];
+
 
       // Map criteria names from headers (extract name without max info)
       const criteriaHeaders = headers.slice(2, -2).map((h) => {
@@ -201,9 +204,9 @@ export function BulkReportCardDialog({
         return match ? match[1].trim() : h;
       });
 
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        if (values.length < 3) continue;
+      for (let i = 1; i < records.length; i++) {
+        const values = records[i];
+        if (values.length < 3 || values.every((v) => !v.trim())) continue;
 
         const studentName = values[0]?.trim() || '';
         const examDate = values[1]?.trim() || '';
@@ -213,9 +216,10 @@ export function BulkReportCardDialog({
         const errors: string[] = [];
         const criteriaMarks: Record<string, number> = {};
 
-        // Find student
+        // Find student — tolerate stray tabs / double spaces pasted from sheets
+        const normaliseName = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase();
         const matchedStudent = students.find(
-          (s) => s.full_name.toLowerCase() === studentName.toLowerCase()
+          (s) => normaliseName(s.full_name) === normaliseName(studentName)
         );
         if (!matchedStudent) {
           errors.push(`Student "${studentName}" not found`);
@@ -271,23 +275,47 @@ export function BulkReportCardDialog({
     }
   };
 
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
+  // RFC4180 parser: handles quoted fields containing commas, line breaks and "" escapes.
+  const parseCSV = (text: string): string[][] => {
+    const records: string[][] = [];
+    let row: string[] = [];
+    let field = '';
     let inQuotes = false;
+    const src = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    for (const char of line) {
+    for (let i = 0; i < src.length; i++) {
+      const char = src[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (src[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += char;
+        }
+        continue;
+      }
       if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(field);
+        field = '';
+      } else if (char === '\n') {
+        row.push(field);
+        field = '';
+        if (row.some((v) => v.trim())) records.push(row);
+        row = [];
       } else {
-        current += char;
+        field += char;
       }
     }
-    result.push(current);
-    return result;
+    row.push(field);
+    if (row.some((v) => v.trim())) records.push(row);
+
+    return records;
   };
 
   const executeImport = async () => {
