@@ -274,23 +274,47 @@ export function BulkReportCardDialog({
     }
   };
 
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
+  // RFC4180 parser: handles quoted fields containing commas, line breaks and "" escapes.
+  const parseCSV = (text: string): string[][] => {
+    const records: string[][] = [];
+    let row: string[] = [];
+    let field = '';
     let inQuotes = false;
+    const src = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    for (const char of line) {
+    for (let i = 0; i < src.length; i++) {
+      const char = src[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (src[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += char;
+        }
+        continue;
+      }
       if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(field);
+        field = '';
+      } else if (char === '\n') {
+        row.push(field);
+        field = '';
+        if (row.some((v) => v.trim())) records.push(row);
+        row = [];
       } else {
-        current += char;
+        field += char;
       }
     }
-    result.push(current);
-    return result;
+    row.push(field);
+    if (row.some((v) => v.trim())) records.push(row);
+
+    return records;
   };
 
   const executeImport = async () => {
