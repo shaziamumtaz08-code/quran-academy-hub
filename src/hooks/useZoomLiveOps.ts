@@ -49,6 +49,7 @@ export function useLiveSessionsMonitor() {
           assignment_id,
           zoom_meeting_uuid,
           session_source,
+          stream_url,
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
         .eq('status', 'live')
