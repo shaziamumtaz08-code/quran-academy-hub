@@ -36,6 +36,8 @@ import {
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { cn } from '@/lib/utils';
+
 import { useQaidaReference } from '@/hooks/useQaidaProgress';
 
 // Unified status options - comprehensive list
@@ -1354,22 +1356,25 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Status Selection — 4 primary pills + "More" for the rest */}
-          <div className="space-y-2">
-            <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
-            <SegmentedControl
-              aria-label="Attendance status"
-              value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
-              onChange={(v) => changeStatus(v as AttendanceStatus)}
-              options={PRIMARY_STATUSES}
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground shrink-0">More</span>
+          {/* ── Status card ─────────────────────────────────────────── */}
+          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-3">
+            <div className="space-y-2">
+              <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
+              <SegmentedControl
+                aria-label="Attendance status"
+                value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
+                onChange={(v) => changeStatus(v as AttendanceStatus)}
+                options={PRIMARY_STATUSES}
+                gridClassName="grid-cols-2 sm:grid-cols-4"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-foreground text-xs">More statuses</Label>
               <Select
                 value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
                 onValueChange={(v) => changeStatus(v as AttendanceStatus)}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1379,7 +1384,12 @@ export function UnifiedAttendanceForm({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </section>
+
+          {/* ── Class details card ──────────────────────────────────── */}
+          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
+
 
 
           {/* Adaptive Date Block ---------------------------------------- */}
@@ -1518,12 +1528,15 @@ export function UnifiedAttendanceForm({
                 onChange={(e) => setDuration(e.target.value)}
                 readOnly={!requiresReschedule(selectedStatus) && !isEdit}
                 disabled={!requiresReschedule(selectedStatus) && !isEdit}
-                className={(requiresReschedule(selectedStatus) || isEdit)
-                  ? ""
-                  : "bg-muted cursor-not-allowed"}
+                className={cn(
+                  duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
+                  !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
+                )}
               />
             </div>
           )}
+          </section>
+
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
@@ -1602,9 +1615,11 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
+          {/* ── Lesson card ─────────────────────────────────────────── */}
           {lessonRequired && (!needsStudent || !!student.id) && (
-            <div className="space-y-4">
+            <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lesson</p>
+
               {/* Lesson Today: New vs Same as last class + reason */}
               <LessonTypeSection
                 lessonType={lessonType}
@@ -1733,21 +1748,22 @@ export function UnifiedAttendanceForm({
 
               {/* Inline lesson-details validation error — appears directly under the offending fields */}
               {lessonRequired && !hasLessonDetails && (
-                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Lesson details are required when the class was conducted.
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Lesson details are required when the class was conducted.</span>
                 </p>
               )}
 
               {/* Manzil must be explicitly answered for Hifz/Nazra */}
               {lessonRequired && currentSubjectType === 'hifz' && !manzilAnswered && (
-                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Please answer Manzil / Revision (Yes or No) before saving.
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Please answer Manzil / Revision (Yes or No) before saving.</span>
                 </p>
               )}
 
-            </div>
+            </section>
+
           )}
 
           {/* Voice note & remarks — collapsed by default */}
