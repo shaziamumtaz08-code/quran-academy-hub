@@ -48,7 +48,14 @@ export function VcrStaticPage({
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [turning, setTurning] = useState(false);
+  const [fontScale, setFontScale] = useState(() => {
+    const saved = Number(localStorage.getItem('vcr-font-scale'));
+    return Number.isFinite(saved) && saved >= 0.7 && saved <= 2 ? saved : 1;
+  });
+  const [pageInput, setPageInput] = useState(String(initialPage));
   const resolvedResume = useRef(false);
+
+  useEffect(() => { localStorage.setItem('vcr-font-scale', String(fontScale)); }, [fontScale]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,12 +105,15 @@ export function VcrStaticPage({
     if (turnSignal > 0) playTurn();
   }, [turnSignal]);
 
-  const go = (delta: number) => {
-    const next = Math.min(TOTAL_PAGES, Math.max(1, page + delta));
+  const goTo = (target: number) => {
+    const next = Math.min(TOTAL_PAGES, Math.max(1, target));
     if (next === page) return;
     playTurn();
     window.setTimeout(() => setPage(next), 210);
   };
+  const go = (delta: number) => goTo(page + delta);
+
+  useEffect(() => { setPageInput(String(page)); }, [page]);
 
   const heading = useMemo(() => {
     const s = surahNameByNumber(info?.surah_start);
@@ -141,7 +151,8 @@ export function VcrStaticPage({
                 return (
                   <div
                     key={l.id}
-                    className="my-3 rounded-lg border border-vcr-gold/50 bg-vcr-gold/10 py-2 text-center font-uthmani text-[26px] text-vcr-ink sm:text-3xl"
+                    className="my-3 rounded-lg border border-vcr-gold/50 bg-vcr-gold/10 py-2 text-center font-uthmani text-vcr-ink"
+                    style={{ fontSize: `${28 * fontScale}px` }}
                   >
                     {l.text_indopak || surahNameByNumber(l.surah_number)}
                   </div>
@@ -152,9 +163,9 @@ export function VcrStaticPage({
                   key={l.id}
                   className={cn(
                     'font-uthmani leading-[2.1] text-vcr-ink',
-                    'text-[26px] sm:text-[32px] lg:text-[36px]',
                     l.is_centered || l.line_type === 'basmallah' ? 'text-center' : 'text-justify'
                   )}
+                  style={{ fontSize: `${32 * fontScale}px` }}
                 >
                   {l.text_indopak}
                 </p>
@@ -165,11 +176,48 @@ export function VcrStaticPage({
       </div>
 
       {canControl && (
-        <div className="mx-auto mt-4 flex max-w-4xl items-center justify-between gap-3">
+        <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
           <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(-1)}>
             <ChevronLeft className="h-5 w-5" /> Previous page
           </button>
-          <span className="font-mono text-sm tabular-nums text-vcr-chrome/60">{page} / {TOTAL_PAGES}</span>
+
+          <div className="flex items-center gap-3">
+            {/* Jump to page */}
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => { e.preventDefault(); const n = Number(pageInput); if (Number.isFinite(n)) goTo(n); }}
+            >
+              <label className="font-mono text-xs text-vcr-chrome/60" htmlFor="vcr-page-input">Page</label>
+              <input
+                id="vcr-page-input"
+                type="number"
+                min={1}
+                max={TOTAL_PAGES}
+                inputMode="numeric"
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                className="h-10 w-20 rounded-lg border border-vcr-chrome/20 bg-black/25 px-2 text-center font-mono text-sm text-vcr-chrome focus:border-vcr-gold/60 focus:outline-none"
+              />
+              <button type="submit" className="vcr-btn h-10 rounded-lg px-3 text-sm">Go</button>
+              <span className="font-mono text-xs text-vcr-chrome/50">/ {TOTAL_PAGES}</span>
+            </form>
+
+            {/* Font size */}
+            <div className="flex items-center gap-1 rounded-lg border border-vcr-chrome/15 px-1 py-1">
+              <button
+                type="button" aria-label="Smaller text"
+                className="vcr-btn h-8 w-8 rounded-md text-sm"
+                onClick={() => setFontScale((f) => Math.max(0.7, Number((f - 0.1).toFixed(2))))}
+              >A-</button>
+              <span className="w-10 text-center font-mono text-xs text-vcr-chrome/60">{Math.round(fontScale * 100)}%</span>
+              <button
+                type="button" aria-label="Larger text"
+                className="vcr-btn h-8 w-8 rounded-md text-sm"
+                onClick={() => setFontScale((f) => Math.min(2, Number((f + 0.1).toFixed(2))))}
+              >A+</button>
+            </div>
+          </div>
+
           <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(1)}>
             Next page <ChevronRight className="h-5 w-5" />
           </button>

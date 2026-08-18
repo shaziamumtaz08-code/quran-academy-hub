@@ -120,7 +120,7 @@ export default function VcrRoom() {
   };
 
   const markComplete = async () => {
-    if (!canControl) return;
+    if (!canControl || saving) return;
     setSaving(true);
     const reference = `Page ${currentPage}`;
 
@@ -133,12 +133,33 @@ export default function VcrRoom() {
       }).eq('id', sessionId);
     }
 
-    const { data } = await supabase.from('student_progress' as any).update({
+    const payload = {
+      student_id: studentId,
       current_item_id: nextItem?.id ?? currentItem?.id ?? null,
       current_page_or_ayah: reference,
       status: nextItem ? 'in_progress' : 'completed',
       updated_at: new Date().toISOString(),
-    }).eq('student_id', studentId).select('*').maybeSingle();
+    };
+
+    let { data, error } = await supabase.from('student_progress' as any)
+      .update(payload).eq('student_id', studentId).select('*').maybeSingle();
+
+    // No progress row yet — create one instead of silently doing nothing.
+    if (!error && !data) {
+      const res = await supabase.from('student_progress' as any).insert(payload).select('*').maybeSingle();
+      data = res.data as any;
+      error = res.error as any;
+    }
+
+    if (error) {
+      setSaving(false);
+      toast({
+        title: 'Could not save',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setProgress(data ?? progress);
 
     /* Signature page-turn, then open the next session record */
