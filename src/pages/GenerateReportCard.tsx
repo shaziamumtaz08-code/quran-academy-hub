@@ -419,14 +419,16 @@ export default function GenerateReportCard() {
             </div>
           </div>
           {!isEditMode && (
-            <Badge
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80 transition-colors px-3 py-1.5 text-sm font-medium flex items-center gap-1.5"
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
               onClick={() => setBulkDialogOpen(true)}
             >
-              <Upload className="h-3.5 w-3.5" />
-              Bulk Import
-            </Badge>
+              <Upload className="h-4 w-4" />
+              Bulk Import (CSV)
+            </Button>
           )}
         </div>
 
