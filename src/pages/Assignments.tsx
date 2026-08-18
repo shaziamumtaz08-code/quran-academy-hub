@@ -1999,8 +1999,8 @@ export default function Assignments() {
                 )}
               </div>
               <Separator />
-              <div className="space-y-2">
-                <Label>Reason for Reassignment</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Reason for Reassignment</Label>
                 <Textarea
                   placeholder="Optional reason..."
                   value={reassignReason}
@@ -2009,7 +2009,8 @@ export default function Assignments() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 py-3 border-t bg-background shrink-0">
+
               <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); }}>
                 Cancel
               </Button>
