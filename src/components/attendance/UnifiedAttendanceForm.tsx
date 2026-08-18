@@ -1237,19 +1237,25 @@ export function UnifiedAttendanceForm({
   };
 
   const isAdminUser = profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
-  /** The four everyday statuses. Everything else stays reachable under "More". */
-  const PRIMARY_STATUSES = [
-    { value: 'present' as AttendanceStatus, label: 'Present', icon: <CheckCircle2 className="h-3.5 w-3.5" />, activeClass: 'bg-emerald-600 text-white' },
-    { value: 'student_absent' as AttendanceStatus, label: 'Absent', icon: <XCircle className="h-3.5 w-3.5" />, activeClass: 'bg-rose-600 text-white' },
-    { value: 'student_leave' as AttendanceStatus, label: 'Leave', icon: <PauseCircle className="h-3.5 w-3.5" />, activeClass: 'bg-amber-500 text-white' },
-    { value: 'rescheduled' as AttendanceStatus, label: 'Rescheduled', icon: <CalendarClock className="h-3.5 w-3.5" />, activeClass: 'bg-slate-600 text-white' },
+  /** Legacy behaviour: every status is visible up-front as a tappable tile. */
+  const STATUS_TILES: {
+    value: AttendanceStatus;
+    label: string;
+    hint: string;
+    icon: React.ReactNode;
+    activeClass: string;
+  }[] = [
+    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-600 bg-emerald-600 text-white shadow-sm' },
+    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-600 bg-rose-600 text-white shadow-sm' },
+    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500 text-white shadow-sm' },
+    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-700 bg-rose-700 text-white shadow-sm' },
+    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500 text-white shadow-sm' },
+    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-600 bg-slate-600 text-white shadow-sm' },
+    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-500 bg-slate-500 text-white shadow-sm' },
+    ...(isAdminUser
+      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-sky-600 bg-sky-600 text-white shadow-sm' }]
+      : []),
   ];
-  const primaryValues = PRIMARY_STATUSES.map(s => s.value);
-  const secondaryStatuses = STATUS_OPTIONS.filter((opt) => {
-    if (primaryValues.includes(opt.value)) return false;
-    if (opt.value === 'holiday') return isAdminUser;
-    return true;
-  });
 
 
   return (
