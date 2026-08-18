@@ -26,6 +26,7 @@ import {
   Video,
   Wallet,
 
+  MonitorPlay,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -129,6 +130,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Progress Timeline", href: "/progress-timeline" },
             ],
           },
+          { label: "Class Room (VCR)", href: "/class-room", icon: MonitorPlay },
           {
             label: "People",
             icon: Users,
@@ -242,6 +244,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Students", href: "/students", icon: Users },
+          { label: "Class Room (VCR)", href: "/class-room", icon: MonitorPlay },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Progress Timeline", href: "/progress-timeline", icon: BarChart3 },
           { label: "Performance", href: "/performance", icon: BarChart3 },
