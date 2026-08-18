@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
   Award, FileText, FolderOpen, LogOut, Activity, Megaphone, Video,
-  LifeBuoy,
+  LifeBuoy, MonitorPlay,
 } from 'lucide-react';
 
 import logoDark from '@/assets/logo-dark.jpg';
@@ -27,6 +27,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Leads', href: '/leads', icon: Megaphone },
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
+      { label: 'Class Room', href: '/class-room', icon: MonitorPlay },
       { label: 'People', href: '/people', icon: Users },
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Reports', href: '/reports', icon: BarChart3 },
@@ -39,6 +40,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
   if (role === 'teacher') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Class Room', href: '/class-room', icon: MonitorPlay },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Planning', href: '/monthly-planning', icon: Target },
       { label: 'Student Reports', href: '/student-reports', icon: BarChart3 },
@@ -90,6 +92,7 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
   const ROUTE_GROUPS: Record<string, string[]> = {
     '/people': ['/people', '/students', '/teachers', '/user-management', '/leads', '/identity', '/applicants'],
     '/teaching': ['/teaching', '/teaching-os', '/quiz-engine', '/courses', '/course-builder', '/my-courses', '/lessons', '/assignments', '/subjects', '/schedules', '/attendance', '/monthly-planning'],
+    '/class-room': ['/class-room', '/vcr', '/syllabus'],
     '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
     '/reports': ['/reports-hub', '/reports', '/student-reports', '/progress-timeline', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],

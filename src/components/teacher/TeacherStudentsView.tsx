@@ -7,9 +7,23 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
+import { Users, ChevronDown, ChevronRight, BookOpen, MonitorPlay } from 'lucide-react';
 import { SubjectBadge } from '@/components/shared/SubjectBadge';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+
+function VcrLinks({ studentId }: { studentId: string }) {
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      <Link to={`/vcr/${studentId}`} className="vcr-btn-gold inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+        <MonitorPlay className="h-3.5 w-3.5" /> Open VCR
+      </Link>
+      <Link to={`/syllabus/${studentId}`} className="vcr-btn inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+        <BookOpen className="h-3.5 w-3.5" /> View Syllabus
+      </Link>
+    </div>
+  );
+}
 
 export default function TeacherStudentsView() {
   const { user } = useAuth();
@@ -166,6 +180,7 @@ export default function TeacherStudentsView() {
                             <TableHead className="text-xs">Name</TableHead>
                             <TableHead className="text-xs">Email</TableHead>
                             <TableHead className="text-xs">Status</TableHead>
+                            <TableHead className="text-xs text-right">Class Room</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -176,6 +191,7 @@ export default function TeacherStudentsView() {
                               <TableCell>
                                 <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
                               </TableCell>
+                              <TableCell className="text-right"><VcrLinks studentId={r.student_id} /></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -219,6 +235,7 @@ export default function TeacherStudentsView() {
                 <TableHead className="text-xs">Subject</TableHead>
                 <TableHead className="text-xs">Tracking</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs text-right">Class Room</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -240,6 +257,7 @@ export default function TeacherStudentsView() {
                   <TableCell>
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
                   </TableCell>
+                  <TableCell className="text-right"><VcrLinks studentId={a.student_id} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
