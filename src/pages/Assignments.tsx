@@ -1892,14 +1892,15 @@ export default function Assignments() {
 
         {/* Teacher Reassignment Dialog */}
         <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); } }}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Reassign Teacher</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-lg max-h-[85dvh] flex flex-col overflow-hidden p-0 gap-0">
+            <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+              <DialogTitle className="text-base">Reassign Teacher</DialogTitle>
+              <DialogDescription className="text-xs">
                 Change the teacher for <strong>{reassignDialog?.student_name}</strong>'s assignment.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-3 px-6 py-4 flex-1 overflow-y-auto">
+
               {/* Transfer type */}
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">Transfer Type *</Label>
@@ -1927,12 +1928,13 @@ export default function Assignments() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Current Teacher</Label>
-                <p className="text-sm font-medium text-muted-foreground">{reassignDialog?.teacher_name}</p>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                <Label className="text-xs">Current Teacher</Label>
+                <p className="text-sm font-medium">{reassignDialog?.teacher_name}</p>
               </div>
-              <div className="space-y-2">
-                <Label>New Teacher *</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">New Teacher *</Label>
+
                 <Select value={reassignTeacherId} onValueChange={setReassignTeacherId}>
                   <SelectTrigger><SelectValue placeholder="Select new teacher..." /></SelectTrigger>
                   <SelectContent>
@@ -1997,8 +1999,8 @@ export default function Assignments() {
                 )}
               </div>
               <Separator />
-              <div className="space-y-2">
-                <Label>Reason for Reassignment</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Reason for Reassignment</Label>
                 <Textarea
                   placeholder="Optional reason..."
                   value={reassignReason}
@@ -2007,7 +2009,8 @@ export default function Assignments() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 py-3 border-t bg-background shrink-0">
+
               <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); }}>
                 Cancel
               </Button>
