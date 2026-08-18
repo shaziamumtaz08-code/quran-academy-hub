@@ -117,14 +117,18 @@ export default function StudentSyllabus() {
 
           <div
             className={cn(
-              'mt-5 flex items-center gap-2 rounded-xl px-4 py-3 text-sm',
+              'mt-5 flex items-start gap-2 rounded-xl px-4 py-3 text-sm',
               pace.onTrack ? 'bg-vcr-emerald/12 text-vcr-emerald' : 'bg-vcr-oxide/12 text-vcr-oxide'
             )}
           >
-            <TrendingUp className="h-4 w-4" />
-            <span className="font-mono tabular-nums">{pace.recent}</span> classes in the last 30 days
-            (plan: <span className="font-mono tabular-nums">{pace.expected}</span>) — {pace.onTrack ? 'on track' : 'behind plan'}
+            <TrendingUp className="h-4 w-4 shrink-0 mt-0.5" />
+            <p className="leading-snug">
+              <span className="font-mono tabular-nums">{pace.recent}</span> classes in the last 30 days
+              {' '}(plan: <span className="font-mono tabular-nums">{pace.expected}</span>)
+              {' — '}{pace.onTrack ? 'on track' : 'behind plan'}
+            </p>
           </div>
+
         </section>
 
         {/* Recent sessions */}
