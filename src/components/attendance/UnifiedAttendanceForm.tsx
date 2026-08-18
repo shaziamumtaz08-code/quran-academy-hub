@@ -1237,19 +1237,25 @@ export function UnifiedAttendanceForm({
   };
 
   const isAdminUser = profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
-  /** The four everyday statuses. Everything else stays reachable under "More". */
-  const PRIMARY_STATUSES = [
-    { value: 'present' as AttendanceStatus, label: 'Present', icon: <CheckCircle2 className="h-3.5 w-3.5" />, activeClass: 'bg-emerald-600 text-white' },
-    { value: 'student_absent' as AttendanceStatus, label: 'Absent', icon: <XCircle className="h-3.5 w-3.5" />, activeClass: 'bg-rose-600 text-white' },
-    { value: 'student_leave' as AttendanceStatus, label: 'Leave', icon: <PauseCircle className="h-3.5 w-3.5" />, activeClass: 'bg-amber-500 text-white' },
-    { value: 'rescheduled' as AttendanceStatus, label: 'Rescheduled', icon: <CalendarClock className="h-3.5 w-3.5" />, activeClass: 'bg-slate-600 text-white' },
+  /** Legacy behaviour: every status is visible up-front as a tappable tile. */
+  const STATUS_TILES: {
+    value: AttendanceStatus;
+    label: string;
+    hint: string;
+    icon: React.ReactNode;
+    activeClass: string;
+  }[] = [
+    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-600 bg-emerald-600 text-white shadow-sm' },
+    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-600 bg-rose-600 text-white shadow-sm' },
+    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500 text-white shadow-sm' },
+    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-700 bg-rose-700 text-white shadow-sm' },
+    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500 text-white shadow-sm' },
+    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-600 bg-slate-600 text-white shadow-sm' },
+    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-500 bg-slate-500 text-white shadow-sm' },
+    ...(isAdminUser
+      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-sky-600 bg-sky-600 text-white shadow-sm' }]
+      : []),
   ];
-  const primaryValues = PRIMARY_STATUSES.map(s => s.value);
-  const secondaryStatuses = STATUS_OPTIONS.filter((opt) => {
-    if (primaryValues.includes(opt.value)) return false;
-    if (opt.value === 'holiday') return isAdminUser;
-    return true;
-  });
 
 
   return (
@@ -1357,32 +1363,38 @@ export function UnifiedAttendanceForm({
           )}
 
           {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-3">
-            <div className="space-y-2">
-              <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
-              <SegmentedControl
-                aria-label="Attendance status"
-                value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
-                onChange={(v) => changeStatus(v as AttendanceStatus)}
-                options={PRIMARY_STATUSES}
-                gridClassName="grid-cols-2 sm:grid-cols-4"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-foreground text-xs">More statuses</Label>
-              <Select
-                value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
-                onValueChange={(v) => changeStatus(v as AttendanceStatus)}
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {secondaryStatuses.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <section className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
+            <Label className="text-foreground text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Status <span className="text-destructive">*</span>
+            </Label>
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {STATUS_TILES.map((opt) => {
+                const active = selectedStatus === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => changeStatus(opt.value)}
+                    className={cn(
+                      'flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? opt.activeClass
+                        : 'border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-muted'
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
+                      {opt.icon}
+                      <span className="truncate">{opt.label}</span>
+                    </span>
+                    <span className={cn('text-[11px] leading-tight', active ? 'text-white/80' : 'text-muted-foreground')}>
+                      {opt.hint}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
