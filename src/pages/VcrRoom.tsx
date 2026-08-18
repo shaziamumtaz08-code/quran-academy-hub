@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
 import { cn } from '@/lib/utils';
 
