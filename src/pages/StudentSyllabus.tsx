@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlayCircle, TrendingUp } from 'lucide-react';
+import { ArrowLeft, PlayCircle, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SyllabusItem { id: string; level: string; title: string; sequence_order: number }
