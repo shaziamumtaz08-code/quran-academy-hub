@@ -1892,14 +1892,15 @@ export default function Assignments() {
 
         {/* Teacher Reassignment Dialog */}
         <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); } }}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Reassign Teacher</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-lg max-h-[85dvh] flex flex-col overflow-hidden p-0 gap-0">
+            <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+              <DialogTitle className="text-base">Reassign Teacher</DialogTitle>
+              <DialogDescription className="text-xs">
                 Change the teacher for <strong>{reassignDialog?.student_name}</strong>'s assignment.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-3 px-6 py-4 flex-1 overflow-y-auto">
+
               {/* Transfer type */}
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">Transfer Type *</Label>
