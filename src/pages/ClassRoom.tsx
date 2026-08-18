@@ -37,7 +37,23 @@ export default function ClassRoom() {
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
 
-      const rows = (data || []) as any[];
+      let rows = (data || []) as any[];
+
+      // Group divisions have no 1:1 assignments — fall back to class rosters.
+      if (rows.length === 0 && (activeDivision?.model_type as string) === 'group') {
+        let staffQ = (supabase as any).from('course_class_staff').select('class_id');
+        if (!isAdmin) staffQ = staffQ.eq('user_id', user!.id);
+        const { data: staffRows } = await staffQ;
+        const classIds = [...new Set(((staffRows || []) as any[]).map((c) => c.class_id).filter(Boolean))];
+        if (classIds.length) {
+          const { data: rosterRows } = await (supabase as any)
+            .from('course_class_students')
+            .select('student_id, status')
+            .in('class_id', classIds)
+            .eq('status', 'active');
+          rows = ((rosterRows || []) as any[]).map((r) => ({ student_id: r.student_id, subject_id: null }));
+        }
+      }
       const studentIds = [...new Set(rows.map((r) => r.student_id).filter(Boolean))];
       const subjectIds = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))];
 
