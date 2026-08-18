@@ -105,12 +105,15 @@ export function VcrStaticPage({
     if (turnSignal > 0) playTurn();
   }, [turnSignal]);
 
-  const go = (delta: number) => {
-    const next = Math.min(TOTAL_PAGES, Math.max(1, page + delta));
+  const goTo = (target: number) => {
+    const next = Math.min(TOTAL_PAGES, Math.max(1, target));
     if (next === page) return;
     playTurn();
     window.setTimeout(() => setPage(next), 210);
   };
+  const go = (delta: number) => goTo(page + delta);
+
+  useEffect(() => { setPageInput(String(page)); }, [page]);
 
   const heading = useMemo(() => {
     const s = surahNameByNumber(info?.surah_start);
