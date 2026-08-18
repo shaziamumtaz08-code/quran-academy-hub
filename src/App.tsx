@@ -64,6 +64,7 @@ const QuranPageBrowser = lazy(() => import("./pages/QuranPageBrowser"));
 const ParentProfile = lazy(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazy(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding"));
+const StudentsRoute = lazy(() => import('@/pages/StudentsRoute'));
 const TeacherRegistration = lazy(() => import('./pages/TeacherRegistration'));
 const StudentRegistration = lazy(() => import("./pages/StudentRegistration"));
 
@@ -481,7 +482,7 @@ function AppRoutes() {
       <Route path="/register/teacher" element={<TeacherRegistration />} />
       <Route path="/onboard/:token" element={<TeacherOnboarding />} />
 
-      <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><UserManagement lockedRole="student" /></RouteGuard></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><StudentsRoute /></RouteGuard></ProtectedRoute>} />
       <Route path="/student-profile" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/student-profile/:studentId" element={<ProtectedRoute><DashboardLayout><StudentProfile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/parent-profile" element={<ProtectedRoute><DashboardLayout><ParentProfile /></DashboardLayout></ProtectedRoute>} />
