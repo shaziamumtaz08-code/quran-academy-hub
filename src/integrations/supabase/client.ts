@@ -33,7 +33,22 @@ const authStorage =
 
 const authStorageKey = IS_IMPERSONATION_TAB
   ? `sb-${SUPABASE_PROJECT_ID || 'project'}-impersonation-token`
-  : undefined;
+  : `sb-${SUPABASE_PROJECT_ID || 'project'}-auth-token`;
+
+// One-time migration: earlier builds passed `storageKey: undefined`, which made
+// supabase-js persist the session under the literal key "undefined".
+// Move any such session to the project-scoped key so users stay logged in.
+if (!IS_IMPERSONATION_TAB && typeof window !== 'undefined') {
+  try {
+    const legacy = window.localStorage.getItem('undefined');
+    if (legacy && !window.localStorage.getItem(authStorageKey)) {
+      window.localStorage.setItem(authStorageKey, legacy);
+    }
+    if (legacy) window.localStorage.removeItem('undefined');
+  } catch {
+    // storage unavailable — ignore
+  }
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
