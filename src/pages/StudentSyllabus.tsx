@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlayCircle, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,7 +9,6 @@ interface SyllabusItem { id: string; level: string; title: string; sequence_orde
 interface SessionRow {
   id: string; started_at: string; ended_at: string | null;
   item_covered_id: string | null; reference_covered: string | null;
-  mistakes: number;
 }
 
 export default function StudentSyllabus() {
@@ -34,16 +29,14 @@ export default function StudentSyllabus() {
         supabase.from('syllabus_items' as any).select('id, level, title, sequence_order').eq('is_active', true).order('sequence_order'),
         supabase.from('student_progress' as any).select('*').eq('student_id', studentId).maybeSingle(),
         supabase.from('vcr_sessions' as any)
-          .select('id, started_at, ended_at, item_covered_id, reference_covered, mistake_log(id)')
+          .select('id, started_at, ended_at, item_covered_id, reference_covered')
           .eq('student_id', studentId).order('started_at', { ascending: false }).limit(10),
       ]);
       if (cancelled) return;
       setStudent((p.data as any) ?? null);
       setItems(((syl.data as any[]) ?? []) as SyllabusItem[]);
       setProgress(prog.data ?? null);
-      setSessions(((sess.data as any[]) ?? []).map((s) => ({
-        ...s, mistakes: (s.mistake_log ?? []).length,
-      })));
+      setSessions(((sess.data as any[]) ?? []) as SessionRow[]);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -68,69 +61,97 @@ export default function StudentSyllabus() {
 
   const itemTitle = (id: string | null) => items.find((i) => i.id === id)?.title ?? '—';
 
-  if (loading) return <div className="p-6 space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-64 w-full" /></div>;
+  if (loading) {
+    return (
+      <div className="vcr-canvas min-h-screen space-y-4 p-6">
+        <Skeleton className="h-24 w-full bg-white/5" />
+        <Skeleton className="h-64 w-full bg-white/5" />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-lms-text-1 truncate">{student?.full_name ?? 'Student'} — Syllabus</h1>
-          <p className="text-sm text-lms-text-3">Current level, pace and recent class history.</p>
+    <div className="vcr-canvas min-h-screen text-vcr-chrome">
+      <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-8">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-3xl font-semibold tracking-tight text-vcr-chrome">
+              {student?.full_name ?? 'Student'}
+            </h1>
+            <p className="text-sm text-vcr-chrome/60">Current level, pace and recent class history.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(`/vcr/${studentId}`)}
+            className="vcr-btn-gold ms-auto inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base font-semibold"
+          >
+            <PlayCircle className="h-5 w-5" /> Open VCR
+          </button>
         </div>
-        <Button size="lg" className="ms-auto h-12" onClick={() => navigate(`/vcr/${studentId}`)}>
-          <PlayCircle className="h-5 w-5 me-2" /> Open Virtual Class Room
-        </Button>
-      </div>
 
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Current position</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="text-sm">{currentItem?.level ?? 'Not started'}</Badge>
-            <span className="text-lg font-semibold text-lms-text-1">{currentItem?.title ?? 'No item assigned yet'}</span>
+        {/* Current position — lighter parchment card, this is a review screen */}
+        <section className="vcr-reading-card rounded-2xl p-5 sm:p-7">
+          <h2 className="font-display text-xl text-vcr-ink">Current position</h2>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-vcr-emerald px-3 py-1 text-sm text-vcr-parchment">
+              {currentItem?.level ?? 'Not started'}
+            </span>
+            <span className="text-xl font-semibold text-vcr-ink">
+              {currentItem?.title ?? 'No item assigned yet'}
+            </span>
             {progress?.current_page_or_ayah && (
-              <Badge variant="outline" className="text-sm" dir="auto">At: {progress.current_page_or_ayah}</Badge>
+              <span className="rounded-full border border-vcr-ink/25 px-3 py-1 font-mono text-sm text-vcr-ink/80" dir="auto">
+                At: {progress.current_page_or_ayah}
+              </span>
             )}
           </div>
-          <div>
-            <div className="flex justify-between text-sm text-lms-text-2 mb-1">
+
+          <div className="mt-5">
+            <div className="mb-1 flex justify-between font-mono text-sm tabular-nums text-vcr-ink/70">
               <span>Syllabus progress</span><span>{pct}%</span>
             </div>
-            <Progress value={pct} />
+            <div className="h-3 w-full overflow-hidden rounded-full bg-vcr-ink/10">
+              <div className="h-full rounded-full bg-vcr-gold transition-all" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
-            pace.onTrack ? 'bg-lms-success/10 text-lms-success' : 'bg-lms-warning/10 text-lms-warning')}>
-            <TrendingUp className="h-4 w-4" />
-            Pace: {pace.recent} classes in the last 30 days (plan: {pace.expected}) — {pace.onTrack ? 'on track' : 'behind plan'}
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Recent sessions</CardTitle></CardHeader>
-        <CardContent className="p-0">
+          <div
+            className={cn(
+              'mt-5 flex items-center gap-2 rounded-xl px-4 py-3 text-sm',
+              pace.onTrack ? 'bg-vcr-emerald/12 text-vcr-emerald' : 'bg-vcr-oxide/12 text-vcr-oxide'
+            )}
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span className="font-mono tabular-nums">{pace.recent}</span> classes in the last 30 days
+            (plan: <span className="font-mono tabular-nums">{pace.expected}</span>) — {pace.onTrack ? 'on track' : 'behind plan'}
+          </div>
+        </section>
+
+        {/* Recent sessions */}
+        <section className="vcr-panel rounded-2xl p-4 sm:p-6">
+          <h2 className="font-display text-xl text-vcr-chrome">Recent sessions</h2>
           {sessions.length === 0 ? (
-            <p className="px-6 pb-6 text-sm text-lms-text-3">No class-room sessions recorded yet. Open the VCR to start one.</p>
+            <p className="mt-3 text-sm text-vcr-chrome/60">No class-room sessions recorded yet. Open the VCR to start one.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className="mt-3 divide-y divide-vcr-chrome/10">
               {sessions.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center gap-3 px-6 py-3">
-                  <span className="text-sm tabular-nums text-lms-text-2 w-28">
+                <li key={s.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <span className="w-28 font-mono text-sm tabular-nums text-vcr-chrome/70">
                     {new Date(s.started_at).toLocaleDateString()}
                   </span>
-                  <span className="text-sm font-medium text-lms-text-1 flex-1 min-w-0 truncate" dir="auto">
-                    {s.reference_covered || itemTitle(s.item_covered_id)}
+                  <span className="min-w-0 flex-1 truncate text-base text-vcr-chrome" dir="auto">
+                    {itemTitle(s.item_covered_id)}
+                    {s.reference_covered ? ` — ${s.reference_covered}` : ''}
                   </span>
-                  <Badge variant={s.mistakes > 0 ? 'secondary' : 'outline'} className="text-xs">
-                    {s.mistakes} mistake{s.mistakes === 1 ? '' : 's'}
-                  </Badge>
-                  {!s.ended_at && <Badge className="text-xs bg-lms-warning">Open</Badge>}
+                  {!s.ended_at && (
+                    <span className="rounded-full bg-vcr-oxide/25 px-2.5 py-0.5 text-xs text-vcr-chrome">Open</span>
+                  )}
                 </li>
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </div>
   );
 }
