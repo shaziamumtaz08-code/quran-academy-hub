@@ -159,7 +159,14 @@ export default function StudentSyllabus() {
                     {s.reference_covered ? ` — ${s.reference_covered}` : ''}
                   </span>
                   {!s.ended_at && (
-                    <span className="rounded-full bg-vcr-oxide/25 px-2.5 py-0.5 text-xs text-vcr-chrome">Open</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/vcr/${studentId}`)}
+                      className="rounded-full bg-vcr-oxide/25 px-3 py-1 text-xs font-semibold text-vcr-chrome transition-colors hover:bg-vcr-oxide/45"
+                      title="Resume this session in the Virtual Class Room"
+                    >
+                      Resume in VCR
+                    </button>
                   )}
                 </li>
               ))}
