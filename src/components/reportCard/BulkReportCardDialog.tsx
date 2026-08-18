@@ -112,7 +112,8 @@ export function BulkReportCardDialog({
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, archived_at')
+        .is('archived_at', null)
         .order('full_name');
       if (error) throw error;
 
@@ -146,7 +147,11 @@ export function BulkReportCardDialog({
     };
   }, [parsedRows]);
 
-  const canImport = validationSummary.valid > 0;
+  const importableRows = useMemo(
+    () => parsedRows.filter((r) => r.status !== 'error'),
+    [parsedRows]
+  );
+  const canImport = importableRows.length > 0;
 
   const downloadTemplate = () => {
     if (!selectedTemplate || flatCriteria.length === 0) {
@@ -172,7 +177,9 @@ export function BulkReportCardDialog({
       'Keep improving',
     ];
 
-    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
+    // Criteria names can contain commas/quotes — always emit RFC4180-quoted fields.
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const csvContent = [headers.map(esc).join(','), sampleRow.map(esc).join(',')].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -197,32 +204,70 @@ export function BulkReportCardDialog({
       const headers = records[0].map((h) => h.trim());
       const rows: ParsedRow[] = [];
 
-
-      // Map criteria names from headers (extract name without max info)
-      const criteriaHeaders = headers.slice(2, -2).map((h) => {
+      const stripMax = (h: string) => {
         const match = h.match(/^(.+?)\s*\(max:/i);
-        return match ? match[1].trim() : h;
-      });
+        return (match ? match[1] : h).trim();
+      };
+      const norm = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase();
+
+      // Resolve columns by header NAME (not position) so re-ordered or
+      // partially filled sheets still import correctly.
+      const findCol = (...names: string[]) =>
+        headers.findIndex((h) => names.includes(norm(h).replace(/\s/g, '_')));
+      const nameCol = findCol('student_name', 'student', 'name');
+      const dateCol = findCol('exam_date', 'date');
+      const examinerCol = findCol('examiner_remarks');
+      const publicCol = findCol('public_remarks');
+
+      if (nameCol === -1 || dateCol === -1) {
+        toast({
+          title: 'Missing columns',
+          description: 'CSV must contain "student_name" and "exam_date" headers. Download the sample CSV for the correct format.',
+          variant: 'destructive',
+        });
+        setIsValidating(false);
+        return;
+      }
+
+      // Every remaining column is treated as a criteria column and matched by name.
+      const criteriaCols = headers
+        .map((h, idx) => ({ idx, name: stripMax(h) }))
+        .filter(({ idx }) => ![nameCol, dateCol, examinerCol, publicCol].includes(idx))
+        .map(({ idx, name }) => ({
+          idx,
+          name,
+          match: flatCriteria.find((c) => norm(c.criteria.criteria_name) === norm(name)) || null,
+        }));
+
+      const unmatchedHeaders = criteriaCols.filter((c) => !c.match).map((c) => c.name);
+      const missingCriteria = flatCriteria.filter(
+        (c) => !criteriaCols.some((col) => col.match?.criteria.id === c.criteria.id)
+      );
 
       for (let i = 1; i < records.length; i++) {
         const values = records[i];
         if (values.length < 3 || values.every((v) => !v.trim())) continue;
 
-        const studentName = values[0]?.trim() || '';
-        const examDate = values[1]?.trim() || '';
-        const examinerRemarks = values[values.length - 2]?.trim() || '';
-        const publicRemarks = values[values.length - 1]?.trim() || '';
+        const studentName = values[nameCol]?.trim() || '';
+        const examDate = values[dateCol]?.trim() || '';
+        const examinerRemarks = examinerCol === -1 ? '' : values[examinerCol]?.trim() || '';
+        const publicRemarks = publicCol === -1 ? '' : values[publicCol]?.trim() || '';
 
         const errors: string[] = [];
+        const warnings: string[] = [];
         const criteriaMarks: Record<string, number> = {};
 
         // Find student — tolerate stray tabs / double spaces pasted from sheets
-        const normaliseName = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase();
-        const matchedStudent = students.find(
-          (s) => normaliseName(s.full_name) === normaliseName(studentName)
-        );
-        if (!matchedStudent) {
-          errors.push(`Student "${studentName}" not found`);
+        const candidates = students.filter((s) => norm(s.full_name) === norm(studentName));
+        const matchedStudent = candidates[0];
+        if (!studentName) {
+          errors.push('Student name is empty');
+        } else if (candidates.length === 0) {
+          errors.push(`Student "${studentName}" not found (or archived)`);
+        } else if (candidates.length > 1) {
+          errors.push(
+            `"${studentName}" matches ${candidates.length} active students — rename in the sheet or import this row manually`
+          );
         }
 
         // Validate date
@@ -230,27 +275,30 @@ export function BulkReportCardDialog({
           errors.push('Invalid exam date');
         }
 
-        // Parse criteria marks
-        for (let j = 0; j < criteriaHeaders.length; j++) {
-          const criteriaName = criteriaHeaders[j];
-          const markValue = values[j + 2]?.trim();
-          const mark = parseFloat(markValue || '0');
-
-          const matchedCriteria = flatCriteria.find(
-            (c) => c.criteria.criteria_name.toLowerCase() === criteriaName.toLowerCase()
-          );
-
-          if (!matchedCriteria) {
-            errors.push(`Criteria "${criteriaName}" not found in template`);
-          } else {
-            if (isNaN(mark) || mark < 0) {
-              errors.push(`Invalid marks for "${criteriaName}"`);
-            } else if (mark > matchedCriteria.criteria.max_marks) {
-              errors.push(`Marks for "${criteriaName}" exceed max (${matchedCriteria.criteria.max_marks})`);
-            } else {
-              criteriaMarks[matchedCriteria.criteria.id] = mark;
-            }
+        // Parse criteria marks by matched column
+        for (const col of criteriaCols) {
+          const raw = values[col.idx]?.trim() ?? '';
+          if (!col.match) {
+            if (raw) warnings.push(`Column "${col.name}" is not in this template — ignored`);
+            continue;
           }
+          if (!raw) {
+            warnings.push(`No marks for "${col.name}" — counted as 0`);
+            criteriaMarks[col.match.criteria.id] = 0;
+            continue;
+          }
+          const mark = parseFloat(raw);
+          if (isNaN(mark) || mark < 0) {
+            errors.push(`Invalid marks for "${col.name}"`);
+          } else if (mark > col.match.criteria.max_marks) {
+            errors.push(`Marks for "${col.name}" exceed max (${col.match.criteria.max_marks})`);
+          } else {
+            criteriaMarks[col.match.criteria.id] = mark;
+          }
+        }
+
+        for (const missing of missingCriteria) {
+          warnings.push(`Template criteria "${missing.criteria.criteria_name}" has no column — counted as 0`);
         }
 
         rows.push({
@@ -261,8 +309,8 @@ export function BulkReportCardDialog({
           criteriaMarks,
           examinerRemarks,
           publicRemarks,
-          status: errors.length > 0 ? 'error' : 'valid',
-          errors,
+          status: errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'valid',
+          errors: [...errors, ...warnings],
         });
       }
 
@@ -324,7 +372,7 @@ export function BulkReportCardDialog({
     setStep('importing');
     setImportProgress(0);
 
-    const validRows = parsedRows.filter((r) => r.status === 'valid');
+    const validRows = parsedRows.filter((r) => r.status !== 'error');
     const results = { success: 0, failed: 0, flagged: 0, failedRows: [] as { rowNum: number; studentName: string; error: string }[] };
 
     const { data: sessionData } = await supabase.auth.getSession();
@@ -582,7 +630,9 @@ export function BulkReportCardDialog({
                       className={`p-3 rounded-lg border ${
                         row.status === 'error'
                           ? 'bg-destructive/5 border-destructive/30'
-                          : 'bg-muted/50 border-border'
+                          : row.status === 'warning'
+                            ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-300/60'
+                            : 'bg-muted/50 border-border'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -595,12 +645,14 @@ export function BulkReportCardDialog({
                         </div>
                         {row.status === 'valid' ? (
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        ) : row.status === 'warning' ? (
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
                         ) : (
                           <XCircle className="h-4 w-4 text-destructive" />
                         )}
                       </div>
                       {row.errors.length > 0 && (
-                        <div className="mt-2 text-xs text-destructive">
+                        <div className={`mt-2 text-xs ${row.status === 'error' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'}`}>
                           {row.errors.map((err, idx) => (
                             <div key={idx}>• {err}</div>
                           ))}
@@ -710,7 +762,7 @@ export function BulkReportCardDialog({
                 Back
               </Button>
               <Button onClick={executeImport} disabled={!canImport}>
-                {canImport ? `Import ${validationSummary.valid} Report Cards` : 'No Valid Rows'}
+                {canImport ? `Import ${importableRows.length} Report Cards` : 'No Valid Rows'}
               </Button>
             </>
           )}
