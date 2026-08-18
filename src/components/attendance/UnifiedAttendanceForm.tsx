@@ -1363,32 +1363,38 @@ export function UnifiedAttendanceForm({
           )}
 
           {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-3">
-            <div className="space-y-2">
-              <Label className="text-foreground text-xs">Status <span className="text-destructive">*</span></Label>
-              <SegmentedControl
-                aria-label="Attendance status"
-                value={PRIMARY_STATUSES.some(s => s.value === selectedStatus) ? selectedStatus : ('' as any)}
-                onChange={(v) => changeStatus(v as AttendanceStatus)}
-                options={PRIMARY_STATUSES}
-                gridClassName="grid-cols-2 sm:grid-cols-4"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-foreground text-xs">More statuses</Label>
-              <Select
-                value={secondaryStatuses.some(o => o.value === selectedStatus) ? selectedStatus : ''}
-                onValueChange={(v) => changeStatus(v as AttendanceStatus)}
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Teacher absent / leave, rescheduled by student…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {secondaryStatuses.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <section className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
+            <Label className="text-foreground text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Status <span className="text-destructive">*</span>
+            </Label>
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {STATUS_TILES.map((opt) => {
+                const active = selectedStatus === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => changeStatus(opt.value)}
+                    className={cn(
+                      'flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? opt.activeClass
+                        : 'border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-muted'
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
+                      {opt.icon}
+                      <span className="truncate">{opt.label}</span>
+                    </span>
+                    <span className={cn('text-[11px] leading-tight', active ? 'text-white/80' : 'text-muted-foreground')}>
+                      {opt.hint}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
