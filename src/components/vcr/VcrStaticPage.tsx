@@ -48,7 +48,14 @@ export function VcrStaticPage({
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [turning, setTurning] = useState(false);
+  const [fontScale, setFontScale] = useState(() => {
+    const saved = Number(localStorage.getItem('vcr-font-scale'));
+    return Number.isFinite(saved) && saved >= 0.7 && saved <= 2 ? saved : 1;
+  });
+  const [pageInput, setPageInput] = useState(String(initialPage));
   const resolvedResume = useRef(false);
+
+  useEffect(() => { localStorage.setItem('vcr-font-scale', String(fontScale)); }, [fontScale]);
 
   useEffect(() => {
     let cancelled = false;
