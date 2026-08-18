@@ -1928,12 +1928,13 @@ export default function Assignments() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Current Teacher</Label>
-                <p className="text-sm font-medium text-muted-foreground">{reassignDialog?.teacher_name}</p>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                <Label className="text-xs">Current Teacher</Label>
+                <p className="text-sm font-medium">{reassignDialog?.teacher_name}</p>
               </div>
-              <div className="space-y-2">
-                <Label>New Teacher *</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">New Teacher *</Label>
+
                 <Select value={reassignTeacherId} onValueChange={setReassignTeacherId}>
                   <SelectTrigger><SelectValue placeholder="Select new teacher..." /></SelectTrigger>
                   <SelectContent>
