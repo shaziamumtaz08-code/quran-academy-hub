@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlayCircle, TrendingUp } from 'lucide-react';
+import { ArrowLeft, PlayCircle, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SyllabusItem { id: string; level: string; title: string; sequence_order: number }
@@ -73,6 +73,17 @@ export default function StudentSyllabus() {
   return (
     <div className="vcr-canvas min-h-screen text-vcr-chrome">
       <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-8">
+        {/* Breadcrumb / back nav */}
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-vcr-chrome/60">
+          <button type="button" onClick={() => navigate('/class-room')} className="vcr-btn inline-flex h-9 items-center gap-1.5 rounded-lg px-3">
+            <ArrowLeft className="h-4 w-4" /> Class Room
+          </button>
+          <span aria-hidden>›</span>
+          <span className="truncate text-vcr-chrome/80">{student?.full_name ?? 'Student'}</span>
+          <span aria-hidden>›</span>
+          <span className="text-vcr-chrome/80">Syllabus</span>
+        </nav>
+
         <div className="flex flex-wrap items-center gap-4">
           <div className="min-w-0">
             <h1 className="truncate font-display text-3xl font-semibold tracking-tight text-vcr-chrome">
@@ -148,7 +159,14 @@ export default function StudentSyllabus() {
                     {s.reference_covered ? ` — ${s.reference_covered}` : ''}
                   </span>
                   {!s.ended_at && (
-                    <span className="rounded-full bg-vcr-oxide/25 px-2.5 py-0.5 text-xs text-vcr-chrome">Open</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/vcr/${studentId}`)}
+                      className="rounded-full bg-vcr-oxide/25 px-3 py-1 text-xs font-semibold text-vcr-chrome transition-colors hover:bg-vcr-oxide/45"
+                      title="Resume this session in the Virtual Class Room"
+                    >
+                      Resume in VCR
+                    </button>
                   )}
                 </li>
               ))}
