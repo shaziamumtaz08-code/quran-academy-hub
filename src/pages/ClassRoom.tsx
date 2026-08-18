@@ -134,7 +134,10 @@ export default function ClassRoom() {
                     <MonitorPlay className="h-4 w-4" />
                     Open VCR
                   </Link>
-                  <Link to={`/syllabus/${r.student_id}`} className="vcr-btn inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold">
+                  <Link
+                    to={`/syllabus/${r.student_id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
                     <BookOpen className="h-4 w-4" />
                     View Syllabus
                   </Link>
