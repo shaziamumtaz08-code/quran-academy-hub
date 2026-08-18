@@ -1,28 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, ClipboardList, ListChecks, PanelRightClose, PanelRightOpen, Timer } from 'lucide-react';
-import { VcrMushafPage, type VcrSelection } from '@/components/vcr/VcrMushafPage';
+import { CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
+import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
 import { cn } from '@/lib/utils';
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin', 'admin_academic', 'admin_division'];
-const MISTAKE_TYPES = ['Makhraj', 'Tajweed', 'Fluency'] as const;
-type MistakeType = (typeof MISTAKE_TYPES)[number];
 
 interface SyllabusItem { id: string; level: string; title: string; sequence_order: number }
-interface Mistake { id: string; reference: string; mistake_type: string; created_at: string }
 
 const clock = (secs: number) => {
-  const m = Math.floor(secs / 60), s = secs % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 };
 
 export default function VcrRoom() {
@@ -41,12 +34,10 @@ export default function VcrRoom() {
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [attendance, setAttendance] = useState<string | null>(null);
-  const [selection, setSelection] = useState<VcrSelection | null>(null);
-  const [tagFor, setTagFor] = useState<VcrSelection | null>(null);
-  const [mistakes, setMistakes] = useState<Mistake[]>([]);
   const [notes, setNotes] = useState('');
-  const [tajweed, setTajweed] = useState(true);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [notesSaved, setNotesSaved] = useState(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [turnSignal, setTurnSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const notesTimer = useRef<number | null>(null);
   const bootstrapped = useRef(false);
@@ -91,6 +82,7 @@ export default function VcrRoom() {
         current = data;
       }
       setProgress(current ?? null);
+      setNotes('');
 
       if (canControl && user?.id) {
         const { data: s } = await supabase
@@ -118,35 +110,28 @@ export default function VcrRoom() {
   /* Notes autosave (debounced) */
   const onNotes = (value: string) => {
     setNotes(value);
+    setNotesSaved(false);
     if (!sessionId) return;
     if (notesTimer.current) window.clearTimeout(notesTimer.current);
     notesTimer.current = window.setTimeout(async () => {
       await supabase.from('vcr_sessions' as any).update({ notes: value }).eq('id', sessionId);
+      setNotesSaved(true);
     }, 900);
   };
 
-  const logMistake = useCallback(async (type: MistakeType) => {
-    if (!sessionId || !tagFor) return;
-    const { data, error } = await supabase
-      .from('mistake_log' as any)
-      .insert({ session_id: sessionId, reference: tagFor.reference, mistake_type: type })
-      .select('id, reference, mistake_type, created_at')
-      .maybeSingle();
-    setTagFor(null);
-    if (error) { toast({ title: 'Could not save', description: error.message, variant: 'destructive' }); return; }
-    if (data) setMistakes((m) => [data as any, ...m]);
-  }, [sessionId, tagFor]);
-
   const markComplete = async () => {
-    if (!sessionId || !canControl) return;
+    if (!canControl) return;
     setSaving(true);
-    const reference = selection?.reference ?? null;
-    await supabase.from('vcr_sessions' as any).update({
-      ended_at: new Date().toISOString(),
-      item_covered_id: currentItem?.id ?? null,
-      reference_covered: reference,
-      notes,
-    }).eq('id', sessionId);
+    const reference = `Page ${currentPage}`;
+
+    if (sessionId) {
+      await supabase.from('vcr_sessions' as any).update({
+        ended_at: new Date().toISOString(),
+        item_covered_id: currentItem?.id ?? null,
+        reference_covered: reference,
+        notes,
+      }).eq('id', sessionId);
+    }
 
     const { data } = await supabase.from('student_progress' as any).update({
       current_item_id: nextItem?.id ?? currentItem?.id ?? null,
@@ -155,12 +140,27 @@ export default function VcrRoom() {
       updated_at: new Date().toISOString(),
     }).eq('student_id', studentId).select('*').maybeSingle();
     setProgress(data ?? progress);
+
+    /* Signature page-turn, then open the next session record */
+    setTurnSignal((n) => n + 1);
     setSaving(false);
     toast({
       title: 'Lesson marked complete',
       description: nextItem ? `Next up: ${nextItem.title}` : 'Syllabus finished.',
     });
-    navigate(`/syllabus/${studentId}`);
+
+    if (user?.id) {
+      const { data: s } = await supabase
+        .from('vcr_sessions' as any)
+        .insert({ student_id: studentId, teacher_id: user.id, item_covered_id: nextItem?.id ?? currentItem?.id ?? null })
+        .select('id, started_at')
+        .maybeSingle();
+      if (s) {
+        setSessionId((s as any).id);
+        setStartedAt(new Date((s as any).started_at).getTime());
+        setNotes('');
+      }
+    }
   };
 
   const resumeAyah = useMemo(() => {
@@ -168,123 +168,109 @@ export default function VcrRoom() {
     return m ? { surah: Number(m[1]), ayah: Number(m[2]) } : null;
   }, [progress?.current_page_or_ayah]);
 
+  const resumePage = useMemo(() => {
+    const m = String(progress?.current_page_or_ayah ?? '').match(/Page\s+(\d+)/i);
+    return m ? Number(m[1]) : 1;
+  }, [progress?.current_page_or_ayah]);
+
+  const resumeJuz = useMemo(() => {
+    const m = String(currentItem?.title ?? '').match(/juz\s*(\d+)/i);
+    return m ? Number(m[1]) : null;
+  }, [currentItem?.title]);
+
   if (loading) {
-    return <div className="p-6 space-y-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-[60vh] w-full" /></div>;
+    return (
+      <div className="vcr-canvas min-h-screen space-y-4 p-6">
+        <Skeleton className="h-16 w-full bg-white/5" />
+        <Skeleton className="h-[60vh] w-full bg-white/5" />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header — readable when screen-shared */}
-      <header className="sticky top-0 z-20 border-b bg-lms-navy text-white">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{student?.full_name ?? 'Student'}</h1>
-          <Badge className="bg-white/15 text-white text-sm hover:bg-white/25">
+    <div className="vcr-canvas flex min-h-screen flex-col text-vcr-chrome">
+      {/* Header — stays legible when screen-shared */}
+      <header className="sticky top-0 z-20 border-b border-vcr-chrome/10 bg-[#0C1B1E]/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-4 sm:px-6">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-vcr-chrome sm:text-3xl">
+            {student?.full_name ?? 'Student'}
+          </h1>
+          <span className="rounded-full border border-vcr-gold/40 bg-vcr-gold/10 px-3 py-1 text-base text-vcr-gold">
             {currentItem ? `${currentItem.level} · ${currentItem.title}` : 'No syllabus item set'}
-          </Badge>
+          </span>
           {progress?.current_page_or_ayah && (
-            <Badge variant="outline" className="border-white/40 text-white text-sm" dir="auto">
+            <span className="font-mono text-sm tabular-nums text-vcr-chrome/70" dir="auto">
               Resume: {progress.current_page_or_ayah}
-            </Badge>
-          )}
-          <Badge className={cn('text-sm', attendance ? 'bg-lms-success' : 'bg-white/15 hover:bg-white/25')}>
-            {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
-          </Badge>
-          <div className="ms-auto flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums">
-              <Timer className="h-5 w-5" /> {clock(elapsed)}
             </span>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="tajweed" className="text-sm text-white/80">Tajweed</Label>
-              <Switch id="tajweed" checked={tajweed} onCheckedChange={setTajweed} />
-            </div>
-            <Button variant="secondary" size="sm" className="h-9" onClick={() => setPanelOpen((o) => !o)}>
-              {panelOpen ? <PanelRightClose className="h-4 w-4 me-1" /> : <PanelRightOpen className="h-4 w-4 me-1" />}
-              Mistakes ({mistakes.length})
-            </Button>
-          </div>
+          )}
+          <span
+            className={cn(
+              'rounded-full px-3 py-1 text-sm',
+              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/80'
+            )}
+          >
+            {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
+          </span>
+          <span className="ms-auto inline-flex items-center gap-2 font-mono text-2xl tabular-nums text-vcr-chrome">
+            <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
+          </span>
         </div>
       </header>
 
-      <div className="flex-1 flex min-w-0">
-        <main className="flex-1 min-w-0 p-3 sm:p-5">
-          <VcrMushafPage
-            tajweed={tajweed}
-            canControl={canControl}
-            selection={selection}
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
+        {/* Reading card — the lit centre of the room */}
+        <main className="min-w-0 flex-1">
+          <VcrStaticPage
+            initialPage={resumePage}
             resumeAyah={resumeAyah}
-            onSelect={setSelection}
-            onWordTap={(sel) => canControl && sessionId && setTagFor(sel)}
+            resumeJuz={resumeJuz}
+            canControl={canControl}
+            turnSignal={turnSignal}
+            onPageChange={(p) => setCurrentPage(p)}
           />
         </main>
 
-        {/* Mistake log — collapses so it never eats width on a shared screen */}
-        {panelOpen && (
-          <aside className="w-[19rem] shrink-0 border-s bg-lms-surface p-4 space-y-4 hidden lg:block">
-            <div className="flex items-center gap-2 text-lms-text-1 font-semibold">
-              <ListChecks className="h-5 w-5" /> Mistake log
+        {/* Receded side panel */}
+        {canControl && (
+          <aside className="vcr-panel w-full shrink-0 space-y-4 rounded-2xl p-4 lg:w-[22rem]">
+            <div className="flex items-center gap-2 font-display text-lg text-vcr-chrome">
+              <ClipboardList className="h-5 w-5 text-vcr-gold" /> Private teacher notes
             </div>
-            {tagFor ? (
-              <div className="rounded-lg border-2 border-primary bg-card p-3 space-y-2">
-                <p className="text-sm text-lms-text-2">Tag this:</p>
-                <p className="text-base font-semibold" dir="auto">{tagFor.reference}</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {MISTAKE_TYPES.map((t) => (
-                    <Button key={t} size="sm" className="h-9 justify-start" onClick={() => logMistake(t)}>{t}</Button>
-                  ))}
-                  <Button size="sm" variant="ghost" className="h-8" onClick={() => setTagFor(null)}>Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-lms-text-3">Tap any word on the page to tag a mistake.</p>
-            )}
+            <p className="text-sm text-vcr-chrome/60">Autosaved. Never shown to the student or parent.</p>
+            <textarea
+              value={notes}
+              onChange={(e) => onNotes(e.target.value)}
+              rows={8}
+              placeholder="What to practise before the next class…"
+              className="w-full resize-y rounded-xl border border-vcr-chrome/15 bg-[#0A1618] p-3 text-base text-vcr-chrome placeholder:text-vcr-chrome/35 focus:border-vcr-gold/60 focus:outline-none"
+            />
+            <p className="font-mono text-xs text-vcr-chrome/45">{notesSaved ? 'Saved' : 'Saving…'}</p>
 
-            <div className="space-y-2 max-h-[52vh] overflow-y-auto">
-              {mistakes.length === 0 && (
-                <p className="text-sm text-lms-text-3">No mistakes tagged in this session yet.</p>
-              )}
-              {mistakes.map((m) => (
-                <div key={m.id} className="rounded-lg border bg-card px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant="secondary" className="text-xs">{m.mistake_type}</Badge>
-                    <span className="text-xs text-lms-text-3 tabular-nums">
-                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-sm mt-1" dir="auto">{m.reference}</p>
-                </div>
-              ))}
+            <div className="space-y-2 rounded-xl border border-vcr-chrome/10 bg-black/20 p-3 text-sm text-vcr-chrome/70">
+              <div className="flex items-center gap-2 text-vcr-chrome">
+                <ListOrdered className="h-4 w-4 text-vcr-gold" /> Next in syllabus
+              </div>
+              <p>{nextItem ? `${nextItem.level} · ${nextItem.title}` : 'End of syllabus'}</p>
             </div>
+
+            <button
+              type="button"
+              onClick={markComplete}
+              disabled={saving}
+              className="vcr-btn-gold inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold disabled:opacity-60"
+            >
+              <CheckCircle2 className="h-5 w-5" /> Mark page/lesson complete
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/syllabus/${studentId}`)}
+              className="vcr-btn inline-flex h-12 w-full items-center justify-center rounded-xl text-base"
+            >
+              Open syllabus
+            </button>
           </aside>
         )}
       </div>
-
-      {/* Bottom bar: private notes + complete */}
-      {canControl && (
-        <footer className="sticky bottom-0 z-20 border-t bg-card px-3 sm:px-5 py-3">
-          <div className="flex flex-col sm:flex-row items-stretch gap-3">
-            <div className="flex-1 min-w-0">
-              <Label className="text-xs text-lms-text-3 inline-flex items-center gap-1">
-                <ClipboardList className="h-3.5 w-3.5" /> Private teacher notes (autosaved, never shown to the student)
-              </Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => onNotes(e.target.value)}
-                rows={2}
-                className="mt-1 text-base"
-                placeholder="What to practise before the next class…"
-              />
-            </div>
-            <div className="flex sm:flex-col gap-2 sm:w-56">
-              <Button size="lg" className="flex-1 h-12 text-base" onClick={markComplete} disabled={saving}>
-                <CheckCircle2 className="h-5 w-5 me-2" /> Mark lesson complete
-              </Button>
-              <Button variant="outline" size="lg" className="h-12" onClick={() => navigate(`/syllabus/${studentId}`)}>
-                Syllabus
-              </Button>
-            </div>
-          </div>
-        </footer>
-      )}
     </div>
   );
 }
