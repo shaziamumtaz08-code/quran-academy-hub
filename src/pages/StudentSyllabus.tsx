@@ -74,14 +74,18 @@ export default function StudentSyllabus() {
     <div className="vcr-canvas min-h-screen text-vcr-chrome">
       <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-8">
         {/* Breadcrumb / back nav */}
-        <nav className="flex flex-wrap items-center gap-2 text-sm text-vcr-chrome/60">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-vcr-chrome/60">
           <button type="button" onClick={() => navigate('/class-room')} className="vcr-btn inline-flex h-9 items-center gap-1.5 rounded-lg px-3">
-            <ArrowLeft className="h-4 w-4" /> Class Room
+            <ArrowLeft className="h-4 w-4" /> Back to Class Room
           </button>
+          <span className="mx-1 h-5 w-px bg-vcr-chrome/20" aria-hidden />
+          <button type="button" onClick={() => navigate('/dashboard')} className="transition-colors hover:text-vcr-chrome">Home</button>
+          <span aria-hidden>›</span>
+          <button type="button" onClick={() => navigate('/class-room')} className="transition-colors hover:text-vcr-chrome">Class Room</button>
           <span aria-hidden>›</span>
           <span className="truncate text-vcr-chrome/80">{student?.full_name ?? 'Student'}</span>
           <span aria-hidden>›</span>
-          <span className="text-vcr-chrome/80">Syllabus</span>
+          <span className="font-medium text-vcr-chrome">Syllabus</span>
         </nav>
 
         <div className="flex flex-wrap items-center gap-4">
