@@ -1373,11 +1373,11 @@ export function UnifiedAttendanceForm({
           )}
 
           {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
-            <Label className="text-foreground text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <section className="space-y-3">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Status <span className="text-destructive">*</span>
             </Label>
-            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               {STATUS_TILES.map((opt) => {
                 const active = selectedStatus === opt.value;
                 return (
@@ -1388,24 +1388,27 @@ export function UnifiedAttendanceForm({
                     aria-checked={active}
                     onClick={() => changeStatus(opt.value)}
                     className={cn(
-                      'flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      'flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-all',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       active
                         ? opt.activeClass
-                        : 'border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-muted'
+                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
                     )}
                   >
-                    <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
+                    <span className="flex items-center gap-1.5 text-[13px] font-medium leading-tight">
                       {opt.icon}
                       <span className="truncate">{opt.label}</span>
                     </span>
-                    <span className={cn('text-[11px] leading-tight', active ? 'text-white/80' : 'text-muted-foreground')}>
+                    <span className={cn('text-[11px] leading-tight', active ? 'opacity-70' : 'text-muted-foreground/70')}>
                       {opt.hint}
                     </span>
                   </button>
                 );
               })}
             </div>
+            {statusDetailCopy[selectedStatus] && (
+              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
+            )}
           </section>
 
           {/* ── Class details card ──────────────────────────────────── */}
