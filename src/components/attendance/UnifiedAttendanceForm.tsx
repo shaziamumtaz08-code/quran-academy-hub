@@ -1245,17 +1245,27 @@ export function UnifiedAttendanceForm({
     icon: React.ReactNode;
     activeClass: string;
   }[] = [
-    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-600 bg-emerald-600 text-white shadow-sm' },
-    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-600 bg-rose-600 text-white shadow-sm' },
-    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500 text-white shadow-sm' },
-    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-700 bg-rose-700 text-white shadow-sm' },
-    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500 text-white shadow-sm' },
-    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-600 bg-slate-600 text-white shadow-sm' },
-    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-500 bg-slate-500 text-white shadow-sm' },
+    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40' },
+    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40' },
+    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/40' },
+    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
+    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
     ...(isAdminUser
-      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-sky-600 bg-sky-600 text-white shadow-sm' }]
+      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-slate-400 bg-slate-400/10 text-slate-700 dark:text-slate-300 ring-1 ring-slate-400/40' }]
       : []),
   ];
+
+  /** Plain-language sub-heading for the block that follows the status grid. */
+  const statusDetailCopy: Partial<Record<AttendanceStatus, string>> = {
+    present: 'Class ran as planned. Record what was covered below.',
+    student_absent: 'Student did not join. Tell us why so the record is complete.',
+    teacher_absent: 'Teacher did not join. Tell us why so the record is complete.',
+    student_leave: 'Leave informed in advance — pick the dates and reason.',
+    teacher_leave: 'Leave informed in advance — pick the dates and reason.',
+    holiday: 'Academy off day — no class expected.',
+  };
 
 
   return (
