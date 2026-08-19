@@ -1245,17 +1245,27 @@ export function UnifiedAttendanceForm({
     icon: React.ReactNode;
     activeClass: string;
   }[] = [
-    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-600 bg-emerald-600 text-white shadow-sm' },
-    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-600 bg-rose-600 text-white shadow-sm' },
-    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500 text-white shadow-sm' },
-    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-700 bg-rose-700 text-white shadow-sm' },
-    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500 text-white shadow-sm' },
-    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-600 bg-slate-600 text-white shadow-sm' },
-    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-slate-500 bg-slate-500 text-white shadow-sm' },
+    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40' },
+    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40' },
+    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/40' },
+    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
+    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
     ...(isAdminUser
-      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-sky-600 bg-sky-600 text-white shadow-sm' }]
+      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-slate-400 bg-slate-400/10 text-slate-700 dark:text-slate-300 ring-1 ring-slate-400/40' }]
       : []),
   ];
+
+  /** Plain-language sub-heading for the block that follows the status grid. */
+  const statusDetailCopy: Partial<Record<AttendanceStatus, string>> = {
+    present: 'Class ran as planned. Record what was covered below.',
+    student_absent: 'Student did not join. Tell us why so the record is complete.',
+    teacher_absent: 'Teacher did not join. Tell us why so the record is complete.',
+    student_leave: 'Leave informed in advance — pick the dates and reason.',
+    teacher_leave: 'Leave informed in advance — pick the dates and reason.',
+    holiday: 'Academy off day — no class expected.',
+  };
 
 
   return (
@@ -1284,7 +1294,7 @@ export function UnifiedAttendanceForm({
         </DialogHeader>
 
         {/* Scrollable middle */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-5 space-y-6">
 
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
@@ -1306,7 +1316,7 @@ export function UnifiedAttendanceForm({
         )}
 
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-6 py-1">
           {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
           {hasDuplicateAttendance && (
             <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
@@ -1363,11 +1373,11 @@ export function UnifiedAttendanceForm({
           )}
 
           {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
-            <Label className="text-foreground text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <section className="space-y-3">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Status <span className="text-destructive">*</span>
             </Label>
-            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               {STATUS_TILES.map((opt) => {
                 const active = selectedStatus === opt.value;
                 return (
@@ -1378,25 +1388,44 @@ export function UnifiedAttendanceForm({
                     aria-checked={active}
                     onClick={() => changeStatus(opt.value)}
                     className={cn(
-                      'flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      'flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-all',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       active
                         ? opt.activeClass
-                        : 'border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-muted'
+                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
                     )}
                   >
-                    <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
+                    <span className="flex items-center gap-1.5 text-[13px] font-medium leading-tight">
                       {opt.icon}
                       <span className="truncate">{opt.label}</span>
                     </span>
-                    <span className={cn('text-[11px] leading-tight', active ? 'text-white/80' : 'text-muted-foreground')}>
+                    <span className={cn('text-[11px] leading-tight', active ? 'opacity-70' : 'text-muted-foreground/70')}>
                       {opt.hint}
                     </span>
                   </button>
                 );
               })}
             </div>
+            {statusDetailCopy[selectedStatus] && (
+              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
+            )}
           </section>
+
+          {/* Quick notes — always available for Present / Absent so every status has a follow-up field */}
+          {(selectedStatus === 'present' || selectedStatus === 'student_absent' || selectedStatus === 'teacher_absent') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {selectedStatus === 'present' ? 'Class notes (optional)' : 'Notes (optional)'}
+              </Label>
+              <Textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                rows={2}
+                placeholder={selectedStatus === 'present' ? 'How did the class go?' : 'Anything worth recording…'}
+                className="resize-none bg-background"
+              />
+            </div>
+          )}
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
