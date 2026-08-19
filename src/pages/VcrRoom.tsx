@@ -212,13 +212,25 @@ export default function VcrRoom() {
     <div className="vcr-canvas flex min-h-screen flex-col text-vcr-chrome">
       {/* Header — stays legible when screen-shared */}
       <header className="sticky top-0 z-20 border-b border-vcr-chrome/10 bg-[#0C1B1E]/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-4 sm:px-6">
+        <nav
+          aria-label="Breadcrumb"
+          className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 px-4 pt-3 text-xs text-vcr-chrome/55 sm:px-6"
+        >
+          <button type="button" onClick={() => navigate('/dashboard')} className="transition-colors hover:text-vcr-chrome">Home</button>
+          <span aria-hidden>›</span>
+          <button type="button" onClick={() => navigate('/class-room')} className="transition-colors hover:text-vcr-chrome">Class Room</button>
+          <span aria-hidden>›</span>
+          <span className="truncate text-vcr-chrome/80">{student?.full_name ?? 'Student'}</span>
+          <span aria-hidden>›</span>
+          <span className="font-medium text-vcr-chrome">Virtual Class Room</span>
+        </nav>
+        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6">
           <button
             type="button"
             onClick={() => navigate('/class-room')}
             className="vcr-btn inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm"
           >
-            <ArrowLeft className="h-4 w-4" /> Class Room
+            <ArrowLeft className="h-4 w-4" /> Back to Class Room
           </button>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-vcr-chrome sm:text-3xl">
             {student?.full_name ?? 'Student'}

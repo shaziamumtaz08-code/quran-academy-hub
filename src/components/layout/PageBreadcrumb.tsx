@@ -20,6 +20,7 @@ const MODULE_DEFAULTS: Record<string, string> = {
   '/communication': '/communication?view=academy-chat',
   '/settings': '/settings?view=organization',
   '/work-hub': '/work-hub',
+  '/class-room': '/class-room',
 };
 
 const MODULE_LABELS: Record<string, string> = {
@@ -35,6 +36,7 @@ const MODULE_LABELS: Record<string, string> = {
   '/work-hub': 'Tasks & Tickets',
   '/hub': 'Messages & Requests',
   '/announcements': 'Announcements',
+  '/class-room': 'Class Room',
 };
 
 const VIEW_LABELS: Record<string, string> = {
