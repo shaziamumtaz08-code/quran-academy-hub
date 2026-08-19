@@ -20,6 +20,7 @@ const MODULE_DEFAULTS: Record<string, string> = {
   '/communication': '/communication?view=academy-chat',
   '/settings': '/settings?view=organization',
   '/work-hub': '/work-hub',
+  '/class-room': '/class-room',
 };
 
 const MODULE_LABELS: Record<string, string> = {
