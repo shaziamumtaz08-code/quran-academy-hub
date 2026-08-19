@@ -1294,7 +1294,7 @@ export function UnifiedAttendanceForm({
         </DialogHeader>
 
         {/* Scrollable middle */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-5 space-y-6">
 
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
@@ -1316,7 +1316,7 @@ export function UnifiedAttendanceForm({
         )}
 
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-6 py-1">
           {/* Duplicate Attendance Warning — offers an in-place switch to edit mode */}
           {hasDuplicateAttendance && (
             <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
@@ -1410,6 +1410,22 @@ export function UnifiedAttendanceForm({
               <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
             )}
           </section>
+
+          {/* Quick notes — always available for Present / Absent so every status has a follow-up field */}
+          {(selectedStatus === 'present' || selectedStatus === 'student_absent' || selectedStatus === 'teacher_absent') && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {selectedStatus === 'present' ? 'Class notes (optional)' : 'Notes (optional)'}
+              </Label>
+              <Textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                rows={2}
+                placeholder={selectedStatus === 'present' ? 'How did the class go?' : 'Anything worth recording…'}
+                className="resize-none bg-background"
+              />
+            </div>
+          )}
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
