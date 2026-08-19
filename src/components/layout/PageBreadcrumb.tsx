@@ -36,6 +36,7 @@ const MODULE_LABELS: Record<string, string> = {
   '/work-hub': 'Tasks & Tickets',
   '/hub': 'Messages & Requests',
   '/announcements': 'Announcements',
+  '/class-room': 'Class Room',
 };
 
 const VIEW_LABELS: Record<string, string> = {
