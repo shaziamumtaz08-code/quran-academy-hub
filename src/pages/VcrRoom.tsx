@@ -286,8 +286,12 @@ export default function VcrRoom() {
             resumeJuz={resumeJuz}
             canControl={canControl}
             turnSignal={turnSignal}
+            isFollower={isFollower}
+            followState={remoteState}
+            onViewChange={publish}
             onPageChange={(p) => setCurrentPage(p)}
           />
+
         </main>
 
         {/* Receded side panel */}
