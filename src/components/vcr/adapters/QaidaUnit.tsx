@@ -59,7 +59,8 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
   }, [page]);
 
   /* Teacher's flip always wins; otherwise the learner can explore words too. */
-  const flippedId = (!canControl ? highlight?.wordId ?? null : null) ?? localFlipped;
+  const remoteFlip = canControl ? null : highlight?.wordId ?? null;
+  const flippedId = remoteFlip || localFlipped;
 
   const lines = useMemo(() => {
     const map = new Map<number, QaidaPageWord[]>();
