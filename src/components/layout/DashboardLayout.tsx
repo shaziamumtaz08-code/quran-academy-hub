@@ -92,7 +92,7 @@ function isAdminRole(role: AppRole | null) {
   return !!role && (adminRoles.includes(role) || role.startsWith("admin_"));
 }
 
-function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null): DrawerSection[] {
+function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null, selfId?: string | null): DrawerSection[] {
   const isGroupStyleModel = modelType === "group" || modelType === "recorded";
   const isOneToOne = !isGroupStyleModel;
 
