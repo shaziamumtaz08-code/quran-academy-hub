@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
+import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
@@ -143,9 +144,9 @@ export default function VcrRoom() {
         ended_at: new Date().toISOString(),
         item_covered_id: currentItem?.id ?? null,
         reference_covered: reference,
-        content_type: mushafAdapter.contentType,
-        library_item_id: mushafAdapter.libraryItemId ?? null,
-        reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
+        content_type: adapter.contentType,
+        library_item_id: adapter.libraryItemId ?? null,
+        reference: adapter.referenceFor?.(currentPage) ?? { page: currentPage },
         notes,
       }).eq('id', sessionId);
     }
@@ -154,9 +155,9 @@ export default function VcrRoom() {
       student_id: studentId,
       current_item_id: nextItem?.id ?? currentItem?.id ?? null,
       current_page_or_ayah: reference,
-      content_type: mushafAdapter.contentType,
-      library_item_id: mushafAdapter.libraryItemId ?? null,
-      reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
+      content_type: adapter.contentType,
+      library_item_id: adapter.libraryItemId ?? null,
+      reference: adapter.referenceFor?.(currentPage) ?? { page: currentPage },
       status: nextItem ? 'in_progress' : 'completed',
       updated_at: new Date().toISOString(),
     };
@@ -219,7 +220,41 @@ export default function VcrRoom() {
     return m ? Number(m[1]) : null;
   }, [currentItem?.title]);
 
+  /* Which content the reader shows. Seeded from progress / syllabus wording,
+     and switchable by staff for the rest of the session. */
+  const suggestedContent: 'mushaf' | 'qaida' = useMemo(() => {
+    if (progress?.content_type === 'qaida') return 'qaida';
+    const text = `${currentItem?.level ?? ''} ${currentItem?.title ?? ''}`.toLowerCase();
+    return /qaida|qa'ida|noorani/.test(text) ? 'qaida' : 'mushaf';
+  }, [progress?.content_type, currentItem?.level, currentItem?.title]);
+
+  const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
+  const content = contentMode ?? suggestedContent;
+
+  /* Keep the last broadcast view so word flips can be published without
+     the reader having to own highlight state. */
+  const lastView = useRef({ page: 1, fontScale: 1 });
+  const publishView = React.useCallback(
+    (state: { page: number; fontScale: number; highlight: any }) => {
+      lastView.current = { page: state.page, fontScale: state.fontScale };
+      publish(state);
+    },
+    [publish]
+  );
+  const publishWord = React.useCallback(
+    (wordId: string | null) => {
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null });
+    },
+    [publish]
+  );
+
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
+  const qaidaAdapter = useQaidaAdapter({
+    resumePage: content === 'qaida' ? resumePage : null,
+    canControl,
+    onSelectWord: publishWord,
+  });
+  const adapter = content === 'qaida' ? qaidaAdapter : mushafAdapter;
 
   if (loading) {
     return (
@@ -277,6 +312,26 @@ export default function VcrRoom() {
             <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
           </span>
         </div>
+        {/* Content switcher — Mushaf or Noorani Qaida, staff only */}
+        {canControl && (
+          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-4 pb-2 sm:px-6">
+            {(['mushaf', 'qaida'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setContentMode(c)}
+                className={cn(
+                  'h-9 rounded-full border px-4 text-sm transition-colors',
+                  content === c
+                    ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
+                    : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+                )}
+              >
+                {c === 'mushaf' ? 'Mushaf' : 'Noorani Qaida'}
+              </button>
+            ))}
+          </div>
+        )}
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
@@ -290,13 +345,14 @@ export default function VcrRoom() {
         {/* Reading card — the lit centre of the room */}
         <main className="min-w-0 flex-1">
           <VcrReader
-            adapter={mushafAdapter}
+            key={content}
+            adapter={adapter}
             initialUnit={resumePage}
             canControl={canControl}
             turnSignal={turnSignal}
             isFollower={isFollower}
             followState={remoteState}
-            onViewChange={publish}
+            onViewChange={publishView}
             onUnitChange={(p) => setCurrentPage(p)}
           />
 
