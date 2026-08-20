@@ -392,8 +392,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [activeRole, location.pathname, activeDivision?.id]);
 
   const sections = useMemo(
-    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null), activeRole),
-    [activeRole, activeDivision?.model_type]
+    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null, profile?.id ?? null), activeRole),
+    [activeRole, activeDivision?.model_type, profile?.id]
   );
   const expandedStorageKey = expandedKeyForUser(profile?.id);
   const collapsedStorageKey = collapsedKeyForUser(profile?.id);
