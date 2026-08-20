@@ -23,6 +23,8 @@ export const STUDENT_ALLOWED_ROUTES: readonly string[] = [
   '/hub',
   '/workhub',
   '/classroom',          // /classroom/:sessionId
+  '/vcr',                // /vcr/:studentId — own Virtual Class Room
+  '/syllabus',           // /syllabus/:studentId — own syllabus
   '/connections',        // /connections/:userType/:userId
   '/select-division',    // soft — guard will still bounce non-super_admins
   '/parent',             // hybrid student+parent users
