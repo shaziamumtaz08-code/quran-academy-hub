@@ -25,7 +25,7 @@ function shouldReload() {
  * React.lazy that survives stale chunk hashes after a deploy.
  * Retries once with a cache-busting query, then forces a single page reload.
  */
-export function lazyWithRetry<T extends ComponentType<never>>(
+export function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
 ) {
   return lazy(async () => {
