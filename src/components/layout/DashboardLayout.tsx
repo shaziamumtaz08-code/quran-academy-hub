@@ -764,6 +764,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <PushNotificationInitializer />
             <PushPermissionBanner />
             <ActingAsBanner />
+            <IncomingCallAlert />
+
 
             {children}
           </main>
