@@ -58,7 +58,8 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const flippedId = canControl ? localFlipped : highlight?.wordId ?? null;
+  /* Teacher's flip always wins; otherwise the learner can explore words too. */
+  const flippedId = (!canControl ? highlight?.wordId ?? null : null) ?? localFlipped;
 
   const lines = useMemo(() => {
     const map = new Map<number, QaidaPageWord[]>();
