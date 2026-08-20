@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Real-time view sync for the Virtual Class Room.
  *
- * Rides on the same Realtime topic used for the in-app audio call
- * (`vcr-call:${roomId}`) so one channel per session carries both audio
- * signalling and view state. Completely independent of whether the audio call
- * connected — a teacher on the Zoom audio fallback still drives the student's
- * screen.
+ * Uses its own Realtime topic (`vcr-call:${roomId}`), separate from the audio
+ * call topic (`vcr-audio:${roomId}`) — two channels sharing one topic on the
+ * same socket do not both subscribe. Completely independent of whether the
+ * audio call connected — a teacher on the Zoom audio fallback still drives the
+ * student's screen.
  */
 
 export interface VcrViewState {

@@ -168,7 +168,10 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     const pc = buildPeerConnection();
     stream.getAudioTracks().forEach((t) => pc.addTrack(t, stream));
 
-    const channel = supabase.channel(`vcr-call:${roomId}`, {
+    // NOTE: must NOT share a topic with useVcrViewSync (`vcr-call:*`) — two
+    // channels on the same topic over one socket never both reach SUBSCRIBED,
+    // which silently killed the call handshake.
+    const channel = supabase.channel(`vcr-audio:${roomId}`, {
       config: { broadcast: { self: false } },
     });
     channelRef.current = channel;
