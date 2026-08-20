@@ -219,7 +219,41 @@ export default function VcrRoom() {
     return m ? Number(m[1]) : null;
   }, [currentItem?.title]);
 
+  /* Which content the reader shows. Seeded from progress / syllabus wording,
+     and switchable by staff for the rest of the session. */
+  const suggestedContent: 'mushaf' | 'qaida' = useMemo(() => {
+    if (progress?.content_type === 'qaida') return 'qaida';
+    const text = `${currentItem?.level ?? ''} ${currentItem?.title ?? ''}`.toLowerCase();
+    return /qaida|qa'ida|noorani/.test(text) ? 'qaida' : 'mushaf';
+  }, [progress?.content_type, currentItem?.level, currentItem?.title]);
+
+  const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
+  const content = contentMode ?? suggestedContent;
+
+  /* Keep the last broadcast view so word flips can be published without
+     the reader having to own highlight state. */
+  const lastView = useRef({ page: 1, fontScale: 1 });
+  const publishView = React.useCallback(
+    (state: { page: number; fontScale: number; highlight: any }) => {
+      lastView.current = { page: state.page, fontScale: state.fontScale };
+      publish(state);
+    },
+    [publish]
+  );
+  const publishWord = React.useCallback(
+    (wordId: string | null) => {
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null });
+    },
+    [publish]
+  );
+
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
+  const qaidaAdapter = useQaidaAdapter({
+    resumePage: content === 'qaida' ? resumePage : null,
+    canControl,
+    onSelectWord: publishWord,
+  });
+  const adapter = content === 'qaida' ? qaidaAdapter : mushafAdapter;
 
   if (loading) {
     return (
