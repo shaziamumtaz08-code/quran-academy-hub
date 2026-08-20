@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
-import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
+import { VcrReader } from '@/components/vcr/VcrReader';
+import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
@@ -89,7 +90,7 @@ export default function VcrRoom() {
       if (!current && canControl) {
         const { data } = await supabase
           .from('student_progress' as any)
-          .insert({ student_id: studentId, current_item_id: list[0]?.id ?? null, status: 'in_progress' })
+          .insert({ student_id: studentId, current_item_id: list[0]?.id ?? null, status: 'in_progress', content_type: 'mushaf' })
           .select('*')
           .maybeSingle();
         current = data;
@@ -100,7 +101,7 @@ export default function VcrRoom() {
       if (canControl && user?.id) {
         const { data: s } = await supabase
           .from('vcr_sessions' as any)
-          .insert({ student_id: studentId, teacher_id: user.id, item_covered_id: current?.current_item_id ?? null })
+          .insert({ student_id: studentId, teacher_id: user.id, item_covered_id: current?.current_item_id ?? null, content_type: 'mushaf' })
           .select('id, started_at')
           .maybeSingle();
         if (s) {
@@ -142,6 +143,9 @@ export default function VcrRoom() {
         ended_at: new Date().toISOString(),
         item_covered_id: currentItem?.id ?? null,
         reference_covered: reference,
+        content_type: mushafAdapter.contentType,
+        library_item_id: mushafAdapter.libraryItemId ?? null,
+        reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
         notes,
       }).eq('id', sessionId);
     }
@@ -150,6 +154,9 @@ export default function VcrRoom() {
       student_id: studentId,
       current_item_id: nextItem?.id ?? currentItem?.id ?? null,
       current_page_or_ayah: reference,
+      content_type: mushafAdapter.contentType,
+      library_item_id: mushafAdapter.libraryItemId ?? null,
+      reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
       status: nextItem ? 'in_progress' : 'completed',
       updated_at: new Date().toISOString(),
     };
@@ -186,7 +193,7 @@ export default function VcrRoom() {
     if (user?.id) {
       const { data: s } = await supabase
         .from('vcr_sessions' as any)
-        .insert({ student_id: studentId, teacher_id: user.id, item_covered_id: nextItem?.id ?? currentItem?.id ?? null })
+        .insert({ student_id: studentId, teacher_id: user.id, item_covered_id: nextItem?.id ?? currentItem?.id ?? null, content_type: 'mushaf' })
         .select('id, started_at')
         .maybeSingle();
       if (s) {
@@ -211,6 +218,8 @@ export default function VcrRoom() {
     const m = String(currentItem?.title ?? '').match(/juz\s*(\d+)/i);
     return m ? Number(m[1]) : null;
   }, [currentItem?.title]);
+
+  const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
 
   if (loading) {
     return (
@@ -280,16 +289,15 @@ export default function VcrRoom() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
         <main className="min-w-0 flex-1">
-          <VcrStaticPage
-            initialPage={resumePage}
-            resumeAyah={resumeAyah}
-            resumeJuz={resumeJuz}
+          <VcrReader
+            adapter={mushafAdapter}
+            initialUnit={resumePage}
             canControl={canControl}
             turnSignal={turnSignal}
             isFollower={isFollower}
             followState={remoteState}
             onViewChange={publish}
-            onPageChange={(p) => setCurrentPage(p)}
+            onUnitChange={(p) => setCurrentPage(p)}
           />
 
         </main>
