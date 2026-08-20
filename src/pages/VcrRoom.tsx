@@ -345,6 +345,7 @@ export default function VcrRoom() {
         {/* Reading card — the lit centre of the room */}
         <main className="min-w-0 flex-1">
           <VcrReader
+            key={content}
             adapter={adapter}
             initialUnit={resumePage}
             canControl={canControl}
