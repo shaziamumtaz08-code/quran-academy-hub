@@ -144,9 +144,9 @@ export default function VcrRoom() {
         ended_at: new Date().toISOString(),
         item_covered_id: currentItem?.id ?? null,
         reference_covered: reference,
-        content_type: mushafAdapter.contentType,
-        library_item_id: mushafAdapter.libraryItemId ?? null,
-        reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
+        content_type: adapter.contentType,
+        library_item_id: adapter.libraryItemId ?? null,
+        reference: adapter.referenceFor?.(currentPage) ?? { page: currentPage },
         notes,
       }).eq('id', sessionId);
     }
@@ -155,9 +155,9 @@ export default function VcrRoom() {
       student_id: studentId,
       current_item_id: nextItem?.id ?? currentItem?.id ?? null,
       current_page_or_ayah: reference,
-      content_type: mushafAdapter.contentType,
-      library_item_id: mushafAdapter.libraryItemId ?? null,
-      reference: mushafAdapter.referenceFor?.(currentPage) ?? { page: currentPage },
+      content_type: adapter.contentType,
+      library_item_id: adapter.libraryItemId ?? null,
+      reference: adapter.referenceFor?.(currentPage) ?? { page: currentPage },
       status: nextItem ? 'in_progress' : 'completed',
       updated_at: new Date().toISOString(),
     };
@@ -325,13 +325,13 @@ export default function VcrRoom() {
         {/* Reading card — the lit centre of the room */}
         <main className="min-w-0 flex-1">
           <VcrReader
-            adapter={mushafAdapter}
+            adapter={adapter}
             initialUnit={resumePage}
             canControl={canControl}
             turnSignal={turnSignal}
             isFollower={isFollower}
             followState={remoteState}
-            onViewChange={publish}
+            onViewChange={publishView}
             onUnitChange={(p) => setCurrentPage(p)}
           />
 
