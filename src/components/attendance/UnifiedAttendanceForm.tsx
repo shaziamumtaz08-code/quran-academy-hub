@@ -1696,7 +1696,22 @@ export function UnifiedAttendanceForm({
                 onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
               />
 
-              {currentSubjectType === 'qaida' && (
+              {/* Add lesson details toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium text-foreground">Add lesson details</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    {lessonDetailsOpen ? 'Surah, ayah, baab, units, etc.' : 'Tap to enter the detailed lesson range'}
+                  </p>
+                </div>
+                <Switch
+                  checked={lessonDetailsOpen}
+                  onCheckedChange={setLessonDetailsOpen}
+                  aria-label="Add lesson details"
+                />
+              </div>
+
+              {lessonDetailsOpen && currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
                   onLessonNumberChange={setLessonNumber}
@@ -1717,7 +1732,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'hifz' && (
+              {lessonDetailsOpen && currentSubjectType === 'hifz' && (
                 <HifzAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1761,7 +1776,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'nazra' && (
+              {lessonDetailsOpen && currentSubjectType === 'nazra' && (
                 <NazraAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1797,7 +1812,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'academic' && (
+              {lessonDetailsOpen && currentSubjectType === 'academic' && (
                 <AcademicAttendanceFields
                   lessonTopic={academicLessonTopic}
                   onLessonTopicChange={setAcademicLessonTopic}
