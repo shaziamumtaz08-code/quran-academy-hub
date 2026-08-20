@@ -319,8 +319,11 @@ export default function VcrRoom() {
             {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
           </span>
           <span className="ms-auto inline-flex items-center gap-2 font-mono text-2xl tabular-nums text-vcr-chrome">
-            <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
+            <Timer className="h-5 w-5 text-vcr-gold" />
+            <span className="font-sans text-xs uppercase tracking-wide text-vcr-chrome/50">Session</span>
+            {clock(elapsed)}
           </span>
+
         </div>
         {/* Content switcher — Mushaf or Noorani Qaida, staff only */}
         {canControl && (
