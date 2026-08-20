@@ -255,6 +255,13 @@ export default function VcrRoom() {
             <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
           </span>
         </div>
+        {/* In-app audio call — additive, sits alongside the existing Zoom option */}
+        {user?.id && (
+          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
+            <VcrCallPanel roomId={sessionId ?? studentId} peerId={user.id} isCaller={canControl} />
+          </div>
+        )}
+
       </header>
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
