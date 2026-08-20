@@ -15,9 +15,11 @@ export interface VcrViewState {
   page: number;
   fontScale: number;
   highlight: { lineId?: string | null; wordId?: string | null } | null;
+  /** Which reader the teacher is on, so students mirror Mushaf vs Qaida. */
+  content?: 'mushaf' | 'qaida';
 }
 
-const DEFAULT_STATE: VcrViewState = { page: 1, fontScale: 1, highlight: null };
+const DEFAULT_STATE: VcrViewState = { page: 1, fontScale: 1, highlight: null, content: 'mushaf' };
 
 interface Options {
   roomId: string;
