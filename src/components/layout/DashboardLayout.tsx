@@ -277,6 +277,12 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     const items: DrawerItem[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
+    if (selfId) {
+      items.push(
+        { label: "Class Room (VCR)", href: `/vcr/${selfId}`, icon: MonitorPlay },
+        { label: "My Syllabus", href: `/syllabus/${selfId}`, icon: ListChecks },
+      );
+    }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
       { label: "Reports", href: "/student-reports", icon: FileText },
