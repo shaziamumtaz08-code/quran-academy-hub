@@ -58,7 +58,9 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const flippedId = canControl ? localFlipped : highlight?.wordId ?? null;
+  /* Teacher's flip always wins; otherwise the learner can explore words too. */
+  const remoteFlip = canControl ? null : highlight?.wordId ?? null;
+  const flippedId = remoteFlip || localFlipped;
 
   const lines = useMemo(() => {
     const map = new Map<number, QaidaPageWord[]>();
@@ -83,11 +85,11 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
   }
 
   const toggle = (id: string) => {
-    if (!canControl) return;
     const next = localFlipped === id ? null : id;
     setLocalFlipped(next);
-    onSelectWord?.(next);
+    if (canControl) onSelectWord?.(next);
   };
+
 
   return (
     <div dir="rtl" className="space-y-4">
@@ -100,14 +102,13 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
                 key={w.id}
                 type="button"
                 onClick={() => toggle(w.id)}
-                disabled={!canControl}
                 aria-pressed={flipped}
                 className={cn(
                   'vcr-flip-card relative rounded-xl border px-4 py-2 transition-all duration-300',
                   flipped
                     ? 'border-vcr-gold bg-vcr-gold/15 shadow-[0_0_0_2px_rgba(197,160,89,0.35)]'
                     : 'border-vcr-ink/15 bg-vcr-ink/[0.03] hover:border-vcr-gold/60',
-                  canControl ? 'cursor-pointer' : 'cursor-default'
+                  'cursor-pointer'
                 )}
                 style={{ perspective: '900px' }}
               >
@@ -129,11 +130,9 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
           })}
         </div>
       ))}
-      {canControl && (
-        <p className="pt-2 text-center text-sm text-vcr-ink/50" dir="ltr">
-          Tap any word to break it into letters. Tap again to close.
-        </p>
-      )}
+      <p className="pt-2 text-center text-sm text-vcr-ink/50" dir="ltr">
+        Tap any word to break it into letters. Tap again to close.
+      </p>
     </div>
   );
 }

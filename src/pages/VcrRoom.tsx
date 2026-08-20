@@ -229,7 +229,10 @@ export default function VcrRoom() {
   }, [progress?.content_type, currentItem?.level, currentItem?.title]);
 
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
-  const content = contentMode ?? suggestedContent;
+  /* Students mirror whichever reader the teacher is driving. */
+  const content = isFollower
+    ? (remoteState?.content ?? contentMode ?? suggestedContent)
+    : (contentMode ?? suggestedContent);
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
@@ -237,16 +240,17 @@ export default function VcrRoom() {
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish(state);
+      publish({ ...state, content });
     },
-    [publish]
+    [publish, content]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null });
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content });
     },
-    [publish]
+    [publish, content]
   );
+
 
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
   const qaidaAdapter = useQaidaAdapter({
