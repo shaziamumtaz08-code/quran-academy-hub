@@ -23,6 +23,7 @@ interface Options {
 export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryItemId = null }: Options): VcrAdapter {
   const [editionId, setEditionId] = useState<string | null>(null);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
+  const [unit, setUnit] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,12 +66,13 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
       totalUnits: MUSHAF_TOTAL_PAGES,
       unitNoun: 'page',
       currentLabel: surahs || 'Mushaf',
-      currentSubLabel: `${info?.juz_number ? `Juz ${info.juz_number} · ` : ''}Page ${info?.page_number ?? ''}`.trim(),
+      currentSubLabel: `${info?.juz_number ? `Juz ${info.juz_number} · ` : ''}Page ${unit}`.trim(),
       resolveStartUnit: editionId ? resolveStartUnit : undefined,
+      onUnitChange: setUnit,
       renderUnit,
       referenceFor: (unit: number) => ({ page: unit, juz: info?.juz_number ?? null }),
     };
-  }, [info, editionId, resolveStartUnit, renderUnit, libraryItemId]);
+  }, [info, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
 }
 
 export default useMushafAdapter;
