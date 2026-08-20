@@ -319,8 +319,11 @@ export default function VcrRoom() {
             {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
           </span>
           <span className="ms-auto inline-flex items-center gap-2 font-mono text-2xl tabular-nums text-vcr-chrome">
-            <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
+            <Timer className="h-5 w-5 text-vcr-gold" />
+            <span className="font-sans text-xs uppercase tracking-wide text-vcr-chrome/50">Session</span>
+            {clock(elapsed)}
           </span>
+
         </div>
         {/* Content switcher — Mushaf or Noorani Qaida, staff only */}
         {canControl && (
@@ -345,7 +348,13 @@ export default function VcrRoom() {
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
-            <VcrCallPanel roomId={studentId} peerId={user.id} isCaller={canControl} />
+            <VcrCallPanel
+              roomId={studentId}
+              peerId={user.id}
+              isCaller={canControl}
+              callerName={(profile as any)?.full_name ?? 'Your teacher'}
+            />
+
           </div>
         )}
 
