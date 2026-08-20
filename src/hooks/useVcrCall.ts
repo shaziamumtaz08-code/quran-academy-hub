@@ -133,6 +133,21 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     pendingIce.current = [];
   };
 
+  /** Only start counting down once both sides are actually in the room. */
+  const armConnectTimer = useCallback(() => {
+    if (timeoutRef.current) return;
+    timeoutRef.current = window.setTimeout(() => {
+      timeoutRef.current = null;
+      if (!activeRef.current) return;
+      if (pcRef.current?.connectionState !== 'connected') {
+        setStatus('failed');
+        setError('The call could not connect in time. Please use the Zoom link instead.');
+      }
+    }, CONNECT_TIMEOUT_MS);
+  }, []);
+
+
+
   const start = useCallback(async () => {
     if (!roomId || !peerId || activeRef.current) return;
     setError(null);
