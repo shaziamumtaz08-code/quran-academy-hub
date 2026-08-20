@@ -7,6 +7,8 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+import { useVcrViewSync } from '@/hooks/useVcrViewSync';
+
 
 import { cn } from '@/lib/utils';
 
@@ -27,6 +29,15 @@ export default function VcrRoom() {
 
   const roles: string[] = (profile as any)?.roles || (activeRole ? [activeRole] : []);
   const canControl = roles.some((r) => STAFF_ROLES.includes(r));
+  /** The student viewing their own room: read-only mirror of the teacher's screen. */
+  const isFollower = !canControl && !!user?.id && user.id === studentId;
+
+  const { remoteState, publish } = useVcrViewSync({
+    roomId: studentId,
+    isPresenter: canControl,
+    enabled: !!studentId,
+  });
+
 
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<{ id: string; full_name: string } | null>(null);
@@ -275,8 +286,12 @@ export default function VcrRoom() {
             resumeJuz={resumeJuz}
             canControl={canControl}
             turnSignal={turnSignal}
+            isFollower={isFollower}
+            followState={remoteState}
+            onViewChange={publish}
             onPageChange={(p) => setCurrentPage(p)}
           />
+
         </main>
 
         {/* Receded side panel */}

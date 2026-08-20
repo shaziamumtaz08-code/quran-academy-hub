@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 
 const TOTAL_PAGES = 610;
 
+export interface VcrFollowState {
+  page: number;
+  fontScale: number;
+  highlight: { lineId?: string | null; wordId?: string | null } | null;
+}
+
 interface Props {
   /** Page to open on first render. */
   initialPage?: number;
@@ -26,6 +32,12 @@ interface Props {
   onPageChange?: (page: number, info: MushafPageInfo | null) => void;
   /** Bump this number to replay the 3D page-turn (used after "mark complete"). */
   turnSignal?: number;
+  /** Student mirror mode — no controls, view driven entirely by followState. */
+  isFollower?: boolean;
+  /** Latest view position broadcast by the teacher. Null until they connect. */
+  followState?: VcrFollowState | null;
+  /** Presenter-side: fires whenever the local view position changes. */
+  onViewChange?: (state: VcrFollowState) => void;
   className?: string;
 }
 
@@ -40,6 +52,9 @@ export function VcrStaticPage({
   canControl = true,
   onPageChange,
   turnSignal = 0,
+  isFollower = false,
+  followState = null,
+  onViewChange,
   className,
 }: Props) {
   const [editionId, setEditionId] = useState<string | null>(null);
@@ -55,7 +70,27 @@ export function VcrStaticPage({
   const [pageInput, setPageInput] = useState(String(initialPage));
   const resolvedResume = useRef(false);
 
-  useEffect(() => { localStorage.setItem('vcr-font-scale', String(fontScale)); }, [fontScale]);
+  const showControls = canControl && !isFollower;
+  const highlight = isFollower ? followState?.highlight ?? null : null;
+
+  /* Follower: mirror the teacher's page and zoom level. */
+  useEffect(() => {
+    if (!isFollower || !followState) return;
+    setPage((p) => (p === followState.page ? p : followState.page));
+    setFontScale((f) => (f === followState.fontScale ? f : followState.fontScale));
+  }, [isFollower, followState?.page, followState?.fontScale]);
+
+  /* Presenter: publish the local position so students follow along. */
+  useEffect(() => {
+    if (isFollower) return;
+    onViewChange?.({ page, fontScale, highlight: null });
+  }, [isFollower, page, fontScale, onViewChange]);
+
+
+  useEffect(() => {
+    if (isFollower) return;
+    localStorage.setItem('vcr-font-scale', String(fontScale));
+  }, [fontScale, isFollower]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,8 +103,9 @@ export function VcrStaticPage({
 
   /* Resolve the resume position once the edition is known. */
   useEffect(() => {
-    if (!editionId || resolvedResume.current) return;
+    if (!editionId || resolvedResume.current || isFollower) return;
     resolvedResume.current = true;
+
     (async () => {
       let target: number | null = null;
       if (resumeAyah) target = await findPageForAyah(editionId, resumeAyah.surah, resumeAyah.ayah);
@@ -122,6 +158,22 @@ export function VcrStaticPage({
     return { surahs, juz: info?.juz_number ?? null };
   }, [info]);
 
+  /* Student opened the room before the teacher started driving it. */
+  if (isFollower && !followState) {
+    return (
+      <div className={cn('vcr-stage w-full', className)}>
+        <div className="vcr-reading-card mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-4 rounded-2xl px-6 py-20 text-center">
+          <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-vcr-gold" aria-hidden />
+          <h2 className="font-display text-2xl text-vcr-ink sm:text-3xl">Waiting for teacher to start the class</h2>
+          <p className="max-w-md text-base text-vcr-ink/65">
+            Your page will open automatically as soon as your teacher joins. Keep this screen open.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className={cn('vcr-stage w-full', className)}>
       <div
@@ -162,8 +214,9 @@ export function VcrStaticPage({
                 <p
                   key={l.id}
                   className={cn(
-                    'font-uthmani leading-[2.1] text-vcr-ink',
-                    l.is_centered || l.line_type === 'basmallah' ? 'text-center' : 'text-justify'
+                    'rounded-md font-uthmani leading-[2.1] text-vcr-ink transition-colors',
+                    l.is_centered || l.line_type === 'basmallah' ? 'text-center' : 'text-justify',
+                    highlight?.lineId === l.id && 'bg-vcr-gold/25 ring-1 ring-vcr-gold/60'
                   )}
                   style={{ fontSize: `${32 * fontScale}px` }}
                 >
@@ -175,7 +228,8 @@ export function VcrStaticPage({
         )}
       </div>
 
-      {canControl && (
+      {showControls && (
+
         <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
           <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(-1)}>
             <ChevronLeft className="h-5 w-5" /> Previous page
