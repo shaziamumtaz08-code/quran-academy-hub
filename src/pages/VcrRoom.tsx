@@ -6,6 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
+import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+
 import { cn } from '@/lib/utils';
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin', 'admin_academic', 'admin_division'];
@@ -255,6 +257,13 @@ export default function VcrRoom() {
             <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
           </span>
         </div>
+        {/* In-app audio call — additive, sits alongside the existing Zoom option */}
+        {user?.id && (
+          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
+            <VcrCallPanel roomId={studentId} peerId={user.id} isCaller={canControl} />
+          </div>
+        )}
+
       </header>
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
