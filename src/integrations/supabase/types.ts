@@ -13715,6 +13715,10 @@ export type Database = {
         Args: { _course_id: string; _student_id: string }
         Returns: boolean
       }
+      is_quiz_bank_owner: {
+        Args: { _quiz_bank_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_quiz_owner: {
         Args: { _quiz_id: string; _user_id: string }
         Returns: boolean
