@@ -85,11 +85,11 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
   }
 
   const toggle = (id: string) => {
-    if (!canControl) return;
     const next = localFlipped === id ? null : id;
     setLocalFlipped(next);
-    onSelectWord?.(next);
+    if (canControl) onSelectWord?.(next);
   };
+
 
   return (
     <div dir="rtl" className="space-y-4">
