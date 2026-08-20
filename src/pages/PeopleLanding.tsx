@@ -1,3 +1,4 @@
+import { lazyWithRetry } from "@/lib/lazyRetry";
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -8,10 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const UserManagement = lazy(() => import('./UserManagement'));
-const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
-const Parents = lazy(() => import('./Parents'));
-const FamilyRegistrations = lazy(() => import('./FamilyRegistrations'));
+const UserManagement = lazyWithRetry(() => import('./UserManagement'));
+const LeadsPipeline = lazyWithRetry(() => import('./LeadsPipeline'));
+const Parents = lazyWithRetry(() => import('./Parents'));
+const FamilyRegistrations = lazyWithRetry(() => import('./FamilyRegistrations'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 

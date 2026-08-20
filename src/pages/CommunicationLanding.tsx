@@ -1,3 +1,4 @@
+import { lazyWithRetry } from "@/lib/lazyRetry";
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, useSearchParams } from 'react-router-dom';
@@ -7,10 +8,10 @@ import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, useCommTheme } from '@/components/comm/CommThemeProvider';
 
-const GroupChat = lazy(() => import('./GroupChat'));
-const WhatsAppInbox = lazy(() => import('./WhatsAppInbox'));
-const NotificationCenter = lazy(() => import('./NotificationCenter'));
-const Announcements = lazy(() => import('./Announcements'));
+const GroupChat = lazyWithRetry(() => import('./GroupChat'));
+const WhatsAppInbox = lazyWithRetry(() => import('./WhatsAppInbox'));
+const NotificationCenter = lazyWithRetry(() => import('./NotificationCenter'));
+const Announcements = lazyWithRetry(() => import('./Announcements'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 const views = [

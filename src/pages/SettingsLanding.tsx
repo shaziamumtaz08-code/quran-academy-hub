@@ -1,14 +1,15 @@
+import { lazyWithRetry } from "@/lib/lazyRetry";
 import React, { Suspense, lazy, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
+const OrganizationSettings = lazyWithRetry(() => import('./OrganizationSettings'));
 
-const SchemaExplorer = lazy(() => import('./SchemaExplorer'));
-const FinanceSetup = lazy(() => import('./FinanceSetup'));
-const IntegrityAudit = lazy(() => import('./IntegrityAudit'));
+const SchemaExplorer = lazyWithRetry(() => import('./SchemaExplorer'));
+const FinanceSetup = lazyWithRetry(() => import('./FinanceSetup'));
+const IntegrityAudit = lazyWithRetry(() => import('./IntegrityAudit'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
