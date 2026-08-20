@@ -158,18 +158,45 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     });
     channelRef.current = channel;
 
+    // Whoever is already in the room answers a newcomer's `join` with `present`,
+    // so the handshake works regardless of which side opened the page first.
+    const noteRemote = () => {
+      if (remoteJoinedRef.current) return;
+      remoteJoinedRef.current = true;
+      setRemoteJoined(true);
+      armConnectTimer();
+    };
+
+    const makeOffer = async () => {
+      const pc = pcRef.current;
+      if (!isCaller || !pc || offeringRef.current) return;
+      if (pc.signalingState !== 'stable' || pc.currentRemoteDescription) return;
+      offeringRef.current = true;
+      try {
+        const offer = await pc.createOffer({ offerToReceiveAudio: true });
+        await pc.setLocalDescription(offer);
+        send('offer', { sdp: offer });
+      } catch {
+        offeringRef.current = false;
+      }
+    };
+
     channel
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         if (payload?.from === peerId) return;
-        setRemoteJoined(true);
-        if (!isCaller || !pcRef.current) return;
-        const offer = await pcRef.current.createOffer({ offerToReceiveAudio: true });
-        await pcRef.current.setLocalDescription(offer);
-        send('offer', { sdp: offer });
+        noteRemote();
+        // Tell the newcomer we're already here (covers "caller joined second").
+        send('present', {});
+        await makeOffer();
+      })
+      .on('broadcast', { event: 'present' }, async ({ payload }) => {
+        if (payload?.from === peerId) return;
+        noteRemote();
+        await makeOffer();
       })
       .on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload?.from === peerId || isCaller || !pcRef.current) return;
-        setRemoteJoined(true);
+        noteRemote();
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(pcRef.current);
         const answer = await pcRef.current.createAnswer();
@@ -179,6 +206,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
       .on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload?.from === peerId || !isCaller || !pcRef.current) return;
         if (pcRef.current.currentRemoteDescription) return;
+        noteRemote();
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(pcRef.current);
       })
@@ -203,18 +231,11 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
         }
       });
 
+    // No failure timer until the other side is actually present — whoever opens
+    // first simply waits indefinitely instead of being told the call failed.
     clearTimer();
-    timeoutRef.current = window.setTimeout(() => {
-      if (pcRef.current?.connectionState !== 'connected') {
-        setStatus('failed');
-        setError(
-          remoteJoinedRef.current
-            ? 'The call could not connect in time. Please use the Zoom link instead.'
-            : 'The other person has not joined the in-app call. Please use the Zoom link instead.'
-        );
-      }
-    }, CONNECT_TIMEOUT_MS);
-  }, [roomId, peerId, isCaller, buildPeerConnection, teardown]);
+  }, [roomId, peerId, isCaller, buildPeerConnection, teardown, armConnectTimer]);
+
 
   // Keep a ref copy so the timeout message can read the latest value.
   useEffect(() => { remoteJoinedRef.current = remoteJoined; }, [remoteJoined]);
