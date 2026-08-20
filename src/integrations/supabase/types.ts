@@ -10611,28 +10611,37 @@ export type Database = {
       }
       student_progress: {
         Row: {
+          content_type: string
           created_at: string
           current_item_id: string | null
           current_page_or_ayah: string | null
           id: string
+          library_item_id: string | null
+          reference: Json
           status: string
           student_id: string
           updated_at: string
         }
         Insert: {
+          content_type?: string
           created_at?: string
           current_item_id?: string | null
           current_page_or_ayah?: string | null
           id?: string
+          library_item_id?: string | null
+          reference?: Json
           status?: string
           student_id: string
           updated_at?: string
         }
         Update: {
+          content_type?: string
           created_at?: string
           current_item_id?: string | null
           current_page_or_ayah?: string | null
           id?: string
+          library_item_id?: string | null
+          reference?: Json
           status?: string
           student_id?: string
           updated_at?: string
@@ -10643,6 +10652,13 @@ export type Database = {
             columns: ["current_item_id"]
             isOneToOne: false
             referencedRelation: "syllabus_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_progress_library_item_id_fkey"
+            columns: ["library_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
             referencedColumns: ["id"]
           },
         ]
@@ -11055,33 +11071,47 @@ export type Database = {
       }
       syllabus_items: {
         Row: {
+          content_type: string
           created_at: string
           id: string
           is_active: boolean
           level: string
+          library_item_id: string | null
           reference: Json
           sequence_order: number
           title: string
         }
         Insert: {
+          content_type?: string
           created_at?: string
           id?: string
           is_active?: boolean
           level: string
+          library_item_id?: string | null
           reference?: Json
           sequence_order?: number
           title: string
         }
         Update: {
+          content_type?: string
           created_at?: string
           id?: string
           is_active?: boolean
           level?: string
+          library_item_id?: string | null
           reference?: Json
           sequence_order?: number
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_items_library_item_id_fkey"
+            columns: ["library_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_logs: {
         Row: {
@@ -11294,6 +11324,38 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_library_pins: {
+        Row: {
+          created_at: string
+          id: string
+          library_item_id: string
+          note: string | null
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          library_item_id: string
+          note?: string | null
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          library_item_id?: string
+          note?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_library_pins_library_item_id_fkey"
+            columns: ["library_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
             referencedColumns: ["id"]
           },
         ]
@@ -12151,33 +12213,42 @@ export type Database = {
       }
       vcr_sessions: {
         Row: {
+          content_type: string
           created_at: string
           ended_at: string | null
           id: string
           item_covered_id: string | null
+          library_item_id: string | null
           notes: string | null
+          reference: Json
           reference_covered: string | null
           started_at: string
           student_id: string
           teacher_id: string
         }
         Insert: {
+          content_type?: string
           created_at?: string
           ended_at?: string | null
           id?: string
           item_covered_id?: string | null
+          library_item_id?: string | null
           notes?: string | null
+          reference?: Json
           reference_covered?: string | null
           started_at?: string
           student_id: string
           teacher_id: string
         }
         Update: {
+          content_type?: string
           created_at?: string
           ended_at?: string | null
           id?: string
           item_covered_id?: string | null
+          library_item_id?: string | null
           notes?: string | null
+          reference?: Json
           reference_covered?: string | null
           started_at?: string
           student_id?: string
@@ -12189,6 +12260,13 @@ export type Database = {
             columns: ["item_covered_id"]
             isOneToOne: false
             referencedRelation: "syllabus_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vcr_sessions_library_item_id_fkey"
+            columns: ["library_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
             referencedColumns: ["id"]
           },
         ]
