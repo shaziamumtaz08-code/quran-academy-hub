@@ -49,8 +49,11 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
   const teardown = useCallback((next: CallStatus) => {
     activeRef.current = false;
+    offeringRef.current = false;
+    remoteJoinedRef.current = false;
     clearTimer();
     pendingIce.current = [];
+
 
     pcRef.current?.getSenders().forEach((s) => s.track?.stop());
     pcRef.current?.close();
