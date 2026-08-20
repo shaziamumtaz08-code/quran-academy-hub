@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
+import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
