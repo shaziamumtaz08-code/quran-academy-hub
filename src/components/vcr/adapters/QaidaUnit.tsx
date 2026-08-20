@@ -102,14 +102,13 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
                 key={w.id}
                 type="button"
                 onClick={() => toggle(w.id)}
-                disabled={!canControl}
                 aria-pressed={flipped}
                 className={cn(
                   'vcr-flip-card relative rounded-xl border px-4 py-2 transition-all duration-300',
                   flipped
                     ? 'border-vcr-gold bg-vcr-gold/15 shadow-[0_0_0_2px_rgba(197,160,89,0.35)]'
                     : 'border-vcr-ink/15 bg-vcr-ink/[0.03] hover:border-vcr-gold/60',
-                  canControl ? 'cursor-pointer' : 'cursor-default'
+                  'cursor-pointer'
                 )}
                 style={{ perspective: '900px' }}
               >
@@ -131,11 +130,9 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
           })}
         </div>
       ))}
-      {canControl && (
-        <p className="pt-2 text-center text-sm text-vcr-ink/50" dir="ltr">
-          Tap any word to break it into letters. Tap again to close.
-        </p>
-      )}
+      <p className="pt-2 text-center text-sm text-vcr-ink/50" dir="ltr">
+        Tap any word to break it into letters. Tap again to close.
+      </p>
     </div>
   );
 }
