@@ -1,17 +1,18 @@
+import { lazyWithRetry } from "@/lib/lazyRetry";
 import React, { Suspense, lazy, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDivision } from '@/contexts/DivisionContext';
 
-const Payments = lazy(() => import('./Payments'));
-const SalaryEngine = lazy(() => import('./SalaryEngine'));
-const Expenses = lazy(() => import('./Expenses'));
-const CashAdvances = lazy(() => import('./CashAdvances'));
-const FinanceSetup = lazy(() => import('./FinanceSetup'));
-const TeacherPayouts = lazy(() => import('./TeacherPayouts'));
-const StaffSalarySetup = lazy(() => import('./StaffSalarySetup'));
-const GroupAcademyFinance = lazy(() => import('./GroupAcademyFinance'));
+const Payments = lazyWithRetry(() => import('./Payments'));
+const SalaryEngine = lazyWithRetry(() => import('./SalaryEngine'));
+const Expenses = lazyWithRetry(() => import('./Expenses'));
+const CashAdvances = lazyWithRetry(() => import('./CashAdvances'));
+const FinanceSetup = lazyWithRetry(() => import('./FinanceSetup'));
+const TeacherPayouts = lazyWithRetry(() => import('./TeacherPayouts'));
+const StaffSalarySetup = lazyWithRetry(() => import('./StaffSalarySetup'));
+const GroupAcademyFinance = lazyWithRetry(() => import('./GroupAcademyFinance'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 

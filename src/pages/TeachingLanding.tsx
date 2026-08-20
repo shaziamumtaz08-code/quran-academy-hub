@@ -1,3 +1,4 @@
+import { lazyWithRetry } from "@/lib/lazyRetry";
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
@@ -9,15 +10,15 @@ import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import TeacherTeachingLanding from '@/components/teacher/TeacherTeachingLanding';
 
-const Attendance = lazy(() => import('./Attendance'));
-const Assignments = lazy(() => import('./Assignments'));
-const Schedules = lazy(() => import('./Schedules'));
-const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
-const Subjects = lazy(() => import('./Subjects'));
+const Attendance = lazyWithRetry(() => import('./Attendance'));
+const Assignments = lazyWithRetry(() => import('./Assignments'));
+const Schedules = lazyWithRetry(() => import('./Schedules'));
+const MonthlyPlanning = lazyWithRetry(() => import('./MonthlyPlanning'));
+const Subjects = lazyWithRetry(() => import('./Subjects'));
 
-const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
-const TeachingOS = lazy(() => import('./TeachingOS'));
-const QuizEngine = lazy(() => import('./QuizEngine'));
+const TeacherStudentsView = lazyWithRetry(() => import('@/components/teacher/TeacherStudentsView'));
+const TeachingOS = lazyWithRetry(() => import('./TeachingOS'));
+const QuizEngine = lazyWithRetry(() => import('./QuizEngine'));
 
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
