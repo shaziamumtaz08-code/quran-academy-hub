@@ -214,8 +214,9 @@ export function VcrStaticPage({
                 <p
                   key={l.id}
                   className={cn(
-                    'font-uthmani leading-[2.1] text-vcr-ink',
-                    l.is_centered || l.line_type === 'basmallah' ? 'text-center' : 'text-justify'
+                    'rounded-md font-uthmani leading-[2.1] text-vcr-ink transition-colors',
+                    l.is_centered || l.line_type === 'basmallah' ? 'text-center' : 'text-justify',
+                    highlight?.lineId === l.id && 'bg-vcr-gold/25 ring-1 ring-vcr-gold/60'
                   )}
                   style={{ fontSize: `${32 * fontScale}px` }}
                 >
@@ -227,7 +228,8 @@ export function VcrStaticPage({
         )}
       </div>
 
-      {canControl && (
+      {showControls && (
+
         <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
           <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(-1)}>
             <ChevronLeft className="h-5 w-5" /> Previous page
