@@ -27,6 +27,7 @@ import {
   Wallet,
 
   MonitorPlay,
+  ListChecks,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -92,7 +93,7 @@ function isAdminRole(role: AppRole | null) {
   return !!role && (adminRoles.includes(role) || role.startsWith("admin_"));
 }
 
-function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null): DrawerSection[] {
+function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null, selfId?: string | null): DrawerSection[] {
   const isGroupStyleModel = modelType === "group" || modelType === "recorded";
   const isOneToOne = !isGroupStyleModel;
 
@@ -277,6 +278,12 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     const items: DrawerItem[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
+    if (selfId) {
+      items.push(
+        { label: "Class Room (VCR)", href: `/vcr/${selfId}`, icon: MonitorPlay },
+        { label: "My Syllabus", href: `/syllabus/${selfId}`, icon: ListChecks },
+      );
+    }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
       { label: "Reports", href: "/student-reports", icon: FileText },
@@ -385,8 +392,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [activeRole, location.pathname, activeDivision?.id]);
 
   const sections = useMemo(
-    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null), activeRole),
-    [activeRole, activeDivision?.model_type]
+    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null, profile?.id ?? null), activeRole),
+    [activeRole, activeDivision?.model_type, profile?.id]
   );
   const expandedStorageKey = expandedKeyForUser(profile?.id);
   const collapsedStorageKey = collapsedKeyForUser(profile?.id);
