@@ -38,6 +38,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
   const timeoutRef = useRef<number | null>(null);
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
   const activeRef = useRef(false);
+  const remoteJoinedRef = useRef(false);
 
   const clearTimer = () => {
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
@@ -211,7 +212,6 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
   }, [roomId, peerId, isCaller, buildPeerConnection, teardown]);
 
   // Keep a ref copy so the timeout message can read the latest value.
-  const remoteJoinedRef = useRef(false);
   useEffect(() => { remoteJoinedRef.current = remoteJoined; }, [remoteJoined]);
 
   const end = useCallback(() => {
