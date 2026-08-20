@@ -6,6 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrStaticPage } from '@/components/vcr/VcrStaticPage';
+import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+
 import { cn } from '@/lib/utils';
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin', 'admin_academic', 'admin_division'];
