@@ -158,6 +158,22 @@ export function VcrStaticPage({
     return { surahs, juz: info?.juz_number ?? null };
   }, [info]);
 
+  /* Student opened the room before the teacher started driving it. */
+  if (isFollower && !followState) {
+    return (
+      <div className={cn('vcr-stage w-full', className)}>
+        <div className="vcr-reading-card mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-4 rounded-2xl px-6 py-20 text-center">
+          <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-vcr-gold" aria-hidden />
+          <h2 className="font-display text-2xl text-vcr-ink sm:text-3xl">Waiting for teacher to start the class</h2>
+          <p className="max-w-md text-base text-vcr-ink/65">
+            Your page will open automatically as soon as your teacher joins. Keep this screen open.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className={cn('vcr-stage w-full', className)}>
       <div
