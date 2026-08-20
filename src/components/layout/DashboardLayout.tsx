@@ -50,6 +50,8 @@ import { cn } from "@/lib/utils";
 import { preloadRouteModule, preloadRouteModules } from "@/lib/routePreload";
 import logoDark from "@/assets/logo-dark.jpg";
 import { ActingAsBanner } from "@/components/shared/ActingAsBanner";
+import { IncomingCallAlert } from "@/components/vcr/IncomingCallAlert";
+
 import { PushNotificationInitializer } from "@/components/pwa/PushNotificationInitializer";
 import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 
