@@ -39,6 +39,8 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
   const activeRef = useRef(false);
   const remoteJoinedRef = useRef(false);
+  const offeringRef = useRef(false);
+
 
   const clearTimer = () => {
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
