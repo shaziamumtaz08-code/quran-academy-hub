@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 
 const TOTAL_PAGES = 610;
 
+export interface VcrFollowState {
+  page: number;
+  fontScale: number;
+  highlight: { lineId?: string | null; wordId?: string | null } | null;
+}
+
 interface Props {
   /** Page to open on first render. */
   initialPage?: number;
@@ -26,6 +32,12 @@ interface Props {
   onPageChange?: (page: number, info: MushafPageInfo | null) => void;
   /** Bump this number to replay the 3D page-turn (used after "mark complete"). */
   turnSignal?: number;
+  /** Student mirror mode — no controls, view driven entirely by followState. */
+  isFollower?: boolean;
+  /** Latest view position broadcast by the teacher. Null until they connect. */
+  followState?: VcrFollowState | null;
+  /** Presenter-side: fires whenever the local view position changes. */
+  onViewChange?: (state: VcrFollowState) => void;
   className?: string;
 }
 
@@ -40,6 +52,9 @@ export function VcrStaticPage({
   canControl = true,
   onPageChange,
   turnSignal = 0,
+  isFollower = false,
+  followState = null,
+  onViewChange,
   className,
 }: Props) {
   const [editionId, setEditionId] = useState<string | null>(null);
@@ -54,6 +69,23 @@ export function VcrStaticPage({
   });
   const [pageInput, setPageInput] = useState(String(initialPage));
   const resolvedResume = useRef(false);
+
+  const showControls = canControl && !isFollower;
+  const highlight = isFollower ? followState?.highlight ?? null : null;
+
+  /* Follower: mirror the teacher's page and zoom level. */
+  useEffect(() => {
+    if (!isFollower || !followState) return;
+    setPage((p) => (p === followState.page ? p : followState.page));
+    setFontScale((f) => (f === followState.fontScale ? f : followState.fontScale));
+  }, [isFollower, followState?.page, followState?.fontScale]);
+
+  /* Presenter: publish the local position so students follow along. */
+  useEffect(() => {
+    if (isFollower) return;
+    onViewChange?.({ page, fontScale, highlight: null });
+  }, [isFollower, page, fontScale, onViewChange]);
+
 
   useEffect(() => { localStorage.setItem('vcr-font-scale', String(fontScale)); }, [fontScale]);
 
