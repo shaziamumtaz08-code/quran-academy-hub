@@ -34,8 +34,12 @@ const STATUS_DOT: Record<CallStatus, string> = {
  * the Zoom option stays available alongside it.
  */
 export function VcrCallPanel({ roomId, peerId, isCaller }: Props) {
-  const { status, muted, error, start, end, toggleMute, retry } = useVcrCall({ roomId, peerId, isCaller });
+  const { status, muted, error, remoteJoined, start, end, toggleMute, retry } = useVcrCall({ roomId, peerId, isCaller });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
+  const label =
+    status === 'connecting' && !remoteJoined
+      ? 'Waiting for the other person…'
+      : STATUS_LABEL[status];
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -45,8 +49,9 @@ export function VcrCallPanel({ roomId, peerId, isCaller }: Props) {
         aria-live="polite"
       >
         <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[status])} aria-hidden />
-        {STATUS_LABEL[status]}
+        {label}
       </span>
+
 
       {!live ? (
         <button
