@@ -260,7 +260,7 @@ export default function VcrRoom() {
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
-            <VcrCallPanel roomId={sessionId ?? studentId} peerId={user.id} isCaller={canControl} />
+            <VcrCallPanel roomId={studentId} peerId={user.id} isCaller={canControl} />
           </div>
         )}
 
