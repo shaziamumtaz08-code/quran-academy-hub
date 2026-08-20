@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Switch } from '@/components/ui/switch';
 import { SegmentedControl } from './SegmentedControl';
 import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
@@ -331,11 +332,13 @@ export function UnifiedAttendanceForm({
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
   // Lesson-type (new vs repeat) + reason — applies to all subject types
-  const [lessonType, setLessonType] = useState<LessonType>('new');
+  const [lessonType, setLessonType] = useState<LessonType>('');
   const [repeatReason, setRepeatReason] = useState<RepeatReason | ''>('');
   const [repeatReasonNote, setRepeatReasonNote] = useState('');
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
   const [manzilAnswered, setManzilAnswered] = useState(false);
+  // Detailed Qaida/Hifz/Nazra marker fields are collapsed by default
+  const [lessonDetailsOpen, setLessonDetailsOpen] = useState(false);
 
   // Resolve the authoritative assignment. Besides repairing missing caller data,
   // this gives schedule lookup a direct assignment_id and avoids fragile embedded
@@ -595,8 +598,14 @@ export function UnifiedAttendanceForm({
 
   const handleLessonTypeChange = (v: LessonType) => {
     setLessonType(v);
-    if (v === 'repeat') applyPreviousLesson();
-    if (v === 'new') applyNextQaidaLesson();
+    if (v === 'repeat') {
+      applyPreviousLesson();
+      setLessonDetailsOpen(false);
+    }
+    if (v === 'new') {
+      applyNextQaidaLesson();
+      setLessonDetailsOpen(true);
+    }
   };
 
   // Auto-detect: if entered Sabaq range matches previous, suggest switching to "repeat"
@@ -792,6 +801,7 @@ export function UnifiedAttendanceForm({
       setRepeatReason('');
       setRepeatReasonNote('');
       setManzilAnswered(false);
+      setLessonDetailsOpen(false);
       setPickedStudentId('');
       return;
     }
@@ -845,6 +855,14 @@ export function UnifiedAttendanceForm({
       setRepeatReason(rAny.repeat_reason || '');
       setRepeatReasonNote(rAny.repeat_reason_note || '');
       setJuzFrom(''); setJuzTo(''); setExtraSegments([]);
+      // Auto-expand the detailed lesson fields when editing a record that already
+      // contains them, or when the recorded lesson was a new lesson.
+      const recordHasDetails = !!(
+        r.lesson_number || r.page_number || rAny.qaida_baab_id || rAny.qaida_unit_to ||
+        r.sabaq_surah_from || r.ayah_from || r.sabaq_ruku_from_juz || r.sabaq_quarter_from_juz ||
+        r.lesson_covered
+      );
+      setLessonDetailsOpen(recordHasDetails || rAny.lesson_type === 'new');
       return;
     }
 
@@ -1170,11 +1188,12 @@ export function UnifiedAttendanceForm({
   const lessonRequired = selectedStatus === 'present' || requiresReschedule(selectedStatus);
   const hasLessonDetails = useMemo(() => {
     if (!lessonRequired) return true;
+    if (lessonType === 'repeat') return true;
     if (currentSubjectType === 'qaida') return !!qaidaBaabId && !!qaidaUnitTo;
     if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [lessonRequired, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, lessonType, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
@@ -1219,6 +1238,8 @@ export function UnifiedAttendanceForm({
     if (lessonRequired && !lessonType) reasons.push('Choose "Lesson Today" — New lesson or Same as last class.');
     // When repeating, a written explanation (reason + what was done) is required.
     if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
+    // Manzil / revision must be explicitly answered for a new Hifz lesson.
+    if (lessonRequired && currentSubjectType === 'hifz' && lessonType === 'new' && !manzilAnswered) reasons.push('Please answer Manzil / Revision before saving.');
     return reasons;
   }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
@@ -1675,7 +1696,22 @@ export function UnifiedAttendanceForm({
                 onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
               />
 
-              {currentSubjectType === 'qaida' && (
+              {/* Add lesson details toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium text-foreground">Add lesson details</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    {lessonDetailsOpen ? 'Surah, ayah, baab, units, etc.' : 'Tap to enter the detailed lesson range'}
+                  </p>
+                </div>
+                <Switch
+                  checked={lessonDetailsOpen}
+                  onCheckedChange={setLessonDetailsOpen}
+                  aria-label="Add lesson details"
+                />
+              </div>
+
+              {lessonDetailsOpen && currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
                   onLessonNumberChange={setLessonNumber}
@@ -1696,7 +1732,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'hifz' && (
+              {lessonDetailsOpen && currentSubjectType === 'hifz' && (
                 <HifzAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1740,7 +1776,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'nazra' && (
+              {lessonDetailsOpen && currentSubjectType === 'nazra' && (
                 <NazraAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1776,7 +1812,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {currentSubjectType === 'academic' && (
+              {lessonDetailsOpen && currentSubjectType === 'academic' && (
                 <AcademicAttendanceFields
                   lessonTopic={academicLessonTopic}
                   onLessonTopicChange={setAcademicLessonTopic}
@@ -1796,7 +1832,7 @@ export function UnifiedAttendanceForm({
               )}
 
               {/* Manzil must be explicitly answered for Hifz/Nazra */}
-              {lessonRequired && currentSubjectType === 'hifz' && !manzilAnswered && (
+              {lessonRequired && currentSubjectType === 'hifz' && lessonType === 'new' && !manzilAnswered && (
                 <p className="text-xs text-destructive flex items-start gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>Please answer Manzil / Revision (Yes or No) before saving.</span>
