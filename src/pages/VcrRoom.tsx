@@ -312,6 +312,26 @@ export default function VcrRoom() {
             <Timer className="h-5 w-5 text-vcr-gold" /> {clock(elapsed)}
           </span>
         </div>
+        {/* Content switcher — Mushaf or Noorani Qaida, staff only */}
+        {canControl && (
+          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-4 pb-2 sm:px-6">
+            {(['mushaf', 'qaida'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setContentMode(c)}
+                className={cn(
+                  'h-9 rounded-full border px-4 text-sm transition-colors',
+                  content === c
+                    ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
+                    : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+                )}
+              >
+                {c === 'mushaf' ? 'Mushaf' : 'Noorani Qaida'}
+              </button>
+            ))}
+          </div>
+        )}
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
