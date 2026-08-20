@@ -87,7 +87,10 @@ export function VcrStaticPage({
   }, [isFollower, page, fontScale, onViewChange]);
 
 
-  useEffect(() => { localStorage.setItem('vcr-font-scale', String(fontScale)); }, [fontScale]);
+  useEffect(() => {
+    if (isFollower) return;
+    localStorage.setItem('vcr-font-scale', String(fontScale));
+  }, [fontScale, isFollower]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,8 +103,9 @@ export function VcrStaticPage({
 
   /* Resolve the resume position once the edition is known. */
   useEffect(() => {
-    if (!editionId || resolvedResume.current) return;
+    if (!editionId || resolvedResume.current || isFollower) return;
     resolvedResume.current = true;
+
     (async () => {
       let target: number | null = null;
       if (resumeAyah) target = await findPageForAyah(editionId, resumeAyah.surah, resumeAyah.ayah);
