@@ -36,7 +36,7 @@ import {
 
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
-import { getTimezoneAbbr } from '@/lib/timezones';
+import { getTimezoneAbbr, convertTimeBetweenTimezonesWithDay } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 
 import { useQaidaReference } from '@/hooks/useQaidaProgress';
@@ -1247,6 +1247,41 @@ export function UnifiedAttendanceForm({
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
+
+  // ── Timezone view toggle (same convention as Scheduling) ─────────────────
+  // Records are always STORED in teacher local time. The toggle only changes
+  // which clock the teacher reads/enters, so there is never any confusion
+  // about whose date and time a slot refers to.
+  const [tzView, setTzView] = useState<'teacher' | 'student'>('teacher');
+  const canSwitchTz = !!student.timezone && student.timezone !== effectiveTeacherTz;
+  const viewingStudentTz = canSwitchTz && tzView === 'student';
+  const activeTzAbbr = viewingStudentTz ? studentTzAbbr : teacherTzAbbr;
+
+  /** Teacher-local HH:mm + date → the same instant on the student's clock. */
+  const toStudentClock = (date: string, time: string) => {
+    if (!time || !student.timezone) return null;
+    const { time: t, dayOffset } = convertTimeBetweenTimezonesWithDay(
+      time.slice(0, 5),
+      effectiveTeacherTz,
+      student.timezone,
+    );
+    let label = '';
+    if (date) {
+      const d = parseISO(date);
+      d.setDate(d.getDate() + dayOffset);
+      label = format(d, 'EEE, dd MMM yyyy');
+    }
+    return { time: t, dateLabel: label, dayOffset };
+  };
+
+  /** Student-local HH:mm → teacher local HH:mm (used when typing in student view). */
+  const toTeacherClock = (time: string) => {
+    if (!time || !student.timezone) return time;
+    return convertTimeBetweenTimezonesWithDay(time.slice(0, 5), student.timezone, effectiveTeacherTz).time;
+  };
+
+  const studentClock = toStudentClock(classDate, classTime);
+
 
   /** Switching status must never leave stale reschedule data behind (unchanged rule). */
   const changeStatus = (next: AttendanceStatus) => {
