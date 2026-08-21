@@ -36,7 +36,7 @@ import {
 
 import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
-import { getTimezoneAbbr } from '@/lib/timezones';
+import { getTimezoneAbbr, convertTimeBetweenTimezonesWithDay } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 
 import { useQaidaReference } from '@/hooks/useQaidaProgress';
