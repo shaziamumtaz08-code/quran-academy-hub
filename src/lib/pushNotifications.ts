@@ -81,18 +81,18 @@ export async function getAndSavePushToken(userId: string): Promise<string | null
     });
     if (!token) return null;
 
-    const { error } = await supabase
-      .from("push_tokens")
-      .upsert(
-        {
-          user_id: userId,
-          token,
-          device_info: getDeviceInfo(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "token" },
-      );
-    if (error) console.warn("[push] Failed to save push token", error.message);
+    // Claim the token for this user via SECURITY DEFINER RPC: the same device
+    // may already hold a row owned by a previously signed-in account, which a
+    // direct upsert cannot update under RLS.
+    const { error } = await supabase.rpc("register_push_token", {
+      _token: token,
+      _device_info: getDeviceInfo() as never,
+    });
+    if (error) {
+      console.warn("[push] Failed to save push token", error.message);
+      return null;
+    }
+
 
     try {
       localStorage.setItem("aqta_push_token", token);

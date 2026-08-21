@@ -13854,6 +13854,10 @@ export type Database = {
         Args: { _bank_id: string; _session_id: string }
         Returns: boolean
       }
+      register_push_token: {
+        Args: { _device_info?: Json; _token: string }
+        Returns: undefined
+      }
       reject_payment_proof: {
         Args: { _invoice_id: string; _reason: string }
         Returns: undefined
