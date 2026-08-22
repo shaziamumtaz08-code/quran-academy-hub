@@ -1245,7 +1245,24 @@ export function UnifiedAttendanceForm({
 
   const isFormValid = blockingReasons.length === 0;
 
-  const studentTzAbbr = getTimezoneAbbr(student.timezone);
+  // Most call sites don't pass `timezone` on the student prop, so look it up
+  // from the profile when it's missing — otherwise the clock toggle can never show.
+  const { data: fetchedStudentTz } = useQuery({
+    queryKey: ['attendance-student-timezone', student.id],
+    enabled: !!student.id && !student.timezone,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('timezone')
+        .eq('id', student.id)
+        .maybeSingle();
+      return (data?.timezone as string | null) || null;
+    },
+  });
+
+  const studentTz = student.timezone || fetchedStudentTz || null;
+  const studentTzAbbr = getTimezoneAbbr(studentTz || undefined);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
 
   // ── Timezone view toggle (same convention as Scheduling) ─────────────────
@@ -1253,17 +1270,17 @@ export function UnifiedAttendanceForm({
   // which clock the teacher reads/enters, so there is never any confusion
   // about whose date and time a slot refers to.
   const [tzView, setTzView] = useState<'teacher' | 'student'>('teacher');
-  const canSwitchTz = !!student.timezone && student.timezone !== effectiveTeacherTz;
+  const canSwitchTz = !!studentTz && studentTz !== effectiveTeacherTz;
   const viewingStudentTz = canSwitchTz && tzView === 'student';
   const activeTzAbbr = viewingStudentTz ? studentTzAbbr : teacherTzAbbr;
 
   /** Teacher-local HH:mm + date → the same instant on the student's clock. */
   const toStudentClock = (date: string, time: string) => {
-    if (!time || !student.timezone) return null;
+    if (!time || !studentTz) return null;
     const { time: t, dayOffset } = convertTimeBetweenTimezonesWithDay(
       time.slice(0, 5),
       effectiveTeacherTz,
-      student.timezone,
+      studentTz,
     );
     let label = '';
     if (date) {
@@ -1276,8 +1293,8 @@ export function UnifiedAttendanceForm({
 
   /** Student-local HH:mm → teacher local HH:mm (used when typing in student view). */
   const toTeacherClock = (time: string) => {
-    if (!time || !student.timezone) return time;
-    return convertTimeBetweenTimezonesWithDay(time.slice(0, 5), student.timezone, effectiveTeacherTz).time;
+    if (!time || !studentTz) return time;
+    return convertTimeBetweenTimezonesWithDay(time.slice(0, 5), studentTz, effectiveTeacherTz).time;
   };
 
   const studentClock = toStudentClock(classDate, classTime);
