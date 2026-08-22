@@ -1570,7 +1570,7 @@ export function UnifiedAttendanceForm({
                   <p className="text-[11px] text-muted-foreground">
                     {viewingStudentTz
                       ? `Teacher: ${format(parseISO(classDate), 'EEE, dd MMM')} · ${classTime.slice(0, 5)} ${teacherTzAbbr}`
-                      : `Student: ${studentClock?.dateLabel?.replace(/,\s\d{4}$/, '') || ''} · ${studentClock?.time} ${studentTzAbbr}`}
+                      : `Student: ${studentClock?.dateLabel?.replace(/\s\d{4}$/, '') || ''} · ${studentClock?.time} ${studentTzAbbr}`}
                   </p>
                 )}
                 {autoFilledSlot && (
