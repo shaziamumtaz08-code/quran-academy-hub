@@ -1245,23 +1245,6 @@ export function UnifiedAttendanceForm({
 
   const isFormValid = blockingReasons.length === 0;
 
-  // Most call sites don't pass `timezone` on the student prop, so look it up
-  // from the profile when it's missing — otherwise the clock toggle can never show.
-  const { data: fetchedStudentTz } = useQuery({
-    queryKey: ['attendance-student-timezone', student.id],
-    enabled: !!student.id && !student.timezone,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('profiles')
-        .select('timezone')
-        .eq('id', student.id)
-        .maybeSingle();
-      return (data?.timezone as string | null) || null;
-    },
-  });
-
-  const studentTz = student.timezone || fetchedStudentTz || null;
   const studentTzAbbr = getTimezoneAbbr(studentTz || undefined);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
 
