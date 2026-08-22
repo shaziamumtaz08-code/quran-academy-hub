@@ -1485,7 +1485,33 @@ export function UnifiedAttendanceForm({
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
+              {canSwitchTz && (
+                <div className="inline-flex rounded-lg border border-border bg-background p-0.5" role="radiogroup" aria-label="Timezone view">
+                  {([
+                    { key: 'teacher' as const, label: `Teacher time (${teacherTzAbbr})` },
+                    { key: 'student' as const, label: `Student time (${studentTzAbbr})` },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      role="radio"
+                      aria-checked={tzView === opt.key}
+                      onClick={() => setTzView(opt.key)}
+                      className={cn(
+                        'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        tzView === opt.key
+                          ? 'bg-teal-600 text-white'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
 
 
@@ -1494,7 +1520,9 @@ export function UnifiedAttendanceForm({
             // Variant A — non-reschedule statuses: single Date + Scheduled Time row
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-foreground">Class Date <span className="text-destructive">*</span></Label>
+                <Label className="text-foreground">
+                  Class Date ({activeTzAbbr}) <span className="text-destructive">*</span>
+                </Label>
                 {!isEdit && !isLeaveStatus && selectedStatus !== 'holiday' && eligibleDates.length > 0 ? (
                   <>
                     <Select value={classDate} onValueChange={setClassDate}>
@@ -1502,15 +1530,19 @@ export function UnifiedAttendanceForm({
                         <SelectValue placeholder="Pick a class day" />
                       </SelectTrigger>
                       <SelectContent className="max-h-64">
-                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => (
-                          <SelectItem key={d} value={d}>
-                            {format(parseISO(d), 'EEE, dd MMM yyyy')}
-                          </SelectItem>
-                        ))}
+                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => {
+                          const sc = viewingStudentTz ? toStudentClock(d, classTime) : null;
+                          return (
+                            <SelectItem key={d} value={d}>
+                              {sc?.dateLabel || format(parseISO(d), 'EEE, dd MMM yyyy')}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
-                      Only this student's scheduled class days are listed.
+                      Only this student's scheduled class days are listed
+                      {canSwitchTz ? `, shown on the ${viewingStudentTz ? "student's" : "teacher's"} clock.` : '.'}
                     </p>
                   </>
                 ) : (
@@ -1525,15 +1557,22 @@ export function UnifiedAttendanceForm({
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
-                  Scheduled Time ({teacherTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
+                  Scheduled Time ({activeTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
                 </Label>
                 <Input
                   type="time"
-                  value={classTime}
-                  onChange={(e) => setClassTime(e.target.value)}
+                  value={viewingStudentTz ? (studentClock?.time || '') : classTime}
+                  onChange={(e) => setClassTime(viewingStudentTz ? toTeacherClock(e.target.value) : e.target.value)}
                   placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
                   className="[&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+                {canSwitchTz && classTime && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {viewingStudentTz
+                      ? `Teacher: ${format(parseISO(classDate), 'EEE, dd MMM')} · ${classTime.slice(0, 5)} ${teacherTzAbbr}`
+                      : `Student: ${studentClock?.dateLabel?.replace(/\s\d{4}$/, '') || ''} · ${studentClock?.time} ${studentTzAbbr}`}
+                  </p>
+                )}
                 {autoFilledSlot && (
                   <p className="text-[11px] text-muted-foreground">
                     {autoFilledSlot.isExactDay
