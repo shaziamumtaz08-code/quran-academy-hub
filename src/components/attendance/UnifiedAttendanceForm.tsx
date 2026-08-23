@@ -117,15 +117,41 @@ const REASONS_BY_STATUS: Record<string, ReasonOption[]> = {
   ],
 };
 
-const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
-  { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
-  { value: 'student_unavailable', label: 'Student Unavailable' },
-  { value: 'tech_issue', label: 'Technical Issue' },
-  { value: 'power_outage', label: 'Power Outage' },
+// Reschedule reasons are scoped to WHO rescheduled — a teacher-initiated
+// reschedule never needs "teacher unavailable" (that is the status itself).
+const TEACHER_RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  { value: 'personal_commitment', label: 'Personal commitment' },
+  { value: 'sick', label: 'Unwell' },
   { value: 'emergency', label: 'Emergency' },
-  { value: 'holiday_overlap', label: 'Holiday Overlap' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'tech_issue', label: 'Technical issue' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'holiday_overlap', label: 'Holiday overlap' },
   { value: 'other', label: 'Other' },
 ];
+
+const STUDENT_RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  { value: 'school_exam', label: 'School / exams' },
+  { value: 'sick', label: 'Unwell' },
+  { value: 'family', label: 'Family commitment' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'tech_issue', label: 'Technical issue' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'holiday_overlap', label: 'Holiday overlap' },
+  { value: 'other', label: 'Other' },
+];
+
+const RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  ...TEACHER_RESCHEDULE_REASONS,
+  ...STUDENT_RESCHEDULE_REASONS.filter(
+    (s) => !TEACHER_RESCHEDULE_REASONS.some((t) => t.value === s.value),
+  ),
+  // legacy values kept so old records still render a label
+  { value: 'teacher_unavailable', label: 'Teacher unavailable' },
+  { value: 'student_unavailable', label: 'Student unavailable' },
+];
+
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
