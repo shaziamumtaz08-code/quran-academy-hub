@@ -40,6 +40,21 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
       (a as any).payout_amount = payout.payout_amount;
       (a as any).payout_type = payout.payout_type;
 
+      // Lineage: every assignment row for this student + subject. A teacher transfer
+      // closes one row and opens another, so the earlier periods live on sibling rows.
+      // History scoped to a single row would only ever show the latest instance.
+      let lineage: any[] = [a];
+      if (a.student_id) {
+        let q = supabase
+          .from('student_teacher_assignments')
+          .select('id, teacher_id, status, created_at, start_date, effective_from_date, effective_to_date, status_change_reason, transfer_type, is_temporary')
+          .eq('student_id', a.student_id);
+        q = a.subject_id ? q.eq('subject_id', a.subject_id) : q.is('subject_id', null);
+        const { data: sib } = await q.order('created_at', { ascending: true });
+        if (sib?.length) lineage = sib;
+      }
+      const lineageIds = Array.from(new Set(lineage.map((r: any) => r.id)));
+
       // 2-6. Parallel independent fetches
       const [studentRes, teacherRes, subjectRes, divisionRes, historyRes, schedulesRes, auditRes] =
         await Promise.all([
@@ -55,10 +70,11 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
           a.division_id
             ? supabase.from('divisions').select('id, name').eq('id', a.division_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
-          supabase.from('assignment_history').select('*').eq('assignment_id', assignmentId).order('created_at', { ascending: false }),
+          supabase.from('assignment_history').select('*').in('assignment_id', lineageIds).order('created_at', { ascending: false }),
           supabase.from('schedules').select('*').eq('assignment_id', assignmentId),
-          supabase.from('assignment_audit_log' as any).select('*').eq('assignment_id', assignmentId).order('changed_at', { ascending: false }),
+          supabase.from('assignment_audit_log' as any).select('*').in('assignment_id', lineageIds).order('changed_at', { ascending: false }),
         ]);
+
 
       // Resolve teacher names referenced inside history rows
       const histRows = (historyRes.data as any[]) || [];
@@ -83,7 +99,11 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         }
       });
 
-      const allProfileIds = Array.from(new Set([...teacherIds, ...Array.from(auditPersonIds)]));
+      const allProfileIds = Array.from(new Set([
+        ...teacherIds,
+        ...Array.from(auditPersonIds),
+        ...lineage.map((r: any) => r.teacher_id).filter(Boolean),
+      ]));
       const allSubjectIds = Array.from(new Set([...subjectIds, ...Array.from(auditSubjectIds)]));
 
       const [profilesRes, subjectsRes] = await Promise.all([
@@ -107,6 +127,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         history: histRows,
         schedules: (schedulesRes.data as any[]) || [],
         audit: auditRows,
+        lineage,
         pMap,
         sMap,
       };
@@ -138,7 +159,9 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         ) : data ? (
           <div className="space-y-6">
             <DetailsPanel data={data} />
+            <LineagePanel data={data} />
             <HistoryPanel data={data} />
+
           </div>
         ) : null}
       </DialogContent>
@@ -248,8 +271,68 @@ function DetailsPanel({ data }: { data: any }) {
   );
 }
 
+/**
+ * Full teacher lineage for this student + subject. A transfer closes one assignment
+ * row and opens a new one, so earlier periods would otherwise be invisible here.
+ */
+function LineagePanel({ data }: { data: any }) {
+  const { lineage = [], a, pMap } = data;
+  if (!lineage || lineage.length <= 1) return null;
+  return (
+    <section className="rounded-xl border bg-card p-5 space-y-3">
+      <header className="flex items-center gap-2">
+        <History className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Teacher Timeline ({lineage.length})
+        </h3>
+      </header>
+      <ol className="space-y-2">
+        {lineage.map((r: any) => {
+          const rule = getStatusRule(r.status as any);
+          const isCurrent = r.id === a.id;
+          return (
+            <li
+              key={r.id}
+              className={cn(
+                'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border p-3 text-sm',
+                isCurrent ? 'border-primary/40 bg-primary/5' : 'bg-muted/10',
+              )}
+            >
+              <span className={cn('h-2 w-2 rounded-full shrink-0', rule.dotClass)} />
+              <span className="font-medium">{pMap.get(r.teacher_id) || 'Unknown teacher'}</span>
+              <span className="text-xs text-muted-foreground">
+                {r.effective_from_date || r.start_date ? formatDisplayDate(r.effective_from_date || r.start_date) : '—'}
+                {' → '}
+                {r.effective_to_date ? formatDisplayDate(r.effective_to_date) : 'ongoing'}
+              </span>
+              <Badge variant="outline" className="text-[10px]">{rule.label}</Badge>
+              {r.is_temporary && <Badge variant="outline" className="text-[10px]">Temporary</Badge>}
+              {isCurrent && <Badge variant="outline" className="text-[10px]">Viewing</Badge>}
+              {r.status_change_reason && (
+                <span className="basis-full text-xs italic text-muted-foreground">{r.status_change_reason}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+
 function HistoryPanel({ data }: { data: any }) {
-  const { history, audit, pMap, sMap } = data;
+  const { history, audit, pMap, sMap, a, lineage = [] } = data;
+  const teacherOfRow = (rowAssignmentId: string) => {
+    const row = lineage.find((r: any) => r.id === rowAssignmentId);
+    return row ? pMap.get(row.teacher_id) : null;
+  };
+  const OtherRecordBadge = ({ rowAssignmentId }: { rowAssignmentId: string }) =>
+    rowAssignmentId && rowAssignmentId !== a.id ? (
+      <Badge variant="outline" className="ml-2 text-[10px] font-normal">
+        {teacherOfRow(rowAssignmentId) || 'earlier record'}
+      </Badge>
+    ) : null;
+
   const FIELD_LABELS: Record<string, string> = {
     status: 'Status',
     payout_amount: 'Payout',
@@ -306,6 +389,8 @@ function HistoryPanel({ data }: { data: any }) {
                 </TableCell>
                 <TableCell className="text-sm font-medium">
                   {r.event_type === 'created' ? 'Assignment created' : (FIELD_LABELS[r.field_name] || r.field_name)}
+                  <OtherRecordBadge rowAssignmentId={r.assignment_id} />
+
                 </TableCell>
                 <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.old_value)}</code></TableCell>
                 <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.new_value)}</code></TableCell>
