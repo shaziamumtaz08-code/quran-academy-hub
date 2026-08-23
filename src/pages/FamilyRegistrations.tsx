@@ -59,9 +59,13 @@ export default function FamilyRegistrations() {
           <p className="text-sm text-muted-foreground">Every submitted student and teacher form. Open a row to review the full profile before approving.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Link copied', description: publicLink }); }}>
+          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Student form link copied', description: publicLink }); }}>
             <Copy className="h-4 w-4 mr-1" />Copy student form link
           </Button>
+          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(teacherLink); toast({ title: 'Teacher form link copied', description: teacherLink }); }}>
+            <Copy className="h-4 w-4 mr-1" />Copy teacher form link
+          </Button>
+
           <Button variant="outline" onClick={() => navigate('/people/add/teacher')}>
             <GraduationCap className="h-4 w-4 mr-1" />Add teacher manually
           </Button>
