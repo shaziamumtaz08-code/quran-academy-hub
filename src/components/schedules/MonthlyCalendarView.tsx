@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isToday, addMonths, subMonths } from 'date-fns';
 import { formatTime12h } from '@/lib/timezones';
+import { resolveSchedulesForDate, type SchedulePeriod } from '@/lib/schedulePeriods';
 
 interface Assignment {
   id: string;
@@ -28,6 +29,7 @@ interface Schedule {
 interface MonthlyCalendarViewProps {
   assignments: Assignment[];
   schedules: Schedule[];
+  periods?: SchedulePeriod[];
   onSelectDate?: (date: Date) => void;
 }
 
@@ -41,7 +43,7 @@ const DAY_MAP: Record<string, number> = {
   saturday: 6,
 };
 
-export function MonthlyCalendarView({ assignments, schedules, onSelectDate }: MonthlyCalendarViewProps) {
+export function MonthlyCalendarView({ assignments, schedules, periods = [], onSelectDate }: MonthlyCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const calendarDays = useMemo(() => {
@@ -74,10 +76,12 @@ export function MonthlyCalendarView({ assignments, schedules, onSelectDate }: Mo
     return map;
   }, [schedules, assignments]);
 
-  const getEventsForDate = (date: Date) => {
-    const dayOfWeek = date.getDay(); // 0=Sunday
-    return schedulesByDayOfWeek.get(dayOfWeek) || [];
-  };
+  const getEventsForDate = (date: Date) => resolveSchedulesForDate(schedules, periods, date)
+    .map((schedule) => {
+      const assignment = assignments.find((item) => item.id === schedule.assignment_id);
+      return assignment ? { ...schedule, assignment } : null;
+    })
+    .filter(Boolean);
 
   return (
     <div className="space-y-4">

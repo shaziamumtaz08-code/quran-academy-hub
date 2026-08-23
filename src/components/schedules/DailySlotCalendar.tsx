@@ -10,6 +10,7 @@ import { format, addDays, subDays } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { resolveSchedulesForDate, type SchedulePeriod } from '@/lib/schedulePeriods';
 
 const DAYS_OF_WEEK_LOWER = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -104,11 +105,12 @@ const LANE_ACCENT_COLORS = [
 interface DailySlotCalendarProps {
   assignments: Assignment[];
   schedules: Schedule[];
+  periods?: SchedulePeriod[];
   onEditSchedule?: (scheduleId: string) => void;
   initialDate?: Date;
 }
 
-export function DailySlotCalendar({ assignments, schedules, onEditSchedule, initialDate }: DailySlotCalendarProps) {
+export function DailySlotCalendar({ assignments, schedules, periods = [], onEditSchedule, initialDate }: DailySlotCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(initialDate ?? new Date());
   React.useEffect(() => { if (initialDate) setSelectedDate(initialDate); }, [initialDate?.getTime()]);
   const [timeView, setTimeView] = useState<'teacher' | 'student'>('teacher');
@@ -137,8 +139,8 @@ export function DailySlotCalendar({ assignments, schedules, onEditSchedule, init
 
   // Get schedules for the selected day
   const daySchedules = useMemo(() => {
-    return schedules.filter(s => s.day_of_week === dayName && s.is_active);
-  }, [schedules, dayName]);
+    return resolveSchedulesForDate(schedules, periods, selectedDate);
+  }, [schedules, periods, selectedDate]);
 
   // Build teacher lanes with conflict detection
   const teacherLanes = useMemo(() => {
