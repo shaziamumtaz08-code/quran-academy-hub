@@ -1225,10 +1225,17 @@ export function UnifiedAttendanceForm({
     if (!lessonRequired) return true;
     if (lessonType === 'repeat') return true;
     if (currentSubjectType === 'qaida') return !!qaidaBaabId && !!qaidaUnitTo;
-    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
+    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+      // Validate against the marking unit the teacher actually chose.
+      if (markerType === 'juz') return !!juzFrom;
+      if (markerType === 'ruku') return !!rukuFromJuz && !!rukuFromNumber;
+      if (markerType === 'quarter') return !!quarterFromJuz && !!quarterFromNumber;
+      return !!(ayahFromSurah && ayahFromNumber);
+    }
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [lessonRequired, lessonType, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, lessonType, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, markerType, juzFrom, rukuFromJuz, rukuFromNumber, quarterFromJuz, quarterFromNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
@@ -1266,17 +1273,22 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) reasons.push('Describe the reschedule reason (you selected "Other").');
     if (lessonRequired && !hasLessonDetails) {
       if (currentSubjectType === 'qaida') reasons.push('Select the Baab and the unit covered today.');
-      else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') reasons.push('Select the Surah and Ayah covered today.');
+      else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+        reasons.push(
+          markerType === 'juz' ? 'Select the Juz covered today.'
+          : markerType === 'ruku' ? 'Select the Juz and Ruku covered today.'
+          : markerType === 'quarter' ? 'Select the Juz and Quarter covered today.'
+          : 'Select the Surah and Ayah covered today.'
+        );
+      }
       else reasons.push('Enter the lesson topic covered today.');
     }
     // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
     if (lessonRequired && !lessonType) reasons.push('Choose "Lesson Today" — New lesson or Same as last class.');
     // When repeating, a written explanation (reason + what was done) is required.
     if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) reasons.push('Explain why the lesson was repeated (at least 10 characters).');
-    // Manzil / revision must be explicitly answered for a new Hifz lesson.
-    if (lessonRequired && currentSubjectType === 'hifz' && lessonType === 'new' && !manzilAnswered) reasons.push('Please answer Manzil / Revision before saving.');
     return reasons;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isHolidayDate, holidayRow, isEdit, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, student.full_name, lessonType, repeatReason, repeatReasonNote, currentSubjectType, markerType]);
 
   const isFormValid = blockingReasons.length === 0;
 
@@ -1937,14 +1949,6 @@ export function UnifiedAttendanceForm({
                 <p className="text-xs text-destructive flex items-start gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>Lesson details are required when the class was conducted.</span>
-                </p>
-              )}
-
-              {/* Manzil must be explicitly answered for Hifz/Nazra */}
-              {lessonRequired && currentSubjectType === 'hifz' && lessonType === 'new' && !manzilAnswered && (
-                <p className="text-xs text-destructive flex items-start gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>Please answer Manzil / Revision (Yes or No) before saving.</span>
                 </p>
               )}
 
