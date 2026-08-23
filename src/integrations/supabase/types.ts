@@ -9417,6 +9417,82 @@ export type Database = {
           },
         ]
       }
+      schedule_periods: {
+        Row: {
+          assignment_id: string
+          change_reason: string
+          created_at: string
+          created_by: string | null
+          day_of_week: string
+          duration_minutes: number
+          effective_from: string
+          effective_to: string | null
+          id: string
+          period_type: Database["public"]["Enums"]["schedule_period_type"]
+          schedule_id: string
+          student_local_time: string
+          superseded_by: string | null
+          teacher_local_time: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          change_reason: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week: string
+          duration_minutes: number
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          period_type: Database["public"]["Enums"]["schedule_period_type"]
+          schedule_id: string
+          student_local_time: string
+          superseded_by?: string | null
+          teacher_local_time: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          change_reason?: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week?: string
+          duration_minutes?: number
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          period_type?: Database["public"]["Enums"]["schedule_period_type"]
+          schedule_id?: string
+          student_local_time?: string
+          superseded_by?: string | null
+          teacher_local_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_periods_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_periods_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_periods_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "schedule_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           assignment_id: string | null
@@ -13372,6 +13448,19 @@ export type Database = {
         Args: { _org_id: string; _settings: Json }
         Returns: undefined
       }
+      apply_schedule_period: {
+        Args: {
+          _change_reason: string
+          _duration_minutes: number
+          _effective_from: string
+          _effective_to: string
+          _period_type: Database["public"]["Enums"]["schedule_period_type"]
+          _schedule_id: string
+          _student_local_time: string
+          _teacher_local_time: string
+        }
+        Returns: string
+      }
       auto_close_expired_covers: { Args: never; Returns: number }
       auto_generate_plan_invoices: {
         Args: { _plan_id: string }
@@ -13570,6 +13659,32 @@ export type Database = {
       }
       get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
       get_demo_chat: { Args: { _token: string }; Returns: Json }
+      get_effective_schedule_periods: {
+        Args: { _on_date: string }
+        Returns: {
+          assignment_id: string
+          change_reason: string
+          created_at: string
+          created_by: string | null
+          day_of_week: string
+          duration_minutes: number
+          effective_from: string
+          effective_to: string | null
+          id: string
+          period_type: Database["public"]["Enums"]["schedule_period_type"]
+          schedule_id: string
+          student_local_time: string
+          superseded_by: string | null
+          teacher_local_time: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "schedule_periods"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_exam_examiner_remarks: {
         Args: { _exam_ids: string[] }
         Returns: {
@@ -14082,6 +14197,7 @@ export type Database = {
         | "declined"
         | "clarification_required"
       primary_marker: "rukus" | "pages" | "lines"
+      schedule_period_type: "permanent" | "temporary"
       session_status: "scheduled" | "live" | "frozen" | "completed"
       zoom_account_tier: "free" | "licensed"
       zoom_license_status: "available" | "busy"
@@ -14322,6 +14438,7 @@ export const Constants = {
         "clarification_required",
       ],
       primary_marker: ["rukus", "pages", "lines"],
+      schedule_period_type: ["permanent", "temporary"],
       session_status: ["scheduled", "live", "frozen", "completed"],
       zoom_account_tier: ["free", "licensed"],
       zoom_license_status: ["available", "busy"],
