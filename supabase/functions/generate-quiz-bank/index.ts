@@ -1,4 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -250,11 +249,7 @@ ${arabicRules}`;
     });
 
     // Save to DB
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await auth.adminClient
       .from("quiz_banks")
       .update({ question_bank: questions, source_content: source_content.substring(0, 50000) })
       .eq("id", quiz_bank_id);
