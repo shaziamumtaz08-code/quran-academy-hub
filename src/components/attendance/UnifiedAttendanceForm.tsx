@@ -1729,17 +1729,24 @@ export function UnifiedAttendanceForm({
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
             <div className="space-y-4 p-4 bg-muted rounded-lg">
-              {/* Leave date range — for student_leave / teacher_leave */}
+              {/* Leave dates — a multi-day range is an admin-only action */}
               {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={cn('grid gap-3', isAdminUser ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
                   <div className="space-y-1.5">
-                    <Label className="text-foreground text-xs">Leave From</Label>
-                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                    <Label className="text-foreground text-xs">{isAdminUser ? 'Leave From' : 'Leave date'}</Label>
+                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} className="h-11 rounded-xl bg-background" />
+                    {!isAdminUser && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Teachers can record one day of leave. Ask an admin to record a multi-day leave.
+                      </p>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-foreground text-xs">Leave To</Label>
-                    <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} />
-                  </div>
+                  {isAdminUser && (
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground text-xs">Leave To</Label>
+                      <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} className="h-11 rounded-xl bg-background" />
+                    </div>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
