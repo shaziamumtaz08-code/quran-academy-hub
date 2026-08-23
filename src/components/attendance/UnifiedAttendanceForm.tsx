@@ -858,6 +858,8 @@ export function UnifiedAttendanceForm({
       setDuration('30');
       setRemarks('');
       setVoiceNoteUrl(null);
+      setAttachmentUrl(null);
+      setAttachmentName('');
       setReasonCategory('');
       setReasonText('');
       setRescheduleDate('');
@@ -892,7 +894,7 @@ export function UnifiedAttendanceForm({
       setRepeatReason('');
       setRepeatReasonNote('');
       setManzilAnswered(false);
-      setLessonDetailsOpen(false);
+      setLessonDetailsOpen(true);
       setPickedStudentId('');
       return;
     }
@@ -906,6 +908,8 @@ export function UnifiedAttendanceForm({
       setDuration(String(r.duration_minutes ?? 30));
       setRemarks(r.reason ?? '');
       setVoiceNoteUrl(r.voice_note_url ?? null);
+      setAttachmentUrl((r as any).attachment_url ?? null);
+      setAttachmentName((r as any).attachment_url ? 'Attachment' : '');
       setReasonCategory((r.reason_category as ReasonCategory) || '');
       setReasonText(r.reason_text ?? '');
       setRescheduleDate(r.reschedule_date ?? '');
