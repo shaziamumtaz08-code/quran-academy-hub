@@ -1225,10 +1225,17 @@ export function UnifiedAttendanceForm({
     if (!lessonRequired) return true;
     if (lessonType === 'repeat') return true;
     if (currentSubjectType === 'qaida') return !!qaidaBaabId && !!qaidaUnitTo;
-    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
+    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+      // Validate against the marking unit the teacher actually chose.
+      if (markerType === 'juz') return !!juzFrom;
+      if (markerType === 'ruku') return !!rukuFromJuz && !!rukuFromNumber;
+      if (markerType === 'quarter') return !!quarterFromJuz && !!quarterFromNumber;
+      return !!(ayahFromSurah && ayahFromNumber);
+    }
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [lessonRequired, lessonType, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, lessonType, currentSubjectType, lessonNumber, qaidaBaabId, qaidaUnitTo, markerType, juzFrom, rukuFromJuz, rukuFromNumber, quarterFromJuz, quarterFromNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
