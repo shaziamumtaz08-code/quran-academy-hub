@@ -117,15 +117,41 @@ const REASONS_BY_STATUS: Record<string, ReasonOption[]> = {
   ],
 };
 
-const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
-  { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
-  { value: 'student_unavailable', label: 'Student Unavailable' },
-  { value: 'tech_issue', label: 'Technical Issue' },
-  { value: 'power_outage', label: 'Power Outage' },
+// Reschedule reasons are scoped to WHO rescheduled — a teacher-initiated
+// reschedule never needs "teacher unavailable" (that is the status itself).
+const TEACHER_RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  { value: 'personal_commitment', label: 'Personal commitment' },
+  { value: 'sick', label: 'Unwell' },
   { value: 'emergency', label: 'Emergency' },
-  { value: 'holiday_overlap', label: 'Holiday Overlap' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'tech_issue', label: 'Technical issue' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'holiday_overlap', label: 'Holiday overlap' },
   { value: 'other', label: 'Other' },
 ];
+
+const STUDENT_RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  { value: 'school_exam', label: 'School / exams' },
+  { value: 'sick', label: 'Unwell' },
+  { value: 'family', label: 'Family commitment' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'tech_issue', label: 'Technical issue' },
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'holiday_overlap', label: 'Holiday overlap' },
+  { value: 'other', label: 'Other' },
+];
+
+const RESCHEDULE_REASONS: { value: string; label: string }[] = [
+  ...TEACHER_RESCHEDULE_REASONS,
+  ...STUDENT_RESCHEDULE_REASONS.filter(
+    (s) => !TEACHER_RESCHEDULE_REASONS.some((t) => t.value === s.value),
+  ),
+  // legacy values kept so old records still render a label
+  { value: 'teacher_unavailable', label: 'Teacher unavailable' },
+  { value: 'student_unavailable', label: 'Student unavailable' },
+];
+
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -446,6 +472,14 @@ export function UnifiedAttendanceForm({
     if (selectedStatus === 'rescheduled') setRescheduleBy('teacher');
     else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
   }, [selectedStatus]);
+
+  // Drop a reschedule reason that isn't offered for the current initiator
+  useEffect(() => {
+    if (!rescheduleReason) return;
+    const list = rescheduleBy === 'student' ? STUDENT_RESCHEDULE_REASONS : TEACHER_RESCHEDULE_REASONS;
+    if (!list.some((r) => r.value === rescheduleReason)) setRescheduleReason('');
+  }, [rescheduleBy, rescheduleReason]);
+
 
   // Drop a reason that isn't offered for the newly selected status
   useEffect(() => {
@@ -1462,7 +1496,7 @@ export function UnifiedAttendanceForm({
 
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
-          <div className="bg-muted rounded-2xl p-3 space-y-2">
+          <div className="bg-background border border-border shadow-sm rounded-2xl p-3 space-y-2">
             <Label className="text-foreground text-xs">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
               <SelectTrigger className="">
@@ -1538,7 +1572,7 @@ export function UnifiedAttendanceForm({
 
 
           {/* ── Class details card ──────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+          <section className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
               {canSwitchTz && (
@@ -1651,7 +1685,7 @@ export function UnifiedAttendanceForm({
             </div>
           ) : (
             // Variant B — reschedule statuses: contained block, "Originally scheduled" first, "Actually conducted on" second
-            <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-4">
+            <div className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
               {/* Info banner (blue, not amber — reschedule is routine) */}
               <div className="flex items-start gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -1761,7 +1795,7 @@ export function UnifiedAttendanceForm({
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-muted rounded-lg">
+            <div className="space-y-4 p-4 bg-background border border-border rounded-2xl shadow-sm">
               {/* Leave dates — a multi-day range is an admin-only action */}
               {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
                 <div className={cn('grid gap-3', isAdminUser ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
@@ -1808,44 +1842,54 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Reschedule meta — by whom + reason */}
+          {/* Reschedule reason — scoped to who rescheduled (the status tile above) */}
           {requiresReschedule(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-muted rounded-lg">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-foreground">Rescheduled By <span className="text-destructive">*</span></Label>
-                  <Select value={rescheduleBy} onValueChange={(v) => { setRescheduleBy(v as any); setSelectedStatus(v === 'student' ? 'student_rescheduled' : 'rescheduled'); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-foreground">Reschedule Reason <span className="text-destructive">*</span></Label>
-                  <Select value={rescheduleReason} onValueChange={setRescheduleReason}>
-                    <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
-                    <SelectContent>
-                      {RESCHEDULE_REASONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <section className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  {rescheduleBy === 'student'
+                    ? 'Why did the student reschedule?'
+                    : 'Why did the teacher reschedule?'}{' '}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                  Rescheduled by {rescheduleBy === 'student' ? 'student' : 'teacher'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(rescheduleBy === 'student' ? STUDENT_RESCHEDULE_REASONS : TEACHER_RESCHEDULE_REASONS).map((opt) => {
+                  const active = rescheduleReason === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setRescheduleReason(opt.value)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
+                        'shadow-[0_2px_0_0_hsl(var(--border))] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none',
+                        active
+                          ? 'border-teal-600 bg-teal-600 text-white shadow-[0_2px_0_0_hsl(var(--border))]'
+                          : 'border-border bg-background text-foreground hover:border-teal-500/50',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
               {rescheduleReason === 'other' && (
                 <div className="space-y-2">
-                  <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
+                  <Label className="text-foreground text-xs">Specify reason <span className="text-destructive">*</span></Label>
                   <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
                 </div>
               )}
-            </div>
+            </section>
           )}
+
 
           {/* ── Lesson card ─────────────────────────────────────────── */}
           {lessonRequired && (!needsStudent || !!student.id) && (
-            <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+            <section className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lesson</p>
 
               {/* Lesson Today: New vs Same as last class + reason */}
