@@ -389,6 +389,8 @@ function HistoryPanel({ data }: { data: any }) {
                 </TableCell>
                 <TableCell className="text-sm font-medium">
                   {r.event_type === 'created' ? 'Assignment created' : (FIELD_LABELS[r.field_name] || r.field_name)}
+                  <OtherRecordBadge rowAssignmentId={r.assignment_id} />
+
                 </TableCell>
                 <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.old_value)}</code></TableCell>
                 <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.new_value)}</code></TableCell>
