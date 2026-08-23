@@ -270,6 +270,7 @@ export function UnifiedAttendanceForm({
   const [duration, setDuration] = useState('30');
   const [remarks, setRemarks] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);
+  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
   
   // Reason fields
   const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
