@@ -1834,40 +1834,50 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Reschedule meta — by whom + reason */}
+          {/* Reschedule reason — scoped to who rescheduled (the status tile above) */}
           {requiresReschedule(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-muted rounded-lg">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-foreground">Rescheduled By <span className="text-destructive">*</span></Label>
-                  <Select value={rescheduleBy} onValueChange={(v) => { setRescheduleBy(v as any); setSelectedStatus(v === 'student' ? 'student_rescheduled' : 'rescheduled'); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-foreground">Reschedule Reason <span className="text-destructive">*</span></Label>
-                  <Select value={rescheduleReason} onValueChange={setRescheduleReason}>
-                    <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
-                    <SelectContent>
-                      {RESCHEDULE_REASONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <section className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  {rescheduleBy === 'student'
+                    ? 'Why did the student reschedule?'
+                    : 'Why did the teacher reschedule?'}{' '}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                  Rescheduled by {rescheduleBy === 'student' ? 'student' : 'teacher'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(rescheduleBy === 'student' ? STUDENT_RESCHEDULE_REASONS : TEACHER_RESCHEDULE_REASONS).map((opt) => {
+                  const active = rescheduleReason === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setRescheduleReason(opt.value)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
+                        'shadow-[0_2px_0_0_hsl(var(--border))] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none',
+                        active
+                          ? 'border-teal-600 bg-teal-600 text-white shadow-[0_2px_0_0_hsl(var(--border))]'
+                          : 'border-border bg-background text-foreground hover:border-teal-500/50',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
               {rescheduleReason === 'other' && (
                 <div className="space-y-2">
-                  <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
+                  <Label className="text-foreground text-xs">Specify reason <span className="text-destructive">*</span></Label>
                   <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
                 </div>
               )}
-            </div>
+            </section>
           )}
+
 
           {/* ── Lesson card ─────────────────────────────────────────── */}
           {lessonRequired && (!needsStudent || !!student.id) && (
