@@ -545,7 +545,7 @@ export default function ZoomManagement() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom Event Subscription endpoint</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 block truncate rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground">
+                  <code className="flex-1 block rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground break-all">
                     {webhookUrl}
                   </code>
                   <Button
