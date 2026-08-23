@@ -538,6 +538,34 @@ export default function ZoomManagement() {
           </div>
         </div>
 
+        {/* Webhook URL — always visible copy box */}
+        <Card className="border border-border/60 bg-card shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom Event Subscription endpoint</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 block truncate rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground">
+                    {webhookUrl}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={handleCopyWebhook}
+                  >
+                    {webhookCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    {webhookCopied ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Paste this single URL into every Zoom Server-to-Server OAuth app under <strong>Feature → Event Subscriptions</strong>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Room Cards Grid */}
         <div>
 
