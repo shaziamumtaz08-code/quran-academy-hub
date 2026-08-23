@@ -159,7 +159,9 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         ) : data ? (
           <div className="space-y-6">
             <DetailsPanel data={data} />
+            <LineagePanel data={data} />
             <HistoryPanel data={data} />
+
           </div>
         ) : null}
       </DialogContent>
