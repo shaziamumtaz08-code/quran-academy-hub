@@ -272,6 +272,9 @@ export function UnifiedAttendanceForm({
   const [remarks, setRemarks] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [attachmentName, setAttachmentName] = useState<string>('');
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   
   // Reason fields
   const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
@@ -339,7 +342,7 @@ export function UnifiedAttendanceForm({
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
   const [manzilAnswered, setManzilAnswered] = useState(false);
   // Detailed Qaida/Hifz/Nazra marker fields are collapsed by default
-  const [lessonDetailsOpen, setLessonDetailsOpen] = useState(false);
+  const [lessonDetailsOpen, setLessonDetailsOpen] = useState(true);
 
   // Resolve the authoritative assignment. Besides repairing missing caller data,
   // this gives schedule lookup a direct assignment_id and avoids fragile embedded
@@ -1048,6 +1051,7 @@ export function UnifiedAttendanceForm({
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
+        attachment_url: attachmentUrl || null,
         lesson_type: lessonRequired ? (lessonType || null) : null,
         // Free-text replaces the dropdown — keep `repeat_reason` set to 'other'
         // for back-compat with existing analytics queries; canonical content lives in `repeat_reason_note`.
@@ -1270,11 +1274,12 @@ export function UnifiedAttendanceForm({
   // but the teacher always sees exactly what is missing instead of a dead grey button.
   const blockingReasons = useMemo(() => {
     const reasons: string[] = [];
+    // Nothing else is meaningful until a student is chosen.
+    if (needsStudent && !student.id) return ['Select a student to continue.'];
     if (!classDate) reasons.push('Pick the class date.');
     // Leave statuses don't require a slot time — they cover whole days
     if (!isLeaveStatus && !classTime) reasons.push('Set the class time for this slot.');
     if (isFutureDate && !canAssignFutureDate) reasons.push('This date is in the future — only leave can be recorded ahead of time.');
-    if (needsStudent && !student.id) reasons.push('No student selected for this record.');
     // Leave can be marked even when the day isn't scheduled or already has a record
     if (!isLeaveStatus && hasDuplicateAttendance) {
       reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
@@ -1498,39 +1503,6 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="space-y-3">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Status <span className="text-destructive">*</span>
-            </Label>
-            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {STATUS_TILES.map((opt) => {
-                const active = selectedStatus === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => changeStatus(opt.value)}
-                    className={cn(
-                      'flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center shadow-sm transition-all hover:shadow-md active:scale-95',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      active
-                        ? opt.activeClass
-                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
-                    )}
-                  >
-                    {opt.icon}
-                    <span className="text-xs font-medium leading-tight">{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {statusDetailCopy[selectedStatus] && (
-              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
-            )}
-          </section>
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
@@ -1566,67 +1538,80 @@ export function UnifiedAttendanceForm({
 
           {/* Adaptive Date Block ---------------------------------------- */}
           {!requiresReschedule(selectedStatus) ? (
-            // Variant A — non-reschedule statuses: single Date + Scheduled Time row
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-foreground">
-                  Class Date ({activeTzAbbr}) <span className="text-destructive">*</span>
+            // Variant A — non-reschedule statuses: Date · Time · Duration in one row
+            <div className={cn('grid gap-3', isLeaveStatus ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3')}>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Date ({activeTzAbbr}) <span className="text-destructive">*</span>
                 </Label>
                 {!isEdit && !isLeaveStatus && selectedStatus !== 'holiday' && eligibleDates.length > 0 ? (
-                  <>
-                    <Select value={classDate} onValueChange={setClassDate}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pick a class day" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-64">
-                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => {
-                          const sc = viewingStudentTz ? toStudentClock(d, classTime) : null;
-                          return (
-                            <SelectItem key={d} value={d}>
-                              {sc?.dateLabel || format(parseISO(d), 'EEE, dd MMM yyyy')}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      Only this student's scheduled class days are listed
-                      {canSwitchTz ? `, shown on the ${viewingStudentTz ? "student's" : "teacher's"} clock.` : '.'}
-                    </p>
-                  </>
+                  <Select value={classDate} onValueChange={setClassDate}>
+                    <SelectTrigger className="h-11 rounded-xl bg-background shadow-sm">
+                      <SelectValue placeholder="Pick a class day" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => {
+                        const sc = viewingStudentTz ? toStudentClock(d, classTime) : null;
+                        return (
+                          <SelectItem key={d} value={d}>
+                            {sc?.dateLabel || format(parseISO(d), 'EEE, dd MMM yyyy')}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     type="date"
                     value={classDate}
                     onChange={(e) => setClassDate(e.target.value)}
                     max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
-                    className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                    className="h-11 rounded-xl bg-background shadow-sm"
                   />
                 )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-foreground">
-                  Scheduled Time ({activeTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Time ({activeTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
                 </Label>
                 <Input
                   type="time"
                   value={viewingStudentTz ? (studentClock?.time || '') : classTime}
                   onChange={(e) => setClassTime(viewingStudentTz ? toTeacherClock(e.target.value) : e.target.value)}
                   placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
-                  className="[&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="h-11 rounded-xl bg-background shadow-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+              </div>
+              {!isLeaveStatus && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Duration (min)</Label>
+                  <Input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+                    disabled={!requiresReschedule(selectedStatus) && !isEdit}
+                    className={cn(
+                      'h-11 rounded-xl bg-background shadow-sm',
+                      duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
+                      !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
+                    )}
+                  />
+                </div>
+              )}
+              <div className="sm:col-span-3 space-y-0.5">
+                {autoFilledSlot && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {autoFilledSlot.isExactDay
+                      ? 'Date, time and duration are taken from the weekly schedule.'
+                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
+                  </p>
+                )}
                 {canSwitchTz && classTime && (
                   <p className="text-[11px] text-muted-foreground">
                     {viewingStudentTz
                       ? `Teacher: ${format(parseISO(classDate), 'EEE, dd MMM')} · ${classTime.slice(0, 5)} ${teacherTzAbbr}`
                       : `Student: ${studentClock?.dateLabel?.replace(/\s\d{4}$/, '') || ''} · ${studentClock?.time} ${studentTzAbbr}`}
-                  </p>
-                )}
-                {autoFilledSlot && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {autoFilledSlot.isExactDay
-                      ? 'Auto-filled from the weekly schedule. Edit only if the class ran at a different time.'
-                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
                   </p>
                 )}
               </div>
