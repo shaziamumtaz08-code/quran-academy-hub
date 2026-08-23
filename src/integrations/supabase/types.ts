@@ -4482,6 +4482,9 @@ export type Database = {
           source_url: string | null
           status: string
           student_name: string | null
+          submission_source: string
+          submitted_by: string | null
+          target_division_id: string | null
           timezone: string | null
           updated_at: string
         }
@@ -4511,6 +4514,9 @@ export type Database = {
           source_url?: string | null
           status?: string
           student_name?: string | null
+          submission_source?: string
+          submitted_by?: string | null
+          target_division_id?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -4540,6 +4546,9 @@ export type Database = {
           source_url?: string | null
           status?: string
           student_name?: string | null
+          submission_source?: string
+          submitted_by?: string | null
+          target_division_id?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -4549,6 +4558,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_registrations_target_division_id_fkey"
+            columns: ["target_division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
         ]

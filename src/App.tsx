@@ -456,6 +456,8 @@ function AppRoutes() {
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><RouteGuard moduleId="parent_portal"><ParentDashboard /></RouteGuard></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><RouteGuard moduleId="people"><DashboardLayout><PeopleLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/people/registrations/:id" element={<ProtectedRoute><RouteGuard moduleId="people"><DashboardLayout><RegistrationReview /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/people/add/student" element={<ProtectedRoute><RouteGuard moduleId="people"><StudentRegistration /></RouteGuard></ProtectedRoute>} />
+      <Route path="/people/add/teacher" element={<ProtectedRoute><RouteGuard moduleId="people"><TeacherRegistration /></RouteGuard></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><RouteGuard moduleId="finance"><DashboardLayout><FinanceLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
