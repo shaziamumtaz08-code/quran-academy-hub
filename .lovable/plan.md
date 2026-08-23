@@ -1,16 +1,16 @@
-# Attendance Modal Clarity Pass
+# Add one-time exam templates
 
-## Scope
-- Rework attendance status tiles into compact icon-first controls while retaining the existing selected-state logic and the single shared status description below the grid.
-- Remove the duplicate remarks field and replace the collapsed voice-note accordion with one always-visible inline mic-and-remarks row; expand recorder controls only after the mic is pressed.
-- Restyle the recorder with semantic theme tokens and concise copy so it remains legible in light and dark modes.
-- Combine Sabqi and Manzil into two compact switch chips with tooltip explanations.
-- Repeat the calculated lesson total inside the “Will be recorded as” preview and add the whole-Juz guidance under “To Juz”.
-- Preserve all attendance state, validation, calculations, upload behavior, and save/database writes.
+## Goal
+Allow admins to create and use an exam/report template that is taken once in a student's lifetime, such as a whole-Quran or whole-Qaida exam.
 
-## Verification
-- Check the modal at desktop and mobile widths, including status selection, the mic expansion, remarks entry, Hifz revision switches, and whole-Juz lesson preview.
-- Confirm the project build remains healthy.
+## Changes
+- Extend the exam frequency options with **One time** while preserving Weekly, Monthly, Quarterly, and Yearly.
+- Add **One time** to the template create/edit form and exam-report frequency filter.
+- Ensure one-time templates continue through the existing report generation, bulk generation, printing, and display flows without date-recurrence assumptions.
+- Update the shared exam type so every screen recognizes the new frequency.
 
-## Required security follow-up
-- After the UI work, restrict unrelated users from reading sensitive profile fields while preserving legitimate profile access through the existing protected sensitive-data pattern.
+## Technical details
+- Extend the database `exam_tenure` enum with `one_time`; no table or data deletion.
+- Use the existing `exam_templates.tenure` field, so existing templates and reports remain unchanged.
+- Keep the one-time rule descriptive at template level; creating the actual exam report remains explicit, matching the current report-generation workflow.
+- Validate template creation, filtering, and existing report-generation screens after the migration and frontend changes.
