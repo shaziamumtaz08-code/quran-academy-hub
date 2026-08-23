@@ -102,18 +102,14 @@ export function VoiceNoteRecorder({ onUploadComplete, uploadPath, className }: V
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className={`rounded-xl border border-sky-400/30 bg-sky-500/10 p-4 space-y-3 ${className || ''}`}>
+    <div className={`space-y-3 rounded-lg border border-border bg-muted p-3 ${className || ''}`}>
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 rounded-lg bg-sky-500/20 p-1.5">
-          <Mic className="h-4 w-4 text-sky-300" />
+        <div className="mt-0.5 rounded-md bg-background p-1.5">
+          <Mic className="h-4 w-4 text-foreground" />
         </div>
         <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-sky-100">Voice Note for Parent / Student <span className="font-normal text-sky-300/80">(optional)</span></p>
-          <p className="text-xs leading-relaxed text-sky-200/80">
-            Record a short spoken comment — pronunciation correction, tajweed tip, what to practise before the next
-            class, or a quick note for the parent. Useful when typing in Arabic or Urdu is difficult. Keep it under a
-            minute, then press <span className="font-medium text-sky-100">Save</span> to attach it to this attendance record.
-          </p>
+          <p className="text-sm font-semibold text-foreground">Voice note <span className="font-normal text-muted-foreground">(optional)</span></p>
+          <p className="text-xs text-muted-foreground">Record a short pronunciation, practice, or parent note.</p>
         </div>
       </div>
 
@@ -143,7 +139,7 @@ export function VoiceNoteRecorder({ onUploadComplete, uploadPath, className }: V
               size="sm"
               variant="outline"
               onClick={startRecording}
-              className="gap-1.5 border-sky-400/30 text-sky-200 hover:bg-sky-900/30 bg-transparent"
+                className="gap-1.5"
             >
               <Mic className="h-3.5 w-3.5" />
               Record
@@ -151,21 +147,21 @@ export function VoiceNoteRecorder({ onUploadComplete, uploadPath, className }: V
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+        <div className="flex items-center gap-2 rounded-lg bg-background p-2">
           <audio
             ref={audioRef}
             src={audioUrl}
             onEnded={() => setIsPlaying(false)}
             className="hidden"
           />
-          <Button type="button" size="icon" variant="ghost" onClick={togglePlay} className="h-8 w-8 text-sky-200 hover:bg-sky-900/40">
+          <Button type="button" size="icon" variant="ghost" onClick={togglePlay} className="h-8 w-8">
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
           <div className="flex-1">
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-400 rounded-full w-full" />
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-full rounded-full bg-primary" />
             </div>
-            <p className="text-[10px] text-sky-300/70 mt-0.5">{formatTime(duration)}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{formatTime(duration)}</p>
           </div>
           <Button
             type="button"
@@ -173,11 +169,11 @@ export function VoiceNoteRecorder({ onUploadComplete, uploadPath, className }: V
             variant="outline"
             onClick={uploadVoiceNote}
             disabled={isUploading}
-            className="gap-1 text-xs border-emerald-400/30 text-emerald-300 hover:bg-emerald-900/30 bg-transparent"
+            className="gap-1 text-xs"
           >
             {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : '✓'} Save
           </Button>
-          <Button type="button" size="icon" variant="ghost" onClick={removeRecording} className="h-8 w-8 text-red-300 hover:bg-red-900/30">
+          <Button type="button" size="icon" variant="ghost" onClick={removeRecording} className="h-8 w-8 text-destructive hover:bg-destructive/10">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

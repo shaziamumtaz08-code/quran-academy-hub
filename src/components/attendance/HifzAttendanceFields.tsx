@@ -2,7 +2,8 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle, BookOpenCheck, RotateCcw } from 'lucide-react';
 import { SabaqSection, type MarkerType } from './SabaqSection';
 import type { LessonSegment } from '@/lib/lessonFormat';
 
@@ -163,37 +164,30 @@ export function HifzAttendanceFields({
 
       />
       
-      {/* Sabqi Section - Yes/No Only */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">🔄 Sabqi (Recent Revision)</Label>
-            <p className="text-xs text-muted-foreground">
-              Did the student revise yesterday's lesson?
-            </p>
+      <TooltipProvider>
+        <div className="flex gap-2">
+          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-muted px-2.5">
+            <RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Label htmlFor="sabqi-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-medium">Sabqi</Label>
+              </TooltipTrigger>
+              <TooltipContent>Did the student revise yesterday&apos;s lesson?</TooltipContent>
+            </Tooltip>
+            <Switch id="sabqi-done" checked={sabqiDone} onCheckedChange={onSabqiDoneChange} />
           </div>
-          <Switch
-            checked={sabqiDone}
-            onCheckedChange={onSabqiDoneChange}
-          />
-        </div>
-      </div>
-      
-      {/* Manzil Section - Yes/No Only */}
-      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">📚 Manzil (Old Revision)</Label>
-            <p className="text-xs text-muted-foreground">
-              Did the student complete their manzil (1 para revision)?
-            </p>
+          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-muted px-2.5">
+            <BookOpenCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Label htmlFor="manzil-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-medium">Manzil</Label>
+              </TooltipTrigger>
+              <TooltipContent>Did the student complete their old revision (one Juz)?</TooltipContent>
+            </Tooltip>
+            <Switch id="manzil-done" checked={manzilDone} onCheckedChange={onManzilDoneChange} />
           </div>
-          <Switch
-            checked={manzilDone}
-            onCheckedChange={onManzilDoneChange}
-          />
         </div>
-      </div>
+      </TooltipProvider>
     </div>
   );
 }

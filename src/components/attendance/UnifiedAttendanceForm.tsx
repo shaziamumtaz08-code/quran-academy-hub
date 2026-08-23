@@ -10,10 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import { SegmentedControl } from './SegmentedControl';
-import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle } from 'lucide-react';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -1344,19 +1343,18 @@ export function UnifiedAttendanceForm({
   const STATUS_TILES: {
     value: AttendanceStatus;
     label: string;
-    hint: string;
     icon: React.ReactNode;
     activeClass: string;
   }[] = [
-    { value: 'present', label: 'Present', hint: 'Class conducted', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40' },
-    { value: 'student_absent', label: 'Student absent', hint: 'Student did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
-    { value: 'student_leave', label: 'Student leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40' },
-    { value: 'teacher_absent', label: 'Teacher absent', hint: 'Teacher did not join', icon: <XCircle className="h-4 w-4" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
-    { value: 'teacher_leave', label: 'Teacher leave', hint: 'Informed in advance', icon: <PauseCircle className="h-4 w-4" />, activeClass: 'border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/40' },
-    { value: 'rescheduled', label: 'Rescheduled by teacher', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
-    { value: 'student_rescheduled', label: 'Rescheduled by student', hint: 'Make-up class', icon: <CalendarClock className="h-4 w-4" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
+    { value: 'present', label: 'Present', icon: <CheckCircle2 className="h-5 w-5" />, activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40' },
+    { value: 'student_absent', label: 'Student absent', icon: <XCircle className="h-5 w-5" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'student_leave', label: 'Student leave', icon: <PauseCircle className="h-5 w-5" />, activeClass: 'border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40' },
+    { value: 'teacher_absent', label: 'Teacher absent', icon: <XCircle className="h-5 w-5" />, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40' },
+    { value: 'teacher_leave', label: 'Teacher leave', icon: <PauseCircle className="h-5 w-5" />, activeClass: 'border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/40' },
+    { value: 'rescheduled', label: 'Teacher rescheduled', icon: <CalendarClock className="h-5 w-5" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
+    { value: 'student_rescheduled', label: 'Student rescheduled', icon: <CalendarClock className="h-5 w-5" />, activeClass: 'border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40' },
     ...(isAdminUser
-      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', hint: 'Academy off day', icon: <Info className="h-4 w-4" />, activeClass: 'border-slate-400 bg-slate-400/10 text-slate-700 dark:text-slate-300 ring-1 ring-slate-400/40' }]
+      ? [{ value: 'holiday' as AttendanceStatus, label: 'Holiday', icon: <Info className="h-5 w-5" />, activeClass: 'border-slate-400 bg-slate-400/10 text-slate-700 dark:text-slate-300 ring-1 ring-slate-400/40' }]
       : []),
   ];
 
@@ -1491,20 +1489,15 @@ export function UnifiedAttendanceForm({
                     aria-checked={active}
                     onClick={() => changeStatus(opt.value)}
                     className={cn(
-                      'flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-all',
+                      'flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center shadow-sm transition-all hover:shadow-md active:scale-95',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       active
                         ? opt.activeClass
                         : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
                     )}
                   >
-                    <span className="flex items-center gap-1.5 text-[13px] font-medium leading-tight">
-                      {opt.icon}
-                      <span className="truncate">{opt.label}</span>
-                    </span>
-                    <span className={cn('text-[11px] leading-tight', active ? 'opacity-70' : 'text-muted-foreground/70')}>
-                      {opt.hint}
-                    </span>
+                    {opt.icon}
+                    <span className="text-xs font-medium leading-tight">{opt.label}</span>
                   </button>
                 );
               })}
@@ -1513,22 +1506,6 @@ export function UnifiedAttendanceForm({
               <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
             )}
           </section>
-
-          {/* Quick notes — always available for Present / Absent so every status has a follow-up field */}
-          {(selectedStatus === 'present' || selectedStatus === 'student_absent' || selectedStatus === 'teacher_absent') && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">
-                {selectedStatus === 'present' ? 'Class notes (optional)' : 'Notes (optional)'}
-              </Label>
-              <Textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                rows={2}
-                placeholder={selectedStatus === 'present' ? 'How did the class go?' : 'Anything worth recording…'}
-                className="resize-none bg-background"
-              />
-            </div>
-          )}
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
@@ -1956,29 +1933,35 @@ export function UnifiedAttendanceForm({
 
           )}
 
-          {/* Voice note & remarks — collapsed by default */}
-          <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card shadow-sm px-3">
-            <AccordionItem value="notes" className="border-0">
-              <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
-                Voice note &amp; remarks (optional)
-              </AccordionTrigger>
-              <AccordionContent className="space-y-3 pb-4">
-                <VoiceNoteRecorder
-                  onUploadComplete={setVoiceNoteUrl}
-                  uploadPath={`${student.id}/${classDate}`}
-                />
-                <div className="space-y-1.5">
-                  <Label className="text-foreground text-xs">Remarks</Label>
-                  <Textarea
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="Any additional notes..."
-                    rows={3}
-                  />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {/* One shared remarks field with inline voice-note expansion */}
+          <div className="space-y-2 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Record a voice note"
+                aria-expanded={voiceRecorderOpen}
+                onClick={() => setVoiceRecorderOpen((open) => !open)}
+                className="h-8 w-8 shrink-0 rounded-full"
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+              <Input
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Remarks (optional)"
+                aria-label="Remarks"
+                className="h-9"
+              />
+            </div>
+            {voiceRecorderOpen && (
+              <VoiceNoteRecorder
+                onUploadComplete={setVoiceNoteUrl}
+                uploadPath={`${student.id}/${classDate}`}
+              />
+            )}
+          </div>
         </div>
         </div>
 
