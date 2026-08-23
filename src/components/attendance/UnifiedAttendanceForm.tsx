@@ -1688,23 +1688,41 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Duration — fixed position. Hidden for leave (irrelevant for a day-off). */}
-          {!isLeaveStatus && (
-            <div className="space-y-2">
-              <Label className="text-foreground">Duration (minutes)</Label>
-              <Input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                readOnly={!requiresReschedule(selectedStatus) && !isEdit}
-                disabled={!requiresReschedule(selectedStatus) && !isEdit}
-                className={cn(
-                  duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
-                  !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
-                )}
-              />
+          </section>
+
+          {/* ── Status card ─────────────────────────────────────────── */}
+          <section className="space-y-3">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Status <span className="text-destructive">*</span>
+            </Label>
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {STATUS_TILES.map((opt) => {
+                const active = selectedStatus === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => changeStatus(opt.value)}
+                    className={cn(
+                      'flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2 text-center transition-all',
+                      'shadow-[0_2px_0_0_hsl(var(--border)),0_4px_10px_-4px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_hsl(var(--border)),0_10px_18px_-8px_rgba(0,0,0,0.3)] active:translate-y-0.5 active:shadow-none',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? opt.activeClass
+                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
+                    )}
+                  >
+                    {opt.icon}
+                    <span className="text-xs font-semibold leading-tight">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
+            {statusDetailCopy[selectedStatus] && (
+              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
+            )}
           </section>
 
 
