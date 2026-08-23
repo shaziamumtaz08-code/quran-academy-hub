@@ -67,6 +67,7 @@ function getTodayDayOfWeek(): string {
 async function findScheduledStudent(supabase: any, teacherId: string): Promise<string | null> {
   const today = getTodayDayOfWeek();
   const now = new Date();
+  const todayIso = now.toISOString().slice(0, 10);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Get active assignments for this teacher
@@ -81,12 +82,9 @@ async function findScheduledStudent(supabase: any, teacherId: string): Promise<s
   const assignmentIds = assignments.map((a: any) => a.id);
 
   // Find a schedule for today within ±15 minutes
-  const { data: schedules } = await supabase
-    .from("schedules")
-    .select("assignment_id, student_local_time, duration_minutes")
-    .in("assignment_id", assignmentIds)
-    .eq("day_of_week", today)
-    .eq("is_active", true);
+  const { data: resolvedSchedules } = await supabase
+    .rpc("get_effective_schedule_periods", { _on_date: todayIso });
+  const schedules = (resolvedSchedules || []).filter((schedule: any) => assignmentIds.includes(schedule.assignment_id));
 
   if (!schedules || schedules.length === 0) return null;
 

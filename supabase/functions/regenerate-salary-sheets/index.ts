@@ -66,7 +66,7 @@ const daysBetween = (a: string, b: string) =>
 async function computeMonth(supabase: any, salaryMonth: string) {
   const { monthStart, monthEnd, fullMonthEnd, daysInMonth, allDates } = monthBounds(salaryMonth);
 
-  const [roleRows, staffSalariesRes, assignmentsRes, attendanceRes, leaveRes, extraRes, adjRes, payoutsRes, invoicesRes, schedulesRes] =
+  const [roleRows, staffSalariesRes, assignmentsRes, attendanceRes, leaveRes, extraRes, adjRes, payoutsRes, invoicesRes, schedulesRes, periodsRes] =
     await Promise.all([
       supabase.from("user_roles").select("user_id").eq("role", "teacher"),
       supabase.from("staff_salaries").select("*").lte("effective_from", fullMonthEnd).or(`effective_to.is.null,effective_to.gte.${monthStart}`),
@@ -81,6 +81,7 @@ async function computeMonth(supabase: any, salaryMonth: string) {
       supabase.from("salary_payouts").select("*").eq("salary_month", salaryMonth).or("is_archived.is.null,is_archived.eq.false"),
       supabase.from("fee_invoices").select("id, student_id, assignment_id, status, paid_at").is("voided_at", null).eq("is_archived", false).eq("billing_month", salaryMonth),
       supabase.from("schedules").select("assignment_id, day_of_week").eq("is_active", true),
+      supabase.from("schedule_periods").select("assignment_id, day_of_week, effective_from, effective_to"),
     ]);
 
   const staffSalaries = staffSalariesRes.data || [];
@@ -99,6 +100,7 @@ async function computeMonth(supabase: any, salaryMonth: string) {
   const existingPayouts = payoutsRes.data || [];
   const feeInvoices = invoicesRes.data || [];
   const schedules = schedulesRes.data || [];
+  const schedulePeriods = periodsRes.data || [];
 
   const results: any[] = [];
 
@@ -135,9 +137,13 @@ async function computeMonth(supabase: any, salaryMonth: string) {
         .filter((a: any) => a.teacher_id === profile.id && a.student_id === assign.student_id)
         .forEach((a: any) => attendanceMap.set(a.class_date, a.status));
 
-      const scheduledDays = new Set(
-        schedules.filter((s: any) => s.assignment_id === assign.id).map((s: any) => s.day_of_week?.toLowerCase()),
-      );
+      const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
+      const assignmentPeriods = schedulePeriods.filter((p: any) => p.assignment_id === assign.id);
+      const isScheduledOn = (dateStr: string) => {
+        const weekday = dayName(dateStr);
+        if (assignmentPeriods.length === 0) return assignSchedules.some((s: any) => s.day_of_week?.toLowerCase() === weekday);
+        return assignmentPeriods.some((p: any) => p.day_of_week === weekday && p.effective_from <= dateStr && (!p.effective_to || p.effective_to >= dateStr));
+      };
 
       const attendanceDays = allDates
         .filter((d) => d >= dateFrom && d <= dateTo)
@@ -146,7 +152,7 @@ async function computeMonth(supabase: any, salaryMonth: string) {
           let status = "none";
           if (marked !== "none") status = marked;
           else if (leaveDateSet.has(dateStr)) status = "leave";
-          else if (scheduledDays.size > 0 && !scheduledDays.has(dayName(dateStr))) status = "holiday";
+          else if (assignSchedules.length > 0 && !isScheduledOn(dateStr)) status = "holiday";
           return { date: dateStr, status };
         });
 

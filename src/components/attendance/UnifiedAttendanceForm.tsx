@@ -37,6 +37,7 @@ import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonT
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr, convertTimeBetweenTimezonesWithDay } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
+import { resolveSchedulesForDate, type SchedulePeriod } from '@/lib/schedulePeriods';
 
 import { useQaidaReference } from '@/hooks/useQaidaProgress';
 
@@ -441,6 +442,20 @@ export function UnifiedAttendanceForm({
     enabled: open && !!student.id && !!resolvedAssignmentId,
   });
 
+  const { data: schedulePeriods = [] } = useQuery({
+    queryKey: ['attendance-schedule-periods', resolvedAssignmentId],
+    queryFn: async () => {
+      if (!resolvedAssignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from('schedule_periods')
+        .select('*')
+        .eq('assignment_id', resolvedAssignmentId);
+      if (error) throw error;
+      return (data || []) as SchedulePeriod[];
+    },
+    enabled: open && !!resolvedAssignmentId,
+  });
+
   // Check for duplicate attendance at the SAME date+time+teacher (matches the DB
   // duplicate-guard trigger). Skipped in edit mode — the row being edited is itself
   // the match.
@@ -671,6 +686,11 @@ export function UnifiedAttendanceForm({
   }, [scheduleData, studentTz, effectiveTeacherTz]);
   const scheduledDays = useMemo(() => Array.from(teacherDayRows.keys()), [teacherDayRows]);
 
+  const resolvedRowsForDate = (date: string) => {
+    if (!scheduleData?.length) return [];
+    return resolveSchedulesForDate(scheduleData.map((row) => ({ ...row, assignment_id: resolvedAssignmentId || '', is_active: true })), schedulePeriods, date);
+  };
+
   /** Student has no active weekly slot at all — every day is an off day for them. */
   const hasNoSchedule = scheduleLoaded && scheduledDays.length === 0;
 
@@ -684,11 +704,8 @@ export function UnifiedAttendanceForm({
   // allowed any date).
   const isScheduledDay = useMemo(() => {
     if (!classDate || !scheduleLoaded) return true;
-    if (scheduledDays.length === 0) return false;
-    const dayIndex = getDay(parseISO(classDate));
-    const dayName = DAY_NAMES[dayIndex];
-    return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays, scheduleLoaded]);
+    return resolvedRowsForDate(classDate).length > 0;
+  }, [classDate, scheduleData, schedulePeriods, scheduleLoaded]);
 
   /**
    * The only dates a regular attendance record may use: the student's scheduled
@@ -703,13 +720,13 @@ export function UnifiedAttendanceForm({
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const iso = format(d, 'yyyy-MM-dd');
-      if (!scheduledDays.includes(DAY_NAMES[getDay(d)])) continue;
+      if (resolvedRowsForDate(iso).length === 0) continue;
       if (recentHolidaySet.has(iso)) continue;
       out.push(iso);
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduledDays.join(','), recentHolidays]);
+  }, [scheduleData, schedulePeriods, recentHolidays]);
 
   /** Explicit date passed in (e.g. "Mark now" on a missed slot) wins over any default. */
   useEffect(() => {
@@ -722,7 +739,7 @@ export function UnifiedAttendanceForm({
     if (!open || isEdit || initialDate || scheduledDays.length === 0) return;
     const today = new Date();
     const isUsable = (d: Date) =>
-      scheduledDays.includes(DAY_NAMES[getDay(d)]) && !recentHolidaySet.has(format(d, 'yyyy-MM-dd'));
+      resolvedRowsForDate(format(d, 'yyyy-MM-dd')).length > 0 && !recentHolidaySet.has(format(d, 'yyyy-MM-dd'));
     if (isUsable(today)) return; // today is fine
     for (let i = 1; i <= 14; i++) {
       const d = new Date(today);
@@ -733,7 +750,7 @@ export function UnifiedAttendanceForm({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEdit, initialDate, scheduledDays.join(','), recentHolidays]);
+  }, [open, isEdit, initialDate, scheduleData, schedulePeriods, recentHolidays]);
 
 
 
@@ -742,6 +759,13 @@ export function UnifiedAttendanceForm({
   // teacher never has to type the time manually.
   const getScheduledInfoForDay = (date: string) => {
     if (!scheduleData || scheduleData.length === 0 || !date) return null;
+    const periodResolved = resolvedRowsForDate(date)[0];
+    if (periodResolved) return {
+      time: periodResolved.teacher_local_time,
+      duration: periodResolved.duration_minutes,
+      studentTime: periodResolved.student_local_time,
+      isExactDay: true,
+    };
     const dayIndex = getDay(parseISO(date));
     const dayName = DAY_NAMES[dayIndex];
     const exact = teacherDayRows.get(dayName);
@@ -779,11 +803,11 @@ export function UnifiedAttendanceForm({
         setDuration(scheduleInfo.duration.toString());
       }
     }
-  }, [open, classDate, scheduleData, isEdit]);
+  }, [open, classDate, scheduleData, schedulePeriods, isEdit]);
 
   const autoFilledSlot = useMemo(
     () => (isEdit || !classDate ? null : getScheduledInfoForDay(classDate)),
-    [isEdit, classDate, scheduleData],
+    [isEdit, classDate, scheduleData, schedulePeriods],
   );
 
 

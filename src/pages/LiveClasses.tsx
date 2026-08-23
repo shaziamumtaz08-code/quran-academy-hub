@@ -100,11 +100,10 @@ export default function LiveClasses() {
 
     // 2. Today's recurring schedules
     const today = zonedDayName(tz);
-    const schedBase = supabase
-      .from("schedules")
-      .select("id, assignment_id, student_local_time, teacher_local_time, duration_minutes, student_teacher_assignments!inner(id, teacher_id, student_id, status, duration_minutes)")
-      .eq("day_of_week", today)
-      .eq("is_active", true);
+    const dateIso = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    const schedBase = (supabase as any)
+      .rpc('get_effective_schedule_periods', { _on_date: dateIso })
+      .select("schedule_id, assignment_id, student_local_time, teacher_local_time, duration_minutes, student_teacher_assignments!inner(id, teacher_id, student_id, status, duration_minutes)");
 
     const { data: schedules } = primary === "teacher"
       ? await schedBase.eq("student_teacher_assignments.teacher_id", user.id).eq("student_teacher_assignments.status", "active")
@@ -160,7 +159,7 @@ export default function LiveClasses() {
         // Both are stored as the local wall clock time of that user; we treat as browser local.
         const timeStr = primary === "teacher" ? s.teacher_local_time : s.student_local_time;
         return {
-          key: `sc:${s.id}`,
+          key: `sc:${s.schedule_id}`,
           kind: "schedule",
           scheduledStartMs: zonedTimeToEpoch(tz, timeStr),
           durationMin: s.duration_minutes || a?.duration_minutes || 30,
@@ -169,7 +168,7 @@ export default function LiveClasses() {
           studentId: a.student_id,
           studentName: nameMap.get(a.student_id),
           assignmentId: a.id,
-          scheduleId: s.id,
+          scheduleId: s.schedule_id,
           liveSessionId: null,
           meetingLink: null,
           status: "scheduled",
