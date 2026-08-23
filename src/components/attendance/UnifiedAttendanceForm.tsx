@@ -275,6 +275,35 @@ export function UnifiedAttendanceForm({
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState<string>('');
   const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const attachmentInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  /** Upload a remark attachment (jpeg/png/pdf/audio) and keep its public URL. */
+  const uploadAttachment = async (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowed.includes(file.type) && !file.type.startsWith('audio/')) {
+      toast({ title: 'Unsupported file', description: 'Attach a JPEG, PNG, PDF or audio file.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum attachment size is 15 MB.', variant: 'destructive' });
+      return;
+    }
+    setAttachmentUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `attachments/${student.id || 'unknown'}/${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from('voice-notes').upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from('voice-notes').getPublicUrl(data.path);
+      setAttachmentUrl(pub.publicUrl);
+      setAttachmentName(file.name);
+      toast({ title: 'Attachment added' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err?.message, variant: 'destructive' });
+    } finally {
+      setAttachmentUploading(false);
+    }
+  };
   
   // Reason fields
   const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
