@@ -40,6 +40,21 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
       (a as any).payout_amount = payout.payout_amount;
       (a as any).payout_type = payout.payout_type;
 
+      // Lineage: every assignment row for this student + subject. A teacher transfer
+      // closes one row and opens another, so the earlier periods live on sibling rows.
+      // History scoped to a single row would only ever show the latest instance.
+      let lineage: any[] = [a];
+      if (a.student_id) {
+        let q = supabase
+          .from('student_teacher_assignments')
+          .select('id, teacher_id, status, created_at, start_date, effective_from_date, effective_to_date, status_change_reason, transfer_type, is_temporary')
+          .eq('student_id', a.student_id);
+        q = a.subject_id ? q.eq('subject_id', a.subject_id) : q.is('subject_id', null);
+        const { data: sib } = await q.order('created_at', { ascending: true });
+        if (sib?.length) lineage = sib;
+      }
+      const lineageIds = Array.from(new Set(lineage.map((r: any) => r.id)));
+
       // 2-6. Parallel independent fetches
       const [studentRes, teacherRes, subjectRes, divisionRes, historyRes, schedulesRes, auditRes] =
         await Promise.all([
@@ -55,10 +70,11 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
           a.division_id
             ? supabase.from('divisions').select('id, name').eq('id', a.division_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
-          supabase.from('assignment_history').select('*').eq('assignment_id', assignmentId).order('created_at', { ascending: false }),
+          supabase.from('assignment_history').select('*').in('assignment_id', lineageIds).order('created_at', { ascending: false }),
           supabase.from('schedules').select('*').eq('assignment_id', assignmentId),
-          supabase.from('assignment_audit_log' as any).select('*').eq('assignment_id', assignmentId).order('changed_at', { ascending: false }),
+          supabase.from('assignment_audit_log' as any).select('*').in('assignment_id', lineageIds).order('changed_at', { ascending: false }),
         ]);
+
 
       // Resolve teacher names referenced inside history rows
       const histRows = (historyRes.data as any[]) || [];
