@@ -405,7 +405,11 @@ function HistoryPanel({ data }: { data: any }) {
                 <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                   {h.created_at ? formatDisplayDateTime(h.created_at) : '—'}
                 </TableCell>
-                <TableCell className="text-sm font-medium">Assignment period</TableCell>
+                <TableCell className="text-sm font-medium">
+                  Assignment period
+                  <OtherRecordBadge rowAssignmentId={h.assignment_id} />
+                </TableCell>
+
                 <TableCell className="text-xs">
                   {h.started_at ? formatDisplayDate(h.started_at) : '—'}
                 </TableCell>
