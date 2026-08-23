@@ -744,7 +744,7 @@ export function UnifiedAttendanceForm({
     if (!scheduleData || scheduleData.length === 0 || !date) return null;
     const dayIndex = getDay(parseISO(date));
     const dayName = DAY_NAMES[dayIndex];
-    const exact = scheduleData.find(s => s.day_of_week.toLowerCase() === dayName);
+    const exact = teacherDayRows.get(dayName);
     // Fallback: most frequent time across the student's active slots
     const fallback = (() => {
       const counts = new Map<string, { row: typeof scheduleData[number]; n: number }>();
