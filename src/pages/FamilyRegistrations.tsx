@@ -49,6 +49,7 @@ export default function FamilyRegistrations() {
   }, [data, search]);
 
   const publicLink = `${window.location.origin}/register/student`;
+  const teacherLink = `${window.location.origin}/register/teacher`;
 
   return (
     <div className="space-y-5">
