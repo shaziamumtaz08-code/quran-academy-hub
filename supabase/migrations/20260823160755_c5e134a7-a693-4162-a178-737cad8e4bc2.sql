@@ -1,0 +1,1 @@
+ALTER TYPE public.exam_tenure ADD VALUE IF NOT EXISTS 'one_time';
