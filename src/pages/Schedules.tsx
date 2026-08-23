@@ -18,9 +18,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
 import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared } from '@/lib/timezones';
+import { Calendar as DateCalendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { resolveScheduleForDate, type SchedulePeriod, type SchedulePeriodType } from '@/lib/schedulePeriods';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -220,6 +223,10 @@ export default function Schedules() {
   const [showAllDivisions, setShowAllDivisions] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
   const [dailyInitialDate, setDailyInitialDate] = useState<Date | undefined>(undefined);
+  const [periodType, setPeriodType] = useState<SchedulePeriodType>('permanent');
+  const [effectiveFrom, setEffectiveFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [effectiveTo, setEffectiveTo] = useState('');
+  const [changeReason, setChangeReason] = useState('');
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
@@ -343,6 +350,18 @@ export default function Schedules() {
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as Schedule[];
+    },
+  });
+
+  const { data: schedulePeriods = [] } = useQuery({
+    queryKey: ['schedule-periods', activeDivision?.id, showAllDivisions],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('schedule_periods')
+        .select('*')
+        .order('effective_from', { ascending: false });
+      if (error) throw error;
+      return (data || []) as SchedulePeriod[];
     },
   });
 
@@ -474,21 +493,34 @@ export default function Schedules() {
     },
   });
 
-  // Update schedule mutation
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ id, ...scheduleData }: {
+    mutationFn: async ({ id, period_type, effective_from, effective_to, change_reason, ...scheduleData }: {
       id: string;
       day_of_week: string;
       student_local_time: string;
       teacher_local_time: string;
       duration_minutes: number;
+      period_type: SchedulePeriodType;
+      effective_from: string;
+      effective_to: string | null;
+      change_reason: string;
     }) => {
-      const { error } = await supabase.from('schedules').update(scheduleData).eq('id', id);
+      const { error } = await (supabase as any).rpc('apply_schedule_period', {
+        _schedule_id: id,
+        _student_local_time: scheduleData.student_local_time,
+        _teacher_local_time: scheduleData.teacher_local_time,
+        _duration_minutes: scheduleData.duration_minutes,
+        _period_type: period_type,
+        _effective_from: effective_from,
+        _effective_to: effective_to,
+        _change_reason: change_reason,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
-      toast({ title: 'Success', description: 'Schedule updated successfully' });
+      queryClient.invalidateQueries({ queryKey: ['schedule-periods'] });
+      toast({ title: 'Schedule timeline updated', description: periodType === 'temporary' ? 'The original timing will return automatically after the end date.' : 'The new permanent timing will apply from its start date.' });
       handleCloseDialog();
     },
     onError: (error: any) => {
@@ -777,6 +809,10 @@ export default function Schedules() {
     const teacherTime = time ? calculateTeacherTime(time, newSchedule.studentTimezone, newSchedule.teacherTimezone) : '';
     setNewSchedule(prev => ({ ...prev, studentTime: time, teacherTime }));
     setLastEditedField('student');
+    setPeriodType('permanent');
+    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveTo('');
+    setChangeReason('');
   };
 
   // Handlers for teacher time change - update student time
@@ -944,6 +980,10 @@ export default function Schedules() {
       customDuration: isPreset ? '' : durationVal.toString(),
     });
     setLastEditedField('student');
+    setPeriodType('permanent');
+    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveTo('');
+    setChangeReason('');
     setIsDialogOpen(true);
   };
 
@@ -973,6 +1013,11 @@ export default function Schedules() {
     }
 
     const effectiveDuration = getEffectiveDuration(newSchedule.duration, newSchedule.customDuration);
+
+    if (editingSchedule && (changeReason.trim().length < 4 || !effectiveFrom || (periodType === 'temporary' && (!effectiveTo || effectiveTo < effectiveFrom)))) {
+      toast({ title: 'Schedule period incomplete', description: 'Choose a valid effective date range and enter a reason of at least 4 characters.', variant: 'destructive' });
+      return;
+    }
 
     // Check for conflicts
     const conflict = detectScheduleConflict(
@@ -1004,7 +1049,14 @@ export default function Schedules() {
     };
 
     if (editingSchedule) {
-      updateScheduleMutation.mutate({ id: editingSchedule.id, ...scheduleData });
+      updateScheduleMutation.mutate({
+        id: editingSchedule.id,
+        ...scheduleData,
+        period_type: periodType,
+        effective_from: effectiveFrom,
+        effective_to: periodType === 'temporary' ? effectiveTo : null,
+        change_reason: changeReason.trim(),
+      });
     } else {
       const selectedAssignment = assignments.find(a => a.id === newSchedule.assignmentId);
       createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, division_id: selectedAssignment?.division_id || activeDivision?.id || null, ...scheduleData });
@@ -1486,6 +1538,7 @@ export default function Schedules() {
               <MonthlyCalendarView
                 assignments={filteredAssignments}
                 schedules={schedules}
+                periods={schedulePeriods}
                 onSelectDate={(date) => { setDailyInitialDate(date); setViewMode('daily'); }}
               />
             )}
@@ -1503,6 +1556,7 @@ export default function Schedules() {
               <DailySlotCalendar
                 assignments={filteredAssignments}
                 schedules={schedules}
+                periods={schedulePeriods}
                 initialDate={dailyInitialDate}
               />
             )}
