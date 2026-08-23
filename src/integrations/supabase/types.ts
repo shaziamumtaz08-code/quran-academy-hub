@@ -514,6 +514,7 @@ export type Database = {
       attendance: {
         Row: {
           absence_type: string | null
+          attachment_url: string | null
           ayah_from: number | null
           ayah_to: number | null
           branch_id: string | null
@@ -585,6 +586,7 @@ export type Database = {
         }
         Insert: {
           absence_type?: string | null
+          attachment_url?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
           branch_id?: string | null
@@ -656,6 +658,7 @@ export type Database = {
         }
         Update: {
           absence_type?: string | null
+          attachment_url?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
           branch_id?: string | null
