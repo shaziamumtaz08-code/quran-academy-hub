@@ -473,6 +473,14 @@ export function UnifiedAttendanceForm({
     else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
   }, [selectedStatus]);
 
+  // Drop a reschedule reason that isn't offered for the current initiator
+  useEffect(() => {
+    if (!rescheduleReason) return;
+    const list = rescheduleBy === 'student' ? STUDENT_RESCHEDULE_REASONS : TEACHER_RESCHEDULE_REASONS;
+    if (!list.some((r) => r.value === rescheduleReason)) setRescheduleReason('');
+  }, [rescheduleBy, rescheduleReason]);
+
+
   // Drop a reason that isn't offered for the newly selected status
   useEffect(() => {
     if (!reasonCategory) return;
