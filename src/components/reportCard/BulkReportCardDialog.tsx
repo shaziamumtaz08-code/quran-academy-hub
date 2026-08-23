@@ -489,7 +489,7 @@ export function BulkReportCardDialog({
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
                           <Badge variant="secondary" className="ml-2 capitalize text-xs">
-                            {template.tenure}
+                            {template.tenure === 'one_time' ? 'One time' : template.tenure}
                           </Badge>
                         </SelectItem>
                       ))}
@@ -505,7 +505,7 @@ export function BulkReportCardDialog({
                       {flatCriteria.length} criteria
                     </Badge>
                     <Badge variant="secondary" className="capitalize">
-                      {selectedTemplate.tenure}
+                      {selectedTemplate.tenure === 'one_time' ? 'One time' : selectedTemplate.tenure}
                     </Badge>
                   </div>
 

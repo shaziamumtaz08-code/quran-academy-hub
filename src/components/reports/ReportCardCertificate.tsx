@@ -172,7 +172,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
             </div>
             <div className="text-right flex flex-col items-end gap-1">
               <Badge className="bg-cyan-500 text-white px-3 py-0.5 text-xs font-semibold capitalize">
-                {report.template?.tenure || 'Assessment'}
+                {report.template?.tenure === 'one_time' ? 'One time' : report.template?.tenure || 'Assessment'}
               </Badge>
               <p className="text-white/60 text-xs">{getMonth(report.exam_date)}</p>
             </div>
