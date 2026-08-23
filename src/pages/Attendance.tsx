@@ -130,6 +130,46 @@ interface Profile {
 
 }
 
+interface PeriodAttendanceSummary {
+  present: number;
+  absent: number;
+  leave: number;
+  rescheduled: number;
+}
+
+const EMPTY_PERIOD_SUMMARY: PeriodAttendanceSummary = {
+  present: 0,
+  absent: 0,
+  leave: 0,
+  rescheduled: 0,
+};
+
+function AttendanceSummaryBadges({ summary, subject }: { summary?: PeriodAttendanceSummary; subject: 'Student' | 'Teacher' }) {
+  const counts = summary ?? EMPTY_PERIOD_SUMMARY;
+  const details = `${subject} period summary: ${counts.present} present, ${counts.absent} absent, ${counts.leave} leave, ${counts.rescheduled} rescheduled`;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex shrink-0 items-center gap-0.5" aria-label={details}>
+            <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] font-semibold leading-none text-primary">P{counts.present}</span>
+            <span className={cn(
+              'rounded px-1 py-0.5 text-[10px] font-semibold leading-none',
+              counts.absent >= 3 ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground'
+            )}>A{counts.absent}</span>
+            <span className="rounded bg-accent/20 px-1 py-0.5 text-[10px] font-semibold leading-none text-accent-foreground">L{counts.leave}</span>
+            <span className="rounded bg-secondary px-1 py-0.5 text-[10px] font-semibold leading-none text-secondary-foreground">R{counts.rescheduled}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          {details}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
   { value: 'student_absent', label: 'Student Absent' },
@@ -1018,6 +1058,40 @@ export default function Attendance() {
     return records;
   }, [attendanceRecords, filter, searchQuery, sortBy, sortOrder]);
 
+  // The period query above is already batched. Aggregate it once in memory so
+  // every visible row can reuse the same per-person totals without N+1 requests.
+  const periodSummaries = useMemo(() => {
+    const students = new Map<string, PeriodAttendanceSummary>();
+    const teachers = new Map<string, PeriodAttendanceSummary>();
+    const getSummary = (map: Map<string, PeriodAttendanceSummary>, id: string) => {
+      const existing = map.get(id);
+      if (existing) return existing;
+      const created = { ...EMPTY_PERIOD_SUMMARY };
+      map.set(id, created);
+      return created;
+    };
+
+    for (const record of attendanceRecords || []) {
+      if (record.student_id) {
+        const student = getSummary(students, record.student_id);
+        if (record.status === 'present') student.present += 1;
+        if (record.status === 'student_absent') student.absent += 1;
+        if (record.status === 'student_leave') student.leave += 1;
+        if (record.status === 'rescheduled' || record.status === 'student_rescheduled') student.rescheduled += 1;
+      }
+
+      if (record.teacher_id) {
+        const teacher = getSummary(teachers, record.teacher_id);
+        if (record.status === 'present') teacher.present += 1;
+        if (record.status === 'teacher_absent') teacher.absent += 1;
+        if (record.status === 'teacher_leave') teacher.leave += 1;
+        if (record.status === 'rescheduled') teacher.rescheduled += 1;
+      }
+    }
+
+    return { students, teachers };
+  }, [attendanceRecords]);
+
   const KNOWN_STATUSES = ['present', 'student_absent', 'student_leave', 'teacher_absent', 'teacher_leave', 'rescheduled', 'student_rescheduled', 'holiday'];
 
   const stats = useMemo(() => {
@@ -1518,9 +1592,10 @@ export default function Attendance() {
                       </TableCell>
                       {!isStudent && (
                         <TableCell>
-                          <span className="flex items-center gap-2">
+                          <span className="flex min-w-0 items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{record.student?.full_name || 'Unknown'}</span>
+                            <span className="font-medium whitespace-nowrap">{record.student?.full_name || 'Unknown'}</span>
+                            <AttendanceSummaryBadges summary={periodSummaries.students.get(record.student_id)} subject="Student" />
                             {record.course_id && record.course?.name && (
                               <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                                 {record.course.name}
@@ -1530,7 +1605,12 @@ export default function Attendance() {
                         </TableCell>
                       )}
                       {isAdmin && (
-                        <TableCell>{record.teacher?.full_name || 'Unknown'}</TableCell>
+                        <TableCell>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="font-medium whitespace-nowrap">{record.teacher?.full_name || 'Unknown'}</span>
+                            <AttendanceSummaryBadges summary={periodSummaries.teachers.get(record.teacher_id)} subject="Teacher" />
+                          </span>
+                        </TableCell>
                       )}
                       <TableCell>{record.class_time?.substring(0, 5) || '-'}</TableCell>
                       <TableCell>
