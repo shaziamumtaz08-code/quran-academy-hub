@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { withAssignmentPayouts } from '@/lib/assignmentPayouts';
 import { assignmentMonthWindow, SALARY_ASSIGNMENT_STATUSES } from '@/lib/salaryWindow';
 import { normalizeAttendanceStatus } from '@/lib/attendanceStatus';
+import { type SchedulePeriod } from '@/lib/schedulePeriods';
 
 /**
  * SINGLE SOURCE OF TRUTH for salary sheet calculation + persistence.
@@ -78,6 +79,7 @@ export interface SalaryCalcInput {
   existingPayouts: any[];
   feeInvoices: any[];
   schedules: any[];
+  schedulePeriods?: SchedulePeriod[];
   staffSalaries: any[];
   salaryMonth: string;
   /**
@@ -214,8 +216,12 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
       const attendanceMap = new Map<string, string>();
       studentAttendance.forEach((a: any) => attendanceMap.set(a.class_date, a.status));
 
-      const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
-      const scheduledDays = new Set(assignSchedules.map((s: any) => s.day_of_week?.toLowerCase()));
+       const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
+       const assignmentPeriods = (input.schedulePeriods || []).filter((p) => p.assignment_id === assign.id);
+       const isScheduledOn = (dateStr: string, dayName: string) => {
+         if (assignmentPeriods.length === 0) return assignSchedules.some((s: any) => s.day_of_week?.toLowerCase() === dayName);
+         return assignmentPeriods.some((p) => p.day_of_week === dayName && p.effective_from <= dateStr && (!p.effective_to || p.effective_to >= dateStr));
+       };
 
       const attendanceDays = allDatesInMonth
         .filter(d => d >= fromDate && d <= toDate)
@@ -228,7 +234,7 @@ export function computeSalaryRows(input: SalaryCalcInput): TeacherSalaryRow[] {
           let status = 'none';
           if (marked !== 'none') status = marked;
           else if (leaveDateSet.has(dateStr)) status = 'leave';
-          else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
+           else if (assignSchedules.length > 0 && !isScheduledOn(dateStr, dayName)) status = 'holiday';
           return { date: dateStr, status };
         });
 
@@ -386,7 +392,7 @@ export async function saveUnpaidPayout(
 export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<SalaryCalcInput, 'editAmounts' | 'editRoleAmounts'>> {
   const { monthStart, monthEnd, fullMonthEnd } = salaryMonthBounds(salaryMonth);
 
-  const [roleRows, staffSalariesRes, assignmentsRes, attendanceRes, leaveRes, extraRes, adjRes, payoutsRes, invoicesRes, schedulesRes] =
+  const [roleRows, staffSalariesRes, assignmentsRes, attendanceRes, leaveRes, extraRes, adjRes, payoutsRes, invoicesRes, schedulesRes, periodsRes] =
     await Promise.all([
       supabase.from('user_roles').select('user_id').eq('role', 'teacher'),
       supabase.from('staff_salaries').select('*').lte('effective_from', fullMonthEnd).or(`effective_to.is.null,effective_to.gte.${monthStart}`),
@@ -401,6 +407,7 @@ export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<
       supabase.from('salary_payouts').select('*').eq('salary_month', salaryMonth).or('is_archived.is.null,is_archived.eq.false'),
       supabase.from('fee_invoices').select('id, student_id, assignment_id, status, paid_at').is('voided_at', null).eq('is_archived', false).eq('billing_month', salaryMonth),
       supabase.from('schedules').select('assignment_id, day_of_week').eq('is_active', true),
+      (supabase as any).from('schedule_periods').select('assignment_id, day_of_week, effective_from, effective_to'),
     ]);
 
   const assignmentsWithPayouts = await withAssignmentPayouts(((assignmentsRes.data || []) as any[]));
@@ -425,6 +432,7 @@ export async function fetchSalaryMonthInputs(salaryMonth: string): Promise<Omit<
     existingPayouts: payoutsRes.data || [],
     feeInvoices: invoicesRes.data || [],
     schedules: schedulesRes.data || [],
+    schedulePeriods: periodsRes.data || [],
     staffSalaries,
     salaryMonth,
   };
