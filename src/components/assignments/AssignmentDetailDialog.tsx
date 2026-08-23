@@ -271,6 +271,55 @@ function DetailsPanel({ data }: { data: any }) {
   );
 }
 
+/**
+ * Full teacher lineage for this student + subject. A transfer closes one assignment
+ * row and opens a new one, so earlier periods would otherwise be invisible here.
+ */
+function LineagePanel({ data }: { data: any }) {
+  const { lineage = [], a, pMap } = data;
+  if (!lineage || lineage.length <= 1) return null;
+  return (
+    <section className="rounded-xl border bg-card p-5 space-y-3">
+      <header className="flex items-center gap-2">
+        <History className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Teacher Timeline ({lineage.length})
+        </h3>
+      </header>
+      <ol className="space-y-2">
+        {lineage.map((r: any) => {
+          const rule = getStatusRule(r.status as any);
+          const isCurrent = r.id === a.id;
+          return (
+            <li
+              key={r.id}
+              className={cn(
+                'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border p-3 text-sm',
+                isCurrent ? 'border-primary/40 bg-primary/5' : 'bg-muted/10',
+              )}
+            >
+              <span className={cn('h-2 w-2 rounded-full shrink-0', rule.dotClass)} />
+              <span className="font-medium">{pMap.get(r.teacher_id) || 'Unknown teacher'}</span>
+              <span className="text-xs text-muted-foreground">
+                {r.effective_from_date || r.start_date ? formatDisplayDate(r.effective_from_date || r.start_date) : '—'}
+                {' → '}
+                {r.effective_to_date ? formatDisplayDate(r.effective_to_date) : 'ongoing'}
+              </span>
+              <Badge variant="outline" className="text-[10px]">{rule.label}</Badge>
+              {r.is_temporary && <Badge variant="outline" className="text-[10px]">Temporary</Badge>}
+              {isCurrent && <Badge variant="outline" className="text-[10px]">Viewing</Badge>}
+              {r.status_change_reason && (
+                <span className="basis-full text-xs italic text-muted-foreground">{r.status_change_reason}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+
 function HistoryPanel({ data }: { data: any }) {
   const { history, audit, pMap, sMap } = data;
   const FIELD_LABELS: Record<string, string> = {
