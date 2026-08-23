@@ -321,7 +321,18 @@ function LineagePanel({ data }: { data: any }) {
 
 
 function HistoryPanel({ data }: { data: any }) {
-  const { history, audit, pMap, sMap } = data;
+  const { history, audit, pMap, sMap, a, lineage = [] } = data;
+  const teacherOfRow = (rowAssignmentId: string) => {
+    const row = lineage.find((r: any) => r.id === rowAssignmentId);
+    return row ? pMap.get(row.teacher_id) : null;
+  };
+  const OtherRecordBadge = ({ rowAssignmentId }: { rowAssignmentId: string }) =>
+    rowAssignmentId && rowAssignmentId !== a.id ? (
+      <Badge variant="outline" className="ml-2 text-[10px] font-normal">
+        {teacherOfRow(rowAssignmentId) || 'earlier record'}
+      </Badge>
+    ) : null;
+
   const FIELD_LABELS: Record<string, string> = {
     status: 'Status',
     payout_amount: 'Payout',
