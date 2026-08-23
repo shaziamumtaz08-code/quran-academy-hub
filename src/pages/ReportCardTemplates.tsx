@@ -391,7 +391,7 @@ export default function ReportCardTemplates() {
                   <CardContent className="space-y-5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <Badge variant="outline" className="badge-pill capitalize border-border/50">
-                        {template.tenure}
+                        {template.tenure === 'one_time' ? 'One time' : template.tenure}
                       </Badge>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Layers className="h-4 w-4 text-accent" />

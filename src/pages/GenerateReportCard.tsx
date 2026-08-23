@@ -512,7 +512,7 @@ export default function GenerateReportCard() {
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{selectedTemplate.subject?.name || 'Any subject'}</Badge>
                     <Badge variant="secondary" className="capitalize">
-                      {selectedTemplate.tenure}
+                      {selectedTemplate.tenure === 'one_time' ? 'One time' : selectedTemplate.tenure}
                     </Badge>
                     <Badge variant="outline">
                       Total Max: {totals.totalMax}

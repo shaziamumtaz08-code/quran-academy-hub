@@ -13995,7 +13995,7 @@ export type Database = {
         | "prerequisite_course"
         | "min_attendance"
         | "must_pass_exam"
-      exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
+      exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly" | "one_time"
       grading_style: "numeric" | "rubric"
       guardian_type_enum: "none" | "parent" | "guardian" | "emergency_contact"
       invoice_status:
@@ -14230,7 +14230,7 @@ export const Constants = {
         "min_attendance",
         "must_pass_exam",
       ],
-      exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
+      exam_tenure: ["weekly", "monthly", "quarterly", "yearly", "one_time"],
       grading_style: ["numeric", "rubric"],
       guardian_type_enum: ["none", "parent", "guardian", "emergency_contact"],
       invoice_status: [

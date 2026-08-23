@@ -1,0 +1,2 @@
+REVOKE SELECT (bank_name, bank_account_number, bank_iban, gov_id_type, gov_id_number, gov_id_doc_url, medical_conditions, medical_notes, emergency_contact_phone, father_contact, mother_contact, date_of_birth) ON public.profiles FROM authenticated;
+REVOKE SELECT (bank_name, bank_account_number, bank_iban, gov_id_type, gov_id_number, gov_id_doc_url, medical_conditions, medical_notes, emergency_contact_phone, father_contact, mother_contact, date_of_birth) ON public.profiles FROM anon;
