@@ -1086,7 +1086,7 @@ export function UnifiedAttendanceForm({
           .eq('id', activeRecord.id);
         if (error) throw error;
         savedId = activeRecord.id;
-      } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
+      } else if (isLeave && isAdminUser && leaveEndDate && leaveEndDate > classDate) {
         // Multi-day leave — expand into one row per date (cap 31 days)
         const start = parseISO(classDate);
         const end = parseISO(leaveEndDate);
@@ -1829,22 +1829,7 @@ export function UnifiedAttendanceForm({
                 onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
               />
 
-              {/* Add lesson details toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium text-foreground">Add lesson details</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    {lessonDetailsOpen ? 'Surah, ayah, baab, units, etc.' : 'Tap to enter the detailed lesson range'}
-                  </p>
-                </div>
-                <Switch
-                  checked={lessonDetailsOpen}
-                  onCheckedChange={setLessonDetailsOpen}
-                  aria-label="Add lesson details"
-                />
-              </div>
-
-              {lessonDetailsOpen && currentSubjectType === 'qaida' && (
+              {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
                   onLessonNumberChange={setLessonNumber}
@@ -1865,7 +1850,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'hifz' && (
+              {currentSubjectType === 'hifz' && (
                 <HifzAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1909,7 +1894,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'nazra' && (
+              {currentSubjectType === 'nazra' && (
                 <NazraAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1945,7 +1930,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'academic' && (
+              {currentSubjectType === 'academic' && (
                 <AcademicAttendanceFields
                   lessonTopic={academicLessonTopic}
                   onLessonTopicChange={setAcademicLessonTopic}
