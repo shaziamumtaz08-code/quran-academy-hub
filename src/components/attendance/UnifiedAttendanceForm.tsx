@@ -1496,7 +1496,7 @@ export function UnifiedAttendanceForm({
 
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
-          <div className="bg-muted rounded-2xl p-3 space-y-2">
+          <div className="bg-background border border-border shadow-sm rounded-2xl p-3 space-y-2">
             <Label className="text-foreground text-xs">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
               <SelectTrigger className="">
@@ -1572,7 +1572,7 @@ export function UnifiedAttendanceForm({
 
 
           {/* ── Class details card ──────────────────────────────────── */}
-          <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+          <section className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class details</p>
               {canSwitchTz && (
@@ -1685,7 +1685,7 @@ export function UnifiedAttendanceForm({
             </div>
           ) : (
             // Variant B — reschedule statuses: contained block, "Originally scheduled" first, "Actually conducted on" second
-            <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-4">
+            <div className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
               {/* Info banner (blue, not amber — reschedule is routine) */}
               <div className="flex items-start gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -1795,7 +1795,7 @@ export function UnifiedAttendanceForm({
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-muted rounded-lg">
+            <div className="space-y-4 p-4 bg-background border border-border rounded-2xl shadow-sm">
               {/* Leave dates — a multi-day range is an admin-only action */}
               {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
                 <div className={cn('grid gap-3', isAdminUser ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
@@ -1889,7 +1889,7 @@ export function UnifiedAttendanceForm({
 
           {/* ── Lesson card ─────────────────────────────────────────── */}
           {lessonRequired && (!needsStudent || !!student.id) && (
-            <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
+            <section className="rounded-2xl border border-border bg-background shadow-sm p-3 sm:p-4 space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lesson</p>
 
               {/* Lesson Today: New vs Same as last class + reason */}

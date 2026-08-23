@@ -58,7 +58,7 @@ export function LessonTypeSection({
   const visibleReasons = REPEAT_REASONS.filter((r) => !r.femaleOnly || isFemale);
 
   return (
-    <div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-background shadow-sm p-4 space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-semibold text-foreground">
           Lesson Today <span className="text-destructive">*</span>
