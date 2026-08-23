@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { SegmentedControl } from './SegmentedControl';
-import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic } from 'lucide-react';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic, Paperclip } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -1953,8 +1953,8 @@ export function UnifiedAttendanceForm({
 
           )}
 
-          {/* One shared remarks field with inline voice-note expansion */}
-          <div className="space-y-2 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+          {/* Remarks — one field, with voice note and file attachment inline */}
+          <div className="space-y-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -1963,18 +1963,61 @@ export function UnifiedAttendanceForm({
                 aria-label="Record a voice note"
                 aria-expanded={voiceRecorderOpen}
                 onClick={() => setVoiceRecorderOpen((open) => !open)}
-                className="h-8 w-8 shrink-0 rounded-full"
+                className="h-9 w-9 shrink-0 rounded-full shadow-sm active:scale-95"
               >
                 <Mic className="h-4 w-4" />
               </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Attach an image, PDF or audio file"
+                disabled={attachmentUploading}
+                onClick={() => attachmentInputRef.current?.click()}
+                className="h-9 w-9 shrink-0 rounded-full shadow-sm active:scale-95"
+              >
+                {attachmentUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </Button>
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                accept="image/jpeg,image/png,application/pdf,audio/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadAttachment(file);
+                  e.target.value = '';
+                }}
+              />
               <Input
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Remarks (optional)"
                 aria-label="Remarks"
-                className="h-9"
+                className="h-10 rounded-xl"
               />
             </div>
+            {attachmentUrl && (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-2.5 py-1.5">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <a href={attachmentUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-xs text-foreground underline">
+                  {attachmentName || 'Attachment'}
+                </a>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Remove attachment"
+                  onClick={() => { setAttachmentUrl(null); setAttachmentName(''); }}
+                  className="h-6 w-6 text-destructive"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Attach a photo, PDF or an audio file (e.g. a saved WhatsApp voice note), or record one here.
+            </p>
             {voiceRecorderOpen && (
               <VoiceNoteRecorder
                 onUploadComplete={setVoiceNoteUrl}
