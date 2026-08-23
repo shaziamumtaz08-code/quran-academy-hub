@@ -648,27 +648,29 @@ export function UnifiedAttendanceForm({
   });
   const studentTz = student.timezone || fetchedStudentTz || null;
 
-  // Get scheduled days array.
-  // A slot can fall on a different calendar day on the teacher's clock than on the
-  // student's (e.g. student Fri 17:00 Chicago = teacher Sat 04:00 PKT). We therefore
-  // accept BOTH the stored day and the day it shifts to across the timezone gap, so a
-  // cross-midnight class is never missing from the date list.
+  // Map each schedule row to the weekday it falls on *on the teacher's clock*.
+  // `day_of_week` is stored student-side, so a slot such as student Fri 17:00 Chicago
+  // is actually Sat 04:00 PKT for the teacher. Class dates in this form are teacher-local,
+  // so only the shifted (teacher-side) weekday is eligible — never both.
   const scheduleLoaded = scheduleData !== undefined;
-  const scheduledDays = useMemo(() => {
-    if (!scheduleData) return [];
-    const days = new Set<string>();
+  const teacherDayRows = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof scheduleData>[number]>();
+    if (!scheduleData) return map;
     for (const s of scheduleData) {
       const base = s.day_of_week.toLowerCase();
-      days.add(base);
       const idx = DAY_NAMES.indexOf(base);
-      if (idx < 0 || !studentTz || studentTz === effectiveTeacherTz) continue;
+      let dayName = base;
       const stTime = (s.student_local_time || '').slice(0, 5);
-      if (!stTime) continue;
-      const { dayOffset } = convertTimeBetweenTimezonesWithDay(stTime, studentTz, effectiveTeacherTz);
-      if (dayOffset !== 0) days.add(DAY_NAMES[(idx + dayOffset + 7) % 7]);
+      if (idx >= 0 && studentTz && studentTz !== effectiveTeacherTz && stTime) {
+        const { dayOffset } = convertTimeBetweenTimezonesWithDay(stTime, studentTz, effectiveTeacherTz);
+        if (dayOffset !== 0) dayName = DAY_NAMES[(idx + dayOffset + 7) % 7];
+      }
+      if (!map.has(dayName)) map.set(dayName, s);
     }
-    return Array.from(days);
+    return map;
   }, [scheduleData, studentTz, effectiveTeacherTz]);
+  const scheduledDays = useMemo(() => Array.from(teacherDayRows.keys()), [teacherDayRows]);
+
   /** Student has no active weekly slot at all — every day is an off day for them. */
   const hasNoSchedule = scheduleLoaded && scheduledDays.length === 0;
 
