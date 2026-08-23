@@ -181,6 +181,15 @@ export function SabaqSection({
   }, [markerType, rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber, quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber, juzFrom, juzTo, ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber]);
 
   const normalizedPreview = formatLessonSegments([primarySegment, ...extraSegments]);
+  const previewTotal = totalCalculation.value > 0
+    ? markerType === 'ayah'
+      ? `${totalCalculation.value} ${totalCalculation.value === 1 ? 'verse' : 'verses'}`
+      : markerType === 'juz'
+        ? `${totalCalculation.value} Juz total`
+        : markerType === 'ruku'
+          ? `${totalCalculation.value} ${totalCalculation.value === 1 ? 'Ruku' : 'Rukus'} total`
+          : `${totalCalculation.value} ${totalCalculation.value === 1 ? 'quarter' : 'quarters'} total`
+    : '';
 
   const updateSegment = (idx: number, seg: LessonSegment) => {
     const next = [...extraSegments];
@@ -521,11 +530,11 @@ export function SabaqSection({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Leave blank, or match From Juz, to record a single Juz.
+              </p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Use whole-Juz marking for complete Juz or a range of Juz.
-          </p>
         </div>
       )}
 
@@ -559,7 +568,9 @@ export function SabaqSection({
       {normalizedPreview && (
         <div className="rounded-xl border border-teal-600/30 bg-teal-600/5 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Will be recorded as</p>
-          <p className="text-sm font-semibold text-foreground">{normalizedPreview}</p>
+          <p className="text-sm font-semibold text-foreground">
+            {normalizedPreview}{previewTotal ? ` · ${previewTotal}` : ''}
+          </p>
         </div>
       )}
     </div>
