@@ -99,7 +99,11 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         }
       });
 
-      const allProfileIds = Array.from(new Set([...teacherIds, ...Array.from(auditPersonIds)]));
+      const allProfileIds = Array.from(new Set([
+        ...teacherIds,
+        ...Array.from(auditPersonIds),
+        ...lineage.map((r: any) => r.teacher_id).filter(Boolean),
+      ]));
       const allSubjectIds = Array.from(new Set([...subjectIds, ...Array.from(auditSubjectIds)]));
 
       const [profilesRes, subjectsRes] = await Promise.all([
@@ -123,6 +127,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         history: histRows,
         schedules: (schedulesRes.data as any[]) || [],
         audit: auditRows,
+        lineage,
         pMap,
         sMap,
       };
