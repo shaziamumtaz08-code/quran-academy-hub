@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Country } from 'country-state-city';
 import {
   BriefcaseBusiness, CheckCircle2, Landmark, Loader2, MapPin, Send, ShieldCheck, User, Video,
@@ -15,6 +16,7 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COUNTRIES = Country.getAllCountries();
 const SUBJECTS = ['Quran Recitation', 'Tajweed', 'Quran Memorization', 'Qaida (Beginners)', 'Arabic Language', 'Quranic Arabic', 'Tafseer', 'Islamic Studies'];
@@ -77,6 +79,10 @@ function Field({
 }
 
 export default function TeacherRegistration() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdminEntry = location.pathname.startsWith('/people/add/');
   const [form, setForm] = useState<Form>(initial);
   const [submitted, setSubmitted] = useState(false);
   const set = (patch: Partial<Form>) => setForm(current => ({ ...current, ...patch }));
@@ -106,7 +112,7 @@ export default function TeacherRegistration() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('family_registrations').insert({
+      const { error } = await (supabase.from('family_registrations') as any).insert({
         parent_name: form.fullName.trim(),
         relationship: 'Teacher applicant',
         email: form.email.trim(),
@@ -119,6 +125,8 @@ export default function TeacherRegistration() {
         preferred_contact: 'WhatsApp',
         registration_type: 'teacher',
         status: 'pending',
+        submission_source: isAdminEntry ? 'admin' : 'public',
+        submitted_by: isAdminEntry ? user?.id ?? null : null,
         source_url: window.location.href,
         children: [],
         notes: [
@@ -173,13 +181,13 @@ export default function TeacherRegistration() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/15 text-accent ring-1 ring-accent/30">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">Teaching application submitted</h1>
+             <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">{isAdminEntry ? 'Teacher draft added for review' : 'Teaching application submitted'}</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              JazakAllah Khair, {form.fullName.split(' ')[0]}. Our academic team will review your teaching profile,
-              qualifications and availability. If shortlisted, we will write to you at{' '}
-              <span className="font-medium text-foreground">{form.email}</span> to arrange a short interview and
-              a sample teaching session. Please allow a few working days for a response.
+               {isAdminEntry
+                 ? 'This record now follows the same review, identity matching and approval path as an online teacher application. The permanent person ID and teacher role tag are assigned at approval.'
+                 : <>JazakAllah Khair, {form.fullName.split(' ')[0]}. Our academic team will review your teaching profile, qualifications and availability. If shortlisted, we will write to you at <span className="font-medium text-foreground">{form.email}</span> to arrange a short interview and a sample teaching session.</>}
             </p>
+             {isAdminEntry && <Button className="mt-5" onClick={() => navigate('/people?view=registrations')}>Return to registrations</Button>}
 
           </section>
         </main>
@@ -389,7 +397,7 @@ export default function TeacherRegistration() {
             className="h-12 w-full gap-2 rounded-xl text-base font-semibold sm:w-auto sm:px-8"
           >
             {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Submit application
+             {isAdminEntry ? 'Save for review' : 'Submit application'}
           </Button>
         </div>
       </div>

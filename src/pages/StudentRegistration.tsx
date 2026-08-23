@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Country } from 'country-state-city';
 import {
   BookOpen, CheckCircle2, GraduationCap, Loader2, MapPin, Plus, Send,
@@ -16,6 +17,7 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COUNTRIES = Country.getAllCountries();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,6 +90,10 @@ function Field({
 }
 
 export default function StudentRegistration() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdminEntry = location.pathname.startsWith('/people/add/');
   const [home, setHome] = useState<Household>(initialHousehold);
   const [students, setStudents] = useState<Student[]>([emptyStudent()]);
   const [submitted, setSubmitted] = useState(false);
@@ -163,6 +169,8 @@ export default function StudentRegistration() {
 
       const rows = students.map((student) => ({
         ...guardian,
+        submission_source: isAdminEntry ? 'admin' : 'public',
+        submitted_by: isAdminEntry ? user?.id ?? null : null,
         student_name: student.fullName.trim(),
         children: [{
           name: student.fullName.trim(),
@@ -186,7 +194,7 @@ export default function StudentRegistration() {
 
       }));
 
-      const { error } = await supabase.from('family_registrations').insert(rows);
+      const { error } = await (supabase.from('family_registrations') as any).insert(rows);
       if (error) throw error;
       await recordPolicyAcceptance({
         audience: 'student',
@@ -206,11 +214,13 @@ export default function StudentRegistration() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/15 text-accent ring-1 ring-accent/30">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">Registration received</h1>
+             <h1 className="mt-5 font-heading text-2xl font-semibold text-foreground">{isAdminEntry ? 'Student draft added for review' : 'Registration received'}</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              JazakAllah Khair. We have registered {students.length} student{students.length > 1 ? 's' : ''}.
-              Our admissions team will review the details and contact you with class timings and portal access.
+               {isAdminEntry
+                 ? `${students.length} student record${students.length > 1 ? 's are' : ' is'} now in the same approval queue as online registrations. Permanent IDs, role tags and account access are created only when approved.`
+                 : `JazakAllah Khair. We have registered ${students.length} student${students.length > 1 ? 's' : ''}. Our admissions team will review the details and contact you with class timings and portal access.`}
             </p>
+             {isAdminEntry && <Button className="mt-5" onClick={() => navigate('/people?view=registrations')}>Return to registrations</Button>}
           </section>
         </main>
       </div>
@@ -472,7 +482,7 @@ export default function StudentRegistration() {
             className="h-12 w-full gap-2 rounded-xl text-base font-semibold sm:w-auto sm:px-8"
           >
             {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Submit enrolment
+             {isAdminEntry ? 'Save for review' : 'Submit enrolment'}
           </Button>
         </div>
       </div>

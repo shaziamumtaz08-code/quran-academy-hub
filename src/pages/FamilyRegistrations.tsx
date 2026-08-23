@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Copy, Eye, GraduationCap, Link2, Search, Users } from 'lucide-react';
+import { Copy, Eye, GraduationCap, Link2, Plus, Search, Users } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -57,9 +57,17 @@ export default function FamilyRegistrations() {
           <h1 className="text-2xl font-bold">Applications &amp; registrations</h1>
           <p className="text-sm text-muted-foreground">Every submitted student and teacher form. Open a row to review the full profile before approving.</p>
         </div>
-        <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Link copied', description: publicLink }); }}>
-          <Copy className="h-4 w-4 mr-1" />Copy student form link
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Link copied', description: publicLink }); }}>
+            <Copy className="h-4 w-4 mr-1" />Copy student form link
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/people/add/teacher')}>
+            <GraduationCap className="h-4 w-4 mr-1" />Add teacher manually
+          </Button>
+          <Button onClick={() => navigate('/people/add/student')}>
+            <Plus className="h-4 w-4 mr-1" />Add student manually
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -136,6 +144,7 @@ export default function FamilyRegistrations() {
                           {isTeacher ? 'Teacher' : 'Student'}
                         </Badge>
                         {row.lead_id && <Badge variant="secondary" className="ml-1.5 gap-1"><Link2 className="h-3 w-3" />Enquiry</Badge>}
+                        {(row as any).submission_source === 'admin' && <Badge variant="secondary" className="ml-1.5">Admin entry</Badge>}
                       </TableCell>
                       <TableCell className="py-3 text-sm">
                         <p className="truncate max-w-[200px]">{row.email}</p>
