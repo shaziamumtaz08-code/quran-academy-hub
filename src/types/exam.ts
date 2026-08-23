@@ -1,4 +1,4 @@
-export type ExamTenure = 'weekly' | 'monthly' | 'quarterly';
+export type ExamTenure = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one_time';
 
 export interface Subject {
   id: string;

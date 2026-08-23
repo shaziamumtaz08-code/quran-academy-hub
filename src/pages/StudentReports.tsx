@@ -556,6 +556,7 @@ export default function StudentReports() {
                     <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="quarterly">Quarterly</SelectItem>
                     <SelectItem value="yearly">Yearly</SelectItem>
+                     <SelectItem value="one_time">One time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
