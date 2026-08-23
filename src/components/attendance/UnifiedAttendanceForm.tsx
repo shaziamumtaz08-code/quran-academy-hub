@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { SegmentedControl } from './SegmentedControl';
-import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic } from 'lucide-react';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic, Paperclip } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -272,6 +272,38 @@ export function UnifiedAttendanceForm({
   const [remarks, setRemarks] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [attachmentName, setAttachmentName] = useState<string>('');
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const attachmentInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  /** Upload a remark attachment (jpeg/png/pdf/audio) and keep its public URL. */
+  const uploadAttachment = async (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowed.includes(file.type) && !file.type.startsWith('audio/')) {
+      toast({ title: 'Unsupported file', description: 'Attach a JPEG, PNG, PDF or audio file.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum attachment size is 15 MB.', variant: 'destructive' });
+      return;
+    }
+    setAttachmentUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `attachments/${student.id || 'unknown'}/${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from('voice-notes').upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from('voice-notes').getPublicUrl(data.path);
+      setAttachmentUrl(pub.publicUrl);
+      setAttachmentName(file.name);
+      toast({ title: 'Attachment added' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err?.message, variant: 'destructive' });
+    } finally {
+      setAttachmentUploading(false);
+    }
+  };
   
   // Reason fields
   const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
@@ -339,7 +371,7 @@ export function UnifiedAttendanceForm({
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
   const [manzilAnswered, setManzilAnswered] = useState(false);
   // Detailed Qaida/Hifz/Nazra marker fields are collapsed by default
-  const [lessonDetailsOpen, setLessonDetailsOpen] = useState(false);
+  const [lessonDetailsOpen, setLessonDetailsOpen] = useState(true);
 
   // Resolve the authoritative assignment. Besides repairing missing caller data,
   // this gives schedule lookup a direct assignment_id and avoids fragile embedded
@@ -826,6 +858,8 @@ export function UnifiedAttendanceForm({
       setDuration('30');
       setRemarks('');
       setVoiceNoteUrl(null);
+      setAttachmentUrl(null);
+      setAttachmentName('');
       setReasonCategory('');
       setReasonText('');
       setRescheduleDate('');
@@ -860,7 +894,7 @@ export function UnifiedAttendanceForm({
       setRepeatReason('');
       setRepeatReasonNote('');
       setManzilAnswered(false);
-      setLessonDetailsOpen(false);
+      setLessonDetailsOpen(true);
       setPickedStudentId('');
       return;
     }
@@ -874,6 +908,8 @@ export function UnifiedAttendanceForm({
       setDuration(String(r.duration_minutes ?? 30));
       setRemarks(r.reason ?? '');
       setVoiceNoteUrl(r.voice_note_url ?? null);
+      setAttachmentUrl((r as any).attachment_url ?? null);
+      setAttachmentName((r as any).attachment_url ? 'Attachment' : '');
       setReasonCategory((r.reason_category as ReasonCategory) || '');
       setReasonText(r.reason_text ?? '');
       setRescheduleDate(r.reschedule_date ?? '');
@@ -1048,6 +1084,7 @@ export function UnifiedAttendanceForm({
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: currentSubjectType === 'hifz' ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
+        attachment_url: attachmentUrl || null,
         lesson_type: lessonRequired ? (lessonType || null) : null,
         // Free-text replaces the dropdown — keep `repeat_reason` set to 'other'
         // for back-compat with existing analytics queries; canonical content lives in `repeat_reason_note`.
@@ -1082,7 +1119,7 @@ export function UnifiedAttendanceForm({
           .eq('id', activeRecord.id);
         if (error) throw error;
         savedId = activeRecord.id;
-      } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
+      } else if (isLeave && isAdminUser && leaveEndDate && leaveEndDate > classDate) {
         // Multi-day leave — expand into one row per date (cap 31 days)
         const start = parseISO(classDate);
         const end = parseISO(leaveEndDate);
@@ -1270,11 +1307,12 @@ export function UnifiedAttendanceForm({
   // but the teacher always sees exactly what is missing instead of a dead grey button.
   const blockingReasons = useMemo(() => {
     const reasons: string[] = [];
+    // Nothing else is meaningful until a student is chosen.
+    if (needsStudent && !student.id) return ['Select a student to continue.'];
     if (!classDate) reasons.push('Pick the class date.');
     // Leave statuses don't require a slot time — they cover whole days
     if (!isLeaveStatus && !classTime) reasons.push('Set the class time for this slot.');
     if (isFutureDate && !canAssignFutureDate) reasons.push('This date is in the future — only leave can be recorded ahead of time.');
-    if (needsStudent && !student.id) reasons.push('No student selected for this record.');
     // Leave can be marked even when the day isn't scheduled or already has a record
     if (!isLeaveStatus && hasDuplicateAttendance) {
       reasons.push(`Attendance already exists for ${student.full_name} on ${classDate ? format(parseISO(classDate), 'dd MMM yyyy') : 'this date'}${classTime ? ` at ${classTime.slice(0, 5)}` : ''} — edit that record instead, or change the time.`);
@@ -1498,39 +1536,6 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* ── Status card ─────────────────────────────────────────── */}
-          <section className="space-y-3">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Status <span className="text-destructive">*</span>
-            </Label>
-            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {STATUS_TILES.map((opt) => {
-                const active = selectedStatus === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => changeStatus(opt.value)}
-                    className={cn(
-                      'flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center shadow-sm transition-all hover:shadow-md active:scale-95',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      active
-                        ? opt.activeClass
-                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
-                    )}
-                  >
-                    {opt.icon}
-                    <span className="text-xs font-medium leading-tight">{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {statusDetailCopy[selectedStatus] && (
-              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
-            )}
-          </section>
 
           {/* ── Class details card ──────────────────────────────────── */}
           <section className="rounded-2xl border border-border bg-muted/40 p-3 sm:p-4 space-y-4">
@@ -1566,67 +1571,80 @@ export function UnifiedAttendanceForm({
 
           {/* Adaptive Date Block ---------------------------------------- */}
           {!requiresReschedule(selectedStatus) ? (
-            // Variant A — non-reschedule statuses: single Date + Scheduled Time row
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-foreground">
-                  Class Date ({activeTzAbbr}) <span className="text-destructive">*</span>
+            // Variant A — non-reschedule statuses: Date · Time · Duration in one row
+            <div className={cn('grid gap-3', isLeaveStatus ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3')}>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Date ({activeTzAbbr}) <span className="text-destructive">*</span>
                 </Label>
                 {!isEdit && !isLeaveStatus && selectedStatus !== 'holiday' && eligibleDates.length > 0 ? (
-                  <>
-                    <Select value={classDate} onValueChange={setClassDate}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pick a class day" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-64">
-                        {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => {
-                          const sc = viewingStudentTz ? toStudentClock(d, classTime) : null;
-                          return (
-                            <SelectItem key={d} value={d}>
-                              {sc?.dateLabel || format(parseISO(d), 'EEE, dd MMM yyyy')}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      Only this student's scheduled class days are listed
-                      {canSwitchTz ? `, shown on the ${viewingStudentTz ? "student's" : "teacher's"} clock.` : '.'}
-                    </p>
-                  </>
+                  <Select value={classDate} onValueChange={setClassDate}>
+                    <SelectTrigger className="h-11 rounded-xl bg-background shadow-sm">
+                      <SelectValue placeholder="Pick a class day" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {(eligibleDates.includes(classDate) ? eligibleDates : [classDate, ...eligibleDates]).map((d) => {
+                        const sc = viewingStudentTz ? toStudentClock(d, classTime) : null;
+                        return (
+                          <SelectItem key={d} value={d}>
+                            {sc?.dateLabel || format(parseISO(d), 'EEE, dd MMM yyyy')}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     type="date"
                     value={classDate}
                     onChange={(e) => setClassDate(e.target.value)}
                     max={isLeaveStatus ? undefined : format(new Date(), 'yyyy-MM-dd')}
-                    className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                    className="h-11 rounded-xl bg-background shadow-sm"
                   />
                 )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-foreground">
-                  Scheduled Time ({activeTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Time ({activeTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
                 </Label>
                 <Input
                   type="time"
                   value={viewingStudentTz ? (studentClock?.time || '') : classTime}
                   onChange={(e) => setClassTime(viewingStudentTz ? toTeacherClock(e.target.value) : e.target.value)}
                   placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
-                  className="[&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="h-11 rounded-xl bg-background shadow-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+              </div>
+              {!isLeaveStatus && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Duration (min)</Label>
+                  <Input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+                    disabled={!requiresReschedule(selectedStatus) && !isEdit}
+                    className={cn(
+                      'h-11 rounded-xl bg-background shadow-sm',
+                      duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
+                      !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
+                    )}
+                  />
+                </div>
+              )}
+              <div className="sm:col-span-3 space-y-0.5">
+                {autoFilledSlot && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {autoFilledSlot.isExactDay
+                      ? 'Date, time and duration are taken from the weekly schedule.'
+                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
+                  </p>
+                )}
                 {canSwitchTz && classTime && (
                   <p className="text-[11px] text-muted-foreground">
                     {viewingStudentTz
                       ? `Teacher: ${format(parseISO(classDate), 'EEE, dd MMM')} · ${classTime.slice(0, 5)} ${teacherTzAbbr}`
                       : `Student: ${studentClock?.dateLabel?.replace(/\s\d{4}$/, '') || ''} · ${studentClock?.time} ${studentTzAbbr}`}
-                  </p>
-                )}
-                {autoFilledSlot && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {autoFilledSlot.isExactDay
-                      ? 'Auto-filled from the weekly schedule. Edit only if the class ran at a different time.'
-                      : 'No slot on this day — filled with the usual class time. Adjust if needed.'}
                   </p>
                 )}
               </div>
@@ -1703,40 +1721,65 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Duration — fixed position. Hidden for leave (irrelevant for a day-off). */}
-          {!isLeaveStatus && (
-            <div className="space-y-2">
-              <Label className="text-foreground">Duration (minutes)</Label>
-              <Input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                readOnly={!requiresReschedule(selectedStatus) && !isEdit}
-                disabled={!requiresReschedule(selectedStatus) && !isEdit}
-                className={cn(
-                  duration !== '' ? 'text-foreground font-medium opacity-100' : 'text-muted-foreground',
-                  !(requiresReschedule(selectedStatus) || isEdit) && 'bg-muted cursor-not-allowed disabled:opacity-100',
-                )}
-              />
+          </section>
+
+          {/* ── Status card ─────────────────────────────────────────── */}
+          <section className="space-y-3">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Status <span className="text-destructive">*</span>
+            </Label>
+            <div role="radiogroup" aria-label="Attendance status" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {STATUS_TILES.map((opt) => {
+                const active = selectedStatus === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => changeStatus(opt.value)}
+                    className={cn(
+                      'flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2 text-center transition-all',
+                      'shadow-[0_2px_0_0_hsl(var(--border)),0_4px_10px_-4px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_hsl(var(--border)),0_10px_18px_-8px_rgba(0,0,0,0.3)] active:translate-y-0.5 active:shadow-none',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? opt.activeClass
+                        : 'border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
+                    )}
+                  >
+                    {opt.icon}
+                    <span className="text-xs font-semibold leading-tight">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
+            {statusDetailCopy[selectedStatus] && (
+              <p className="text-xs text-muted-foreground">{statusDetailCopy[selectedStatus]}</p>
+            )}
           </section>
 
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
             <div className="space-y-4 p-4 bg-muted rounded-lg">
-              {/* Leave date range — for student_leave / teacher_leave */}
+              {/* Leave dates — a multi-day range is an admin-only action */}
               {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={cn('grid gap-3', isAdminUser ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
                   <div className="space-y-1.5">
-                    <Label className="text-foreground text-xs">Leave From</Label>
-                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                    <Label className="text-foreground text-xs">{isAdminUser ? 'Leave From' : 'Leave date'}</Label>
+                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} className="h-11 rounded-xl bg-background" />
+                    {!isAdminUser && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Teachers can record one day of leave. Ask an admin to record a multi-day leave.
+                      </p>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-foreground text-xs">Leave To</Label>
-                    <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} />
-                  </div>
+                  {isAdminUser && (
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground text-xs">Leave To</Label>
+                      <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} className="h-11 rounded-xl bg-background" />
+                    </div>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
@@ -1819,22 +1862,7 @@ export function UnifiedAttendanceForm({
                 onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
               />
 
-              {/* Add lesson details toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium text-foreground">Add lesson details</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    {lessonDetailsOpen ? 'Surah, ayah, baab, units, etc.' : 'Tap to enter the detailed lesson range'}
-                  </p>
-                </div>
-                <Switch
-                  checked={lessonDetailsOpen}
-                  onCheckedChange={setLessonDetailsOpen}
-                  aria-label="Add lesson details"
-                />
-              </div>
-
-              {lessonDetailsOpen && currentSubjectType === 'qaida' && (
+              {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
                   onLessonNumberChange={setLessonNumber}
@@ -1855,7 +1883,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'hifz' && (
+              {currentSubjectType === 'hifz' && (
                 <HifzAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1899,7 +1927,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'nazra' && (
+              {currentSubjectType === 'nazra' && (
                 <NazraAttendanceFields
                   markerType={markerType}
                   onMarkerTypeChange={setMarkerType}
@@ -1935,7 +1963,7 @@ export function UnifiedAttendanceForm({
                 />
               )}
 
-              {lessonDetailsOpen && currentSubjectType === 'academic' && (
+              {currentSubjectType === 'academic' && (
                 <AcademicAttendanceFields
                   lessonTopic={academicLessonTopic}
                   onLessonTopicChange={setAcademicLessonTopic}
@@ -1958,8 +1986,8 @@ export function UnifiedAttendanceForm({
 
           )}
 
-          {/* One shared remarks field with inline voice-note expansion */}
-          <div className="space-y-2 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+          {/* Remarks — one field, with voice note and file attachment inline */}
+          <div className="space-y-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -1968,18 +1996,61 @@ export function UnifiedAttendanceForm({
                 aria-label="Record a voice note"
                 aria-expanded={voiceRecorderOpen}
                 onClick={() => setVoiceRecorderOpen((open) => !open)}
-                className="h-8 w-8 shrink-0 rounded-full"
+                className="h-9 w-9 shrink-0 rounded-full shadow-sm active:scale-95"
               >
                 <Mic className="h-4 w-4" />
               </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Attach an image, PDF or audio file"
+                disabled={attachmentUploading}
+                onClick={() => attachmentInputRef.current?.click()}
+                className="h-9 w-9 shrink-0 rounded-full shadow-sm active:scale-95"
+              >
+                {attachmentUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </Button>
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                accept="image/jpeg,image/png,application/pdf,audio/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadAttachment(file);
+                  e.target.value = '';
+                }}
+              />
               <Input
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Remarks (optional)"
                 aria-label="Remarks"
-                className="h-9"
+                className="h-10 rounded-xl"
               />
             </div>
+            {attachmentUrl && (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-2.5 py-1.5">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <a href={attachmentUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-xs text-foreground underline">
+                  {attachmentName || 'Attachment'}
+                </a>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Remove attachment"
+                  onClick={() => { setAttachmentUrl(null); setAttachmentName(''); }}
+                  className="h-6 w-6 text-destructive"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Attach a photo, PDF or an audio file (e.g. a saved WhatsApp voice note), or record one here.
+            </p>
             {voiceRecorderOpen && (
               <VoiceNoteRecorder
                 onUploadComplete={setVoiceNoteUrl}

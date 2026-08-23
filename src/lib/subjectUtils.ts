@@ -6,7 +6,8 @@ export type SubjectType = 'qaida' | 'hifz' | 'nazra' | 'academic';
 // lowercased subject name with String.includes — so multi-word names like
 // "Tahfeez Class" or "حفظ القرآن" are detected.
 const HIFZ_KEYWORDS = ['hifz', 'hifdh', 'memorization', 'حفظ', 'tahfeez', 'tahfiz'];
-const NAZRA_KEYWORDS = ['nazra', 'nazrah', 'reading', 'ناظرہ', 'recitation'];
+// Tafseer students study the same Quran text, so they use the Nazra marking structure.
+const NAZRA_KEYWORDS = ['nazra', 'nazrah', 'reading', 'ناظرہ', 'recitation', 'tafseer', 'tafsir', 'tafseer-ul-quran', 'تفسیر'];
 const QAIDA_KEYWORDS = ['qaida', 'noorani', 'qaidah', 'noor', 'قاعدہ'];
 
 /**

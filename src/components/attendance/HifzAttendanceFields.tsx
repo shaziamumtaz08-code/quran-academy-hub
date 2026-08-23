@@ -165,22 +165,22 @@ export function HifzAttendanceFields({
       />
       
       <TooltipProvider>
-        <div className="flex gap-2">
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-muted px-2.5">
-            <RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className={`flex h-12 min-w-0 items-center gap-2 rounded-xl border-2 px-3 shadow-sm transition-colors ${sabqiDone ? 'border-teal-500 bg-teal-500/10' : 'border-border bg-background'}`}>
+            <RotateCcw className={`h-4 w-4 shrink-0 ${sabqiDone ? 'text-teal-600' : 'text-muted-foreground'}`} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Label htmlFor="sabqi-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-medium">Sabqi</Label>
+                <Label htmlFor="sabqi-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-semibold">Sabqi</Label>
               </TooltipTrigger>
               <TooltipContent>Did the student revise yesterday&apos;s lesson?</TooltipContent>
             </Tooltip>
             <Switch id="sabqi-done" checked={sabqiDone} onCheckedChange={onSabqiDoneChange} />
           </div>
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-muted px-2.5">
-            <BookOpenCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className={`flex h-12 min-w-0 items-center gap-2 rounded-xl border-2 px-3 shadow-sm transition-colors ${manzilDone ? 'border-teal-500 bg-teal-500/10' : 'border-border bg-background'}`}>
+            <BookOpenCheck className={`h-4 w-4 shrink-0 ${manzilDone ? 'text-teal-600' : 'text-muted-foreground'}`} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Label htmlFor="manzil-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-medium">Manzil</Label>
+                <Label htmlFor="manzil-done" className="min-w-0 flex-1 cursor-help truncate text-sm font-semibold">Manzil</Label>
               </TooltipTrigger>
               <TooltipContent>Did the student complete their old revision (one Juz)?</TooltipContent>
             </Tooltip>
