@@ -748,8 +748,20 @@ export default function Schedules() {
     for (let d = new Date(fromD); d <= toD; d.setDate(d.getDate() + 1)) {
       const dayName = dayNameByIdx[d.getDay()];
       const dateStr = format(d, 'yyyy-MM-dd');
-      flatScheduleRows.forEach(r => {
-        if (r.day === dayName) expandedRows.push({ ...r, date: dateStr });
+      filteredAssignments.forEach((assignment) => {
+        schedules.filter((schedule) => schedule.assignment_id === assignment.id && schedule.day_of_week === dayName).forEach((schedule) => {
+          const resolved = resolveScheduleForDate(schedule, schedulePeriods, dateStr);
+          expandedRows.push({
+            student: assignment.student_name,
+            teacher: assignment.teacher_name,
+            subject: assignment.subject_name || '',
+            day: resolved.day_of_week,
+            teacherTime: resolved.teacher_local_time,
+            studentTime: resolved.student_local_time,
+            duration: resolved.duration_minutes,
+            date: dateStr,
+          });
+        });
       });
     }
     if (expandedRows.length === 0) {
@@ -794,7 +806,7 @@ export default function Schedules() {
       downloadCsv([header, ...data], `schedules_weekly_${rangeTag}.csv`);
     }
     setExportDialogOpen(false);
-    toast({ title: 'Exported', description: `${expandedRows.length} class occurrences exported (${mode}).` });
+    toast({ title: 'Exported', description: `${expandedRows.length} date-resolved class occurrences exported (${mode}).` });
   };
   const selectedAssignment = useMemo(() => {
     return assignments.find(a => a.id === newSchedule.assignmentId);

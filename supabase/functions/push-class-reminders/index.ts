@@ -65,13 +65,11 @@ Deno.serve(async (req) => {
 
     const tz = DEFAULT_ACADEMY_TZ;
     const dayName = zonedDayName(tz);
+    const dateIso = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 
     // Today's active schedule slots (read-only; same source as Live operations).
     const { data: schedules, error: schedErr } = await supabase
-      .from("schedules")
-      .select("id, assignment_id, teacher_local_time, duration_minutes")
-      .eq("day_of_week", dayName)
-      .eq("is_active", true);
+      .rpc("get_effective_schedule_periods", { _on_date: dateIso });
     if (schedErr) throw schedErr;
 
     const assignmentIds = [
