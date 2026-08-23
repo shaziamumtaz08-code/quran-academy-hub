@@ -258,11 +258,9 @@ export function useTodayScheduledClasses(divisionId?: string | null, timeZone?: 
   return useQuery({
     queryKey: ['zoom-today-classes', dayName, divisionId || 'all'],
     queryFn: async (): Promise<TodayClass[]> => {
-      const { data: schedules, error } = await supabase
-        .from('schedules')
-        .select('id, assignment_id, day_of_week, teacher_local_time, duration_minutes, is_active')
-        .eq('day_of_week', dayName)
-        .eq('is_active', true);
+      const dateIso = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+      const { data: schedules, error } = await (supabase as any)
+        .rpc('get_effective_schedule_periods', { _on_date: dateIso });
       if (error) throw error;
       if (!schedules || schedules.length === 0) return [];
 
@@ -293,7 +291,7 @@ export function useTodayScheduledClasses(divisionId?: string | null, timeZone?: 
           const a: any = assignMap.get(s.assignment_id);
           const startMinutes = timeToMinutes(s.teacher_local_time);
           return {
-            scheduleId: s.id,
+            scheduleId: s.schedule_id,
             assignmentId: s.assignment_id,
             teacherId: a.teacher_id,
             teacherName: nameMap.get(a.teacher_id) || 'Teacher',
