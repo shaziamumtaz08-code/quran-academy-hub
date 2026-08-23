@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +9,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // --- Auth: must be signed-in staff ---
+    const auth = await requireRole(req, ["teacher", "admin", "super_admin", "admin_academic"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { quiz_bank_id, source_content, language, question_mix, difficulty_level, custom_instructions } = await req.json();
 
     if (!quiz_bank_id || !source_content) {
@@ -16,6 +24,18 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // --- Ownership: caller must be allowed to edit this quiz bank ---
+    const { data: canEdit, error: canEditErr } = await auth.adminClient.rpc("can_edit_quiz_bank", {
+      _user_id: auth.userId,
+      _quiz_id: quiz_bank_id,
+    });
+    if (canEditErr || canEdit !== true) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     const lang = language === "ur" ? "Urdu" : language === "ar" ? "Arabic" : "English";
     const mix = Object.entries(question_mix || { mcq: 5, tf: 3, fib: 2 })
@@ -229,11 +249,7 @@ ${arabicRules}`;
     });
 
     // Save to DB
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await auth.adminClient
       .from("quiz_banks")
       .update({ question_bank: questions, source_content: source_content.substring(0, 50000) })
       .eq("id", quiz_bank_id);

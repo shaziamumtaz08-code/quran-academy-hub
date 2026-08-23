@@ -217,6 +217,28 @@ serve(async (req) => {
     const parentExistingOnly = body?.parentExistingOnly === true;
     const explicitParentId = body?.parent_id ? String(body.parent_id).trim() : null;
 
+    // ---------- ROLE ESCALATION GUARD ----------
+    // Only super_admin may grant org-wide / elevated admin roles.
+    // admin_division callers are limited to division-scoped roles.
+    const ELEVATED_ROLES: AppRole[] = [
+      "super_admin",
+      "admin",
+      "admin_admissions",
+      "admin_fees",
+      "admin_academic",
+      "admin_division",
+    ];
+    if (
+      roleProvided &&
+      !callerRoleSet.has("super_admin") &&
+      ELEVATED_ROLES.includes(role as AppRole)
+    ) {
+      return json(403, {
+        error: "You are not allowed to assign this role. Only a super admin can grant admin-level roles.",
+      }, requestOrigin);
+    }
+
+
     // ---------- ADD ROLE ONLY ----------
     if (addRoleOnly) {
       if (!existingUserId) return json(400, { error: "existingUserId required for addRoleOnly" }, requestOrigin);
