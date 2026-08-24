@@ -148,7 +148,7 @@ export function computeMissingAttendance(params: {
 
     for (const schedule of expectedToday) {
       const assignment = (schedule as any).student_teacher_assignments;
-      if (!assignment?.student || !assignment?.teacher) continue;
+      if (!assignment?.student_id) continue;
 
       // Compute effective cutoff for parked assignments — suppress dates from cutoff onward
       const cutoffStr: string | null = assignment.status !== 'active'
@@ -164,9 +164,9 @@ export function computeMissingAttendance(params: {
         missing.push({
           date: dayStr,
           studentId: assignment.student_id,
-          studentName: assignment.student.full_name,
+          studentName: assignment.student?.full_name || '—',
           teacherId: assignment.teacher_id,
-          teacherName: assignment.teacher.full_name,
+          teacherName: assignment.teacher?.full_name || '—',
           subjectName: assignment.subject?.name || null,
           subjectId: assignment.subject?.id || null,
           scheduledTime: (schedule as any).teacher_local_time?.substring(0, 5) || '-',
@@ -174,6 +174,7 @@ export function computeMissingAttendance(params: {
         });
       }
     }
+
   }
 
   // Sort by date descending
