@@ -36,6 +36,150 @@ interface MissingRecord {
 // Bypass cutoff: only count missing from April 2026 onwards
 export const BYPASS_CUTOFF = '2026-04-01';
 
+/**
+ * Shared expected-vs-recorded computation for the Missing Attendance report and
+ * its count badge, so the two can never drift apart.
+ *
+ * Expected dates go through `resolveSchedulesForDate` (date-ranged permanent /
+ * temporary schedule periods) plus one-off overrides, exactly like Scheduling,
+ * My Schedule and attendance marking. Dates are compared in the TEACHER-local
+ * frame, which is the frame `schedules.day_of_week` / `teacher_local_time` and
+ * the canonical `attendance.class_date` are written in.
+ */
+export function computeMissingAttendance(params: {
+  schedules: any[];
+  periods: any[];
+  overrides: any[];
+  attendanceRecords: { student_id: string; class_date: string }[];
+  holidays: { holiday_date: string }[];
+  startDate: string;
+  endDate: string;
+}): MissingRecord[] {
+  const { schedules, periods, overrides, attendanceRecords, holidays, startDate, endDate } = params;
+
+
+  const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  // Attendance already recorded, keyed by "studentId:date".
+  const attendanceSet = new Set(
+    (attendanceRecords || []).map(r => `${r.student_id}:${r.class_date}`)
+  );
+  // Legacy tolerance: some rows were historically filed with the STUDENT-side
+  // date, which is ±1 day for classes that cross midnight between the two
+  // timezones. Accept such a neighbouring record as coverage so already-marked
+  // classes don't surface as missing.
+  const consumed = new Set<string>();
+  const takeAttendance = (studentId: string, dayStr: string): boolean => {
+    const exact = `${studentId}:${dayStr}`;
+    if (attendanceSet.has(exact) && !consumed.has(exact)) {
+      consumed.add(exact);
+      return true;
+    }
+    const base = parseISO(dayStr);
+    for (const delta of [-1, 1]) {
+      const neighbour = format(addDays(base, delta), 'yyyy-MM-dd');
+      const key = `${studentId}:${neighbour}`;
+      if (attendanceSet.has(key) && !consumed.has(key) && !expectedDates.has(key)) {
+        consumed.add(key);
+        return true;
+      }
+    }
+    return attendanceSet.has(exact);
+  };
+
+  const missing: MissingRecord[] = [];
+
+  // For each schedule, compute which days in the date range should have attendance
+  const rangeDays = eachDayOfInterval({
+    start: parseISO(startDate),
+    end: parseISO(endDate > format(today, 'yyyy-MM-dd') ? format(today, 'yyyy-MM-dd') : endDate),
+  });
+
+  // Pre-compute every expected "studentId:date" so the neighbour tolerance
+  // never steals a record that belongs to a real adjacent class.
+  const expectedDates = new Set<string>();
+  for (const day of rangeDays) {
+    const iso = format(day, 'yyyy-MM-dd');
+    for (const s of resolveSchedulesForDate(schedules as any[], periods, day)) {
+      const a = (s as any).student_teacher_assignments;
+      if (a?.student_id) expectedDates.add(`${a.student_id}:${iso}`);
+    }
+  }
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  for (const day of rangeDays) {
+    // Skip today and future dates (class may not have happened yet)
+    if (isAfter(day, new Date())) continue;
+    const dayStr = format(day, 'yyyy-MM-dd');
+    if (dayStr === todayStr) continue;
+    // Skip holidays
+    if (holidaySet.has(dayStr)) continue;
+
+    // Date-aware resolution: temporary periods beat permanent ones, inactive
+    // schedules and non-matching weekdays are filtered out by the resolver.
+    const resolved = resolveSchedulesForDate(schedules as any[], periods, day);
+
+    // Classes moved INTO this date by a one-off override are also expected.
+    const movedIn = overrides
+      .filter((o) => String(o.new_date || '').substring(0, 10) === dayStr)
+      .map((o) => {
+        const base = (schedules as any[]).find((s) => s.id === o.schedule_id);
+        if (!base) return null;
+        return {
+          ...base,
+          teacher_local_time: (o.new_start_time || base.teacher_local_time)?.toString().substring(0, 5),
+        };
+      })
+      .filter(Boolean) as any[];
+
+    const expectedToday = [
+      // Classes moved AWAY from this date are no longer expected here.
+      ...resolved.filter(
+        (s: any) => !overrides.some(
+          (o) => o.schedule_id === s.id && String(o.original_date || '').substring(0, 10) === dayStr,
+        ),
+      ),
+      ...movedIn,
+    ];
+
+    for (const schedule of expectedToday) {
+      const assignment = (schedule as any).student_teacher_assignments;
+      if (!assignment?.student || !assignment?.teacher) continue;
+
+      // Compute effective cutoff for parked assignments — suppress dates from cutoff onward
+      const cutoffStr: string | null = assignment.status !== 'active'
+        ? (assignment.status_effective_date
+            ? String(assignment.status_effective_date).substring(0, 10)
+            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
+        : null;
+      // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
+      if (assignment.status !== 'active' && !cutoffStr) continue;
+      if (cutoffStr && dayStr >= cutoffStr) continue;
+
+      if (!takeAttendance(assignment.student_id, dayStr)) {
+        missing.push({
+          date: dayStr,
+          studentId: assignment.student_id,
+          studentName: assignment.student.full_name,
+          teacherId: assignment.teacher_id,
+          teacherName: assignment.teacher.full_name,
+          subjectName: assignment.subject?.name || null,
+          subjectId: assignment.subject?.id || null,
+          scheduledTime: (schedule as any).teacher_local_time?.substring(0, 5) || '-',
+          assignmentId: assignment.id,
+        });
+      }
+    }
+  }
+
+  // Sort by date descending
+  return missing.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 interface MissingAttendanceSectionProps {
   monthFilter: string;
   dateMode: 'month' | 'dateRange';
@@ -244,131 +388,19 @@ export function MissingAttendanceSection({
   });
 
   // Compute missing records (excluding holidays)
+  // Compute missing records (excluding holidays)
   const missingRecords = useMemo(() => {
     if (!schedules || !attendanceRecords) return [];
-
-    const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
-    const periods = (scheduleRules?.periods || []) as any[];
-    const overrides = (scheduleRules?.overrides || []) as any[];
-
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
-    // Attendance already recorded, keyed by "studentId:date".
-    const attendanceSet = new Set(
-      (attendanceRecords || []).map(r => `${r.student_id}:${r.class_date}`)
-    );
-    // Legacy tolerance: some rows were historically filed with the STUDENT-side
-    // date, which is ±1 day for classes that cross midnight between the two
-    // timezones. Accept such a neighbouring record as coverage so already-marked
-    // classes don't surface as missing.
-    const consumed = new Set<string>();
-    const takeAttendance = (studentId: string, dayStr: string): boolean => {
-      const exact = `${studentId}:${dayStr}`;
-      if (attendanceSet.has(exact) && !consumed.has(exact)) {
-        consumed.add(exact);
-        return true;
-      }
-      const base = parseISO(dayStr);
-      for (const delta of [-1, 1]) {
-        const neighbour = format(addDays(base, delta), 'yyyy-MM-dd');
-        const key = `${studentId}:${neighbour}`;
-        if (attendanceSet.has(key) && !consumed.has(key) && !expectedDates.has(key)) {
-          consumed.add(key);
-          return true;
-        }
-      }
-      return attendanceSet.has(exact);
-    };
-
-    const missing: MissingRecord[] = [];
-
-    // For each schedule, compute which days in the date range should have attendance
-    const rangeDays = eachDayOfInterval({
-      start: parseISO(startDate),
-      end: parseISO(endDate > format(today, 'yyyy-MM-dd') ? format(today, 'yyyy-MM-dd') : endDate),
+    return computeMissingAttendance({
+      schedules: schedules as any[],
+      periods: (scheduleRules?.periods || []) as any[],
+      overrides: (scheduleRules?.overrides || []) as any[],
+      attendanceRecords: attendanceRecords as any[],
+      holidays: holidays || [],
+      startDate,
+      endDate,
     });
-
-    // Pre-compute every expected "studentId:date" so the neighbour tolerance
-    // never steals a record that belongs to a real adjacent class.
-    const expectedDates = new Set<string>();
-    for (const day of rangeDays) {
-      const iso = format(day, 'yyyy-MM-dd');
-      for (const s of resolveSchedulesForDate(schedules as any[], periods, day)) {
-        const a = (s as any).student_teacher_assignments;
-        if (a?.student_id) expectedDates.add(`${a.student_id}:${iso}`);
-      }
-    }
-
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-    for (const day of rangeDays) {
-      // Skip today and future dates (class may not have happened yet)
-      if (isAfter(day, new Date())) continue;
-      const dayStr = format(day, 'yyyy-MM-dd');
-      if (dayStr === todayStr) continue;
-      // Skip holidays
-      if (holidaySet.has(dayStr)) continue;
-
-      // Date-aware resolution: temporary periods beat permanent ones, inactive
-      // schedules and non-matching weekdays are filtered out by the resolver.
-      const resolved = resolveSchedulesForDate(schedules as any[], periods, day);
-
-      // Classes moved INTO this date by a one-off override are also expected.
-      const movedIn = overrides
-        .filter((o) => String(o.new_date || '').substring(0, 10) === dayStr)
-        .map((o) => {
-          const base = (schedules as any[]).find((s) => s.id === o.schedule_id);
-          if (!base) return null;
-          return {
-            ...base,
-            teacher_local_time: (o.new_start_time || base.teacher_local_time)?.toString().substring(0, 5),
-          };
-        })
-        .filter(Boolean) as any[];
-
-      const expectedToday = [
-        // Classes moved AWAY from this date are no longer expected here.
-        ...resolved.filter(
-          (s: any) => !overrides.some(
-            (o) => o.schedule_id === s.id && String(o.original_date || '').substring(0, 10) === dayStr,
-          ),
-        ),
-        ...movedIn,
-      ];
-
-      for (const schedule of expectedToday) {
-        const assignment = (schedule as any).student_teacher_assignments;
-        if (!assignment?.student || !assignment?.teacher) continue;
-
-        // Compute effective cutoff for parked assignments — suppress dates from cutoff onward
-        const cutoffStr: string | null = assignment.status !== 'active'
-          ? (assignment.status_effective_date
-              ? String(assignment.status_effective_date).substring(0, 10)
-              : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
-          : null;
-        // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
-        if (assignment.status !== 'active' && !cutoffStr) continue;
-        if (cutoffStr && dayStr >= cutoffStr) continue;
-
-        if (!takeAttendance(assignment.student_id, dayStr)) {
-          missing.push({
-            date: dayStr,
-            studentId: assignment.student_id,
-            studentName: assignment.student.full_name,
-            teacherId: assignment.teacher_id,
-            teacherName: assignment.teacher.full_name,
-            subjectName: assignment.subject?.name || null,
-            subjectId: assignment.subject?.id || null,
-            scheduledTime: (schedule as any).teacher_local_time?.substring(0, 5) || '-',
-            assignmentId: assignment.id,
-          });
-        }
-      }
-    }
-
-    // Sort by date descending
-    return missing.sort((a, b) => b.date.localeCompare(a.date));
+  }, [schedules, attendanceRecords, holidays, scheduleRules, startDate, endDate]);
   }, [schedules, attendanceRecords, holidays, scheduleRules, startDate, endDate]);
 
 
