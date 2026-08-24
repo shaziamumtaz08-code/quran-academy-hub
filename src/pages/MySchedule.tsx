@@ -1,49 +1,40 @@
 import React, { useState } from 'react';
-import TeacherSchedulesView from '@/components/teacher/TeacherSchedulesView';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
-
-type RangeFilter = 'today' | 'this_week' | 'next_week';
+import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/layout/PageShell';
+import UpcomingScheduleView, { ScheduleRange } from '@/components/schedule/UpcomingScheduleView';
 
 export default function MySchedule() {
-  const [range, setRange] = useState<RangeFilter>('this_week');
+  const [range, setRange] = useState<ScheduleRange>('this_week');
+  const { activeRole, profile } = useAuth();
+  const role = activeRole || profile?.role;
+  const mode: 'teacher' | 'student' = role === 'student' ? 'student' : 'teacher';
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-lms-navy flex items-center gap-2">
-          <Calendar className="h-6 w-6" /> My Schedule
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your weekly classes (read-only — contact admin for changes)
-        </p>
-      </div>
+    <PageShell
+      title="My Schedule"
+      description="Your upcoming classes (read-only — contact admin for changes)."
+    >
+      <div className="space-y-4 max-w-4xl">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-muted-foreground" />
+          <div className="flex gap-2">
+            {(['today', 'this_week', 'next_week'] as ScheduleRange[]).map((r) => (
+              <Button
+                key={r}
+                size="sm"
+                variant={range === r ? 'default' : 'outline'}
+                onClick={() => setRange(r)}
+              >
+                {r === 'today' ? 'Today' : r === 'this_week' ? 'This Week' : 'Next Week'}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant={range === 'today' ? 'default' : 'outline'}
-          onClick={() => setRange('today')}
-        >
-          Today
-        </Button>
-        <Button
-          size="sm"
-          variant={range === 'this_week' ? 'default' : 'outline'}
-          onClick={() => setRange('this_week')}
-        >
-          This Week
-        </Button>
-        <Button
-          size="sm"
-          variant={range === 'next_week' ? 'default' : 'outline'}
-          onClick={() => setRange('next_week')}
-        >
-          Next Week
-        </Button>
+        <UpcomingScheduleView mode={mode} range={range} />
       </div>
-
-      <TeacherSchedulesView readOnly rangeFilter={range} />
-    </div>
+    </PageShell>
   );
 }
