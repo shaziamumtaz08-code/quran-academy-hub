@@ -145,6 +145,8 @@ export function MissingAttendanceSection({
           id,
           day_of_week,
           teacher_local_time,
+          student_local_time,
+          duration_minutes,
           is_active,
           division_id,
             student_teacher_assignments!inner (
@@ -180,6 +182,26 @@ export function MissingAttendanceSection({
     },
     enabled: isVisible,
   });
+
+  const scheduleIds = useMemo(
+    () => (schedules || []).map((s: any) => s.id).filter(Boolean),
+    [schedules],
+  );
+
+  // Date-ranged schedule periods + one-off overrides — same source of truth as
+  // Scheduling / My Schedule / attendance marking.
+  const { data: scheduleRules } = useQuery({
+    queryKey: ['schedule-rules-for-missing', scheduleIds.join(',')],
+    enabled: isVisible && scheduleIds.length > 0,
+    queryFn: async () => {
+      const [{ data: periods }, { data: overrides }] = await Promise.all([
+        (supabase as any).from('schedule_periods').select('*').in('schedule_id', scheduleIds),
+        (supabase as any).from('schedule_overrides').select('*').in('schedule_id', scheduleIds),
+      ]);
+      return { periods: periods || [], overrides: overrides || [] };
+    },
+  });
+
 
   // Fetch all attendance records in range
   const { data: attendanceRecords, isLoading: attendanceLoading } = useQuery({
