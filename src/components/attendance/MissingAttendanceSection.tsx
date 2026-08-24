@@ -759,7 +759,11 @@ export function useMissingAttendanceCount(
       let query = supabase
         .from('schedules')
         .select(`
+          id,
           day_of_week,
+          teacher_local_time,
+          student_local_time,
+          duration_minutes,
             student_teacher_assignments!inner (
               id,
               student_id,
@@ -789,6 +793,23 @@ export function useMissingAttendanceCount(
       return data;
     },
     enabled,
+  });
+
+  const scheduleIds = useMemo(
+    () => (schedules || []).map((s: any) => s.id).filter(Boolean),
+    [schedules],
+  );
+
+  const { data: scheduleRules } = useQuery({
+    queryKey: ['schedule-rules-count-missing', scheduleIds.join(',')],
+    enabled: enabled && scheduleIds.length > 0,
+    queryFn: async () => {
+      const [{ data: periods }, { data: overrides }] = await Promise.all([
+        (supabase as any).from('schedule_periods').select('*').in('schedule_id', scheduleIds),
+        (supabase as any).from('schedule_overrides').select('*').in('schedule_id', scheduleIds),
+      ]);
+      return { periods: periods || [], overrides: overrides || [] };
+    },
   });
 
   const { data: attendanceRecords } = useQuery({
@@ -826,50 +847,15 @@ export function useMissingAttendanceCount(
 
   return useMemo(() => {
     if (!schedules || !attendanceRecords) return 0;
-
-    const today = new Date();
-    const attendanceSet = new Set(
-      (attendanceRecords || []).map(r => `${r.student_id}:${r.class_date}`)
-    );
-    const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
-
-    let count = 0;
-    const effectiveEnd = endDate > format(today, 'yyyy-MM-dd') ? format(today, 'yyyy-MM-dd') : endDate;
-    const rangeDays = eachDayOfInterval({
-      start: parseISO(startDate),
-      end: parseISO(effectiveEnd),
-    });
-
-    for (const schedule of schedules || []) {
-      const assignment = schedule.student_teacher_assignments as any;
-      if (!assignment) continue;
-
-      const cutoffStr: string | null = assignment.status !== 'active'
-        ? (assignment.status_effective_date
-            ? String(assignment.status_effective_date).substring(0, 10)
-            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
-        : null;
-      if (assignment.status !== 'active' && !cutoffStr) continue;
-
-      const scheduledDayIndex = DAY_NAMES.indexOf(schedule.day_of_week.toLowerCase());
-      if (scheduledDayIndex === -1) continue;
-
-      for (const day of rangeDays) {
-        if (isAfter(day, new Date())) continue;
-        const dayStr = format(day, 'yyyy-MM-dd');
-        if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
-        if (holidaySet.has(dayStr)) continue;
-        if (cutoffStr && dayStr >= cutoffStr) continue;
-
-        if (getDay(day) === scheduledDayIndex) {
-          const key = `${assignment.student_id}:${dayStr}`;
-          if (!attendanceSet.has(key)) {
-            count++;
-          }
-        }
-      }
-    }
-
-    return count;
-  }, [schedules, attendanceRecords, holidays, startDate, endDate]);
+    return computeMissingAttendance({
+      schedules: schedules as any[],
+      periods: (scheduleRules?.periods || []) as any[],
+      overrides: (scheduleRules?.overrides || []) as any[],
+      attendanceRecords: attendanceRecords as any[],
+      holidays: holidays || [],
+      startDate,
+      endDate,
+    }).length;
+  }, [schedules, attendanceRecords, holidays, scheduleRules, startDate, endDate]);
 }
+
