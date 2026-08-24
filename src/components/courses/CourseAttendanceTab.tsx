@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
+import { teacherLocalClassDate } from '@/lib/classDate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +26,10 @@ export function CourseAttendanceTab({ courseId }: CourseAttendanceTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const teacherTz = useAcademyTimezone();
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
-  const [markDate, setMarkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [markDate, setMarkDate] = useState(() => teacherLocalClassDate(teacherTz));
   const [markTime, setMarkTime] = useState('09:00');
   const [markingClassId, setMarkingClassId] = useState<string>('');
   const [studentStatuses, setStudentStatuses] = useState<Record<string, { status: string; notes: string }>>({});

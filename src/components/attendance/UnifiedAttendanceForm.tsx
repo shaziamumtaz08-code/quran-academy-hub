@@ -15,6 +15,7 @@ import { SegmentedControl } from './SegmentedControl';
 import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info, CheckCircle2, XCircle, CalendarClock, PauseCircle, Mic, Paperclip } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
+import { teacherLocalClassDate } from '@/lib/classDate';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -293,7 +294,7 @@ export function UnifiedAttendanceForm({
   // Form state
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
   const [classTime, setClassTime] = useState('');
-  const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [classDate, setClassDate] = useState(() => teacherLocalClassDate(teacherTimezone));
   const [duration, setDuration] = useState('30');
   const [remarks, setRemarks] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);

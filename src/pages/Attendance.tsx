@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
+import { teacherLocalClassDate } from '@/lib/classDate';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, getDay, isAfter } from 'date-fns';
@@ -219,11 +221,13 @@ export default function Attendance() {
   const [holidayEndDate, setHolidayEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [teacherLeaveDialogOpen, setTeacherLeaveDialogOpen] = useState(false);
   
+  const academyTz = useAcademyTimezone();
+
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
   const [classTime, setClassTime] = useState('09:00');
-  const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [classDate, setClassDate] = useState(() => teacherLocalClassDate(academyTz));
   const [duration, setDuration] = useState('30');
   const [reason, setReason] = useState('');
   const [lessonCovered, setLessonCovered] = useState('');

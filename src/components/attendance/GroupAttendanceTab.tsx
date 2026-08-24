@@ -12,6 +12,8 @@ import { CheckCircle, XCircle, Users, Clock, Save, CheckCheck, AlertTriangle } f
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
+import { teacherLocalClassDate } from '@/lib/classDate';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isAfter } from 'date-fns';
 
@@ -27,9 +29,10 @@ export function GroupAttendanceTab() {
   const { user, activeRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const teacherTz = useAcademyTimezone();
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [classDate, setClassDate] = useState(() => teacherLocalClassDate(teacherTz));
   const [classTime, setClassTime] = useState('09:00');
   const [duration, setDuration] = useState('30');
   const [studentMarks, setStudentMarks] = useState<StudentMark[]>([]);

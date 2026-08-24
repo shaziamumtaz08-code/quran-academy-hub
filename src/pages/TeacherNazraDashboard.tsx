@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
+import { teacherLocalClassDate } from '@/lib/classDate';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -63,12 +65,14 @@ export default function TeacherNazraDashboard() {
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>('profile');
   
+  const teacherTz = useAcademyTimezone();
+
   // Form state
   const [status, setStatus] = useState<LessonStatus>('present');
   const [sabaq, setSabaq] = useState('');
   const [revisionDone, setRevisionDone] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState('');
-  const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [classDate, setClassDate] = useState(() => teacherLocalClassDate(teacherTz));
   const [classTime, setClassTime] = useState(format(new Date(), 'HH:mm'));
 
   // Fetch assigned students with their details and last lesson – filtered by teacher_id

@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { teacherLocalClassDate, teacherLocalClassTime } from '@/lib/classDate';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
 import { format, isToday, isPast, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { findOrCreateCourseDM } from '@/lib/messaging';
@@ -49,6 +51,7 @@ export default function TeacherCourseView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const teacherTz = useAcademyTimezone();
   const queryClient = useQueryClient();
 
   const initialTab = searchParams.get('tab') || 'today';
@@ -250,10 +253,11 @@ export default function TeacherCourseView() {
     if (!entries.length) { toast.error('Mark at least one student'); return; }
     setSavingAttendance(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const today = teacherLocalClassDate(teacherTz, now);
       const records = entries.map(([studentId, val]) => ({
         student_id: studentId, teacher_id: user!.id, course_id: courseId!,
-        class_date: today, class_time: new Date().toTimeString().slice(0, 5),
+        class_date: today, class_time: teacherLocalClassTime(teacherTz, now),
         status: val.status, lesson_notes: val.notes || null, duration_minutes: selectedClass?.session_duration || 30,
         lesson_type: 'academic',
       }));
