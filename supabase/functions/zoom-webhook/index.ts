@@ -1085,11 +1085,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const secretToken = Deno.env.get("ZOOM_SECRET_TOKEN");
+    // Each Zoom Marketplace app has its OWN Secret Token. To support many apps
+    // on one endpoint, the URL may carry ?app=<slug>, which maps to the secret
+    // ZOOM_SECRET_TOKEN_<SLUG_UPPERCASE>. Falls back to the global token.
+    const appSlug = (new URL(req.url).searchParams.get("app") || "")
+      .replace(/[^a-zA-Z0-9_]/g, "")
+      .toUpperCase();
+    const scopedToken = appSlug ? Deno.env.get(`ZOOM_SECRET_TOKEN_${appSlug}`) : undefined;
+    const secretToken = scopedToken || Deno.env.get("ZOOM_SECRET_TOKEN");
 
     if (event.event === "endpoint.url_validation") {
       if (!secretToken) {
-        console.error("ZOOM_SECRET_TOKEN not configured — cannot answer URL validation");
+        console.error(`ZOOM_SECRET_TOKEN${appSlug ? `_${appSlug}` : ""} not configured — cannot answer URL validation`);
         return new Response(
           JSON.stringify({ error: "Webhook secret not configured" }),
           { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1099,12 +1106,13 @@ Deno.serve(async (req) => {
       const encryptedToken = createHmac("sha256", secretToken)
         .update(plainToken)
         .digest("hex");
-      console.log("Responding to Zoom URL validation challenge");
+      console.log(`Responding to Zoom URL validation challenge (app=${appSlug || "default"}, scoped=${Boolean(scopedToken)})`);
       return new Response(
         JSON.stringify({ plainToken, encryptedToken }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     const zoomSignature = req.headers.get("x-zm-signature");
     const zoomTimestamp = req.headers.get("x-zm-request-timestamp");
