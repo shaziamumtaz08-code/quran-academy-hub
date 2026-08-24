@@ -15,10 +15,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isAfter } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { resolveSchedulesForDate } from '@/lib/schedulePeriods';
 
-const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 
 interface MissingRecord {
   date: string;
