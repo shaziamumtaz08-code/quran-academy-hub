@@ -221,6 +221,8 @@ export default function Attendance() {
   const [holidayEndDate, setHolidayEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [teacherLeaveDialogOpen, setTeacherLeaveDialogOpen] = useState(false);
   
+  const academyTz = useAcademyTimezone();
+
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');

@@ -29,6 +29,7 @@ export function GroupAttendanceTab() {
   const { user, activeRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const teacherTz = useAcademyTimezone();
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [classDate, setClassDate] = useState(() => teacherLocalClassDate(teacherTz));

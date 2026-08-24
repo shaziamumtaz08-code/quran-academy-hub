@@ -65,6 +65,8 @@ export default function TeacherNazraDashboard() {
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>('profile');
   
+  const teacherTz = useAcademyTimezone();
+
   // Form state
   const [status, setStatus] = useState<LessonStatus>('present');
   const [sabaq, setSabaq] = useState('');

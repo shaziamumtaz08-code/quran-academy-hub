@@ -26,6 +26,7 @@ export function CourseAttendanceTab({ courseId }: CourseAttendanceTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const teacherTz = useAcademyTimezone();
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
   const [markDate, setMarkDate] = useState(() => teacherLocalClassDate(teacherTz));
