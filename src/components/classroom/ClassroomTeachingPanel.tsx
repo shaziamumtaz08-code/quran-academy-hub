@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { teacherLocalClassDate, teacherLocalClassTime } from '@/lib/classDate';
+import { useAcademyTimezone } from '@/hooks/useAcademyTimezone';
 import { toast } from 'sonner';
 import { Book, ClipboardList, MessageCircle, Check, Send } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -129,13 +131,14 @@ export default function ClassroomTeachingPanel({ courseId, classId, sessionId, p
     const entries = Object.entries(attMap).filter(([, v]) => v);
     if (!entries.length) { toast.error('No attendance marked'); return; }
     setSaving(true);
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = teacherLocalClassDate(teacherTz, now);
     const rows = entries.map(([studentId, status]) => ({
       student_id: studentId,
       teacher_id: user?.id || '',
       course_id: courseId,
       class_date: today,
-      class_time: new Date().toTimeString().slice(0, 5),
+      class_time: teacherLocalClassTime(teacherTz, now),
       status: status as string,
       duration_minutes: 30,
     }));
