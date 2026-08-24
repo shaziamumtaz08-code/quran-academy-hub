@@ -19,6 +19,7 @@ interface Props {
 
 export default function ClassroomTeachingPanel({ courseId, classId, sessionId, participants }: Props) {
   const { user } = useAuth();
+  const teacherTz = useAcademyTimezone();
   const [tab, setTab] = useState<PanelTab>('plan');
   const [collapsed, setCollapsed] = useState(false);
 

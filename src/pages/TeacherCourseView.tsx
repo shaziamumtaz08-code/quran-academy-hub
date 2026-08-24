@@ -51,6 +51,7 @@ export default function TeacherCourseView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const teacherTz = useAcademyTimezone();
   const queryClient = useQueryClient();
 
   const initialTab = searchParams.get('tab') || 'today';
