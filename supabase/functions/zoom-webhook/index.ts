@@ -1311,8 +1311,31 @@ Deno.serve(async (req) => {
               ? new Date(session.actual_start)
               : new Date(endedAt);
             const scheduledEnd = new Date(scheduledStart.getTime() + scheduledDurationMin * 60_000);
-            const classDate = scheduledStart.toISOString().split("T")[0];
-            const classTime = scheduledStart.toTimeString().slice(0, 5);
+            // CANONICAL class_date: the TEACHER-local calendar date, matching the
+            // frame that schedules.day_of_week / teacher_local_time are defined in.
+            // Using UTC here filed cross-midnight classes one day off, which made
+            // already-marked classes show up in the Missing Attendance report.
+            let teacherTz = "Asia/Karachi";
+            {
+              const { data: tProfile } = await supabase
+                .from("profiles")
+                .select("timezone")
+                .eq("id", session.teacher_id)
+                .maybeSingle();
+              if (tProfile?.timezone) teacherTz = tProfile.timezone;
+            }
+            const tzParts = new Intl.DateTimeFormat("en-CA", {
+              timeZone: teacherTz,
+              hour12: false,
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).formatToParts(scheduledStart);
+            const tzGet = (t: string) => tzParts.find((x) => x.type === t)?.value || "00";
+            const classDate = `${tzGet("year")}-${tzGet("month")}-${tzGet("day")}`;
+            const classTime = `${String(Number(tzGet("hour")) % 24).padStart(2, "0")}:${tzGet("minute")}`;
 
             // Only auto-mark for 1:1 sessions (skip multi-student group monitor rows we don't
             // have per-student roster confidence for; those keep their existing manual flow).
