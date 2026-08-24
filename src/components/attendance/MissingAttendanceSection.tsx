@@ -402,7 +402,6 @@ export function MissingAttendanceSection({
       endDate,
     });
   }, [schedules, attendanceRecords, holidays, scheduleRules, startDate, endDate]);
-  }, [schedules, attendanceRecords, holidays, scheduleRules, startDate, endDate]);
 
 
   // Extract unique filter options
