@@ -11,6 +11,7 @@
 
 export const STUDENT_ALLOWED_ROUTES: readonly string[] = [
   '/dashboard',
+  '/my-schedule',        // read-only own class schedule
   '/my-courses',         // matches /my-courses and /my-courses/:id
   '/my-quizzes',
   '/recordings',
