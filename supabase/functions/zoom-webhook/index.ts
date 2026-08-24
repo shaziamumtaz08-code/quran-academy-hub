@@ -1072,9 +1072,42 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.text();
+
+    // Zoom's "Validate the URL" challenge is sent WITHOUT signature headers.
+    // It must be answered immediately, before any signature/timestamp checks.
+    let event: ZoomEvent;
+    try {
+      event = JSON.parse(body);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const secretToken = Deno.env.get("ZOOM_SECRET_TOKEN");
+
+    if (event.event === "endpoint.url_validation") {
+      if (!secretToken) {
+        console.error("ZOOM_SECRET_TOKEN not configured — cannot answer URL validation");
+        return new Response(
+          JSON.stringify({ error: "Webhook secret not configured" }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const plainToken = event.payload?.plainToken || "";
+      const encryptedToken = createHmac("sha256", secretToken)
+        .update(plainToken)
+        .digest("hex");
+      console.log("Responding to Zoom URL validation challenge");
+      return new Response(
+        JSON.stringify({ plainToken, encryptedToken }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const zoomSignature = req.headers.get("x-zm-signature");
     const zoomTimestamp = req.headers.get("x-zm-request-timestamp");
-    const secretToken = Deno.env.get("ZOOM_SECRET_TOKEN");
 
     if (!secretToken) {
       console.error("ZOOM_SECRET_TOKEN not configured - rejecting request");
@@ -1110,45 +1143,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    const event: ZoomEvent = JSON.parse(body);
     console.log("=== ZOOM WEBHOOK ===", event.event, new Date().toISOString());
 
     // Persist raw payload BEFORE any processing so admins can audit what Zoom actually sent
     // (including duplicate deliveries) vs what ended up in Join Logs. Never let this fail the request.
-    if (event.event !== "endpoint.url_validation") {
-      try {
-        const p = event.payload?.object || ({} as any);
-        await supabase.from("zoom_webhook_events").insert({
-          event_type: event.event,
-          event_ts: event.event_ts ? new Date(event.event_ts).toISOString() : null,
-          zoom_meeting_uuid: p.uuid || null,
-          zoom_meeting_id: p.id?.toString() || null,
-          zoom_host_id: p.host_id || null,
-          participant_name: p.participant?.user_name || null,
-          participant_email: p.participant?.email || null,
-          raw_payload: event as unknown as Record<string, unknown>,
-        });
-      } catch (e) {
-        console.error("Failed to log raw zoom webhook event:", e);
-      }
-    }
-
-    // Handle URL validation challenge
-    if (event.event === "endpoint.url_validation") {
-      const plainToken = event.payload.plainToken;
-      const encryptedToken = createHmac("sha256", secretToken)
-        .update(plainToken || "")
-        .digest("hex");
-      console.log("Responding to Zoom URL validation challenge");
-      return new Response(
-        JSON.stringify({ plainToken, encryptedToken }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    try {
+      const p = event.payload?.object || ({} as any);
+      await supabase.from("zoom_webhook_events").insert({
+        event_type: event.event,
+        event_ts: event.event_ts ? new Date(event.event_ts).toISOString() : null,
+        zoom_meeting_uuid: p.uuid || null,
+        zoom_meeting_id: p.id?.toString() || null,
+        zoom_host_id: p.host_id || null,
+        participant_name: p.participant?.user_name || null,
+        participant_email: p.participant?.email || null,
+        raw_payload: event as unknown as Record<string, unknown>,
+      });
+    } catch (e) {
+      console.error("Failed to log raw zoom webhook event:", e);
     }
 
     const hostId = event.payload.object?.host_id;
     const meetingUuidTop = event.payload.object?.uuid || null;
     const meetingIdTop = event.payload.object?.id || null;
+
 
     // DEDICATED-ACCOUNT FAST PATH — bypass shared-pool logic entirely when the
     // host_id belongs to a teacher's dedicated zoom_accounts row.
