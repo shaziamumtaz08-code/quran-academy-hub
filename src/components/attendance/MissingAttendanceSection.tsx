@@ -17,7 +17,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { resolveSchedulesForDate } from '@/lib/schedulePeriods';
+import { mapPeriodsToTeacherWeekdays, mapSchedulesToTeacherWeekdays, resolveSchedulesForDate } from '@/lib/schedulePeriods';
+import { convertTimeBetweenTimezonesWithDay } from '@/lib/timezones';
 
 
 
@@ -57,6 +58,18 @@ export function computeMissingAttendance(params: {
 }): MissingRecord[] {
   const { schedules, periods, overrides, attendanceRecords, holidays, startDate, endDate } = params;
 
+  const scheduleById = new Map((schedules || []).map((schedule) => [schedule.id, schedule]));
+  const dayOffsetFor = (row: any) => {
+    const schedule = scheduleById.get(row.schedule_id || row.id) || row;
+    const assignment = schedule.student_teacher_assignments;
+    const studentTimezone = assignment?.student?.timezone || 'Asia/Karachi';
+    const teacherTimezone = assignment?.teacher?.timezone || 'Asia/Karachi';
+    const studentTime = row.student_local_time || schedule.student_local_time;
+    if (!studentTime || studentTimezone === teacherTimezone) return 0;
+    return convertTimeBetweenTimezonesWithDay(studentTime.slice(0, 5), studentTimezone, teacherTimezone).dayOffset;
+  };
+  const teacherSchedules = mapSchedulesToTeacherWeekdays(schedules, dayOffsetFor);
+  const teacherPeriods = mapPeriodsToTeacherWeekdays(periods, dayOffsetFor);
 
   const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
 
@@ -103,7 +116,7 @@ export function computeMissingAttendance(params: {
   const expectedDates = new Set<string>();
   for (const day of rangeDays) {
     const iso = format(day, 'yyyy-MM-dd');
-    for (const s of resolveSchedulesForDate(schedules as any[], periods, day)) {
+    for (const s of resolveSchedulesForDate(teacherSchedules as any[], teacherPeriods, day)) {
       const a = (s as any).student_teacher_assignments;
       if (a?.student_id) expectedDates.add(`${a.student_id}:${iso}`);
     }
@@ -121,13 +134,13 @@ export function computeMissingAttendance(params: {
 
     // Date-aware resolution: temporary periods beat permanent ones, inactive
     // schedules and non-matching weekdays are filtered out by the resolver.
-    const resolved = resolveSchedulesForDate(schedules as any[], periods, day);
+    const resolved = resolveSchedulesForDate(teacherSchedules as any[], teacherPeriods, day);
 
     // Classes moved INTO this date by a one-off override are also expected.
     const movedIn = overrides
       .filter((o) => String(o.new_date || '').substring(0, 10) === dayStr)
       .map((o) => {
-        const base = (schedules as any[]).find((s) => s.id === o.schedule_id);
+        const base = (teacherSchedules as any[]).find((s) => s.id === o.schedule_id);
         if (!base) return null;
         return {
           ...base,
@@ -305,8 +318,8 @@ export function MissingAttendanceSection({
               requires_attendance,
               division_id,
               subject:subjects(id, name),
-              student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
-              teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
+               student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, timezone),
+               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, timezone)
             )
           `)
           .eq('is_active', true)
@@ -771,7 +784,9 @@ export function useMissingAttendanceCount(
               status_effective_date,
               effective_to_date,
               requires_attendance,
-              division_id
+               division_id,
+               student:profiles!student_teacher_assignments_student_id_fkey(id, timezone),
+               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, timezone)
             )
           `)
           .eq('is_active', true)

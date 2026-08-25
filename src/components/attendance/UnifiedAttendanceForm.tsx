@@ -38,7 +38,7 @@ import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonT
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr, convertTimeBetweenTimezonesWithDay } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
-import { resolveSchedulesForDate, type SchedulePeriod } from '@/lib/schedulePeriods';
+import { mapPeriodsToTeacherWeekdays, mapSchedulesToTeacherWeekdays, resolveSchedulesForDate, type SchedulePeriod } from '@/lib/schedulePeriods';
 
 import { useQaidaReference } from '@/hooks/useQaidaProgress';
 
@@ -753,9 +753,23 @@ export function UnifiedAttendanceForm({
   }, [scheduleData, studentTz, effectiveTeacherTz]);
   const scheduledDays = useMemo(() => Array.from(teacherDayRows.keys()), [teacherDayRows]);
 
+  const teacherFrameSchedules = useMemo(() => mapSchedulesToTeacherWeekdays(
+    (scheduleData || []).map((row) => ({ ...row, assignment_id: resolvedAssignmentId || '', is_active: true })),
+    (row) => studentTz && studentTz !== effectiveTeacherTz
+      ? convertTimeBetweenTimezonesWithDay(row.student_local_time.slice(0, 5), studentTz, effectiveTeacherTz).dayOffset
+      : 0,
+  ), [scheduleData, resolvedAssignmentId, studentTz, effectiveTeacherTz]);
+
+  const teacherFramePeriods = useMemo(() => mapPeriodsToTeacherWeekdays(
+    schedulePeriods,
+    (period) => studentTz && studentTz !== effectiveTeacherTz
+      ? convertTimeBetweenTimezonesWithDay(period.student_local_time.slice(0, 5), studentTz, effectiveTeacherTz).dayOffset
+      : 0,
+  ), [schedulePeriods, studentTz, effectiveTeacherTz]);
+
   const resolvedRowsForDate = (date: string) => {
-    if (!scheduleData?.length) return [];
-    return resolveSchedulesForDate(scheduleData.map((row) => ({ ...row, assignment_id: resolvedAssignmentId || '', is_active: true })), schedulePeriods, date);
+    if (!teacherFrameSchedules.length) return [];
+    return resolveSchedulesForDate(teacherFrameSchedules, teacherFramePeriods, date);
   };
 
   /** Student has no active weekly slot at all — every day is an off day for them. */
@@ -1088,7 +1102,7 @@ export function UnifiedAttendanceForm({
       const effectiveClassTime = classTime || (isLeave ? '00:00' : classTime);
 
       const basePayload: Record<string, any> = {
-        class_date: classDate,
+        class_date: teacherLocalClassDate(effectiveTeacherTz, classDate),
         class_time: effectiveClassTime,
         duration_minutes: parseInt(duration) || 30,
         status: selectedStatus,
@@ -1183,7 +1197,7 @@ export function UnifiedAttendanceForm({
               teacher_id: resolvedTeacherId,
               ...basePayload,
               ...phaseAPayload,
-              class_date: d,
+               class_date: teacherLocalClassDate(effectiveTeacherTz, d),
               class_time: info?.time?.substring(0, 5) || '00:00',
               duration_minutes: info?.duration || parseInt(duration) || 30,
             };

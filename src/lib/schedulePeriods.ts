@@ -27,6 +27,37 @@ export interface RecurringSchedule {
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
+export function shiftWeekday(dayOfWeek: string, dayOffset: number): string {
+  const index = DAY_NAMES.indexOf(dayOfWeek.toLowerCase());
+  if (index < 0) return dayOfWeek.toLowerCase();
+  return DAY_NAMES[(index + dayOffset + 7) % 7];
+}
+
+/**
+ * Convert schedule rows whose weekday is stored in the student's frame into
+ * the teacher's frame before date-based resolution. The caller supplies the
+ * same time conversion used by Scheduling's Student/Teacher toggle.
+ */
+export function mapSchedulesToTeacherWeekdays<T extends RecurringSchedule>(
+  schedules: T[],
+  getDayOffset: (schedule: T) => number,
+): T[] {
+  return schedules.map((schedule) => ({
+    ...schedule,
+    day_of_week: shiftWeekday(schedule.day_of_week, getDayOffset(schedule)),
+  }));
+}
+
+export function mapPeriodsToTeacherWeekdays<T extends SchedulePeriod>(
+  periods: T[],
+  getDayOffset: (period: T) => number,
+): T[] {
+  return periods.map((period) => ({
+    ...period,
+    day_of_week: shiftWeekday(period.day_of_week, getDayOffset(period)),
+  }));
+}
+
 export function localIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

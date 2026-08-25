@@ -149,7 +149,7 @@ export function GroupAttendanceTab() {
       const rows = unmarkedStudents.map(s => ({
         student_id: s.student_id,
         teacher_id: selectedCourse.teacher_id,
-        class_date: classDate,
+        class_date: teacherLocalClassDate(teacherTz, classDate),
         class_time: classTime,
         duration_minutes: parseInt(duration),
         status: s.status,
