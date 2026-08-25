@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import ForcePasswordChange from "@/components/auth/ForcePasswordChange";
 import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { KidContextProvider } from "@/contexts/KidContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
