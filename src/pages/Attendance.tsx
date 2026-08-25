@@ -805,7 +805,7 @@ export default function Attendance() {
       const { data: inserted, error } = await supabase.from('attendance').insert({
         student_id: studentId || user.id,
         teacher_id: user.id,
-        class_date: teacherLocalClassDate(teacherTz, classDate),
+        class_date: teacherLocalClassDate(academyTz, classDate),
         class_time: classTime,
         duration_minutes: parseInt(duration),
         status: selectedStatus,

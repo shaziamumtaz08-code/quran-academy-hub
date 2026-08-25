@@ -43,9 +43,9 @@ export const BYPASS_CUTOFF = '2026-04-01';
  *
  * Expected dates go through `resolveSchedulesForDate` (date-ranged permanent /
  * temporary schedule periods) plus one-off overrides, exactly like Scheduling,
- * My Schedule and attendance marking. Dates are compared in the TEACHER-local
- * frame, which is the frame `schedules.day_of_week` / `teacher_local_time` and
- * the canonical `attendance.class_date` are written in.
+ * My Schedule and attendance marking. Stored schedule weekdays are student-local,
+ * so they are shifted into the teacher's frame before resolution. The canonical
+ * `attendance.class_date` is also teacher-local.
  */
 export function computeMissingAttendance(params: {
   schedules: any[];

@@ -1239,9 +1239,9 @@ export function UnifiedAttendanceForm({
             attendance_id: savedId,
             student_id: resolvedStudentId,
             teacher_id: resolvedTeacherId,
-            original_date: rescheduleDate,
+            original_date: teacherLocalClassDate(effectiveTeacherTz, rescheduleDate),
             original_time: rescheduleTime || null,
-            new_date: classDate,
+            new_date: teacherLocalClassDate(effectiveTeacherTz, classDate),
             new_time: classTime || null,
             reason: remarks || null,
             rescheduled_by: user.id,
@@ -1260,7 +1260,7 @@ export function UnifiedAttendanceForm({
           student_name: student.full_name,
           subject: student.subject_name,
           status: selectedStatus,
-          class_date: classDate,
+          class_date: teacherLocalClassDate(effectiveTeacherTz, classDate),
           rescheduled_to: requiresReschedule(selectedStatus) ? rescheduleDate : null,
         }
       });
@@ -1309,7 +1309,7 @@ export function UnifiedAttendanceForm({
         entityLabel: student.full_name,
         details: {
           student_id: student.id,
-          class_date: classDate,
+          class_date: teacherLocalClassDate(effectiveTeacherTz, classDate),
           class_time: classTime,
           status: selectedStatus,
           error_code: code,
