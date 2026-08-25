@@ -313,6 +313,7 @@ serve(async (req) => {
 
     // ---------- CREATE NEW USER ----------
     let finalPassword = password;
+    const usedDefaultPassword = !finalPassword;
     if (!finalPassword) {
       finalPassword = defaultPasswordFor(fullName);
     }
@@ -344,6 +345,7 @@ serve(async (req) => {
             city,
             timezone: resolvedTimezone,
             registration_id: regId,
+            force_password_reset: usedDefaultPassword,
             date_of_birth: dateOfBirth,
             nationality,
             first_language: firstLanguage,
@@ -379,6 +381,7 @@ serve(async (req) => {
         city,
         timezone: resolvedTimezone,
         registration_id: registrationId,
+        force_password_reset: usedDefaultPassword,
         date_of_birth: dateOfBirth,
         nationality,
         first_language: firstLanguage,
@@ -437,6 +440,7 @@ serve(async (req) => {
               email: parentEmail,
               full_name: parentName || "Parent",
               registration_id: pRegId,
+              force_password_reset: true,
             }, { onConflict: "id" });
             await adminClient.from("user_roles").upsert(
               { user_id: parentAuth.user.id, role: "parent" },
