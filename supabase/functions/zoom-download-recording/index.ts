@@ -3,6 +3,7 @@
 // Zoom-side copy — that is done by zoom-cleanup-recordings after a safety
 // window.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
