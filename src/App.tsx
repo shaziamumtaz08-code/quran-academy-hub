@@ -166,7 +166,7 @@ function NonStudentRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, profile } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -182,6 +182,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Accounts created with the academy default password must set their own
+  // password before any other part of the app becomes reachable.
+  if (profile?.force_password_reset) {
+    return <ForcePasswordChange />;
   }
 
   return <>{children}</>;
