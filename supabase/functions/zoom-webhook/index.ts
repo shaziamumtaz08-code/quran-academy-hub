@@ -1324,18 +1324,29 @@ Deno.serve(async (req) => {
                 .maybeSingle();
               if (tProfile?.timezone) teacherTz = tProfile.timezone;
             }
-            const tzParts = new Intl.DateTimeFormat("en-CA", {
-              timeZone: teacherTz,
-              hour12: false,
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).formatToParts(scheduledStart);
-            const tzGet = (t: string) => tzParts.find((x) => x.type === t)?.value || "00";
-            const classDate = `${tzGet("year")}-${tzGet("month")}-${tzGet("day")}`;
-            const classTime = `${String(Number(tzGet("hour")) % 24).padStart(2, "0")}:${tzGet("minute")}`;
+            const teacherParts = (instant: Date, timeZone: string) => {
+              const parts = new Intl.DateTimeFormat("en-CA", {
+                timeZone,
+                hour12: false,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).formatToParts(instant);
+              const get = (type: string) => parts.find((part) => part.type === type)?.value || "00";
+              return { get, hour: Number(get("hour")) % 24 };
+            };
+            const teacherLocalClassDate = (instant: Date, timeZone: string) => {
+              const { get } = teacherParts(instant, timeZone);
+              return `${get("year")}-${get("month")}-${get("day")}`;
+            };
+            const teacherLocalClassTime = (instant: Date, timeZone: string) => {
+              const { get, hour } = teacherParts(instant, timeZone);
+              return `${String(hour).padStart(2, "0")}:${get("minute")}`;
+            };
+            const classDate = teacherLocalClassDate(scheduledStart, teacherTz);
+            const classTime = teacherLocalClassTime(scheduledStart, teacherTz);
 
             // Only auto-mark for 1:1 sessions (skip multi-student group monitor rows we don't
             // have per-student roster confidence for; those keep their existing manual flow).
