@@ -3,6 +3,7 @@
 // Zoom-side copy — that is done by zoom-cleanup-recordings after a safety
 // window.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,8 +37,25 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
+  // Auth gate: internal cron/service callers use the service key (worker secret or
+  // bearer token); human callers must be admin/super_admin staff.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const internal =
+    req.headers.get("x-worker-secret") === serviceKey || bearer === serviceKey;
+  if (!internal) {
+    const auth = await requireRole(req, ["admin", "super_admin"]);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   try {
     const { session_id: bodySessionId } = await req.json().catch(() => ({}));
+
 
     // Batch mode: if no session_id, pick pending sessions (up to 5)
     let sessionIds: string[] = [];

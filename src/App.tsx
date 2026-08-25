@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import ForcePasswordChange from "@/components/auth/ForcePasswordChange";
 import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { KidContextProvider } from "@/contexts/KidContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -166,7 +167,7 @@ function NonStudentRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, profile } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -182,6 +183,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Accounts created with the academy default password must set their own
+  // password before any other part of the app becomes reachable.
+  if (profile?.force_password_reset) {
+    return <ForcePasswordChange />;
   }
 
   return <>{children}</>;

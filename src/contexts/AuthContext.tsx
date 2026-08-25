@@ -34,6 +34,7 @@ export interface UserProfile {
   full_name: string;
   roles: AppRole[];
   role: AppRole | null; // Primary role (for backward compatibility)
+  force_password_reset?: boolean;
 }
 
 interface AuthContextType {
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const [{ data: profileData, error: profileError }, { data: rolesData, error: rolesError }] =
         await Promise.all([
-          supabase.from("profiles").select("id, email, full_name").eq("id", userId).single(),
+          supabase.from("profiles").select("id, email, full_name, force_password_reset").eq("id", userId).single(),
           supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);
 
@@ -157,6 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: userId,
           email: profileData?.email ?? prev?.email ?? null,
           full_name: profileData?.full_name ?? prev?.full_name ?? "User",
+          force_password_reset:
+            (profileData as any)?.force_password_reset ?? prev?.force_password_reset ?? false,
           roles: effectiveRoles,
           role: primaryRole,
         };
