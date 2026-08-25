@@ -50,17 +50,23 @@ export function ZoomSeatStatusTable() {
     gcTime: 0,
     refetchInterval: 30000,
     queryFn: async (): Promise<Seat[]> => {
-      const { data: accounts, error } = await (supabase as any)
-        .from('zoom_accounts')
-        .select(
-          'id, teacher_id, zoom_account_email, zoom_user_id, tier, is_active, last_validated_at, credential_status, credential_error, zoom_account_id_cred, zoom_client_id, zoom_client_secret, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name)'
-        )
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
+      // Credential columns are not readable from the client (column-level grants);
+      // this admin-only RPC returns a safe has_credentials flag instead.
+      const { data: accounts, error } = await (supabase as any).rpc('get_zoom_seat_status');
       if (error) throw error;
 
       const rows = (accounts || []) as any[];
+      const teacherIds = Array.from(new Set(rows.map((r) => r.teacher_id).filter(Boolean)));
+      const nameById = new Map<string, string>();
+      if (teacherIds.length) {
+        const { data: profs } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', teacherIds);
+        for (const p of profs || []) nameById.set(p.id, p.full_name);
+      }
       const hostIds = rows.map((r) => r.zoom_user_id).filter(Boolean);
+
 
       let logs: any[] = [];
       if (hostIds.length) {
