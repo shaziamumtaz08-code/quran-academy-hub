@@ -86,7 +86,7 @@ export function ZoomSeatStatusTable() {
       }
 
       return rows.map((r) => {
-        const hasCreds = Boolean(r.zoom_account_id_cred && r.zoom_client_id && r.zoom_client_secret);
+        const hasCreds = Boolean(r.has_credentials);
         const st = r.zoom_user_id ? stats.get(r.zoom_user_id) : undefined;
         const eventCount = st?.count || 0;
 
@@ -99,7 +99,7 @@ export function ZoomSeatStatusTable() {
 
         return {
           id: r.id,
-          teacher_name: r.profile?.full_name || 'Unassigned seat',
+          teacher_name: nameById.get(r.teacher_id) || 'Unassigned seat',
           zoom_account_email: r.zoom_account_email,
           tier: r.tier,
           has_credentials: hasCreds,

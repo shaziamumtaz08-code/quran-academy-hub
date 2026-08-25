@@ -1133,8 +1133,8 @@ export default function Payments() {
     };
 
     // Org default currency — invoices must never fall back to a hardcoded USD.
-    const { data: orgRow } = await supabase.from('organizations').select('settings').limit(1).maybeSingle();
-    const orgDefaultCurrency = ((orgRow?.settings as any)?.default_currency as string) || 'PKR';
+    const { data: orgCurrency } = await (supabase as any).rpc('get_org_default_currency');
+    const orgDefaultCurrency = (orgCurrency as string) || 'PKR';
 
     // 1) Billing plans
     let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id, effective_from').eq('is_active', true);
