@@ -13723,6 +13723,7 @@ export type Database = {
           gov_id_type: string
         }[]
       }
+      get_org_default_currency: { Args: never; Returns: string }
       get_parent_children_ids: {
         Args: { _parent_id: string }
         Returns: string[]
@@ -13889,6 +13890,21 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_zoom_seat_status: {
+        Args: never
+        Returns: {
+          credential_error: string
+          credential_status: string
+          has_credentials: boolean
+          id: string
+          is_active: boolean
+          last_validated_at: string
+          teacher_id: string
+          tier: Database["public"]["Enums"]["zoom_account_tier"]
+          zoom_account_email: string
+          zoom_user_id: string
+        }[]
       }
       guest_email_is_unclaimed: { Args: { _email: string }; Returns: boolean }
       has_module_access: {
