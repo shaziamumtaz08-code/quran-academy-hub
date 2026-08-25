@@ -171,6 +171,8 @@ export async function resolvePerson(
   const submitted = normEmail(opts.submittedEmail);
   const fullName = (opts.fullName || "").trim() || "User";
   const password = opts.password || defaultPasswordFor(fullName);
+  // Accounts handed the guessable academy default must change it at first login.
+  const usedDefaultPassword = !opts.password;
 
   const canUseSubmittedAsLogin =
     isValidEmail(submitted) && (opts.workflow === "free" || opts.ownEmailConfirmed === true);
@@ -192,8 +194,9 @@ export async function resolvePerson(
         });
         if (!ensured.ok) return ensured;
 
-        if (opts.profile && Object.keys(opts.profile).length) {
-          const patch: Record<string, unknown> = { ...opts.profile };
+        if ((opts.profile && Object.keys(opts.profile).length) || (usedDefaultPassword && ensured.authCreated)) {
+          const patch: Record<string, unknown> = { ...(opts.profile || {}) };
+          if (usedDefaultPassword && ensured.authCreated) patch.force_password_reset = true;
           Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
           if (Object.keys(patch).length) {
             await admin.from("profiles").update(patch).eq("id", ensured.profileId);
@@ -277,6 +280,7 @@ export async function resolvePerson(
     email: loginEmail,
     whatsapp_number: opts.phone || null,
     ...(opts.profile || {}),
+    ...(usedDefaultPassword ? { force_password_reset: true } : {}),
   };
   Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
