@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
       const { error: updErr } = await admin
         .from("profiles")
-        .update({ email: newEmail })
+        .update({ email: newEmail, force_password_reset: true })
         .eq("id", student.id);
 
       results.push({

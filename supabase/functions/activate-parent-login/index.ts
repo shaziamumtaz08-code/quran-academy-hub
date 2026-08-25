@@ -92,6 +92,10 @@ serve(async (req) => {
       await admin.from("chat_members").update({ user_id: authUserId } as any).eq("user_id", profile.id);
       await admin.from("profiles").update({ id: authUserId } as any).eq("id", profile.id);
     }
+    // Temporary password issued — force a change at first sign-in.
+    await admin.from("profiles").update({ force_password_reset: true }).eq("id", authUserId);
+    if (false) {
+    }
 
     // Send password recovery / invite email
     let inviteSent = false;
