@@ -1293,60 +1293,6 @@ export default function Schedules() {
                         )}
                       </div>
                     </div>
-                    {editingSchedule && (
-                      <div className="sm:col-span-2 lg:col-span-3 space-y-4 border-t border-border pt-4">
-                        <div className="space-y-2">
-                          <Label>How long should this timing apply?</Label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button type="button" variant={periodType === 'permanent' ? 'default' : 'outline'} onClick={() => { setPeriodType('permanent'); setEffectiveTo(''); }}>
-                              Permanent change
-                            </Button>
-                            <Button type="button" variant={periodType === 'temporary' ? 'default' : 'outline'} onClick={() => setPeriodType('temporary')}>
-                              Temporary period
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {periodType === 'temporary' ? 'The previous permanent timing returns automatically after the end date.' : 'This timing applies from the selected date until another permanent change replaces it.'}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label>Starts on *</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                  <CalendarDays className="h-4 w-4 mr-2" />
-                                  {effectiveFrom ? format(new Date(`${effectiveFrom}T12:00:00`), 'dd MMM yyyy') : 'Pick start date'}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          {periodType === 'temporary' && (
-                            <div className="space-y-1.5">
-                              <Label>Ends on *</Label>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                    <CalendarDays className="h-4 w-4 mr-2" />
-                                    {effectiveTo ? format(new Date(`${effectiveTo}T12:00:00`), 'dd MMM yyyy') : 'Pick end date'}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
-                                </PopoverContent>
-                              </Popover>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="schedule-change-reason">Reason *</Label>
-                          <Input id="schedule-change-reason" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
-                        </div>
-                      </div>
-                    )}
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
                     <Button variant="outline" size="sm" onClick={handleCloseBulkDialog}>Cancel</Button>
