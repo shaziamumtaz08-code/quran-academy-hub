@@ -15,8 +15,11 @@ export { DEFAULT_ACADEMY_TZ };
 /** Teacher-local calendar date (YYYY-MM-DD) for the given instant. */
 export function teacherLocalClassDate(
   teacherTimezone?: string | null,
-  date: Date = new Date(),
+  date: Date | string = new Date(),
 ): string {
+  // A YYYY-MM-DD value selected from a teacher-frame schedule is already the
+  // canonical calendar date. Do not reinterpret it through the browser's zone.
+  if (typeof date === 'string') return date.substring(0, 10);
   return zonedParts(date, teacherTimezone || DEFAULT_ACADEMY_TZ).dateKey;
 }
 

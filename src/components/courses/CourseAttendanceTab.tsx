@@ -127,7 +127,7 @@ export function CourseAttendanceTab({ courseId }: CourseAttendanceTabProps) {
         student_id: studentId,
         teacher_id: user?.id || '',
         course_id: courseId,
-        class_date: markDate,
+         class_date: teacherLocalClassDate(teacherTz, markDate),
         class_time: markTime,
         status,
         lesson_notes: notes || null,

@@ -167,7 +167,7 @@ export default function TeacherNazraDashboard() {
       const { error } = await supabase.from('attendance').insert({
         student_id: selectedStudent.id,
         teacher_id: user.id,
-        class_date: classDate,
+        class_date: teacherLocalClassDate(teacherTz, classDate),
         class_time: classTime,
         duration_minutes: 30,
         status: status,
