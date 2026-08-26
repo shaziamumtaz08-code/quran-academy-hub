@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
 import { Button } from '@/components/ui/button';
 import { NextClassBanner } from '@/components/dashboard/shared/NextClassBanner';
+import { useHolidayOn } from '@/hooks/useHolidayToday';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
