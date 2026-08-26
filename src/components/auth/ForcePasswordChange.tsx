@@ -38,8 +38,31 @@ export function ForcePasswordChange() {
       toast({ title: 'Could not update password', description: error.message, variant: 'destructive' });
       return;
     }
-    if (profile?.id) {
-      await supabase.from('profiles').update({ force_password_reset: false }).eq('id', profile.id);
+    if (!profile?.id) {
+      setSaving(false);
+      toast({
+        title: 'Password updated, but setup could not finish',
+        description: 'Please sign out and contact an administrator.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { data: updatedProfile, error: profileError } = await supabase
+      .from('profiles')
+      .update({ force_password_reset: false })
+      .eq('id', profile.id)
+      .select('force_password_reset')
+      .single();
+
+    if (profileError || updatedProfile?.force_password_reset !== false) {
+      setSaving(false);
+      toast({
+        title: 'Password updated, but setup could not finish',
+        description: 'Please try once more or contact an administrator.',
+        variant: 'destructive',
+      });
+      return;
     }
     toast({ title: 'Password updated', description: 'Please sign in again with your new password.' });
     await logout();
