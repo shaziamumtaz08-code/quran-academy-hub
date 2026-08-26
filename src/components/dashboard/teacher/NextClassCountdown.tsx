@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
 import { Button } from '@/components/ui/button';
 import { NextClassBanner } from '@/components/dashboard/shared/NextClassBanner';
+import { useHolidayOn } from '@/hooks/useHolidayToday';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -90,6 +91,8 @@ const SHORT_DAYS: Record<string, string> = {
 
 export function NextClassCountdown() {
   const { user } = useAuth();
+  const { data: holiday } = useHolidayOn();
+
 
   const { data: nextClass, isLoading } = useQuery({
     queryKey: ['teacher-next-class-countdown', user?.id],
@@ -166,10 +169,18 @@ export function NextClassCountdown() {
 
   if (isLoading) return <Skeleton className="h-14 rounded-xl" />;
 
-  if (!nextClass) {
+  const isToday =
+    !!nextClass && nextClass.dateTime.toLocaleDateString('en-CA') === new Date().toLocaleDateString('en-CA');
+
+  if (!nextClass || (holiday && isToday)) {
     return (
       <NextClassBanner
         empty
+        emptyMessage={
+          holiday
+            ? `Academy holiday today${holiday.name ? ` — ${holiday.name}` : ''}. Classes are off.`
+            : undefined
+        }
         studentName=""
         scheduleLabel=""
         countdownLabel=""

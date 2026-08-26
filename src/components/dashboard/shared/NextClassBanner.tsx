@@ -18,6 +18,8 @@ interface NextClassBannerProps {
   actionHint?: string;
   /** Empty state — render placeholder banner */
   empty?: boolean;
+  /** Custom copy for the empty state (e.g. academy holiday notice) */
+  emptyMessage?: string;
 }
 
 export function NextClassBanner({
@@ -29,6 +31,7 @@ export function NextClassBanner({
   action,
   actionHint = 'Link goes live 5 min before',
   empty = false,
+  emptyMessage,
 }: NextClassBannerProps) {
   if (empty) {
     return (
@@ -41,7 +44,7 @@ export function NextClassBanner({
         }}
       >
         <p className="text-[12px]" style={{ color: '#a8d8e0' }}>
-          No class scheduled today
+          {emptyMessage || 'No class scheduled today'}
         </p>
       </section>
     );
