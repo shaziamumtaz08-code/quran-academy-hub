@@ -167,10 +167,18 @@ export function NextClassCountdown() {
 
   if (isLoading) return <Skeleton className="h-14 rounded-xl" />;
 
-  if (!nextClass) {
+  const isToday =
+    !!nextClass && nextClass.dateTime.toLocaleDateString('en-CA') === new Date().toLocaleDateString('en-CA');
+
+  if (!nextClass || (holiday && isToday)) {
     return (
       <NextClassBanner
         empty
+        emptyMessage={
+          holiday
+            ? `Academy holiday today${holiday.name ? ` — ${holiday.name}` : ''}. Classes are off.`
+            : undefined
+        }
         studentName=""
         scheduleLabel=""
         countdownLabel=""
