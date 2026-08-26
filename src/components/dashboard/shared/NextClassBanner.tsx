@@ -18,6 +18,8 @@ interface NextClassBannerProps {
   actionHint?: string;
   /** Empty state — render placeholder banner */
   empty?: boolean;
+  /** Custom copy for the empty state (e.g. academy holiday notice) */
+  emptyMessage?: string;
 }
 
 export function NextClassBanner({
