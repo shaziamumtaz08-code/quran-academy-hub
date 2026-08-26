@@ -31,6 +31,7 @@ export function NextClassBanner({
   action,
   actionHint = 'Link goes live 5 min before',
   empty = false,
+  emptyMessage,
 }: NextClassBannerProps) {
   if (empty) {
     return (
