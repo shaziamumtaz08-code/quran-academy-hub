@@ -91,6 +91,8 @@ const SHORT_DAYS: Record<string, string> = {
 
 export function NextClassCountdown() {
   const { user } = useAuth();
+  const { data: holiday } = useHolidayOn();
+
 
   const { data: nextClass, isLoading } = useQuery({
     queryKey: ['teacher-next-class-countdown', user?.id],
