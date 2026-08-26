@@ -44,7 +44,7 @@ export function NextClassBanner({
         }}
       >
         <p className="text-[12px]" style={{ color: '#a8d8e0' }}>
-          No class scheduled today
+          {emptyMessage || 'No class scheduled today'}
         </p>
       </section>
     );
