@@ -57,14 +57,25 @@ export function ImpersonateButton({
       });
       if (error || !(data?.tokenHash || data?.actionLink)) {
         if (newTab) newTab.close();
+        // supabase-js hides the response body behind error.context — read it so
+        // the admin sees the real reason (no email, permission, etc.).
+        let reason = data?.error as string | undefined;
+        const ctx = (error as any)?.context;
+        if (!reason && ctx && typeof ctx.json === 'function') {
+          try {
+            const body = await ctx.json();
+            reason = body?.error;
+          } catch { /* noop */ }
+        }
         toast({
           title: 'Impersonation failed',
-          description: error?.message || data?.error || 'Unable to generate sign-in link',
+          description: reason || error?.message || 'Unable to generate sign-in link',
           variant: 'destructive',
         });
         setLoading(false);
         return;
       }
+
 
       // Verify the one-time token inside our own app (?impersonate=1 keeps the
       // session in sessionStorage) instead of relying on Supabase's redirect,
