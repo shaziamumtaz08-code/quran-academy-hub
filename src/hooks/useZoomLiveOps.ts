@@ -65,6 +65,20 @@ export function useLiveSessionsMonitor() {
         .from('profiles')
         .select('id, full_name, meeting_link')
         .in('id', allProfileIds);
+
+      // Dedicated academy Zoom rooms live on zoom_accounts — this is the link the
+      // Accounts tab shows and the one that actually opens the class.
+      const { data: zoomAccounts } = await supabase
+        .from('zoom_accounts')
+        .select('teacher_id, meeting_link, is_active')
+        .in('teacher_id', teacherIds)
+        .eq('is_active', true);
+      const dedicatedLinkMap = new Map<string, string | null>();
+      (zoomAccounts || []).forEach((a: any) => {
+        if (a.teacher_id && a.meeting_link && !dedicatedLinkMap.get(a.teacher_id)) {
+          dedicatedLinkMap.set(a.teacher_id, a.meeting_link);
+        }
+      });
       const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
       const teacherLinkMap = new Map(
         (profiles || []).map((p: any) => [p.id, p.meeting_link as string | null]),
@@ -110,6 +124,7 @@ export function useLiveSessionsMonitor() {
         // A session started on a teacher's dedicated Zoom account has no pooled
         // licence, so fall back to the teacher's own personal meeting link.
         joinUrl:
+          dedicatedLinkMap.get(session.teacher_id) ||
           session.license?.meeting_link ||
           teacherLinkMap.get(session.teacher_id) ||
           session.stream_url ||
@@ -176,11 +191,15 @@ export function useEndSessionMutation(onDone?: (sessionId: string) => void) {
         updateData.recording_link = recordingLink.trim();
       }
 
-      const { error: sessionError } = await supabase
+      const { data: updated, error: sessionError } = await supabase
         .from('live_sessions')
         .update(updateData)
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select('id');
       if (sessionError) throw sessionError;
+      if (!updated || updated.length === 0) {
+        throw new Error('Session could not be ended — you may not have permission, or it was already closed.');
+      }
 
       if (licenseId) {
         const { error: licenseError } = await supabase
@@ -196,6 +215,7 @@ export function useEndSessionMutation(onDone?: (sessionId: string) => void) {
       queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['zoom-today-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-today-sessions'] });
     },
     onError: (error) => {
       toast.error('Failed to end session: ' + (error as Error).message);
