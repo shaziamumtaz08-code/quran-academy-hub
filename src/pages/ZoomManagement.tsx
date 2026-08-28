@@ -57,21 +57,26 @@ export default function ZoomManagement() {
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'health' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
-  const [webhookCopied, setWebhookCopied] = React.useState(false);
+  const [webhookCopied, setWebhookCopied] = React.useState<string | null>(null);
+  const [webhookApp, setWebhookApp] = React.useState<string>('');
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
-  const webhookUrl = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
+  const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
+  // Each Zoom Marketplace app has its own Secret Token, so every teacher app gets
+  // its own endpoint tag (?app=<slug>) that maps to that app's stored secret.
+  const webhookUrl = webhookApp ? `${webhookBase}?app=${webhookApp}` : webhookBase;
 
   const handleCopyWebhook = async () => {
     try {
       await navigator.clipboard.writeText(webhookUrl);
-      setWebhookCopied(true);
-      setTimeout(() => setWebhookCopied(false), 2000);
-      toast({ title: 'Webhook URL copied', description: 'Paste it into Zoom Marketplace event subscriptions.' });
+      setWebhookCopied(webhookUrl);
+      setTimeout(() => setWebhookCopied(null), 2000);
+      toast({ title: 'Webhook URL copied', description: 'Paste it into this teacher’s Zoom app under Event Subscriptions.' });
     } catch {
       toast({ title: 'Copy failed', description: 'Please copy the URL manually.', variant: 'destructive' });
     }
   };
+
 
 
 
@@ -538,12 +543,32 @@ export default function ZoomManagement() {
           </div>
         </div>
 
-        {/* Webhook URL — always visible copy box */}
+        {/* Webhook URL — per-app endpoint builder */}
         <Card className="border border-border/60 bg-card shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="sm:w-64">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom app</p>
+                <Select value={webhookApp || '__default'} onValueChange={(v) => setWebhookApp(v === '__default' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Shared / default app" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default">Shared / default app</SelectItem>
+                    {(zoomAccounts || [])
+                      .filter((a: any) => a.is_active)
+                      .map((a: any) => {
+                        const name = a.profile?.full_name || a.zoom_account_email || '';
+                        const slug = String(name).trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'app';
+                        return (
+                          <SelectItem key={a.id} value={slug}>
+                            {name} — ?app={slug}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom Event Subscription endpoint</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Event Subscription endpoint</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 block rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground break-all">
                     {webhookUrl}
@@ -559,12 +584,13 @@ export default function ZoomManagement() {
                   </Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                Paste this single URL into every Zoom Server-to-Server OAuth app under <strong>Feature → Event Subscriptions</strong>.
-              </p>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Each Zoom app has its own Secret Token, so give each teacher app its own tagged URL (<code className="font-mono">?app=slug</code>) under <strong>Feature → Event Subscriptions</strong>. Then save that app’s Secret Token as <code className="font-mono">ZOOM_SECRET_TOKEN_SLUG</code> (uppercase) — e.g. Shazia’s app uses <code className="font-mono">?app=shazia</code> and <code className="font-mono">ZOOM_SECRET_TOKEN_SHAZIA</code>.
+            </p>
           </CardContent>
         </Card>
+
 
         {/* Room Cards Grid */}
         <div>
