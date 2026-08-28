@@ -36,6 +36,28 @@ const DAYS_LABELS: Record<string, string> = {
   sunday: 'Sunday',
 };
 
+const DAY_INDEX: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+};
+
+/** Next calendar date (today inclusive) that falls on the given weekday. */
+const nextDateOnWeekday = (day: string, from: Date = new Date()): string => {
+  const target = DAY_INDEX[(day || '').toLowerCase()];
+  const base = new Date(from);
+  base.setHours(12, 0, 0, 0);
+  if (target === undefined) return format(base, 'yyyy-MM-dd');
+  const diff = (target - base.getDay() + 7) % 7;
+  base.setDate(base.getDate() + diff);
+  return format(base, 'yyyy-MM-dd');
+};
+
+const isOnWeekday = (date: Date, day: string) => {
+  const target = DAY_INDEX[(day || '').toLowerCase()];
+  return target === undefined ? true : date.getDay() === target;
+};
+
+
+
 const getTzAbbr = (tzValue: string | null) => {
   return getTimezoneAbbr(tzValue);
 };
@@ -822,7 +844,7 @@ export default function Schedules() {
     setNewSchedule(prev => ({ ...prev, studentTime: time, teacherTime }));
     setLastEditedField('student');
     setPeriodType('permanent');
-    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveFrom(nextDateOnWeekday(newSchedule.day));
     setEffectiveTo('');
     setChangeReason('');
   };
@@ -993,7 +1015,7 @@ export default function Schedules() {
     });
     setLastEditedField('student');
     setPeriodType('permanent');
-    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveFrom(nextDateOnWeekday(schedule.day_of_week));
     setEffectiveTo('');
     setChangeReason('');
     setIsDialogOpen(true);
@@ -1411,7 +1433,9 @@ export default function Schedules() {
                             </Button>
                           </div>
                           <p className="text-[11px] text-muted-foreground leading-snug">
-                            {periodType === 'temporary' ? 'The previous permanent timing returns automatically after the end date.' : 'This timing applies from the selected date until another permanent change replaces it.'}
+                            {periodType === 'temporary'
+                              ? `The previous timing returns automatically on the ${DAYS_LABELS[newSchedule.day] || 'class day'} after the end date.`
+                              : 'Applies from the start date onward. Add an end date only if the class should stop after that day.'}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2.5">
@@ -1425,27 +1449,39 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day)} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                           </div>
-                          {periodType === 'temporary' && (
-                            <div className="space-y-1">
-                              <Label className="text-xs">Ends on *</Label>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
-                                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
-                                    {effectiveTo ? format(new Date(`${effectiveTo}T12:00:00`), 'dd MMM yyyy') : 'Pick end date'}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
-                                </PopoverContent>
-                              </Popover>
-                            </div>
-                          )}
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              {periodType === 'temporary' ? 'Ends on *' : 'Ends after (optional)'}
+                            </Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
+                                  <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                                  {effectiveTo ? format(new Date(`${effectiveTo}T12:00:00`), 'dd MMM yyyy') : 'Pick end date'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day) || date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                              </PopoverContent>
+                            </Popover>
+                            {periodType === 'permanent' && effectiveTo && (
+                              <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => setEffectiveTo('')}>
+                                Clear end date
+                              </button>
+                            )}
+                          </div>
                         </div>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Dates can only fall on {DAYS_LABELS[newSchedule.day] || 'the class day'}.
+                          {periodType === 'permanent' && effectiveTo
+                            ? ' This weekly class will be dismantled after the end date.'
+                            : ''}
+                        </p>
+
                         <div className="space-y-1">
                           <Label htmlFor="schedule-change-reason" className="text-xs">Reason *</Label>
                           <Input id="schedule-change-reason" className="h-9" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
