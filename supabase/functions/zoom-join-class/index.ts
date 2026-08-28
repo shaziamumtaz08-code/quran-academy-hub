@@ -95,13 +95,22 @@ Deno.serve(async (req) => {
         const pwd = u.searchParams.get("pwd");
         if (pwd) web.searchParams.set("pwd", pwd);
         web.searchParams.set("uname", displayName);
+        // Zoom's web client also reads a base64 name in `un`.
+        try {
+          web.searchParams.set("un", btoa(unescape(encodeURIComponent(displayName))));
+        } catch { /* ignore */ }
         if (displayEmail) web.searchParams.set("uemail", displayEmail);
-        web.searchParams.set("prefer", "1");
+        // IMPORTANT: do NOT set prefer=1 — that hands the join to the installed
+        // Zoom desktop/mobile app, which then uses the DEVICE profile name
+        // (e.g. the teacher's own Zoom name on a shared phone) instead of the
+        // LMS name. Staying in the browser keeps the LMS name authoritative.
+        web.searchParams.set("prefer", "0");
         return web.toString();
       } catch {
         return appendUname(url);
       }
     };
+
 
 
     // Determine role
