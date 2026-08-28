@@ -62,12 +62,34 @@ export function TeacherZoomAccountsPanel() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, created_at, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name, email)')
+        .select('id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, last_validated_at, created_at, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name, email)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
     refetchInterval: 30000,
+  });
+
+  const [editingAccount, setEditingAccount] = React.useState<any>(null);
+  const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
+
+  const saveLinkMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any)
+        .from('zoom_accounts')
+        .update({
+          meeting_link: linkForm.meeting_link.trim() || null,
+          meeting_passcode: linkForm.meeting_passcode.trim() || null,
+        })
+        .eq('id', editingAccount.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Join link saved' });
+      setEditingAccount(null);
+      qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+    },
+    onError: (e: any) => toast({ title: 'Could not save', description: e.message, variant: 'destructive' }),
   });
 
   const deleteMut = useMutation({
@@ -88,6 +110,7 @@ export function TeacherZoomAccountsPanel() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] }),
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const resetForm = () => {
