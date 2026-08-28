@@ -13537,6 +13537,10 @@ export type Database = {
         Args: { _session_plan_id: string }
         Returns: boolean
       }
+      can_read_tutorial_capture: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_view_content_kit: { Args: { _kit_id: string }; Returns: boolean }
       can_view_course_content: {
         Args: { _course_id: string }

@@ -1384,9 +1384,15 @@ Deno.serve(async (req) => {
             const classDate = teacherLocalClassDate(scheduledStart, teacherTz);
             const classTime = teacherLocalClassTime(scheduledStart, teacherTz);
 
-            // Only auto-mark for 1:1 sessions (skip multi-student group monitor rows we don't
-            // have per-student roster confidence for; those keep their existing manual flow).
+            // POLICY: attendance is NEVER auto-marked from Zoom duration. Teachers/admins
+            // mark attendance manually; Zoom join/leave/duration is reference data only.
+            // Keep the classDate/classTime derivation above for logging/reporting use.
+            console.log("Auto-attendance disabled by policy", { session: session.id, classDate, classTime });
+            continue;
+
+            // eslint-disable-next-line no-unreachable
             if (!session.assignment_id) continue;
+
 
             // Get expected students for this teacher (1:1 assignment)
             const { data: assignments } = await supabase
