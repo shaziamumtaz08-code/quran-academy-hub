@@ -1200,7 +1200,7 @@ Deno.serve(async (req) => {
 
     // DEDICATED-ACCOUNT FAST PATH — bypass shared-pool logic entirely when the
     // host_id belongs to a teacher's dedicated zoom_accounts row.
-    const dedicatedAccount = await resolveDedicatedAccount(supabase, hostId);
+    const dedicatedAccount = await resolveDedicatedAccount(supabase, hostId, meetingIdTop);
     if (dedicatedAccount) {
       await handleDedicatedAccountEvent(supabase, event, dedicatedAccount, {
         hostId,
