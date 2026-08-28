@@ -21,26 +21,40 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    const token = authHeader.slice(7);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
-
     const admin = createClient(supabaseUrl, serviceKey);
+
+    // Resolve caller: try the service-role admin API first (works regardless of
+    // anon-key/signing-key config), then fall back to an anon client.
+    let callerId: string | null = null;
+    const { data: adminUser } = await admin.auth.getUser(token);
+    if (adminUser?.user) callerId = adminUser.user.id;
+    if (!callerId && anonKey) {
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: u } = await userClient.auth.getUser(token);
+      callerId = u?.user?.id ?? null;
+    }
+    if (!callerId) return json({ error: "Unauthorized" }, 401);
+
     const { data: roles } = await admin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id);
+      .eq("user_id", callerId);
     const allowed = (roles || []).some((r: any) =>
       ["super_admin", "admin"].includes(r.role) || String(r.role).startsWith("admin_")
     );
     if (!allowed) return json({ error: "Admin access required" }, 403);
+
 
     const body: Body = await req.json().catch(() => ({} as Body));
     const repair = body.repair === true;
