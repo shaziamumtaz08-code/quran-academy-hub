@@ -1399,28 +1399,28 @@ export default function Schedules() {
                       </div>
                     </div>
                     {editingSchedule && (
-                      <div className="sm:col-span-2 lg:col-span-3 space-y-4 border-t border-border pt-4">
-                        <div className="space-y-2">
-                          <Label>How long should this timing apply?</Label>
+                      <div className="col-span-2 space-y-2.5 border-t border-border pt-2.5">
+                        <div className="space-y-1">
+                          <Label className="text-xs">How long should this timing apply?</Label>
                           <div className="grid grid-cols-2 gap-2">
-                            <Button type="button" variant={periodType === 'permanent' ? 'default' : 'outline'} onClick={() => { setPeriodType('permanent'); setEffectiveTo(''); }}>
+                            <Button type="button" size="sm" variant={periodType === 'permanent' ? 'default' : 'outline'} onClick={() => { setPeriodType('permanent'); setEffectiveTo(''); }}>
                               Permanent change
                             </Button>
-                            <Button type="button" variant={periodType === 'temporary' ? 'default' : 'outline'} onClick={() => setPeriodType('temporary')}>
+                            <Button type="button" size="sm" variant={periodType === 'temporary' ? 'default' : 'outline'} onClick={() => setPeriodType('temporary')}>
                               Temporary period
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground leading-snug">
                             {periodType === 'temporary' ? 'The previous permanent timing returns automatically after the end date.' : 'This timing applies from the selected date until another permanent change replaces it.'}
                           </p>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label>Starts on *</Label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Starts on *</Label>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                  <CalendarDays className="h-4 w-4 mr-2" />
+                                <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
+                                  <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
                                   {effectiveFrom ? format(new Date(`${effectiveFrom}T12:00:00`), 'dd MMM yyyy') : 'Pick start date'}
                                 </Button>
                               </PopoverTrigger>
@@ -1430,12 +1430,12 @@ export default function Schedules() {
                             </Popover>
                           </div>
                           {periodType === 'temporary' && (
-                            <div className="space-y-1.5">
-                              <Label>Ends on *</Label>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Ends on *</Label>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                    <CalendarDays className="h-4 w-4 mr-2" />
+                                  <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
+                                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
                                     {effectiveTo ? format(new Date(`${effectiveTo}T12:00:00`), 'dd MMM yyyy') : 'Pick end date'}
                                   </Button>
                                 </PopoverTrigger>
@@ -1446,9 +1446,9 @@ export default function Schedules() {
                             </div>
                           )}
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="schedule-change-reason">Reason *</Label>
-                          <Input id="schedule-change-reason" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
+                        <div className="space-y-1">
+                          <Label htmlFor="schedule-change-reason" className="text-xs">Reason *</Label>
+                          <Input id="schedule-change-reason" className="h-9" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
                         </div>
                       </div>
                     )}
