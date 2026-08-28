@@ -1453,7 +1453,7 @@ export default function Schedules() {
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-blue-200 dark:border-blue-800 mt-2">
                     <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
                     <Button size="sm" onClick={handleSubmitSchedule} disabled={isPending}>
                       {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
