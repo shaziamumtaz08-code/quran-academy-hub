@@ -15,6 +15,21 @@ import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
   CalendarPlus, X, MonitorUp, Bell,
 } from 'lucide-react';
+import { ZoomSdkMeeting } from './ZoomSdkMeeting';
+import ClassroomTeachingPanel from './ClassroomTeachingPanel';
+
+/** Parse a standard Zoom join URL: https://<host>/j/{meetingNumber}?pwd={passcode} */
+function parseZoomLink(link: string): { meetingNumber: string; passcode: string } | null {
+  try {
+    const url = new URL(link);
+    const m = url.pathname.match(/\/j\/(\d{9,12})/);
+    if (!m) return null;
+    return { meetingNumber: m[1], passcode: url.searchParams.get('pwd') || '' };
+  } catch {
+    return null;
+  }
+}
+
 
 // ─── Types ───
 interface ClassInfo {
