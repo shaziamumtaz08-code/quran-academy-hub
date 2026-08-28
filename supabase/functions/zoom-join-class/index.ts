@@ -227,7 +227,11 @@ Deno.serve(async (req) => {
         licenseId: null,
         zoomAccountId: dedicatedAccount.id,
         passcode,
-        joinUrl: appendUname(dedicatedAccount.meeting_link),
+        joinUrl: isTeacher
+          ? appendUname(dedicatedAccount.meeting_link)
+          : toWebClient(dedicatedAccount.meeting_link),
+        joinName: displayName,
+
       });
     }
 
