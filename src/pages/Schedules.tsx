@@ -1373,23 +1373,17 @@ export default function Schedules() {
                     </div>
                     {/* Location info banner with frozen timezones */}
                     {selectedAssignment && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-3 bg-muted/50 rounded-md border border-border">
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Globe className="h-3 w-3" />
-                              <span>Student:</span>
-                            </div>
-                            <div className="font-medium">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</div>
-                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.student_country)} - {getTzAbbr(newSchedule.studentTimezone)}</Badge>
+                      <div className="col-span-2 px-2.5 py-2 bg-muted/50 rounded-md border border-border">
+                        <div className="grid grid-cols-2 gap-2 text-[11px] leading-tight">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate font-medium">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</span>
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">{getCountryCode(selectedAssignment.student_country)} - {getTzAbbr(newSchedule.studentTimezone)}</Badge>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Globe className="h-3 w-3" />
-                              <span>Teacher:</span>
-                            </div>
-                            <div className="font-medium">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</div>
-                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.teacher_country)} - {getTzAbbr(newSchedule.teacherTimezone)}</Badge>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate font-medium">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</span>
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">{getCountryCode(selectedAssignment.teacher_country)} - {getTzAbbr(newSchedule.teacherTimezone)}</Badge>
                           </div>
                         </div>
                       </div>
