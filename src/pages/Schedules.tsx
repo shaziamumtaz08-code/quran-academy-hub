@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download, History } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
 import { DailySlotCalendar } from '@/components/schedules/DailySlotCalendar';
@@ -602,6 +602,13 @@ export default function Schedules() {
       }
       return newSet;
     });
+  };
+
+  const [historyVisible, setHistoryVisible] = useState<Record<string, boolean>>({});
+  const toggleHistory = (assignmentId: string) => {
+    setHistoryVisible(prev => ({ ...prev, [assignmentId]: !prev[assignmentId] }));
+    // Ensure the weekly panel is open so the history is visible
+    setExpandedAssignments(prev => new Set(prev).add(assignmentId));
   };
 
   // Get unique teachers and subjects for filter dropdowns
