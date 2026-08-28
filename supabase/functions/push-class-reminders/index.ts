@@ -67,6 +67,19 @@ Deno.serve(async (req) => {
     const dayName = zonedDayName(tz);
     const dateIso = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 
+    // Academy holidays suppress the day's reminders entirely.
+    const { data: holidays } = await supabase
+      .from("holidays")
+      .select("name")
+      .eq("holiday_date", dateIso);
+    if ((holidays ?? []).length > 0) {
+      summary.notes.push(`Academy holiday (${holidays?.[0]?.name ?? "off day"}) — reminders skipped.`);
+      console.log("push-class-reminders summary", { day: dayName, ...summary });
+      return new Response(JSON.stringify({ success: true, day: dayName, ...summary }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Today's active schedule slots (read-only; same source as Live operations).
     const { data: schedules, error: schedErr } = await supabase
       .rpc("get_effective_schedule_periods", { _on_date: dateIso });
