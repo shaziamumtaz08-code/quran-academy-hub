@@ -1314,14 +1314,14 @@ export default function Schedules() {
                 </Button>
               </DialogTrigger>
               <DialogContent
-                className="max-w-2xl"
+                className="max-w-lg w-[95vw] max-h-[88vh] overflow-y-auto p-4 sm:p-5 gap-3"
                 onCloseAutoFocus={(e) => e.preventDefault()}
               >
-                <DialogHeader>
-                  <DialogTitle className="font-serif">{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
+                <DialogHeader className="pb-0">
+                  <DialogTitle className="font-serif text-base">{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
                 </DialogHeader>
-                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Assignment *</Label>
                       <Select value={newSchedule.assignmentId} onValueChange={handleAssignmentSelect} disabled={!!editingSchedule}>
@@ -1373,23 +1373,17 @@ export default function Schedules() {
                     </div>
                     {/* Location info banner with frozen timezones */}
                     {selectedAssignment && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-3 bg-muted/50 rounded-md border border-border">
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Globe className="h-3 w-3" />
-                              <span>Student:</span>
-                            </div>
-                            <div className="font-medium">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</div>
-                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.student_country)} - {getTzAbbr(newSchedule.studentTimezone)}</Badge>
+                      <div className="col-span-2 px-2.5 py-2 bg-muted/50 rounded-md border border-border">
+                        <div className="grid grid-cols-2 gap-2 text-[11px] leading-tight">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate font-medium">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</span>
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">{getCountryCode(selectedAssignment.student_country)} - {getTzAbbr(newSchedule.studentTimezone)}</Badge>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Globe className="h-3 w-3" />
-                              <span>Teacher:</span>
-                            </div>
-                            <div className="font-medium">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</div>
-                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.teacher_country)} - {getTzAbbr(newSchedule.teacherTimezone)}</Badge>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate font-medium">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</span>
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">{getCountryCode(selectedAssignment.teacher_country)} - {getTzAbbr(newSchedule.teacherTimezone)}</Badge>
                           </div>
                         </div>
                       </div>
@@ -1405,28 +1399,28 @@ export default function Schedules() {
                       </div>
                     </div>
                     {editingSchedule && (
-                      <div className="sm:col-span-2 lg:col-span-3 space-y-4 border-t border-border pt-4">
-                        <div className="space-y-2">
-                          <Label>How long should this timing apply?</Label>
+                      <div className="col-span-2 space-y-2.5 border-t border-border pt-2.5">
+                        <div className="space-y-1">
+                          <Label className="text-xs">How long should this timing apply?</Label>
                           <div className="grid grid-cols-2 gap-2">
-                            <Button type="button" variant={periodType === 'permanent' ? 'default' : 'outline'} onClick={() => { setPeriodType('permanent'); setEffectiveTo(''); }}>
+                            <Button type="button" size="sm" variant={periodType === 'permanent' ? 'default' : 'outline'} onClick={() => { setPeriodType('permanent'); setEffectiveTo(''); }}>
                               Permanent change
                             </Button>
-                            <Button type="button" variant={periodType === 'temporary' ? 'default' : 'outline'} onClick={() => setPeriodType('temporary')}>
+                            <Button type="button" size="sm" variant={periodType === 'temporary' ? 'default' : 'outline'} onClick={() => setPeriodType('temporary')}>
                               Temporary period
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground leading-snug">
                             {periodType === 'temporary' ? 'The previous permanent timing returns automatically after the end date.' : 'This timing applies from the selected date until another permanent change replaces it.'}
                           </p>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label>Starts on *</Label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Starts on *</Label>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                  <CalendarDays className="h-4 w-4 mr-2" />
+                                <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
+                                  <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
                                   {effectiveFrom ? format(new Date(`${effectiveFrom}T12:00:00`), 'dd MMM yyyy') : 'Pick start date'}
                                 </Button>
                               </PopoverTrigger>
@@ -1436,12 +1430,12 @@ export default function Schedules() {
                             </Popover>
                           </div>
                           {periodType === 'temporary' && (
-                            <div className="space-y-1.5">
-                              <Label>Ends on *</Label>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Ends on *</Label>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button type="button" variant="outline" className="w-full justify-start font-normal">
-                                    <CalendarDays className="h-4 w-4 mr-2" />
+                                  <Button type="button" variant="outline" size="sm" className="w-full justify-start font-normal">
+                                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
                                     {effectiveTo ? format(new Date(`${effectiveTo}T12:00:00`), 'dd MMM yyyy') : 'Pick end date'}
                                   </Button>
                                 </PopoverTrigger>
@@ -1452,9 +1446,9 @@ export default function Schedules() {
                             </div>
                           )}
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="schedule-change-reason">Reason *</Label>
-                          <Input id="schedule-change-reason" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
+                        <div className="space-y-1">
+                          <Label htmlFor="schedule-change-reason" className="text-xs">Reason *</Label>
+                          <Input id="schedule-change-reason" className="h-9" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} maxLength={240} placeholder="e.g. School holidays or daylight-saving adjustment" />
                         </div>
                       </div>
                     )}
