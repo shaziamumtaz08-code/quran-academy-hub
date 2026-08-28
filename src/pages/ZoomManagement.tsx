@@ -57,21 +57,26 @@ export default function ZoomManagement() {
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'health' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
-  const [webhookCopied, setWebhookCopied] = React.useState(false);
+  const [webhookCopied, setWebhookCopied] = React.useState<string | null>(null);
+  const [webhookApp, setWebhookApp] = React.useState<string>('');
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
-  const webhookUrl = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
+  const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
+  // Each Zoom Marketplace app has its own Secret Token, so every teacher app gets
+  // its own endpoint tag (?app=<slug>) that maps to that app's stored secret.
+  const webhookUrl = webhookApp ? `${webhookBase}?app=${webhookApp}` : webhookBase;
 
   const handleCopyWebhook = async () => {
     try {
       await navigator.clipboard.writeText(webhookUrl);
-      setWebhookCopied(true);
-      setTimeout(() => setWebhookCopied(false), 2000);
-      toast({ title: 'Webhook URL copied', description: 'Paste it into Zoom Marketplace event subscriptions.' });
+      setWebhookCopied(webhookUrl);
+      setTimeout(() => setWebhookCopied(null), 2000);
+      toast({ title: 'Webhook URL copied', description: 'Paste it into this teacher’s Zoom app under Event Subscriptions.' });
     } catch {
       toast({ title: 'Copy failed', description: 'Please copy the URL manually.', variant: 'destructive' });
     }
   };
+
 
 
 
