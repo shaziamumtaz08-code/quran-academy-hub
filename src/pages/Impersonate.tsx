@@ -36,7 +36,12 @@ export default function Impersonate() {
         return;
       }
       const sep = next.includes('?') ? '&' : '?';
-      navigate(`${next}${sep}impersonate=1`, { replace: true });
+      // Carry the admin's active workspace into the impersonated session so the
+      // dashboard opens in the same division they launched it from.
+      const div = params.get('div');
+      navigate(`${next}${sep}impersonate=1${div ? `&div=${encodeURIComponent(div)}` : ''}`, {
+        replace: true,
+      });
     })();
   }, [params, navigate]);
 
