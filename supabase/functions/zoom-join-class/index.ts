@@ -112,10 +112,10 @@ Deno.serve(async (req) => {
     if (p.assignmentId) {
       const { data: asg } = await service
         .from("student_teacher_assignments")
-        .select("division_id, divisions:division_id(model)")
+        .select("division_id, divisions:division_id(model_type)")
         .eq("id", p.assignmentId)
         .maybeSingle();
-      const model = (asg as any)?.divisions?.model;
+      const model = (asg as any)?.divisions?.model_type;
       if (model === "group") preferredTier = "licensed";
     }
     const { data: dedicatedAccountRows } = await service
