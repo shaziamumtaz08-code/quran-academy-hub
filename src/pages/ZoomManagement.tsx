@@ -585,9 +585,28 @@ export default function ZoomManagement() {
                 </div>
               </div>
             </div>
+            {webhookApp ? (
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2 pt-1">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                    Secret Token for this app
+                  </p>
+                  <Input
+                    type="password"
+                    value={webhookToken}
+                    onChange={(e) => setWebhookToken(e.target.value)}
+                    placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
+                  />
+                </div>
+                <Button size="sm" disabled={!webhookToken || savingToken} onClick={saveWebhookToken}>
+                  {savingToken ? 'Saving…' : 'Save token'}
+                </Button>
+              </div>
+            ) : null}
             <p className="text-xs text-muted-foreground">
-              Each Zoom app has its own Secret Token, so give each teacher app its own tagged URL (<code className="font-mono">?app=slug</code>) under <strong>Feature → Event Subscriptions</strong>. Then save that app’s Secret Token as <code className="font-mono">ZOOM_SECRET_TOKEN_SLUG</code> (uppercase) — e.g. Shazia’s app uses <code className="font-mono">?app=shazia</code> and <code className="font-mono">ZOOM_SECRET_TOKEN_SHAZIA</code>.
+              Give each teacher app its own tagged URL (<code className="font-mono">?app=slug</code>) under <strong>Feature → Event Subscriptions</strong>, then paste that app’s <strong>Secret Token</strong> above and press <em>Save token</em> — it is stored against the teacher’s Zoom account, so no developer step is needed. Save it <em>before</em> pressing “Validate” in Zoom.
             </p>
+
           </CardContent>
         </Card>
 
