@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     }
     const { data: dedicatedAccountRows } = await service
       .from("zoom_accounts")
-      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active")
+      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active")
       .eq("teacher_id", p.teacherId)
       .eq("is_active", true);
     const activeAccounts = (dedicatedAccountRows || []) as any[];
@@ -187,11 +187,23 @@ Deno.serve(async (req) => {
           .update({ zoom_account_id: dedicatedAccount.id })
           .eq("id", session.id);
       }
+      // Zoom only skips the passcode prompt when the link carries its long
+      // ENCRYPTED pwd token. Links saved with a plain passcode (e.g. ?pwd=3333)
+      // still prompt, so surface the passcode to the joiner.
+      const rawPwd = (() => {
+        const m = /[?&]pwd=([^&]+)/.exec(dedicatedAccount.meeting_link);
+        return m ? decodeURIComponent(m[1]) : null;
+      })();
+      const passcode =
+        (dedicatedAccount.meeting_passcode && String(dedicatedAccount.meeting_passcode).trim()) ||
+        (rawPwd && rawPwd.length < 20 ? rawPwd : null);
+
       return jsonResp({
         ready: true,
         sessionId: session.id,
         licenseId: null,
         zoomAccountId: dedicatedAccount.id,
+        passcode,
         joinUrl: appendUname(dedicatedAccount.meeting_link),
       });
     }

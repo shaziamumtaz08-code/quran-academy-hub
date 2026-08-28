@@ -11,6 +11,7 @@ import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from '@/hooks/useAcademyTimezone';
 import { playPingChime } from '@/lib/pingChime';
 import { Bell, X } from 'lucide-react';
+import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 
 type Row = {
   key: string;
@@ -302,6 +303,7 @@ export default function LiveClasses() {
         await load();
         return;
       }
+      notifyMeetingPasscode(payload?.passcode);
       window.open(payload.joinUrl, "_blank", "noopener,noreferrer");
       // Refresh so the row now shows the meeting link
       setTimeout(load, 500);

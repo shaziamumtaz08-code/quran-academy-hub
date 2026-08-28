@@ -8,6 +8,7 @@ import { Loader2, Video, Radio, ChevronDown, ChevronUp } from 'lucide-react';
 import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 import { cn } from '@/lib/utils';
+import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 
 interface ClassRow {
   key: string;
@@ -145,6 +146,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
         toast.info(payload?.message || "This class isn't open yet.");
         return;
       }
+      notifyMeetingPasscode(payload?.passcode);
       window.open(payload.joinUrl, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       toast.error(e?.message || 'Could not open the class link.');

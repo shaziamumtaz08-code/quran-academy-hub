@@ -12817,6 +12817,7 @@ export type Database = {
           is_shared: boolean
           last_validated_at: string | null
           meeting_link: string | null
+          meeting_passcode: string | null
           notes: string | null
           shared_purposes: string[]
           teacher_id: string | null
@@ -12840,6 +12841,7 @@ export type Database = {
           is_shared?: boolean
           last_validated_at?: string | null
           meeting_link?: string | null
+          meeting_passcode?: string | null
           notes?: string | null
           shared_purposes?: string[]
           teacher_id?: string | null
@@ -12863,6 +12865,7 @@ export type Database = {
           is_shared?: boolean
           last_validated_at?: string | null
           meeting_link?: string | null
+          meeting_passcode?: string | null
           notes?: string | null
           shared_purposes?: string[]
           teacher_id?: string | null
