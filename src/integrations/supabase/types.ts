@@ -12823,6 +12823,8 @@ export type Database = {
           teacher_id: string | null
           tier: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at: string
+          webhook_app_slug: string | null
+          webhook_secret_token: string | null
           zoom_account_email: string
           zoom_account_id_cred: string | null
           zoom_client_id: string | null
@@ -12847,6 +12849,8 @@ export type Database = {
           teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at?: string
+          webhook_app_slug?: string | null
+          webhook_secret_token?: string | null
           zoom_account_email: string
           zoom_account_id_cred?: string | null
           zoom_client_id?: string | null
@@ -12871,6 +12875,8 @@ export type Database = {
           teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
           updated_at?: string
+          webhook_app_slug?: string | null
+          webhook_secret_token?: string | null
           zoom_account_email?: string
           zoom_account_id_cred?: string | null
           zoom_client_id?: string | null
