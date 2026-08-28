@@ -542,7 +542,7 @@ export default function Schedules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-periods'] });
-      toast({ title: 'Schedule timeline updated', description: periodType === 'temporary' ? 'The original timing will return automatically after the end date.' : 'The new permanent timing will apply from its start date.' });
+      toast({ title: 'Schedule timeline updated', description: periodType === 'temporary' ? 'The original timing will return automatically after the end date.' : (effectiveTo ? 'This weekly class will stop after the end date.' : 'The new permanent timing will apply from its start date.') });
       handleCloseDialog();
     },
     onError: (error: any) => {
