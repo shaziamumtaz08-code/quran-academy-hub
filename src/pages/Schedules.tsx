@@ -1053,6 +1053,20 @@ export default function Schedules() {
       return;
     }
 
+    if (editingSchedule) {
+      const dayLabel = DAYS_LABELS[newSchedule.day] || 'the class day';
+      const fromOk = isOnWeekday(new Date(`${effectiveFrom}T12:00:00`), newSchedule.day);
+      const toOk = !effectiveTo || isOnWeekday(new Date(`${effectiveTo}T12:00:00`), newSchedule.day);
+      if (!fromOk || !toOk) {
+        toast({ title: 'Wrong weekday', description: `Effective dates must fall on a ${dayLabel}.`, variant: 'destructive' });
+        return;
+      }
+      if (effectiveTo && effectiveTo < effectiveFrom) {
+        toast({ title: 'Invalid range', description: 'The end date cannot be before the start date.', variant: 'destructive' });
+        return;
+      }
+    }
+
     // Check for conflicts
     const conflict = detectScheduleConflict(
       {
@@ -1088,7 +1102,7 @@ export default function Schedules() {
         ...scheduleData,
         period_type: periodType,
         effective_from: effectiveFrom,
-        effective_to: periodType === 'temporary' ? effectiveTo : null,
+        effective_to: effectiveTo || null,
         change_reason: changeReason.trim(),
       });
     } else {
