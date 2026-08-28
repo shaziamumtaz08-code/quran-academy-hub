@@ -351,6 +351,72 @@ export default function ZoomVault() {
         </TabsContent>
       </Tabs>
 
+      <Dialog open={Boolean(viewing)} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{viewing?.label}</DialogTitle></DialogHeader>
+          {viewing && (
+            <div className="space-y-2 text-sm">
+              {([
+                ['Zoom email', viewing.zoom_email],
+                ['Google email', viewing.google_email || '—'],
+                ['PMI', viewing.pmi || '—'],
+                ['Passcode', viewing.passcode || '—'],
+                ['Host key', viewing.host_key || '—'],
+                ['Type', viewing.account_type],
+                ['Pool', viewing.pool_assignment],
+                ['Teacher', teacherName(viewing.assigned_teacher_id)],
+                ['Auto record', viewing.auto_record ? 'On' : 'Off'],
+                ['Status', viewing.status.replace('_', ' ')],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="flex items-start justify-between gap-3 border-b border-border/50 py-1">
+                  <span className="text-muted-foreground">{k}</span>
+                  <span className="text-right font-medium break-all">{v}</span>
+                </div>
+              ))}
+              {viewing.pmi && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://zoom.us/j/${String(viewing.pmi).replace(/\D/g, '')}`);
+                    toast({ title: 'Join link copied' });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" /> Copy join link
+                </Button>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => reveal(viewing.id, 'zoom_password')}>
+                  <KeyRound className="h-4 w-4 mr-1" /> Reveal Zoom password
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => reveal(viewing.id, 'google_password')}>
+                  <KeyRound className="h-4 w-4 mr-1" /> Reveal Google password
+                </Button>
+              </div>
+              {(['zoom_password', 'google_password'] as const).map(f => {
+                const val = revealed[`${viewing.id}:${f}`];
+                return val ? (
+                  <p key={f} className="font-mono text-xs bg-muted rounded px-2 py-1">
+                    {f.replace('_', ' ')}: {val} <span className="text-muted-foreground">(hides in 10s)</span>
+                  </p>
+                ) : null;
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => viewing && confirm(`Delete "${viewing.label}"?`) && remove.mutate(viewing.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { const a = viewing; setViewing(null); if (a) startEdit(a); }}>Edit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? 'Edit Zoom account' : 'Add Zoom account'}</DialogTitle></DialogHeader>
