@@ -33,6 +33,7 @@ import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
 import { logRouteHit } from "@/lib/telemetry";
 import { DivisionSwitcher } from "@/components/layout/DivisionSwitcher";
+import { RoleSwitcher } from "@/components/layout/RoleSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -702,8 +703,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <img src={logoDark} alt="Al-Quran Time" className="h-8 w-8 rounded-md object-cover" />
             </Link>
             <div className="ml-auto flex min-w-0 items-center gap-2 md:gap-3">
-              <div className="hidden md:block max-w-[190px] min-w-0">
+              <div className="max-w-[150px] min-w-0 md:max-w-[190px]">
                 <DivisionSwitcher />
+              </div>
+              <div className="hidden sm:block">
+                <RoleSwitcher />
               </div>
               <NotificationBell />
               {activeRole && activeRole !== "admin" && activeRole !== "super_admin" && (

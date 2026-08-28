@@ -4,6 +4,7 @@ import { LogIn, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 
 interface ImpersonateButtonProps {
   userId: string;
@@ -28,6 +29,7 @@ export function ImpersonateButton({
   redirectTo,
 }: ImpersonateButtonProps) {
   const { activeRole, user: currentUser } = useAuth();
+  const { activeDivision } = useDivision();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -83,7 +85,9 @@ export function ImpersonateButton({
       const landing = data.tokenHash
         ? `${window.location.origin}/impersonate?impersonate=1&th=${encodeURIComponent(
             data.tokenHash,
-          )}&next=${encodeURIComponent(targetPath)}`
+          )}&next=${encodeURIComponent(targetPath)}${
+            activeDivision?.id ? `&div=${encodeURIComponent(activeDivision.id)}` : ''
+          }`
         : data.actionLink;
 
       if (newTab) {

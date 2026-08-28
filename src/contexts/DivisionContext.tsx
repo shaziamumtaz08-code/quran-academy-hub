@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   DivisionContext,
   DIVISION_STORAGE_KEY,
+  divisionStorage,
+  readStoredDivisionId,
   type Branch,
   type Division,
   type DivisionContextEntry,
@@ -23,13 +25,7 @@ export function useDivision() {
 export function DivisionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
   const [userContexts, setUserContexts] = useState<DivisionContextEntry[]>([]);
-  const [activeDivisionId, setActiveDivisionIdState] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(DIVISION_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  });
+  const [activeDivisionId, setActiveDivisionIdState] = useState<string | null>(() => readStoredDivisionId());
   const [branches, setBranches] = useState<Branch[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +84,7 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
 
         if (enriched.length === 0) {
           setActiveDivisionIdState(null);
-          localStorage.removeItem(DIVISION_STORAGE_KEY);
+          divisionStorage()?.removeItem(DIVISION_STORAGE_KEY);
           return;
         }
 
@@ -102,7 +98,7 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
             enriched[0];
           if (defaultCtx) {
             setActiveDivisionIdState(defaultCtx.division_id);
-            localStorage.setItem(DIVISION_STORAGE_KEY, defaultCtx.division_id);
+            divisionStorage()?.setItem(DIVISION_STORAGE_KEY, defaultCtx.division_id);
           }
         }
       } catch (err) {
@@ -118,7 +114,7 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
   const setActiveDivisionId = (divisionId: string) => {
     setActiveDivisionIdState(divisionId);
     try {
-      localStorage.setItem(DIVISION_STORAGE_KEY, divisionId);
+      divisionStorage()?.setItem(DIVISION_STORAGE_KEY, divisionId);
     } catch {
       // Ignore storage errors
     }
