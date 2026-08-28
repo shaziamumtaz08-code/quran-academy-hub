@@ -9,9 +9,12 @@ interface ZoomSdkMeetingProps {
   userEmail?: string;
   role: 0 | 1;
   height?: number;
+  /** The course class this meeting belongs to — resolves the hosting Zoom account. */
+  courseClassId: string;
   /** Called when the SDK cannot start — parent should fall back to the iframe. */
   onFailure?: (message: string) => void;
 }
+
 
 /**
  * Zoom Meeting SDK for Web — component view (renders inside our own panel,

@@ -2079,6 +2079,7 @@ export type Database = {
           status: string
           timezone: string | null
           updated_at: string
+          zoom_account_id: string | null
           zoom_license_id: string | null
         }
         Insert: {
@@ -2098,6 +2099,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_license_id?: string | null
         }
         Update: {
@@ -2117,6 +2119,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_license_id?: string | null
         }
         Relationships: [
@@ -2125,6 +2128,20 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_classes_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_classes_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts_safe"
             referencedColumns: ["id"]
           },
           {
@@ -12829,6 +12846,8 @@ export type Database = {
           zoom_account_id_cred: string | null
           zoom_client_id: string | null
           zoom_client_secret: string | null
+          zoom_meeting_sdk_client_id: string | null
+          zoom_meeting_sdk_client_secret: string | null
           zoom_user_id: string | null
         }
         Insert: {
@@ -12855,6 +12874,8 @@ export type Database = {
           zoom_account_id_cred?: string | null
           zoom_client_id?: string | null
           zoom_client_secret?: string | null
+          zoom_meeting_sdk_client_id?: string | null
+          zoom_meeting_sdk_client_secret?: string | null
           zoom_user_id?: string | null
         }
         Update: {
@@ -12881,6 +12902,8 @@ export type Database = {
           zoom_account_id_cred?: string | null
           zoom_client_id?: string | null
           zoom_client_secret?: string | null
+          zoom_meeting_sdk_client_id?: string | null
+          zoom_meeting_sdk_client_secret?: string | null
           zoom_user_id?: string | null
         }
         Relationships: [
@@ -13453,6 +13476,14 @@ export type Database = {
           _banking?: Database["public"]["Enums"]["banking_verify_status"]
           _cv?: Database["public"]["Enums"]["cv_review_status"]
           _teacher_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_zoom_meeting_sdk_creds: {
+        Args: {
+          _account_id: string
+          _client_id: string
+          _client_secret: string
         }
         Returns: undefined
       }
