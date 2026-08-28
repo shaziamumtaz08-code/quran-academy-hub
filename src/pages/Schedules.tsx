@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download, History } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
 import { DailySlotCalendar } from '@/components/schedules/DailySlotCalendar';
@@ -602,6 +602,13 @@ export default function Schedules() {
       }
       return newSet;
     });
+  };
+
+  const [historyVisible, setHistoryVisible] = useState<Record<string, boolean>>({});
+  const toggleHistory = (assignmentId: string) => {
+    setHistoryVisible(prev => ({ ...prev, [assignmentId]: !prev[assignmentId] }));
+    // Ensure the weekly panel is open so the history is visible
+    setExpandedAssignments(prev => new Set(prev).add(assignmentId));
   };
 
   // Get unique teachers and subjects for filter dropdowns
@@ -1781,12 +1788,10 @@ export default function Schedules() {
                               <span className="text-muted-foreground mx-1">/</span>
                               <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
                               <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
-                              {todaysClass.effectivePeriod && (
-                                <Badge variant="outline" className="ml-2 text-[10px]">
-                                  {todaysClass.effectivePeriod.period_type === 'temporary'
-                                    ? `Temporary until ${format(new Date(`${todaysClass.effectivePeriod.effective_to}T12:00:00`), 'dd MMM')}`
-                                    : `Permanent from ${format(new Date(`${todaysClass.effectivePeriod.effective_from}T12:00:00`), 'dd MMM')}`}
-                                </Badge>
+                              {todaysClass.effectivePeriod?.period_type === 'temporary' && (
+                                <span className="ml-2 text-[10px] text-amber-600 dark:text-amber-400">
+                                  until {format(new Date(`${todaysClass.effectivePeriod.effective_to}T12:00:00`), 'dd MMM')}
+                                </span>
                               )}
                             </span>
                           ) : (
@@ -1796,6 +1801,17 @@ export default function Schedules() {
                         <TableCell>
                           {todaysClass && (
                             <div className="flex gap-1">
+                              {schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground"
+                                  title="Timing history"
+                                  onClick={() => toggleHistory(assignment.id)}
+                                >
+                                  <History className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditSchedule(todaysClass, assignment)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -1892,7 +1908,7 @@ export default function Schedules() {
                                   );
                                 })}
                               </div>
-                              {schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
+                              {historyVisible[assignment.id] && schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
                                 <div className="border-t border-border pt-3">
                                   <p className="text-xs font-medium text-muted-foreground mb-2">Timing history</p>
                                   <div className="flex flex-wrap gap-2">
