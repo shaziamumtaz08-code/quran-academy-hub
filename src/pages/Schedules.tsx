@@ -36,6 +36,28 @@ const DAYS_LABELS: Record<string, string> = {
   sunday: 'Sunday',
 };
 
+const DAY_INDEX: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+};
+
+/** Next calendar date (today inclusive) that falls on the given weekday. */
+const nextDateOnWeekday = (day: string, from: Date = new Date()): string => {
+  const target = DAY_INDEX[(day || '').toLowerCase()];
+  const base = new Date(from);
+  base.setHours(12, 0, 0, 0);
+  if (target === undefined) return format(base, 'yyyy-MM-dd');
+  const diff = (target - base.getDay() + 7) % 7;
+  base.setDate(base.getDate() + diff);
+  return format(base, 'yyyy-MM-dd');
+};
+
+const isOnWeekday = (date: Date, day: string) => {
+  const target = DAY_INDEX[(day || '').toLowerCase()];
+  return target === undefined ? true : date.getDay() === target;
+};
+
+
+
 const getTzAbbr = (tzValue: string | null) => {
   return getTimezoneAbbr(tzValue);
 };
