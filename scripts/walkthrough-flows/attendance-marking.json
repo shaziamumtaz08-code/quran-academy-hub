@@ -73,11 +73,11 @@
       "step": 8
     },
     {
-      "label": "Class Date only lists the student's scheduled class days",
+      "label": "Class Date only lists the student's scheduled class days — holidays are blocked",
       "action": "verify",
       "target": "Class Date",
       "by": "text",
-      "label_ur": "کلاس کی تاریخ میں صرف شیڈول شدہ دن نظر آتے ہیں",
+      "label_ur": "کلاس کی تاریخ میں صرف شیڈول شدہ دن آتے ہیں، چھٹیاں بند ہوتی ہیں",
       "step": 9
     },
     {
@@ -129,25 +129,25 @@
       "step": 15
     },
     {
-      "label": "Add another segment when the lesson covers separate portions",
+      "label": "Add segment when the lesson covers separate portions",
       "action": "verify",
-      "target": "Add",
+      "target": "Add segment",
       "by": "text",
-      "label_ur": "اگر سبق الگ الگ حصوں پر مشتمل ہو تو مزید حصہ شامل کریں",
+      "label_ur": "اگر سبق الگ الگ حصوں پر مشتمل ہو تو Add segment استعمال کریں",
       "step": 16
     },
     {
-      "label": "Voice note & remarks stay collapsed — open them when needed",
+      "label": "Remarks with an inline mic for a voice note and a clip for attachments",
       "action": "verify",
-      "target": "Voice note",
-      "by": "text",
-      "label_ur": "وائس نوٹ اور تبصرہ بند رہتے ہیں — ضرورت پر کھولیں",
+      "target": "Remarks (optional)",
+      "by": "placeholder",
+      "label_ur": "تبصرہ کے خانے میں مائیک سے وائس نوٹ اور کلپ سے فائل منسلک کریں",
       "step": 17
     },
     {
       "label": "Press Mark Attendance in the bottom bar to save",
       "action": "verify",
-      "target": "Mark Present",
+      "target": "Mark Attendance",
       "by": "role:button",
       "label_ur": "نیچے موجود Mark Attendance دبا کر محفوظ کریں",
       "step": 18
