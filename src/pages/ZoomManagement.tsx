@@ -436,9 +436,12 @@ export default function ZoomManagement() {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Session Ended', description: 'License released successfully.' });
+      toast({ title: 'Session Ended', description: 'The session was marked completed.' });
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
       queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-today-sessions'] });
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
