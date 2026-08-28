@@ -844,7 +844,7 @@ export default function Schedules() {
     setNewSchedule(prev => ({ ...prev, studentTime: time, teacherTime }));
     setLastEditedField('student');
     setPeriodType('permanent');
-    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveFrom(nextDateOnWeekday(newSchedule.day));
     setEffectiveTo('');
     setChangeReason('');
   };
@@ -1015,7 +1015,7 @@ export default function Schedules() {
     });
     setLastEditedField('student');
     setPeriodType('permanent');
-    setEffectiveFrom(format(new Date(), 'yyyy-MM-dd'));
+    setEffectiveFrom(nextDateOnWeekday(schedule.day_of_week));
     setEffectiveTo('');
     setChangeReason('');
     setIsDialogOpen(true);
