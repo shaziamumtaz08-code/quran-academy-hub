@@ -69,23 +69,34 @@ export function resolveScheduleForDate<T extends RecurringSchedule>(
   schedule: T,
   periods: SchedulePeriod[],
   date: Date | string,
-): T & { effectivePeriod?: SchedulePeriod } {
+): T & { effectivePeriod?: SchedulePeriod; discontinued?: boolean } {
   const dateValue = typeof date === 'string' ? new Date(`${date}T12:00:00`) : date;
   const iso = typeof date === 'string' ? date : localIsoDate(dateValue);
   const weekday = DAY_NAMES[dateValue.getDay()];
-  const candidates = periods
-    .filter((period) =>
-      period.schedule_id === schedule.id &&
-      period.day_of_week.toLowerCase() === weekday &&
-      period.effective_from <= iso &&
-      (!period.effective_to || period.effective_to >= iso),
+  const forThisDay = periods.filter(
+    (period) => period.schedule_id === schedule.id && period.day_of_week.toLowerCase() === weekday,
+  );
+  const candidates = forThisDay
+    .filter(
+      (period) =>
+        period.effective_from <= iso && (!period.effective_to || period.effective_to >= iso),
     )
     .sort((a, b) => {
       if (a.period_type !== b.period_type) return a.period_type === 'temporary' ? -1 : 1;
       return b.effective_from.localeCompare(a.effective_from) || b.created_at.localeCompare(a.created_at);
     });
   const period = candidates[0];
-  if (!period) return schedule;
+  if (!period) {
+    // If a permanent period explicitly ended before this date and nothing replaced
+    // it, the weekly class is dismantled from that point onward.
+    const lastPermanent = forThisDay
+      .filter((p) => p.period_type === 'permanent' && p.effective_from <= iso)
+      .sort((a, b) => b.effective_from.localeCompare(a.effective_from) || b.created_at.localeCompare(a.created_at))[0];
+    if (lastPermanent?.effective_to && lastPermanent.effective_to < iso) {
+      return { ...schedule, discontinued: true };
+    }
+    return schedule;
+  }
   return {
     ...schedule,
     student_local_time: period.student_local_time,
@@ -104,5 +115,6 @@ export function resolveSchedulesForDate<T extends RecurringSchedule>(
   const weekday = DAY_NAMES[dateValue.getDay()];
   return schedules
     .filter((schedule) => schedule.day_of_week.toLowerCase() === weekday && schedule.is_active !== false)
-    .map((schedule) => resolveScheduleForDate(schedule, periods, date));
+    .map((schedule) => resolveScheduleForDate(schedule, periods, date))
+    .filter((schedule) => !schedule.discontinued);
 }
