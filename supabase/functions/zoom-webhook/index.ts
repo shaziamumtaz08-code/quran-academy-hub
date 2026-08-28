@@ -261,25 +261,25 @@ async function resolveParticipantIdentity(
     }
   }
 
-  if (session.assignment_id || session.schedule_id) {
+  // SCHEDULE-BASED ATTRIBUTION.
+  // Zoom reports whatever display name the device profile carries (e.g. a shared
+  // family laptop shows the teacher's name for the student). Names are therefore
+  // NOT trustworthy for identity — the scheduled data is. For a 1:1 session any
+  // non-host participant is, by definition, the scheduled student.
+  if (session.student_id) {
+    return { matchedUserId: session.student_id, matchedRole: "student" };
+  }
+
+  if (session.assignment_id || session.schedule_id || session.teacher_id) {
     const scheduledStudentId = await findScheduledStudent(supabase, session.teacher_id);
     if (scheduledStudentId) {
-      const { data: scheduledProfile } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("id", scheduledStudentId)
-        .maybeSingle();
-
-      if (!participantMatchesProfile(participantName, usableEmail, scheduledProfile)) {
-        return { matchedUserId: null, matchedRole: "unknown" };
-      }
-
       await supabase.from("live_sessions")
         .update({ student_id: scheduledStudentId })
         .eq("id", session.id);
       return { matchedUserId: scheduledStudentId, matchedRole: "student" };
     }
   }
+
 
   return { matchedUserId: null, matchedRole: "unknown" };
 }
