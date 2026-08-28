@@ -58,6 +58,7 @@ export default function ZoomVault() {
   const [editing, setEditing] = useState<VaultAccount | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [viewing, setViewing] = useState<VaultAccount | null>(null);
   const [importing, setImporting] = useState(false);
 
   const runImport = async () => {
