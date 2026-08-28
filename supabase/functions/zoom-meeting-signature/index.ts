@@ -1,4 +1,5 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.89.0';
 
 const enc = new TextEncoder();
 
@@ -31,18 +32,55 @@ Deno.serve(async (req) => {
     });
 
   try {
-    // Meeting SDK apps have their OWN Client ID/Secret — separate from the S2S OAuth app.
-    const clientId = Deno.env.get('ZOOM_MEETING_SDK_CLIENT_ID');
-    const clientSecret = Deno.env.get('ZOOM_MEETING_SDK_CLIENT_SECRET');
-    if (!clientId || !clientSecret) {
-      return json({ error: 'Zoom Meeting SDK credentials are not configured' }, 500);
-    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const body = await req.json().catch(() => ({}));
-    const meetingNumber = String(body?.meetingNumber ?? '').replace(/\D/g, '');
-    const role = Number(body?.role) === 1 ? 1 : 0;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
+
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const meetingNumber = String((body as any)?.meetingNumber ?? '').replace(/\D/g, '');
+    const role = Number((body as any)?.role) === 1 ? 1 : 0;
+    const courseClassId = String((body as any)?.courseClassId ?? '').trim();
+
     if (!meetingNumber || meetingNumber.length < 9 || meetingNumber.length > 12) {
       return json({ error: 'Invalid meetingNumber' }, 400);
+    }
+    if (!courseClassId) {
+      return json({ error: 'courseClassId is required' }, 400);
+    }
+
+    // Resolve the Meeting SDK app credentials of the Zoom account that hosts
+    // this class. No global fallback — the client falls back to the iframe.
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: cls, error: clsErr } = await admin
+      .from('course_classes')
+      .select('id, zoom_account_id')
+      .eq('id', courseClassId)
+      .maybeSingle();
+    if (clsErr) return json({ error: clsErr.message }, 500);
+    if (!cls?.zoom_account_id) {
+      return json({ error: 'This class has no linked Zoom account' }, 404);
+    }
+
+    const { data: acct, error: acctErr } = await admin
+      .from('zoom_accounts')
+      .select('id, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret')
+      .eq('id', cls.zoom_account_id)
+      .maybeSingle();
+    if (acctErr) return json({ error: acctErr.message }, 500);
+
+    const clientId = acct?.zoom_meeting_sdk_client_id;
+    const clientSecret = acct?.zoom_meeting_sdk_client_secret;
+    if (!clientId || !clientSecret) {
+      return json({ error: 'Meeting SDK credentials are not configured for this Zoom account' }, 404);
     }
 
     const iat = Math.floor(Date.now() / 1000) - 30;
