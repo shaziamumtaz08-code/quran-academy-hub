@@ -162,6 +162,19 @@ export default function ZoomVault() {
     onError: (e: any) => toast({ title: 'Could not save', description: e.message, variant: 'destructive' }),
   });
 
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('zoom_vault_accounts').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Vault account deleted' });
+      setViewing(null);
+      qc.invalidateQueries({ queryKey: ['zoom-vault-accounts'] });
+    },
+    onError: (e: any) => toast({ title: 'Could not delete', description: e.message, variant: 'destructive' }),
+  });
+
   const reveal = async (accountId: string, field: 'zoom_password' | 'google_password') => {
     const { data, error } = await supabase.rpc('reveal_vault_password' as any, { account_id: accountId, field });
     if (error) {
