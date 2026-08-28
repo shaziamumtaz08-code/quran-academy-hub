@@ -28,6 +28,7 @@ import {
 
   MonitorPlay,
   ListChecks,
+  Building2,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -703,6 +704,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <img src={logoDark} alt="Al-Quran Time" className="h-8 w-8 rounded-md object-cover" />
             </Link>
             <div className="ml-auto flex min-w-0 items-center gap-2 md:gap-3">
+              {activeRole === "super_admin" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-2.5 text-xs"
+                  onClick={() => navigate("/select-division")}
+                  aria-label="Back to Command Center"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Command Center</span>
+                </Button>
+              )}
               <div className="max-w-[150px] min-w-0 md:max-w-[190px]">
                 <DivisionSwitcher />
               </div>
