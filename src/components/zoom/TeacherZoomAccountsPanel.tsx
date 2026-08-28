@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
 import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
@@ -62,12 +62,34 @@ export function TeacherZoomAccountsPanel() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, created_at, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name, email)')
+        .select('id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, last_validated_at, created_at, profile:profiles!zoom_accounts_teacher_id_fkey(id, full_name, email)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
     refetchInterval: 30000,
+  });
+
+  const [editingAccount, setEditingAccount] = React.useState<any>(null);
+  const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
+
+  const saveLinkMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any)
+        .from('zoom_accounts')
+        .update({
+          meeting_link: linkForm.meeting_link.trim() || null,
+          meeting_passcode: linkForm.meeting_passcode.trim() || null,
+        })
+        .eq('id', editingAccount.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Join link saved' });
+      setEditingAccount(null);
+      qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+    },
+    onError: (e: any) => toast({ title: 'Could not save', description: e.message, variant: 'destructive' }),
   });
 
   const deleteMut = useMutation({
@@ -88,6 +110,7 @@ export function TeacherZoomAccountsPanel() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] }),
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const resetForm = () => {
@@ -351,7 +374,7 @@ export function TeacherZoomAccountsPanel() {
                 <TableHead>Teacher</TableHead>
                 <TableHead>Zoom Email</TableHead>
                 <TableHead>Tier</TableHead>
-                <TableHead>Host ID</TableHead>
+                <TableHead>Shareable join link</TableHead>
                 <TableHead>Last Validated</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -368,7 +391,29 @@ export function TeacherZoomAccountsPanel() {
                   <TableCell>
                     <Badge variant={a.tier === 'licensed' ? 'default' : 'secondary'}>{a.tier}</Badge>
                   </TableCell>
-                  <TableCell className="text-[10px] font-mono truncate max-w-[120px]">{a.zoom_user_id}</TableCell>
+                  <TableCell className="text-xs max-w-[220px]">
+                    {a.meeting_link ? (
+                      <div className="flex items-center gap-1">
+                        <span className="truncate font-mono text-[10px]" title={a.meeting_link}>{a.meeting_link}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(a.meeting_link);
+                            toast({ title: 'Join link copied' });
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Not set</span>
+                    )}
+                    {a.meeting_passcode && (
+                      <span className="block text-[10px] text-muted-foreground">Passcode: {a.meeting_passcode}</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs">
                     {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : '—'}
                   </TableCell>
@@ -381,12 +426,23 @@ export function TeacherZoomAccountsPanel() {
                       {a.is_active ? 'Active' : 'Disabled'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
                     {a.meeting_link && (
                       <Button variant="ghost" size="sm" asChild>
                         <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /></a>
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Edit join link / passcode"
+                      onClick={() => {
+                        setEditingAccount(a);
+                        setLinkForm({ meeting_link: a.meeting_link || '', meeting_passcode: a.meeting_passcode || '' });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -404,6 +460,42 @@ export function TeacherZoomAccountsPanel() {
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={Boolean(editingAccount)} onOpenChange={(o) => !o && setEditingAccount(null)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Shareable Zoom join link</DialogTitle>
+          <DialogDescription>
+            Paste the Zoom “Copy invite link” (quick link) for {editingAccount?.profile?.full_name || 'this teacher'}.
+            A link that ends with an encrypted <code>?pwd=…</code> token lets students join in one click without typing a passcode.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Join link</Label>
+            <Input
+              value={linkForm.meeting_link}
+              onChange={(e) => setLinkForm({ ...linkForm, meeting_link: e.target.value })}
+              placeholder="https://us05web.zoom.us/j/8640987589?pwd=…"
+            />
+          </div>
+          <div>
+            <Label>Passcode (only if the link has no encrypted token)</Label>
+            <Input
+              value={linkForm.meeting_passcode}
+              onChange={(e) => setLinkForm({ ...linkForm, meeting_passcode: e.target.value })}
+              placeholder="e.g. 125125"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditingAccount(null)}>Cancel</Button>
+          <Button onClick={() => saveLinkMut.mutate()} disabled={saveLinkMut.isPending}>
+            {saveLinkMut.isPending ? 'Saving…' : 'Save link'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }
