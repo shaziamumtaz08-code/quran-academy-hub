@@ -1195,11 +1195,11 @@ export default function Schedules() {
                   Bulk Add
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="font-serif">Bulk Add Schedules</DialogTitle>
+              <DialogContent className="max-w-2xl w-[95vw] max-h-[88vh] overflow-y-auto p-4 sm:p-5 gap-3">
+                <DialogHeader className="pb-0">
+                  <DialogTitle className="font-serif text-base">Bulk Add Schedules</DialogTitle>
                 </DialogHeader>
-                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                       <Label className="text-xs">Assignment *</Label>
@@ -1294,7 +1294,7 @@ export default function Schedules() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-blue-200 dark:border-blue-800 mt-2">
                     <Button variant="outline" size="sm" onClick={handleCloseBulkDialog}>Cancel</Button>
                     <Button size="sm" onClick={handleSubmitBulkSchedule} disabled={bulkCreateScheduleMutation.isPending}>
                       {bulkCreateScheduleMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -1453,7 +1453,7 @@ export default function Schedules() {
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-blue-200 dark:border-blue-800 mt-2">
                     <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
                     <Button size="sm" onClick={handleSubmitSchedule} disabled={isPending}>
                       {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
