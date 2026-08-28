@@ -53,7 +53,6 @@ export function useLiveSessionsMonitor() {
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
         .eq('status', 'live')
-        .not('zoom_meeting_uuid', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
