@@ -90,11 +90,13 @@ export default function ZoomManagement() {
     try {
       const account = (zoomAccounts || []).find((a: any) => zoomSlug(a) === webhookApp);
       if (!account) throw new Error('Select a Zoom account first');
-      const { error } = await (supabase as any)
-        .from('zoom_accounts')
-        .update({ webhook_app_slug: webhookApp, webhook_secret_token: webhookToken })
-        .eq('id', account.id);
+      const { error } = await (supabase as any).rpc('admin_set_zoom_webhook_token', {
+        _account_id: account.id,
+        _app_slug: webhookApp,
+        _secret_token: webhookToken,
+      });
       if (error) throw error;
+
       setWebhookToken('');
       toast({ title: 'Secret Token saved', description: `Zoom can now validate ${webhookUrl}` });
     } catch (e: any) {
