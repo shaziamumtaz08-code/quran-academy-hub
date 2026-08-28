@@ -1801,6 +1801,17 @@ export default function Schedules() {
                         <TableCell>
                           {todaysClass && (
                             <div className="flex gap-1">
+                              {schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground"
+                                  title="Timing history"
+                                  onClick={() => toggleHistory(assignment.id)}
+                                >
+                                  <History className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditSchedule(todaysClass, assignment)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -1897,7 +1908,7 @@ export default function Schedules() {
                                   );
                                 })}
                               </div>
-                              {schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
+                              {historyVisible[assignment.id] && schedulePeriods.some((period) => period.assignment_id === assignment.id) && (
                                 <div className="border-t border-border pt-3">
                                   <p className="text-xs font-medium text-muted-foreground mb-2">Timing history</p>
                                   <div className="flex flex-wrap gap-2">
