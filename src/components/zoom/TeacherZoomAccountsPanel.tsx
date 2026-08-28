@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
 import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
