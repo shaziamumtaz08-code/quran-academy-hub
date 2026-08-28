@@ -168,13 +168,19 @@ type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 // ═══ COMPONENT ═══
 export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId }: ZoomClassPanelProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [sdkFailed, setSdkFailed] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [pingCooldown, setPingCooldown] = useState(0);
   const [pinging, setPinging] = useState(false);
   const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
+
+  const zoomParsed = useMemo(() => parseZoomLink(meetingLink || ''), [meetingLink]);
+  const sdkDisplayName =
+    (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
+
 
 
   // Check for virtual session (LiveKit)
