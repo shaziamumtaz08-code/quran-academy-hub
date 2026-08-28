@@ -13456,6 +13456,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_zoom_webhook_token: {
+        Args: { _account_id: string; _app_slug: string; _secret_token: string }
+        Returns: undefined
+      }
       admin_update_organization_settings: {
         Args: { _org_id: string; _settings: Json }
         Returns: undefined
