@@ -283,8 +283,20 @@ export default function ZoomVault() {
                             {a.status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => startEdit(a)}>Edit</Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm(`Delete vault account "${a.label}"? This cannot be undone.`)) remove.mutate(a.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
