@@ -375,16 +375,38 @@ async function getMonitorTeacherId(supabase: any, licenseId: string): Promise<st
 async function resolveDedicatedAccount(
   supabase: any,
   hostId: string | undefined,
+  meetingId?: string | number | null,
 ): Promise<{ id: string; teacher_id: string | null; zoom_account_email: string; tier: string } | null> {
-  if (!hostId) return null;
-  const { data } = await supabase
+  if (hostId) {
+    const { data } = await supabase
+      .from("zoom_accounts")
+      .select("id, teacher_id, zoom_account_email, tier, is_active")
+      .eq("zoom_user_id", hostId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data) return data;
+  }
+
+  // SELF-HEAL: the account's Zoom user id may never have been synced (S2S app
+  // created after the row). Fall back to matching the meeting number saved in
+  // the account's meeting_link, then persist the host_id for next time.
+  const digits = String(meetingId ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  const { data: candidates } = await supabase
     .from("zoom_accounts")
-    .select("id, teacher_id, zoom_account_email, tier, is_active")
-    .eq("zoom_user_id", hostId)
-    .eq("is_active", true)
-    .maybeSingle();
-  return data || null;
+    .select("id, teacher_id, zoom_account_email, tier, is_active, meeting_link, zoom_user_id")
+    .eq("is_active", true);
+  const match = (candidates || []).find((a: any) => {
+    const m = /\/j\/(\d+)/.exec(a.meeting_link || "");
+    return m && m[1] === digits;
+  });
+  if (!match) return null;
+  if (hostId && !match.zoom_user_id) {
+    await supabase.from("zoom_accounts").update({ zoom_user_id: hostId }).eq("id", match.id);
+  }
+  return match;
 }
+
 
 // Some Zoom accounts (e.g. the academy's shared licensed seat) have no
 // teacher_id on zoom_accounts. Resolve the acting teacher from the account
