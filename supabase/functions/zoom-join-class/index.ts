@@ -74,12 +74,35 @@ Deno.serve(async (req) => {
       try {
         const u = new URL(url);
         u.searchParams.set("uname", displayName);
+        if (displayEmail) u.searchParams.set("uemail", displayEmail);
         return u.toString();
       } catch {
         const sep = url.includes("?") ? "&" : "?";
         return `${url}${sep}uname=${encodeURIComponent(displayName)}`;
       }
     };
+
+    // The Zoom desktop app ignores `uname` and shows whatever name the device
+    // profile carries (a shared family laptop then shows the teacher's name for
+    // the student). Routing non-hosts through the Zoom WEB client makes the LMS
+    // name authoritative, so attendance logs carry the right participant.
+    const toWebClient = (url: string): string => {
+      try {
+        const u = new URL(url);
+        const m = /\/j\/(\d+)/.exec(u.pathname);
+        if (!m) return appendUname(url);
+        const web = new URL(`${u.origin}/wc/${m[1]}/join`);
+        const pwd = u.searchParams.get("pwd");
+        if (pwd) web.searchParams.set("pwd", pwd);
+        web.searchParams.set("uname", displayName);
+        if (displayEmail) web.searchParams.set("uemail", displayEmail);
+        web.searchParams.set("prefer", "1");
+        return web.toString();
+      } catch {
+        return appendUname(url);
+      }
+    };
+
 
     // Determine role
     const { data: roleRows } = await service.from("user_roles").select("role").eq("user_id", userId);
