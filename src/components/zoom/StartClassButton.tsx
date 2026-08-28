@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
 import { ensureFreshSession } from '@/lib/ensureSession';
+import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 
 interface StartClassButtonProps {
   sessionId?: string;
@@ -166,6 +167,7 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         sessionId: sessionToUse, 
         meetingLink: data.joinUrl,
         licenseId: data.licenseId || null,
+        passcode: (data as any)?.passcode || null,
       };
     },
     onSuccess: (result) => {
@@ -174,6 +176,7 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         description: 'Opening Zoom meeting...',
       });
 
+      notifyMeetingPasscode((result as any)?.passcode);
       navigateTab(startTabRef.current, result.meetingLink);
       startTabRef.current = null;
 

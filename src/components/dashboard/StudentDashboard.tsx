@@ -22,6 +22,7 @@ import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
 import { ensureFreshSession } from '@/lib/ensureSession';
+import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
@@ -452,6 +453,7 @@ export function StudentDashboard() {
       });
       if (error) throw error;
       if (data?.ready && data?.joinUrl) {
+        notifyMeetingPasscode((data as any)?.passcode);
         navigateTab(tab, data.joinUrl);
       } else {
         closeTab(tab);
