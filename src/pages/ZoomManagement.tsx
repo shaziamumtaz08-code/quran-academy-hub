@@ -419,18 +419,21 @@ export default function ZoomManagement() {
 
   // End session mutation for admin
   const endSessionMutation = useMutation({
-    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
+    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId?: string | null }) => {
       const { error: sessionError } = await (supabase as any)
         .from('live_sessions')
         .update({ status: 'completed', actual_end: new Date().toISOString() })
         .eq('id', sessionId);
       if (sessionError) throw sessionError;
 
-      const { error: licenseError } = await supabase
-        .from('zoom_licenses')
-        .update({ status: 'available' })
-        .eq('id', licenseId);
-      if (licenseError) throw licenseError;
+      // Sessions running on a teacher's dedicated account have no pooled licence.
+      if (licenseId) {
+        const { error: licenseError } = await supabase
+          .from('zoom_licenses')
+          .update({ status: 'available' })
+          .eq('id', licenseId);
+        if (licenseError) throw licenseError;
+      }
     },
     onSuccess: () => {
       toast({ title: 'Session Ended', description: 'License released successfully.' });
