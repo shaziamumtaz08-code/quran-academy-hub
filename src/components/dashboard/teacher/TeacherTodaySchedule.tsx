@@ -126,10 +126,18 @@ export function TeacherTodaySchedule() {
 
   const tzAbbr = getTimezoneAbbr(DEFAULT_ACADEMY_TZ);
 
+  // Cycle accent tokens per class chip so the row doesn't look monotone
+  const ACCENTS = [
+    { bar: 'bg-teal', text: 'text-teal' },
+    { bar: 'bg-sky', text: 'text-sky' },
+    { bar: 'bg-gold', text: 'text-gold' },
+    { bar: 'bg-accent', text: 'text-accent' },
+  ];
+
   return (
-    <Card className="border-border">
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between mb-2">
+    <Card className="rounded-2xl border-border shadow-card">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex items-center justify-between mb-2.5">
           <p className="text-[13px] font-extrabold text-foreground flex items-center gap-1.5">
             <CalendarClock className="h-4 w-4 text-accent" />
             Today's Classes
@@ -146,32 +154,44 @@ export function TeacherTodaySchedule() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-1.5">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-9 rounded-lg" />)}
+          <div className="flex gap-2 overflow-hidden">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-44 shrink-0 rounded-xl" />)}
           </div>
         ) : rows.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">No classes scheduled for today.</p>
+          <div className="bg-secondary/50 rounded-xl py-4 px-3 text-center">
+            <CalendarClock className="h-5 w-5 text-muted-foreground/60 mx-auto mb-1" />
+            <p className="text-xs text-muted-foreground">No classes scheduled for today — enjoy the breathing room.</p>
+          </div>
         ) : (
-          <div className="divide-y divide-border/60">
-            {rows.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
-                <div className="min-w-0 flex items-center gap-2">
-                  <span className="text-[13px] font-semibold text-foreground truncate">{r.title}</span>
+          <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {rows.map((r, idx) => {
+              const accent = ACCENTS[idx % ACCENTS.length];
+              return (
+                <div
+                  key={r.id}
+                  className="relative shrink-0 snap-start w-44 rounded-xl bg-secondary/50 pl-3 pr-2.5 py-2 overflow-hidden"
+                >
+                  {/* colored left-edge accent bar */}
+                  <span className={`absolute inset-y-0 left-0 w-1 rounded-l-xl ${accent.bar}`} />
+                  <div className="flex items-start justify-between gap-1.5">
+                    <p className="text-[12px] font-semibold text-foreground truncate leading-tight">{r.title}</p>
+                    {r.badge && (
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-accent bg-accent/10 border border-accent/30 rounded-full px-1.5 py-px">
+                        {r.badge}
+                      </span>
+                    )}
+                  </div>
                   {r.subtitle && (
-                    <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">{r.subtitle}</span>
+                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{r.subtitle}</p>
                   )}
-                  {r.badge && (
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-accent border border-accent/30 rounded px-1 py-px">
-                      {r.badge}
-                    </span>
-                  )}
+                  <p className={`text-[11px] font-medium mt-1.5 flex items-center gap-1 ${accent.text}`}>
+                    <Clock className="h-3 w-3" />
+                    {formatTime12h(r.time)} <span className="text-muted-foreground font-normal">{tzAbbr}</span>
+                    {r.duration ? <span className="text-muted-foreground font-normal">· {r.duration}m</span> : null}
+                  </p>
                 </div>
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
-                  <Clock className="h-3 w-3" />
-                  {formatTime12h(r.time)} {tzAbbr}{r.duration ? ` · ${r.duration}m` : ''}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
