@@ -1788,12 +1788,10 @@ export default function Schedules() {
                               <span className="text-muted-foreground mx-1">/</span>
                               <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
                               <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
-                              {todaysClass.effectivePeriod && (
-                                <Badge variant="outline" className="ml-2 text-[10px]">
-                                  {todaysClass.effectivePeriod.period_type === 'temporary'
-                                    ? `Temporary until ${format(new Date(`${todaysClass.effectivePeriod.effective_to}T12:00:00`), 'dd MMM')}`
-                                    : `Permanent from ${format(new Date(`${todaysClass.effectivePeriod.effective_from}T12:00:00`), 'dd MMM')}`}
-                                </Badge>
+                              {todaysClass.effectivePeriod?.period_type === 'temporary' && (
+                                <span className="ml-2 text-[10px] text-amber-600 dark:text-amber-400">
+                                  until {format(new Date(`${todaysClass.effectivePeriod.effective_to}T12:00:00`), 'dd MMM')}
+                                </span>
                               )}
                             </span>
                           ) : (
