@@ -17,6 +17,7 @@ import { RecentSessionsCard } from "./teacher/RecentSessionsCard";
 import { SalaryLeaveCard } from "./teacher/SalaryLeaveCard";
 import { WorkHubCard } from "./teacher/WorkHubCard";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
+import { TeacherTodaySchedule } from "./teacher/TeacherTodaySchedule";
 import { AiInsightsWidget } from "./AiInsightsWidget";
 import { TeacherGroupAcademyWidgets } from "./teacher/TeacherGroupAcademyWidgets";
 import { MyPerformanceSection } from "./teacher/MyPerformanceSection";
@@ -69,6 +70,9 @@ export function TeacherDashboard() {
 
         {/* Rescheduled sessions landing today */}
         <RescheduledTodayBanner />
+
+        {/* Today's classes at a glance */}
+        <TeacherTodaySchedule />
 
         {/* 3-column grid: Quick links · My stats · Action centre + Spotlight */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

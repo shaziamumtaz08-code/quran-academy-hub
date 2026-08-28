@@ -35,6 +35,7 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
       items: [
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'My Students', href: '/students' },
+        { label: 'My Schedule', href: '/my-schedule' },
         { label: 'Today', href: '/teaching' },
       ],
     };
