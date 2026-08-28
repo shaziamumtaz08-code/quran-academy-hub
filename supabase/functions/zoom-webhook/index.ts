@@ -1108,13 +1108,27 @@ Deno.serve(async (req) => {
     }
 
     // Each Zoom Marketplace app has its OWN Secret Token. To support many apps
-    // on one endpoint, the URL may carry ?app=<slug>, which maps to the secret
-    // ZOOM_SECRET_TOKEN_<SLUG_UPPERCASE>. Falls back to the global token.
-    const appSlug = (new URL(req.url).searchParams.get("app") || "")
+    // on one endpoint, the URL may carry ?app=<slug>. The token is resolved in
+    // this order: token saved on the zoom_accounts row for that slug (admins
+    // save it in the Zoom Control Room) -> env ZOOM_SECRET_TOKEN_<SLUG> ->
+    // global env ZOOM_SECRET_TOKEN.
+    const rawSlug = (new URL(req.url).searchParams.get("app") || "")
       .replace(/[^a-zA-Z0-9_]/g, "")
-      .toUpperCase();
-    const scopedToken = appSlug ? Deno.env.get(`ZOOM_SECRET_TOKEN_${appSlug}`) : undefined;
+      .toLowerCase();
+    const appSlug = rawSlug.toUpperCase();
+
+    let dbToken: string | undefined;
+    if (rawSlug) {
+      const { data: slugRow } = await supabase
+        .from("zoom_accounts")
+        .select("webhook_secret_token")
+        .eq("webhook_app_slug", rawSlug)
+        .maybeSingle();
+      dbToken = slugRow?.webhook_secret_token || undefined;
+    }
+    const scopedToken = dbToken || (appSlug ? Deno.env.get(`ZOOM_SECRET_TOKEN_${appSlug}`) : undefined);
     const secretToken = scopedToken || Deno.env.get("ZOOM_SECRET_TOKEN");
+
 
     if (event.event === "endpoint.url_validation") {
       if (!secretToken) {
