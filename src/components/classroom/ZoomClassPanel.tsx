@@ -168,13 +168,19 @@ type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 // ═══ COMPONENT ═══
 export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId }: ZoomClassPanelProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [sdkFailed, setSdkFailed] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [pingCooldown, setPingCooldown] = useState(0);
   const [pinging, setPinging] = useState(false);
   const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
+
+  const zoomParsed = useMemo(() => parseZoomLink(meetingLink || ''), [meetingLink]);
+  const sdkDisplayName =
+    (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
+
 
 
   // Check for virtual session (LiveKit)
@@ -464,44 +470,68 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
         </CardContent>
       </Card>
 
-      {/* Iframe */}
+      {/* Live meeting surface */}
       {showIframe && (panelState === 'live' || panelState === 'starting-soon') && (
-        <Card>
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-3 py-2 border-b">
-              <p className="text-sm font-medium">{classInfo.name} — Live Session</p>
-              <Button variant="ghost" size="sm" onClick={() => setShowIframe(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            {iframeError ? (
-              <div className="p-6 text-center">
-                <p className="text-sm text-muted-foreground mb-2">Unable to embed meeting in browser</p>
-                <a href={meetingLink} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline">
-                    <ExternalLink className="h-4 w-4 mr-1" /> Open Zoom in browser
-                  </Button>
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              <div className="flex items-center justify-between px-3 py-2 border-b">
+                <p className="text-sm font-medium">{classInfo.name} — Live Session</p>
+                <Button variant="ghost" size="sm" onClick={() => setShowIframe(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {iframeError ? (
+                <div className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Unable to embed meeting in browser</p>
+                  <a href={meetingLink} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline">
+                      <ExternalLink className="h-4 w-4 mr-1" /> Open Zoom in browser
+                    </Button>
+                  </a>
+                </div>
+              ) : zoomParsed && !sdkFailed ? (
+                <div className="p-2">
+                  <ZoomSdkMeeting
+                    meetingNumber={zoomParsed.meetingNumber}
+                    passcode={zoomParsed.passcode}
+                    userName={sdkDisplayName}
+                    userEmail={user?.email || undefined}
+                    role={userRole === 'teacher' ? 1 : 0}
+                    height={580}
+                    onFailure={() => setSdkFailed(true)}
+                  />
+                </div>
+              ) : (
+                <iframe
+                  src={meetingLink}
+                  className="w-full border-0"
+                  style={{ height: '580px' }}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                  allow="camera; microphone; fullscreen; display-capture; autoplay"
+                  onError={() => setIframeError(true)}
+                  title="Zoom Meeting"
+                />
+              )}
+              <div className="px-3 py-2 border-t text-center">
+                <a href={meetingLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Open in browser instead
                 </a>
               </div>
-            ) : (
-              <iframe
-                src={meetingLink}
-                className="w-full border-0"
-                style={{ height: '580px' }}
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
-                allow="camera; microphone; fullscreen; display-capture; autoplay"
-                onError={() => setIframeError(true)}
-                title="Zoom Meeting"
-              />
-            )}
-            <div className="px-3 py-2 border-t text-center">
-              <a href={meetingLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" /> Open in browser instead
-              </a>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {courseId && (
+            <ClassroomTeachingPanel
+              courseId={courseId}
+              classId={classId}
+              sessionId={classId || courseId}
+              participants={[]}
+            />
+          )}
+        </div>
       )}
+
 
       {/* Virtual Classroom Entry (future LiveKit) */}
       {virtualSession?.provider === 'livekit' && (
