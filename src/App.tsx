@@ -187,7 +187,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Accounts created with the academy default password must set their own
   // password before any other part of the app becomes reachable.
-  if (profile?.force_password_reset) {
+  // Exception: admin impersonation tabs — the admin is verifying the user's
+  // view, not logging in as the account owner, so the gate must not block.
+  const isImpersonationTab = (() => {
+    try {
+      return window.sessionStorage.getItem('lovable_impersonation_tab') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  if (profile?.force_password_reset && !isImpersonationTab) {
     return <ForcePasswordChange />;
   }
 
