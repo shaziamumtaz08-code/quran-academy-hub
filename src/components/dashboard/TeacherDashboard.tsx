@@ -71,15 +71,15 @@ export function TeacherDashboard() {
         {/* Rescheduled sessions landing today */}
         <RescheduledTodayBanner />
 
-        {/* Today's classes at a glance */}
-        <TeacherTodaySchedule />
-
         {/* 3-column grid: Quick links · My stats · Action centre + Spotlight */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <TeacherQuickLinks />
           <TeacherStatsRow />
           <TeacherActionCentre />
         </div>
+
+        {/* Today's classes at a glance */}
+        <TeacherTodaySchedule />
 
         {/* 2-col row: Recent sessions (2fr) + Salary/Leave & Work Hub (1fr) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
