@@ -59,6 +59,9 @@ export default function ZoomManagement() {
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
   const [webhookCopied, setWebhookCopied] = React.useState<string | null>(null);
   const [webhookApp, setWebhookApp] = React.useState<string>('');
+  const [webhookToken, setWebhookToken] = React.useState('');
+  const [savingToken, setSavingToken] = React.useState(false);
+
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
   const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
@@ -76,6 +79,32 @@ export default function ZoomManagement() {
       toast({ title: 'Copy failed', description: 'Please copy the URL manually.', variant: 'destructive' });
     }
   };
+
+  const zoomSlug = (a: any) => {
+    const name = a?.profile?.full_name || a?.zoom_account_email || '';
+    return String(name).trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'app';
+  };
+
+  const saveWebhookToken = async () => {
+    setSavingToken(true);
+    try {
+      const account = (zoomAccounts || []).find((a: any) => zoomSlug(a) === webhookApp);
+      if (!account) throw new Error('Select a Zoom account first');
+      const { error } = await (supabase as any)
+        .from('zoom_accounts')
+        .update({ webhook_app_slug: webhookApp, webhook_secret_token: webhookToken })
+        .eq('id', account.id);
+      if (error) throw error;
+      setWebhookToken('');
+      toast({ title: 'Secret Token saved', description: `Zoom can now validate ${webhookUrl}` });
+    } catch (e: any) {
+      toast({ title: 'Could not save token', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+
 
 
 
