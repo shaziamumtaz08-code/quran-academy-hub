@@ -427,6 +427,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                 <p className="zw-eyebrow mb-1.5">Secret Token for this app</p>
                 <Input
                   type="password"
+                  name="zoom-webhook-secret-token"
+                  autoComplete="new-password"
+                  data-lpignore="true"
                   value={webhookToken}
                   onChange={(e) => setWebhookToken(e.target.value)}
                   placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
