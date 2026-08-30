@@ -777,7 +777,7 @@ export function TeacherZoomAccountsPanel() {
               </div>
             </div>
 
-            <div className="-mx-4 divide-y divide-border/60 lg:mx-0 lg:max-h-[70vh] lg:overflow-y-auto">
+            <div className="-mx-4 min-h-0 flex-1 divide-y divide-border/60 lg:mx-0 lg:overflow-y-auto">
               {isLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
