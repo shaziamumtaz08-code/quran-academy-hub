@@ -264,6 +264,12 @@ export default function ZoomVault() {
         </div>
       </div>
 
+      <div className="zw-drawer p-4 zw-body text-sm">
+        This stores login passwords only — for the app credentials that power webhooks and attendance tracking, use
+        Zoom Management → Accounts → Credentials.
+      </div>
+
+
       {accounts.length === 0 && !isLoading && (
         <div className="zw-card px-6 py-10 text-center zw-body">
           The vault is empty. Click <strong>Import Zoom accounts</strong> to pull every active Zoom seat already

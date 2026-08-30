@@ -4,7 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, Link2, Webhook } from 'lucide-react';
+import { Check, Copy, KeyRound, Link2, ShieldCheck, Webhook } from 'lucide-react';
+import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
+import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
 interface ZoomAccountRow {
   id: string;
@@ -50,7 +52,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, webhook_app_slug, webhook_secret_token, zoom_meeting_sdk_client_id');
+        .select('id, webhook_app_slug, webhook_secret_token, zoom_meeting_sdk_client_id, zoom_account_id_cred, zoom_client_id, credential_status, credential_error, zoom_user_id');
       if (error) throw error;
       return Object.fromEntries(
         (data || []).map((r: any) => [
@@ -59,11 +61,24 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             slug: r.webhook_app_slug as string | null,
             hasWebhookToken: !!r.webhook_secret_token,
             hasSdkCreds: !!r.zoom_meeting_sdk_client_id,
+            hasS2S: !!(r.zoom_account_id_cred && r.zoom_client_id),
+            s2sStatus: (r.credential_status as string | null) || null,
+            s2sError: (r.credential_error as string | null) || null,
+            hostId: (r.zoom_user_id as string | null) || null,
           },
         ]),
-      ) as Record<string, { slug: string | null; hasWebhookToken: boolean; hasSdkCreds: boolean }>;
+      ) as Record<string, {
+        slug: string | null;
+        hasWebhookToken: boolean;
+        hasSdkCreds: boolean;
+        hasS2S: boolean;
+        s2sStatus: string | null;
+        s2sError: string | null;
+        hostId: string | null;
+      }>;
     },
   });
+
 
   const { data: classes } = useQuery({
     queryKey: ['course-classes-zoom-link'],
@@ -96,6 +111,13 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const [classId, setClassId] = React.useState<string>('');
   const [savingLink, setSavingLink] = React.useState(false);
 
+  // Server-to-Server OAuth app credentials (the ones webhooks / attendance need)
+  const [s2sAccountId, setS2sAccountId] = React.useState('');
+  const [s2sClientId, setS2sClientId] = React.useState('');
+  const [s2sClientSecret, setS2sClientSecret] = React.useState('');
+  const [validating, setValidating] = React.useState(false);
+  const [validateResult, setValidateResult] = React.useState<ZoomValidateResult | null>(null);
+
   // Reset transient input state when the admin switches accounts so values
   // typed for one account never bleed into another.
   React.useEffect(() => {
@@ -104,7 +126,62 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     setSdkClientSecret('');
     setCopied(false);
     setClassId('');
+    setS2sAccountId('');
+    setS2sClientId('');
+    setS2sClientSecret('');
+    setValidateResult(null);
   }, [accountId]);
+
+  // Live badge state for the S2S block: local validation result wins, then the
+  // persisted credential_status on the row.
+  const s2sSeatStatus: SeatStatus | undefined = React.useMemo(() => {
+    if (!account) return undefined;
+    if (validating) return undefined;
+    if (validateResult) return validateResult.ok ? (status?.hostId ? 'healthy' : 'no_events') : 'credentials_invalid';
+    if (!status?.hasS2S) return 'no_credentials';
+    if (status.s2sStatus === 'failed') return 'credentials_invalid';
+    if (!status.hostId) return 'missing_host_id';
+    return 'no_events';
+  }, [account, validating, validateResult, status]);
+
+  const runValidateS2S = async () => {
+    if (!account?.teacher_id || !account.zoom_account_email) return;
+    setValidating(true);
+    setValidateResult(null);
+    try {
+      const body = await validateAndSaveZoomAccount({
+        teacher_id: account.teacher_id,
+        tier: (account.tier as any) || 'free',
+        account_id: s2sAccountId.trim(),
+        client_id: s2sClientId.trim(),
+        client_secret: s2sClientSecret.trim(),
+        zoom_email: account.zoom_account_email,
+      });
+      setValidateResult(body);
+      queryClient.invalidateQueries({ queryKey: ['zoom-account-cred-status'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-seat-status'] });
+      if (body?.ok && body?.saved) {
+        setS2sClientSecret('');
+        toast({
+          title: 'Verified — host ID resolved',
+          description: `Host ID ${body.resolved?.host_id} saved for this seat.`,
+        });
+      } else {
+        toast({
+          title: 'Zoom rejected these credentials',
+          description: body?.failure_reason || body?.verdict || body?.error || 'Validation failed.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      setValidateResult({ ok: false, failure_reason: e.message });
+      toast({ title: 'Validation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setValidating(false);
+    }
+  };
+
 
   const linkedClasses = React.useMemo(
     () => (classes || []).filter((c: any) => c.zoom_account_id === accountId),
@@ -245,7 +322,81 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
       {account && (
         <>
+          {/* Server-to-Server OAuth app — powers webhooks, attendance telemetry, host ID */}
+          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <ShieldCheck className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <h3 className="zw-h2">Server-to-Server OAuth app</h3>
+              {validating ? (
+                <span className="zw-chip" data-tone="quiet"><span className="zw-dot" /> Validating…</span>
+              ) : (
+                <StatusLabel status={s2sSeatStatus} />
+              )}
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Account ID</p>
+                <Input
+                  value={s2sAccountId}
+                  onChange={(e) => setS2sAccountId(e.target.value)}
+                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Account ID from the S2S app'}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Client ID</p>
+                <Input
+                  value={s2sClientId}
+                  onChange={(e) => setS2sClientId(e.target.value)}
+                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Client ID'}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Client Secret</p>
+                <Input
+                  type="password"
+                  value={s2sClientSecret}
+                  onChange={(e) => setS2sClientSecret(e.target.value)}
+                  placeholder="Client Secret"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="zw-btn-primary"
+                disabled={
+                  validating ||
+                  !account.teacher_id ||
+                  !account.zoom_account_email ||
+                  !s2sAccountId.trim() ||
+                  !s2sClientId.trim() ||
+                  !s2sClientSecret.trim()
+                }
+                onClick={runValidateS2S}
+              >
+                {validating ? 'Validating…' : 'Validate & save'}
+              </button>
+              {!account.teacher_id && (
+                <span className="zw-meta">This seat has no teacher attached — attach one in Zoom Accounts first.</span>
+              )}
+            </div>
+            {(validateResult || (s2sSeatStatus && s2sSeatStatus !== 'healthy')) && (
+              <p className="zw-meta">
+                {validateResult?.failure_reason ||
+                  validateResult?.verdict ||
+                  status?.s2sError ||
+                  (s2sSeatStatus ? STATUS_META[s2sSeatStatus].hint : '')}
+              </p>
+            )}
+            <p className="zw-meta">
+              These three come from this account’s <strong>Server-to-Server OAuth</strong> app in the Zoom Marketplace.
+              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault)
+              and not the Meeting SDK app below.
+            </p>
+          </div>
+
           {/* Webhook — deliberately quiet, system-level */}
+
           <div className="zw-drawer space-y-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Webhook className="h-3.5 w-3.5" style={{ color: 'hsl(var(--zw-ink-3))' }} />
