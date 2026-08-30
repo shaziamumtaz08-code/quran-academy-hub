@@ -273,9 +273,9 @@ export default function SharedPool() {
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {(s.bookings ?? []).map((b: any) => (
-                    <Badge key={b.id} variant={b.mine ? 'default' : 'outline'} className="font-normal">
+                    <span key={b.id} className={`zw-chip ${b.mine ? 'zw-chip-brass' : ''}`}>
                       {format(new Date(b.start_time), 'HH:mm')}–{format(new Date(b.end_time), 'HH:mm')} · {b.purpose} · {b.booked_by}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
