@@ -24,6 +24,7 @@ import { SharedZoomAvailabilityPanel } from '@/components/zoom/SharedZoomAvailab
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
+import { MeetingSdkPanel } from '@/components/zoom/MeetingSdkPanel';
 
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
@@ -647,6 +648,7 @@ export default function ZoomManagement() {
           </CardContent>
         </Card>
 
+        <MeetingSdkPanel zoomAccounts={(zoomAccounts || []) as any} />
 
         {/* Room Cards Grid */}
         <div>
