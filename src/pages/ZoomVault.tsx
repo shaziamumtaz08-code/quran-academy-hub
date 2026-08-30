@@ -245,7 +245,7 @@ export default function ZoomVault() {
   ];
 
   return (
-    <div className="zoom-ws mx-auto max-w-[1400px] space-y-6 py-1">
+    <div className="zoom-ws mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="zw-eyebrow">Asset inventory</p>
