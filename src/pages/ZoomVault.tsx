@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Eye, Plus, ShieldCheck, KeyRound, Download, Trash2, Copy } from 'lucide-react';
+import { Eye, Plus, KeyRound, Download, Trash2, Copy } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 type Assignment = 'shared' | 'dedicated' | 'unassigned';
 
@@ -237,14 +236,20 @@ export default function ZoomVault() {
     ['all', 'log'].includes(tab) ? true : a.pool_assignment === tab
   );
 
+  const FILTERS = [
+    { id: 'all', label: 'All', count: accounts.length },
+    { id: 'shared', label: 'Shared', count: accounts.filter(a => a.pool_assignment === 'shared').length },
+    { id: 'dedicated', label: 'Dedicated', count: accounts.filter(a => a.pool_assignment === 'dedicated').length },
+    { id: 'unassigned', label: 'Unassigned', count: accounts.filter(a => a.pool_assignment === 'unassigned').length },
+    { id: 'log', label: 'Access log', count: logs.length },
+  ];
+
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" /> Zoom Vault
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight">Zoom Vault</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Encrypted credential store for every Zoom seat. Password reveals are logged.
           </p>
         </div>
@@ -258,123 +263,118 @@ export default function ZoomVault() {
         </div>
       </div>
 
-      {accounts.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-sm text-muted-foreground">
-            The vault is empty. Click <strong>Import Zoom accounts</strong> to pull every active Zoom seat already
-            configured in the LMS — seats linked to a teacher become <em>dedicated</em>, and paid seats with no teacher
-            join the <em>shared pool</em> with cloud recording on.
-          </CardContent>
-        </Card>
+      {accounts.length === 0 && !isLoading && (
+        <div className="border border-dashed rounded-lg p-8 text-sm text-muted-foreground text-center">
+          The vault is empty. Click <strong>Import Zoom accounts</strong> to pull every active Zoom seat already
+          configured in the LMS — seats linked to a teacher become <em>dedicated</em>, and paid seats with no teacher
+          join the <em>shared pool</em> with cloud recording on.
+        </div>
       )}
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="shared">Shared</TabsTrigger>
-          <TabsTrigger value="dedicated">Dedicated</TabsTrigger>
-          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
-          <TabsTrigger value="log">Access log</TabsTrigger>
-        </TabsList>
-
-        {['all', 'shared', 'dedicated', 'unassigned'].map(t => (
-          <TabsContent key={t} value={t}>
-            <Card>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Label</TableHead>
-                      <TableHead>Zoom email</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Pool</TableHead>
-
-                      <TableHead>Link</TableHead>
-                      <TableHead>Teacher</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
-                    {!isLoading && filtered.length === 0 && (
-                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
-                    )}
-                    {filtered.map(a => (
-                      <TableRow key={a.id}>
-                        <TableCell className="font-medium">{a.label}</TableCell>
-                        <TableCell>{a.zoom_email}</TableCell>
-                        <TableCell>
-                          <Badge variant={a.account_type === 'paid' ? 'default' : 'secondary'}>
-                            {a.account_type === 'paid' ? 'Paid' : 'Free'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="capitalize">{a.pool_assignment}</TableCell>
-                        <TableCell>
-                          <Badge variant={a.zoom_account_id ? 'default' : 'secondary'}>
-                            {a.zoom_account_id ? 'Active seat' : 'Spare'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
-                        <TableCell>
-                          <Badge variant={a.status === 'active' ? 'outline' : 'destructive'} className="capitalize">
-                            {a.status.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
-
-                          <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(a)}>Edit</Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              if (confirm(`Delete vault account "${a.label}"? This cannot be undone.`)) remove.mutate(a.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+      <div className="inline-flex rounded-full border p-0.5 flex-wrap">
+        {FILTERS.map(f => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setTab(f.id)}
+            className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+              tab === f.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {f.label} <span className="opacity-70">{f.count}</span>
+          </button>
         ))}
+      </div>
 
-        <TabsContent value="log">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Credential access log</CardTitle></CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Field</TableHead>
-                    <TableHead>Viewed by</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No reveals recorded yet.</TableCell></TableRow>}
-                  {logs.map(l => (
-                    <TableRow key={l.id}>
-                      <TableCell>{format(new Date(l.viewed_at), 'dd MMM yyyy, HH:mm')}</TableCell>
-                      <TableCell>{accounts.find(a => a.id === l.vault_account_id)?.label ?? '—'}</TableCell>
-                      <TableCell className="capitalize">{String(l.viewed_field).replace('_', ' ')}</TableCell>
-                      <TableCell>{teacherName(l.viewed_by_user_id)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {tab !== 'log' && (
+        <div className="rounded-lg border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Label</TableHead>
+                <TableHead>Zoom email</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Pool</TableHead>
+                <TableHead>Link</TableHead>
+                <TableHead>Teacher</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
+              {!isLoading && filtered.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
+              )}
+              {filtered.map(a => (
+                <TableRow key={a.id} className="cursor-pointer" onClick={() => setViewing(a)}>
+                  <TableCell className="font-medium">{a.label}</TableCell>
+                  <TableCell>{a.zoom_email}</TableCell>
+                  <TableCell>
+                    <Badge variant={a.account_type === 'paid' ? 'default' : 'secondary'}>
+                      {a.account_type === 'paid' ? 'Paid' : 'Free'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="capitalize">{a.pool_assignment}</TableCell>
+                  <TableCell>
+                    <Badge variant={a.zoom_account_id ? 'default' : 'secondary'}>
+                      {a.zoom_account_id ? 'Active seat' : 'Spare'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
+                  <TableCell>
+                    <Badge variant={a.status === 'active' ? 'outline' : 'destructive'} className="capitalize">
+                      {a.status.replace('_', ' ')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(a)}>Edit</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (confirm(`Delete vault account "${a.label}"? This cannot be undone.`)) remove.mutate(a.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {tab === 'log' && (
+        <div className="rounded-lg border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Field</TableHead>
+                <TableHead>Viewed by</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No reveals recorded yet.</TableCell></TableRow>}
+              {logs.map(l => (
+                <TableRow key={l.id}>
+                  <TableCell className="whitespace-nowrap">{format(new Date(l.viewed_at), 'dd MMM yyyy, HH:mm')}</TableCell>
+                  <TableCell>{accounts.find(a => a.id === l.vault_account_id)?.label ?? '—'}</TableCell>
+                  <TableCell className="capitalize">{String(l.viewed_field).replace('_', ' ')}</TableCell>
+                  <TableCell>{teacherName(l.viewed_by_user_id)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <Dialog open={Boolean(viewing)} onOpenChange={(o) => !o && setViewing(null)}>
         <DialogContent className="max-w-lg">
