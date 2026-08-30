@@ -288,11 +288,7 @@ export default function ZoomVault() {
                       <TableHead>Zoom email</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Pool</TableHead>
-                      <TableHead>Teacher</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead />
-                    </TableRow>
-                      <TableHead>Pool</TableHead>
+
                       <TableHead>Link</TableHead>
                       <TableHead>Teacher</TableHead>
                       <TableHead>Status</TableHead>
