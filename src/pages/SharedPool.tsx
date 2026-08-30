@@ -135,10 +135,10 @@ export default function SharedPool() {
 
   if (!canBook) {
     return (
-      <div className="px-4 sm:px-6 py-10 max-w-2xl mx-auto">
-        <div className="border border-dashed rounded-lg p-8 text-center">
-          <p className="font-medium">Pool booking is not enabled yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="zoom-ws zw-canvas px-4 sm:px-6 py-10 max-w-2xl mx-auto">
+        <div className="zw-card zw-motif p-8 text-center">
+          <p className="zw-h2">Pool booking is not enabled yet</p>
+          <p className="zw-meta mt-1.5">
             An administrator needs to switch on teacher booking before you can reserve a shared Zoom seat.
           </p>
         </div>
