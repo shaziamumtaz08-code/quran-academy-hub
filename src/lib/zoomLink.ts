@@ -1,11 +1,13 @@
-/** Parse a standard Zoom join URL: https://<host>/j/{meetingNumber}?pwd={passcode} */
+/** Parse a Zoom join URL: /j/{meetingNumber}?pwd= or /wc/{meetingNumber}/join */
 export function parseZoomLink(link: string): { meetingNumber: string; passcode: string } | null {
   try {
     const url = new URL(link);
-    const m = url.pathname.match(/\/j\/(\d{9,12})/);
+    const m =
+      url.pathname.match(/\/j\/(\d{9,12})/) || url.pathname.match(/\/wc\/(\d{9,12})/);
     if (!m) return null;
     return { meetingNumber: m[1], passcode: url.searchParams.get('pwd') || '' };
   } catch {
     return null;
   }
 }
+
