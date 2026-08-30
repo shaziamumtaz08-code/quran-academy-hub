@@ -224,11 +224,11 @@ export default function EnrollmentForm() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">Complete Your Enrollment</h1>
           <p className="text-primary-foreground/80 text-sm sm:text-base">
-            Welcome, {lead.name}! Fill in the details below to finalize your enrollment.
+            {lead?.name ? `Welcome, ${lead.name}! ` : ''}Fill in the details below to complete your enrollment.
           </p>
-          {lead.subject_interest && (
+          {lead?.subject_interest && (
             <Badge className="mt-3 bg-white/20 text-primary-foreground border-0 text-sm px-4 py-1">
-              {lead.subject_interest}
+              {lead?.subject_interest}
             </Badge>
           )}
         </div>
@@ -241,6 +241,28 @@ export default function EnrollmentForm() {
 
       {/* Form */}
       <div className="max-w-2xl mx-auto px-4 pb-12 space-y-5 -mt-1">
+
+        {duplicate && (
+          <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 shadow-sm">
+            <CardContent className="pt-5 pb-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-sm text-foreground">We already have a record for this student</p>
+                  <p className="text-sm text-muted-foreground">{duplicate.message}</p>
+                  {duplicate.info.matched_name && (
+                    <p className="text-xs text-muted-foreground">Existing record: <span className="font-medium">{duplicate.info.matched_name}</span></p>
+                  )}
+                </div>
+              </div>
+              {duplicate.info.edit_token && (
+                <Button variant="outline" className="w-full" onClick={() => (window.location.href = `/enroll/${duplicate.info.edit_token}`)}>
+                  Open and update my existing form
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Step 1: Student Details */}
         <Card className="shadow-lg border-0 overflow-hidden">
@@ -377,12 +399,12 @@ export default function EnrollmentForm() {
           <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
           <CardContent className="pt-6 space-y-4">
             <StepBadge step={computedIsMinor ? 3 : 3} label="Course & Schedule" icon={Calendar} />
-            {lead.subject_interest && (
+            {lead?.subject_interest && (
               <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-3">
                 <GraduationCap className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-xs text-muted-foreground">Subject of Interest</p>
-                  <p className="font-medium text-sm">{lead.subject_interest}</p>
+                  <p className="font-medium text-sm">{lead?.subject_interest}</p>
                 </div>
               </div>
             )}
