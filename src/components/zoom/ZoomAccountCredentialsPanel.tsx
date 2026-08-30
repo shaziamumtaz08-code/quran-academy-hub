@@ -109,6 +109,13 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const [classId, setClassId] = React.useState<string>('');
   const [savingLink, setSavingLink] = React.useState(false);
 
+  // Server-to-Server OAuth app credentials (the ones webhooks / attendance need)
+  const [s2sAccountId, setS2sAccountId] = React.useState('');
+  const [s2sClientId, setS2sClientId] = React.useState('');
+  const [s2sClientSecret, setS2sClientSecret] = React.useState('');
+  const [validating, setValidating] = React.useState(false);
+  const [validateResult, setValidateResult] = React.useState<ZoomValidateResult | null>(null);
+
   // Reset transient input state when the admin switches accounts so values
   // typed for one account never bleed into another.
   React.useEffect(() => {
@@ -117,7 +124,62 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     setSdkClientSecret('');
     setCopied(false);
     setClassId('');
+    setS2sAccountId('');
+    setS2sClientId('');
+    setS2sClientSecret('');
+    setValidateResult(null);
   }, [accountId]);
+
+  // Live badge state for the S2S block: local validation result wins, then the
+  // persisted credential_status on the row.
+  const s2sSeatStatus: SeatStatus | undefined = React.useMemo(() => {
+    if (!account) return undefined;
+    if (validating) return undefined;
+    if (validateResult) return validateResult.ok ? (status?.hostId ? 'healthy' : 'no_events') : 'credentials_invalid';
+    if (!status?.hasS2S) return 'no_credentials';
+    if (status.s2sStatus === 'failed') return 'credentials_invalid';
+    if (!status.hostId) return 'missing_host_id';
+    return 'no_events';
+  }, [account, validating, validateResult, status]);
+
+  const runValidateS2S = async () => {
+    if (!account?.teacher_id || !account.zoom_account_email) return;
+    setValidating(true);
+    setValidateResult(null);
+    try {
+      const body = await validateAndSaveZoomAccount({
+        teacher_id: account.teacher_id,
+        tier: (account.tier as any) || 'free',
+        account_id: s2sAccountId.trim(),
+        client_id: s2sClientId.trim(),
+        client_secret: s2sClientSecret.trim(),
+        zoom_email: account.zoom_account_email,
+      });
+      setValidateResult(body);
+      queryClient.invalidateQueries({ queryKey: ['zoom-account-cred-status'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-seat-status'] });
+      if (body?.ok && body?.saved) {
+        setS2sClientSecret('');
+        toast({
+          title: 'Verified — host ID resolved',
+          description: `Host ID ${body.resolved?.host_id} saved for this seat.`,
+        });
+      } else {
+        toast({
+          title: 'Zoom rejected these credentials',
+          description: body?.failure_reason || body?.verdict || body?.error || 'Validation failed.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      setValidateResult({ ok: false, failure_reason: e.message });
+      toast({ title: 'Validation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setValidating(false);
+    }
+  };
+
 
   const linkedClasses = React.useMemo(
     () => (classes || []).filter((c: any) => c.zoom_account_id === accountId),
