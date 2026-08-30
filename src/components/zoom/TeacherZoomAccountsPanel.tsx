@@ -311,7 +311,13 @@ export function TeacherZoomAccountsPanel() {
             Each teacher can have one Free (1:1) and one Licensed (Group) account.
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+          {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
+        </Button>
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+          <Wrench className="h-4 w-4" /> Repair host IDs
+        </Button>
         <Button size="sm" variant="outline" className="gap-2" onClick={runSyncZoomUsers} disabled={syncing}>
           {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sync Zoom Users
         </Button>
