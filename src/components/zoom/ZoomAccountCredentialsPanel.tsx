@@ -1,10 +1,7 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Check, Copy, KeyRound, Link2, Webhook } from 'lucide-react';
@@ -203,12 +200,13 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   };
 
   return (
-    <Card className="border border-border/60 bg-card shadow-sm">
-      <CardContent className="p-4 space-y-5">
-        {/* Single account selector */}
-        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <div className="sm:w-80">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom account</p>
+    <div className="zoom-ws zw-card zw-inset-top space-y-6 p-6">
+      {/* Single account selector */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="sm:w-96">
+          <p className="zw-eyebrow">Zoom account</p>
+          <p className="zw-h2 mt-1.5">Credentials &amp; hosting</p>
+          <div className="mt-3">
             <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
               <SelectContent>
@@ -220,142 +218,146 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               </SelectContent>
             </Select>
           </div>
-          {account && status && (
-            <div className="flex flex-wrap gap-2 pb-1">
-              <Badge variant={status.hasWebhookToken ? 'secondary' : 'outline'} className="text-[10px]">
-                Webhook token {status.hasWebhookToken ? '✓ saved' : 'not set'}
-              </Badge>
-              <Badge variant={status.hasSdkCreds ? 'secondary' : 'outline'} className="text-[10px]">
-                Meeting SDK {status.hasSdkCreds ? '✓ saved' : 'not set'}
-              </Badge>
-              <Badge variant={linkedClasses.length > 0 ? 'secondary' : 'outline'} className="text-[10px]">
-                {linkedClasses.length} class{linkedClasses.length === 1 ? '' : 'es'} linked
-              </Badge>
-            </div>
-          )}
         </div>
+        {account && status && (
+          <div className="flex flex-wrap gap-2 pb-1">
+            <span className="zw-chip" data-tone={status.hasWebhookToken ? 'ok' : 'quiet'}>
+              <span className="zw-dot" /> Webhook token {status.hasWebhookToken ? 'saved' : 'not set'}
+            </span>
+            <span className="zw-chip" data-tone={status.hasSdkCreds ? 'ok' : 'quiet'}>
+              <span className="zw-dot" /> Meeting SDK {status.hasSdkCreds ? 'saved' : 'not set'}
+            </span>
+            <span className="zw-chip" data-tone={linkedClasses.length > 0 ? 'brass' : 'quiet'}>
+              <span className="zw-dot" /> {linkedClasses.length} class{linkedClasses.length === 1 ? '' : 'es'} linked
+            </span>
+          </div>
+        )}
+      </div>
 
-        {!account && (
-          <p className="text-xs text-muted-foreground">
+      {!account && (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <div className="zw-motif" />
+          <p className="zw-body max-w-sm">
             Select a Zoom account above — its webhook, in-app player credentials, and class links all appear here.
           </p>
-        )}
+        </div>
+      )}
 
-        {account && (
-          <>
-            {/* Webhook */}
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <div className="flex items-center gap-2">
-                <Webhook className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wide">Webhook (Event Subscriptions)</h3>
-                {status?.hasWebhookToken && (
-                  <Badge variant="secondary" className="text-[10px]">Token already stored — saving replaces it</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 block rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground break-all">
-                  {webhookUrl}
-                </code>
-                <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={copyWebhook}>
-                  {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                    Secret Token for this app
-                  </p>
-                  <Input
-                    type="password"
-                    value={webhookToken}
-                    onChange={(e) => setWebhookToken(e.target.value)}
-                    placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
-                  />
-                </div>
-                <Button size="sm" disabled={!webhookToken || savingToken} onClick={saveWebhookToken}>
-                  {savingToken ? 'Saving…' : 'Save token'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Paste this URL as the <strong>Event Notification Endpoint</strong> in this account’s Zoom app, then save its Secret Token above <em>before</em> pressing “Validate” in Zoom.
-              </p>
-            </div>
-
-            {/* Meeting SDK credentials */}
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <div className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wide">In-app player credentials</h3>
-                {status?.hasSdkCreds && (
-                  <Badge variant="secondary" className="text-[10px]">Credentials already stored — saving replaces them</Badge>
-                )}
-              </div>
-              <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Meeting SDK Client ID</p>
-                  <Input value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Meeting SDK Client Secret</p>
-                  <Input type="password" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder="Client Secret" />
-                </div>
-                <Button size="sm" disabled={!sdkClientId || !sdkClientSecret || savingCreds} onClick={saveCreds}>
-                  {savingCreds ? 'Saving…' : 'Save'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                These come from a separate <strong>Meeting SDK</strong> app in the Zoom Marketplace (not the Server-to-Server OAuth app). Accounts without them keep using the embedded frame.
-              </p>
-            </div>
-
-            {/* Class links */}
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wide">Classes hosted by this account</h3>
-              </div>
-              <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Class</p>
-                  <Select value={classId} onValueChange={setClassId}>
-                    <SelectTrigger><SelectValue placeholder="Select class to link" /></SelectTrigger>
-                    <SelectContent>
-                      {(classes || []).map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}
-                          {c.zoom_account_id === accountId ? ' ✓' : c.zoom_account_id ? ' (linked elsewhere)' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button size="sm" disabled={!classId || savingLink} onClick={saveLink}>
-                  {savingLink ? 'Saving…' : 'Link to this account'}
-                </Button>
-              </div>
-              {selectedClass?.meeting_link && (
-                <p className="text-xs text-muted-foreground break-all">
-                  Class meeting link: <code className="font-mono">{selectedClass.meeting_link}</code>
-                </p>
-              )}
-              {linkedClasses.length > 0 && (
-                <div className="space-y-1">
-                  {linkedClasses.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-sm">
-                      <span className="truncate">{(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}</span>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => unlinkClass(c.id)}>
-                        Unlink
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+      {account && (
+        <>
+          {/* Webhook — deliberately quiet, system-level */}
+          <div className="zw-drawer space-y-3 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Webhook className="h-3.5 w-3.5" style={{ color: 'hsl(var(--zw-ink-3))' }} />
+              <h3 className="zw-eyebrow">Webhook · event subscriptions</h3>
+              {status?.hasWebhookToken && (
+                <span className="zw-chip" data-tone="quiet">Token stored — saving replaces it</span>
               )}
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            <div className="zw-linkbox">
+              <code className="zw-linkbox-text">{webhookUrl}</code>
+              <button type="button" className="zw-btn-ghost shrink-0" onClick={copyWebhook}>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Secret Token for this app</p>
+                <Input
+                  type="password"
+                  value={webhookToken}
+                  onChange={(e) => setWebhookToken(e.target.value)}
+                  placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
+                />
+              </div>
+              <button type="button" className="zw-btn-secondary" disabled={!webhookToken || savingToken} onClick={saveWebhookToken}>
+                {savingToken ? 'Saving…' : 'Save token'}
+              </button>
+            </div>
+            <p className="zw-meta">
+              Paste this URL as the <strong>Event Notification Endpoint</strong> in this account’s Zoom app, then save its Secret Token above <em>before</em> pressing “Validate” in Zoom.
+            </p>
+          </div>
+
+          {/* Meeting SDK credentials */}
+          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <KeyRound className="h-4 w-4" style={{ color: 'hsl(var(--zw-brass))' }} />
+              <h3 className="zw-h2">In-app player credentials</h3>
+              {status?.hasSdkCreds && (
+                <span className="zw-chip" data-tone="ok"><span className="zw-dot" /> Stored — saving replaces</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Meeting SDK Client ID</p>
+                <Input value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Meeting SDK Client Secret</p>
+                <Input type="password" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder="Client Secret" />
+              </div>
+              <button type="button" className="zw-btn-primary" disabled={!sdkClientId || !sdkClientSecret || savingCreds} onClick={saveCreds}>
+                {savingCreds ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            <p className="zw-meta">
+              These come from a separate <strong>Meeting SDK</strong> app in the Zoom Marketplace (not the Server-to-Server OAuth app). Accounts without them keep using the embedded frame.
+            </p>
+          </div>
+
+          {/* Class links */}
+          <div className="zw-card space-y-4 p-6">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <h3 className="zw-h2">Classes hosted by this account</h3>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Class</p>
+                <Select value={classId} onValueChange={setClassId}>
+                  <SelectTrigger><SelectValue placeholder="Select class to link" /></SelectTrigger>
+                  <SelectContent>
+                    {(classes || []).map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}
+                        {c.zoom_account_id === accountId ? ' ✓' : c.zoom_account_id ? ' (linked elsewhere)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button type="button" className="zw-btn-secondary" disabled={!classId || savingLink} onClick={saveLink}>
+                {savingLink ? 'Saving…' : 'Link to this account'}
+              </button>
+            </div>
+            {selectedClass?.meeting_link && (
+              <div className="zw-linkbox">
+                <code className="zw-linkbox-text">{selectedClass.meeting_link}</code>
+              </div>
+            )}
+            {linkedClasses.length > 0 ? (
+              <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'hsl(var(--zw-line-soft))' }}>
+                {linkedClasses.map((c: any) => (
+                  <div key={c.id} className="zw-row">
+                    <span className="truncate text-sm font-medium">
+                      {(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}
+                    </span>
+                    <button type="button" className="zw-btn-ghost shrink-0" onClick={() => unlinkClass(c.id)}>
+                      Unlink
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="zw-meta">No classes are linked to this account yet — they stay on the embedded frame.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+
   );
 }
 

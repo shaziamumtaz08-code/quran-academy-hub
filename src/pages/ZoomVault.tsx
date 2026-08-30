@@ -287,67 +287,90 @@ export default function ZoomVault() {
       </div>
 
       {tab !== 'log' && (
-        <div className="zw-table-wrap overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Zoom email</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Pool</TableHead>
-                <TableHead>Link</TableHead>
-                <TableHead>Teacher</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
-              {!isLoading && filtered.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
-              )}
-              {filtered.map(a => (
-                <TableRow key={a.id} className="cursor-pointer" onClick={() => setViewing(a)}>
-                  <TableCell className="font-medium">{a.label}</TableCell>
-                  <TableCell>{a.zoom_email}</TableCell>
-                  <TableCell>
-                    <span className="zw-chip" data-tone={a.account_type === 'paid' ? 'brass' : 'quiet'}>
-                      <span className="zw-dot" />{a.account_type === 'paid' ? 'Paid' : 'Free'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="capitalize">{a.pool_assignment}</TableCell>
-                  <TableCell>
-                    <span className="zw-chip" data-tone={a.zoom_account_id ? 'ok' : 'quiet'}>
-                      <span className="zw-dot" />{a.zoom_account_id ? 'Active seat' : 'Spare'}
-                    </span>
-                  </TableCell>
-                  <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
-                  <TableCell>
-                    <span className="zw-chip capitalize" data-tone={a.status === 'active' ? 'ok' : 'live'}>
-                      <span className="zw-dot" />{a.status.replace('_', ' ')}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
+        <>
+          <div className="zw-rail">
+            {[
+              { label: 'Seats in vault', value: accounts.length, tone: 'quiet' },
+              { label: 'Active seats', value: accounts.filter(a => a.zoom_account_id).length, tone: 'sage' },
+              { label: 'Spare seats', value: accounts.filter(a => !a.zoom_account_id && a.status === 'active').length, tone: 'brass' },
+              { label: 'Needs attention', value: accounts.filter(a => a.status !== 'active').length, tone: 'warn' },
+            ].map(m => (
+              <div key={m.label} className="zw-rail-seg">
+                <p className="zw-eyebrow">{m.label}</p>
+                <p className="zw-rail-value mt-2">{m.value}</p>
+                <span className="zw-metric-rule mt-3 block" data-tone={m.tone} />
+              </div>
+            ))}
+          </div>
+
+          {isLoading && <p className="zw-body">Loading…</p>}
+          {!isLoading && filtered.length === 0 && (
+            <div className="zw-card flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <div className="zw-motif" />
+              <p className="zw-body">No accounts in this view — add your first Zoom seat.</p>
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map(a => (
+              <article
+                key={a.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setViewing(a)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setViewing(a); }}
+                className="zw-card zw-interactive cursor-pointer p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="zw-avatar" data-muted={!a.zoom_account_id}>
+                      {a.label.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{a.label}</p>
+                      <p className="zw-meta truncate">{a.zoom_email}</p>
+                    </div>
+                  </div>
+                  <span className="zw-chip shrink-0 capitalize" data-tone={a.status === 'active' ? 'ok' : 'live'}>
+                    <span className="zw-dot" />{a.status.replace('_', ' ')}
+                  </span>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  <span className="zw-chip" data-tone={a.zoom_account_id ? 'ok' : 'brass'}>
+                    <span className="zw-dot" />{a.zoom_account_id ? 'Active seat' : 'Spare'}
+                  </span>
+                  <span className="zw-chip" data-tone={a.account_type === 'paid' ? 'brass' : 'quiet'}>
+                    {a.account_type === 'paid' ? 'Paid' : 'Free'}
+                  </span>
+                  <span className="zw-chip capitalize" data-tone="quiet">{a.pool_assignment}</span>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: 'hsl(var(--zw-line-soft))' }}>
+                  <p className="zw-meta truncate">{teacherName(rowTeacherId(a)) || 'Unassigned'}</p>
+                  <div className="flex shrink-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="ghost" className="zw-btn-ghost" onClick={() => setViewing(a)}>
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(a)}>Edit</Button>
+                    <Button size="sm" variant="ghost" className="zw-btn-ghost" onClick={() => startEdit(a)}>Edit</Button>
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="zw-btn-ghost"
                       onClick={() => {
                         if (confirm(`Delete vault account "${a.label}"? This cannot be undone.`)) remove.mutate(a.id);
                       }}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
       )}
+
 
       {tab === 'log' && (
         <div className="zw-table-wrap overflow-x-auto">
