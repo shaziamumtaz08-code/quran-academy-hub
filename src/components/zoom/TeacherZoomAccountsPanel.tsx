@@ -612,10 +612,17 @@ export function TeacherZoomAccountsPanel() {
                           ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
                           : seat ? 'No activity' : '—'}
                       </TableCell>
-                      <TableCell className="py-4">
-                        <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
-                          {a.is_active ? 'Active' : 'Disabled'}
-                        </span>
+                      <TableCell className="py-4" onClick={(e) => e.stopPropagation()}>
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <Switch
+                            checked={Boolean(a.is_active)}
+                            onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
+                            aria-label={`Toggle ${a.profile?.full_name || 'seat'} active`}
+                          />
+                          <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
+                            {a.is_active ? 'Active' : 'Disabled'}
+                          </span>
+                        </label>
                       </TableCell>
                       <TableCell className="py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
