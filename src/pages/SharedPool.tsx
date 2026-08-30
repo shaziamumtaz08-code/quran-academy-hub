@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, CheckCircle2, CircleDot, Circle } from 'lucide-react';
@@ -135,10 +134,10 @@ export default function SharedPool() {
 
   if (!canBook) {
     return (
-      <div className="px-4 sm:px-6 py-10 max-w-2xl mx-auto">
-        <div className="border border-dashed rounded-lg p-8 text-center">
-          <p className="font-medium">Pool booking is not enabled yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="zoom-ws zw-canvas px-4 sm:px-6 py-10 max-w-2xl mx-auto">
+        <div className="zw-card zw-motif p-8 text-center">
+          <p className="zw-h2">Pool booking is not enabled yet</p>
+          <p className="zw-meta mt-1.5">
             An administrator needs to switch on teacher booking before you can reserve a shared Zoom seat.
           </p>
         </div>
@@ -273,9 +272,9 @@ export default function SharedPool() {
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {(s.bookings ?? []).map((b: any) => (
-                    <Badge key={b.id} variant={b.mine ? 'default' : 'outline'} className="font-normal">
+                    <span key={b.id} className="zw-chip" data-tone={b.mine ? 'brass' : 'quiet'}>
                       {format(new Date(b.start_time), 'HH:mm')}–{format(new Date(b.end_time), 'HH:mm')} · {b.purpose} · {b.booked_by}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
