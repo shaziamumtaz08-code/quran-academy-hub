@@ -438,30 +438,18 @@ export function StudentDashboard() {
     }
     // Reserve the tab within the click gesture — popup blockers reject
     // window.open() that happens after an await.
-    const tab = reserveTab();
     try {
       setJoining(true);
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
-        body: {
+      await joinClass(
+        {
           teacherId: assignment.teacher_id,
           studentId: activeStudentId,
           assignmentId: assignment.id,
           scheduleId: sched?.id || null,
           scheduledStart: nextSlot?.when?.toISOString() || new Date().toISOString(),
         },
-      });
-      if (error) throw error;
-      if (data?.ready && data?.joinUrl) {
-        notifyMeetingPasscode((data as any)?.passcode);
-        navigateTab(tab, data.joinUrl);
-      } else {
-        closeTab(tab);
-        toast.info(data?.message || 'Waiting for teacher to open the class.');
-      }
-    } catch (err: any) {
-      closeTab(tab);
-      toast.error(err?.message || 'Could not join class');
+        'Your class',
+      );
     } finally {
       setJoining(false);
     }
