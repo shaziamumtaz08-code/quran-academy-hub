@@ -533,74 +533,8 @@ export default function ZoomManagement() {
           </div>
         </div>
 
-        {/* Webhook URL — per-app endpoint builder */}
-        <Card className="border border-border/60 bg-card shadow-sm">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-              <div className="sm:w-64">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Zoom app</p>
-                <Select value={webhookApp || '__default'} onValueChange={(v) => setWebhookApp(v === '__default' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Shared / default app" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__default">Shared / default app</SelectItem>
-                    {(zoomAccounts || [])
-                      .filter((a: any) => a.is_active)
-                      .map((a: any) => {
-                        const name = a.profile?.full_name || a.zoom_account_email || '';
-                        const slug = String(name).trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'app';
-                        return (
-                          <SelectItem key={a.id} value={slug}>
-                            {name} — ?app={slug}
-                          </SelectItem>
-                        );
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Event Subscription endpoint</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 block rounded-md bg-muted px-3 py-2 text-sm font-mono text-foreground break-all">
-                    {webhookUrl}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1.5"
-                    onClick={handleCopyWebhook}
-                  >
-                    {webhookCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                    {webhookCopied ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            {webhookApp ? (
-              <div className="flex flex-col sm:flex-row sm:items-end gap-2 pt-1">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                    Secret Token for this app
-                  </p>
-                  <Input
-                    type="password"
-                    value={webhookToken}
-                    onChange={(e) => setWebhookToken(e.target.value)}
-                    placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
-                  />
-                </div>
-                <Button size="sm" disabled={!webhookToken || savingToken} onClick={saveWebhookToken}>
-                  {savingToken ? 'Saving…' : 'Save token'}
-                </Button>
-              </div>
-            ) : null}
-            <p className="text-xs text-muted-foreground">
-              Give each teacher app its own tagged URL (<code className="font-mono">?app=slug</code>) under <strong>Feature → Event Subscriptions</strong>, then paste that app’s <strong>Secret Token</strong> above and press <em>Save token</em> — it is stored against the teacher’s Zoom account, so no developer step is needed. Save it <em>before</em> pressing “Validate” in Zoom.
-            </p>
-
-          </CardContent>
-        </Card>
-
-        <MeetingSdkPanel zoomAccounts={(zoomAccounts || []) as any} />
+        {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
+        <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
 
         {/* Room Cards Grid */}
         <div>
