@@ -327,24 +327,17 @@ export default function ZoomManagement() {
         {mainTab === 'vault' && <ZoomVaultPage />}
 
         {mainTab === 'accounts' && (<>
-        {/* Accounts sub-navigation — quiet segmented pills, no nested cards */}
-        <div className="flex flex-wrap items-center gap-1">
+        {/* Accounts sub-navigation */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {sectionButtons.map(btn => (
             <button
               key={btn.id}
               onClick={() => setActiveSection(btn.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                activeSection === btn.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
+              data-active={activeSection === btn.id}
+              className="zw-subnav-item inline-flex items-center gap-2"
             >
               {btn.label}
-              <span className={cn(
-                "tabular-nums text-[11px]",
-                activeSection === btn.id ? "text-background/70" : "text-muted-foreground/70"
-              )}>{btn.count}</span>
+              <span className="tabular-nums text-[11px] opacity-60">{btn.count}</span>
             </button>
           ))}
         </div>
