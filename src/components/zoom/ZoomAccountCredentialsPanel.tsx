@@ -322,7 +322,81 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
       {account && (
         <>
+          {/* Server-to-Server OAuth app — powers webhooks, attendance telemetry, host ID */}
+          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <ShieldCheck className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <h3 className="zw-h2">Server-to-Server OAuth app</h3>
+              {validating ? (
+                <span className="zw-chip" data-tone="quiet"><span className="zw-dot" /> Validating…</span>
+              ) : (
+                <StatusLabel status={s2sSeatStatus} />
+              )}
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Account ID</p>
+                <Input
+                  value={s2sAccountId}
+                  onChange={(e) => setS2sAccountId(e.target.value)}
+                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Account ID from the S2S app'}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Client ID</p>
+                <Input
+                  value={s2sClientId}
+                  onChange={(e) => setS2sClientId(e.target.value)}
+                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Client ID'}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="zw-eyebrow mb-1.5">Client Secret</p>
+                <Input
+                  type="password"
+                  value={s2sClientSecret}
+                  onChange={(e) => setS2sClientSecret(e.target.value)}
+                  placeholder="Client Secret"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="zw-btn-primary"
+                disabled={
+                  validating ||
+                  !account.teacher_id ||
+                  !account.zoom_account_email ||
+                  !s2sAccountId.trim() ||
+                  !s2sClientId.trim() ||
+                  !s2sClientSecret.trim()
+                }
+                onClick={runValidateS2S}
+              >
+                {validating ? 'Validating…' : 'Validate & save'}
+              </button>
+              {!account.teacher_id && (
+                <span className="zw-meta">This seat has no teacher attached — attach one in Zoom Accounts first.</span>
+              )}
+            </div>
+            {(validateResult || (s2sSeatStatus && s2sSeatStatus !== 'healthy')) && (
+              <p className="zw-meta">
+                {validateResult?.failure_reason ||
+                  validateResult?.verdict ||
+                  status?.s2sError ||
+                  (s2sSeatStatus ? STATUS_META[s2sSeatStatus].hint : '')}
+              </p>
+            )}
+            <p className="zw-meta">
+              These three come from this account’s <strong>Server-to-Server OAuth</strong> app in the Zoom Marketplace.
+              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault)
+              and not the Meeting SDK app below.
+            </p>
+          </div>
+
           {/* Webhook — deliberately quiet, system-level */}
+
           <div className="zw-drawer space-y-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Webhook className="h-3.5 w-3.5" style={{ color: 'hsl(var(--zw-ink-3))' }} />
