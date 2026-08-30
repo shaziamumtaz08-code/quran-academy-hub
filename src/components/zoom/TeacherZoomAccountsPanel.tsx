@@ -603,25 +603,38 @@ export function TeacherZoomAccountsPanel() {
             <span className="font-mono text-[11px] text-muted-foreground">{a.id}</span>
           </Field>
         </dl>
-        <div className="flex flex-wrap gap-2 pt-3">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-            {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
-            <Wrench className="h-4 w-4" /> Repair host ID
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm(`Remove dedicated Zoom account for ${a.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(a.id);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Remove account
-          </Button>
-        </div>
       </section>
+
+      {/* Action bar — frequent actions inline, destructive behind overflow */}
+      <div className="flex items-center gap-2 border-t border-border pt-4">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+          {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+          <Wrench className="h-4 w-4" /> Repair host ID
+        </Button>
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openEditLink(a)}>
+          <Pencil className="h-4 w-4" /> Edit link
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground" aria-label="More seat actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                if (confirm(`Remove dedicated Zoom account for ${a.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(a.id);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Remove account
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
     </div>
   );
 
