@@ -32,6 +32,7 @@ interface VaultAccount {
   status: 'active' | 'disabled' | 'locked_out';
   zoom_password_secret_id: string | null;
   google_password_secret_id: string | null;
+  zoom_account_id: string | null;
 }
 
 const emptyForm = {
@@ -88,6 +89,14 @@ export default function ZoomVault() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as unknown as VaultAccount[];
+    },
+  });
+
+  const { data: zoomAccounts = [] } = useQuery({
+    queryKey: ['zoom-vault-linked-accounts'],
+    queryFn: async () => {
+      const { data } = await supabase.from('zoom_accounts').select('id, teacher_id, zoom_account_email');
+      return (data ?? []) as { id: string; teacher_id: string | null; zoom_account_email: string | null }[];
     },
   });
 
