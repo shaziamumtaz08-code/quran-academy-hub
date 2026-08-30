@@ -1564,3 +1564,5 @@
 .zoom-ws .zw-row + .zw-row { border-top: 1px solid hsl(var(--zw-line-soft)); }
 .zoom-ws .zw-row:hover { background: hsl(var(--zw-canvas) / 0.75); }
 .zoom-ws .zw-row[data-tone="warn"] { background: hsl(var(--zw-warn-soft) / 0.6); }
+.zoom-ws .zw-btn-primary:disabled,
+.zoom-ws .zw-btn-secondary:disabled { opacity: 0.45; pointer-events: none; }
