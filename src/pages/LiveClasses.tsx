@@ -7,11 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Video, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from '@/hooks/useAcademyTimezone';
 import { playPingChime } from '@/lib/pingChime';
 import { Bell, X } from 'lucide-react';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 type Row = {

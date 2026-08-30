@@ -5,10 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Loader2, Video, Radio, ChevronDown, ChevronUp } from 'lucide-react';
-import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 import { cn } from '@/lib/utils';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 interface ClassRow {

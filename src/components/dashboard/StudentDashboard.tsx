@@ -10,7 +10,6 @@ import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
-import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchIslamicDate } from '@/lib/islamicDate';
@@ -21,8 +20,6 @@ import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
-import { ensureFreshSession } from '@/lib/ensureSession';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 
