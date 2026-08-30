@@ -415,6 +415,34 @@ export function TeacherZoomAccountsPanel() {
 
       </CardHeader>
       <CardContent className="space-y-4">
+        {health?.webhook_url && (
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">Event Notification Endpoint (same for all accounts)</p>
+              <p className="truncate font-mono text-xs">{health.webhook_url}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={copyWebhook}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+          </div>
+        )}
+        {health?.summary && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              { label: 'Seats', value: health.summary.total },
+              { label: 'Receiving', value: health.summary.healthy },
+              { label: 'Silent', value: health.summary.no_events },
+              { label: 'No host ID', value: health.summary.missing_host_id },
+              { label: 'No app', value: (health.summary.no_credentials || 0) + (health.summary.credentials_invalid || 0) },
+            ].map((s) => (
+              <div key={s.label} className="rounded-lg bg-muted/50 p-3">
+                <p className="text-2xl font-semibold">{s.value ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
         {syncResult && (
           <Alert variant={syncResult.success ? 'default' : 'destructive'}>
             {syncResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
