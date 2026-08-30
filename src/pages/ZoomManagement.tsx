@@ -69,7 +69,7 @@ export default function ZoomManagement() {
   });
 
 
-  const { data: licenses, isLoading: licensesLoading } = useQuery({
+  const { data: licenses } = useQuery({
     queryKey: ['zoom-licenses-management'],
     queryFn: async () => {
       const { data, error } = await supabase.from('zoom_licenses').select('*').order('created_at', { ascending: true });
