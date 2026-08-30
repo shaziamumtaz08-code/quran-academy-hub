@@ -285,9 +285,8 @@ export default function LiveClasses() {
     if (row.scheduleId) dismissPing(row.scheduleId);
     setJoiningKey(row.key);
     try {
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke("zoom-join-class", {
-        body: {
+      const opened = await joinClass(
+        {
           teacherId: row.teacherId,
           studentId: row.studentId || null,
           assignmentId: row.assignmentId || null,
@@ -295,24 +294,15 @@ export default function LiveClasses() {
           scheduledStart: new Date(row.scheduledStartMs).toISOString(),
           liveSessionId: row.liveSessionId || null,
         },
-      });
-      if (error) throw error;
-      const payload = data as any;
-      if (!payload?.joinUrl) {
-        toast.info(payload?.message || "This class isn't ready yet. Please wait for your teacher to open the room.");
-        await load();
-        return;
-      }
-      notifyMeetingPasscode(payload?.passcode);
-      window.open(payload.joinUrl, "_blank", "noopener,noreferrer");
-      // Refresh so the row now shows the meeting link
-      setTimeout(load, 500);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not open the class link.");
+        row.title || 'Class',
+      );
+      if (!opened) await load();
+      else setTimeout(load, 500);
     } finally {
       setJoiningKey(null);
     }
   };
+
 
   const content = useMemo(() => {
     if (loading) {
