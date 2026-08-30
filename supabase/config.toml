@@ -96,3 +96,6 @@ verify_jwt = false
 
 [functions.verify-login]
 verify_jwt = false
+
+[functions.enrollment-form]
+verify_jwt = false

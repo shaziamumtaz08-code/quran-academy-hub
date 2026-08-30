@@ -38,19 +38,17 @@ export default function EnrollmentForm() {
   const { data: lead, isLoading, error } = useQuery({
     queryKey: ['enrollment-form', token],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('enrollment_form_token', token)
-        .single();
+      const { data, error } = await supabase.functions.invoke('enrollment-form', {
+        body: { token, action: 'load' },
+      });
       if (error) throw error;
-      if (data && !data.enrollment_form_opened_at) {
-        await supabase.from('leads').update({ enrollment_form_opened_at: new Date().toISOString() }).eq('id', data.id);
-      }
-      return data as LeadData;
+      if (data?.error) throw new Error(data.error);
+      return data.lead as LeadData;
     },
+    retry: false,
     enabled: !!token,
   });
+
 
   const isChild = lead?.for_whom === 'child';
   const studentAge = lead?.child_age || null;
@@ -96,17 +94,18 @@ export default function EnrollmentForm() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('leads').update({
-        enrollment_form_data: form,
-        status: 'form_submitted',
-      }).eq('id', lead!.id);
+      const { data, error } = await supabase.functions.invoke('enrollment-form', {
+        body: { token, action: 'submit', values: form },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => toast({ title: 'Enrollment form submitted successfully!' }),
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const alreadySubmitted = lead?.enrollment_form_data !== null;
+  const alreadySubmitted = Boolean(lead?.enrollment_form_data);
+
   const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
     (computedIsMinor || (form.password && form.password === form.confirm_password));
