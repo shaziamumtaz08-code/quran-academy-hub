@@ -467,7 +467,6 @@ export default function ZoomManagement() {
 
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
     { id: 'health' as const, label: 'Webhook Health', icon: Shield, count: accountsCount },
-    { id: 'rooms' as const, label: 'Shared Pool (legacy)', icon: Settings, count: unclaimedLegacy.length },
 
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
@@ -482,7 +481,6 @@ export default function ZoomManagement() {
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
-            { id: 'shared' as const, label: 'Shared Pool' },
             { id: 'pool' as const, label: 'Pool Booking' },
             { id: 'vault' as const, label: 'Zoom Vault' },
           ]).map((tab) => (
