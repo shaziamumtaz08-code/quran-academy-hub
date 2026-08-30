@@ -486,11 +486,12 @@ export default function StudentRegistration() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <p className="hidden text-xs text-muted-foreground sm:block">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
             {valid
               ? `Ready to submit — ${students.length} student${students.length > 1 ? 's' : ''}.`
-              : 'Complete the fields marked * to submit.'}
+              : `Still needed: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` +${missing.length - 4} more` : ''}`}
           </p>
+
           <Button
             size="lg"
             disabled={!valid || submit.isPending}
