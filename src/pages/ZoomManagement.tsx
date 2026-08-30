@@ -465,7 +465,6 @@ export default function ZoomManagement() {
   const sectionButtons = [
 
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
-    { id: 'health' as const, label: 'Webhook Health', icon: Shield, count: accountsCount },
 
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
@@ -738,11 +737,8 @@ export default function ZoomManagement() {
           ))}
         </div>
 
-        {/* Teacher Zoom Accounts (dedicated) */}
+        {/* Teacher Zoom Accounts (dedicated) — includes per-seat webhook health */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
-
-        {/* Per-seat webhook health */}
-        {activeSection === 'health' && <ZoomWebhookHealthPanel />}
 
 
         {/* Rooms Section (legacy shared pool) */}
