@@ -268,29 +268,37 @@ export default function ZoomManagement() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-fade-in">
-        {/* Workspace header */}
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Zoom Management</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage live classes, teacher accounts, spare seats and Zoom activity for the whole academy.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {availableCount} ready
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
-              <span className="h-2 w-2 rounded-full bg-destructive" />
-              {busyCount} live
-            </span>
+      <div className="zoom-ws zw-canvas -m-4 space-y-7 p-4 sm:-m-6 sm:p-6">
+        {/* Workspace hero */}
+        <header className="zw-hero px-6 py-7 sm:px-8 sm:py-8">
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-xl">
+              <p className="zw-eyebrow" style={{ color: 'hsl(38 55% 72%)' }}>Academy operations</p>
+              <h1 className="zw-display mt-2" style={{ color: 'hsl(42 45% 96%)' }}>Zoom Management</h1>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'hsl(40 22% 78%)' }}>
+                Live classes, teacher seats, spare capacity and Zoom activity for the whole academy — in one workspace.
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight" style={{ color: 'hsl(42 45% 96%)' }}>{availableCount}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs" style={{ color: 'hsl(40 22% 74%)' }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'hsl(168 45% 58%)' }} /> Rooms ready
+                </p>
+              </div>
+              <div className="h-10 w-px" style={{ background: 'hsl(40 30% 80% / 0.2)' }} />
+              <div>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight" style={{ color: busyCount ? 'hsl(6 75% 72%)' : 'hsl(42 45% 96%)' }}>{busyCount}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs" style={{ color: 'hsl(40 22% 74%)' }}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', busyCount && 'animate-pulse')} style={{ background: busyCount ? 'hsl(6 75% 62%)' : 'hsl(40 12% 55%)' }} /> Live now
+                </p>
+              </div>
+            </div>
           </div>
         </header>
 
         {/* Top-level navigation */}
-        <nav className="flex flex-wrap items-center gap-1 border-b border-border" aria-label="Zoom sections">
+        <nav className="zw-nav w-fit max-w-full flex-wrap" aria-label="Zoom sections">
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
@@ -301,18 +309,15 @@ export default function ZoomManagement() {
               key={tab.id}
               type="button"
               onClick={() => setMainTab(tab.id)}
+              data-active={mainTab === tab.id}
               aria-current={mainTab === tab.id ? 'page' : undefined}
-              className={cn(
-                '-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
-                mainTab === tab.id
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              )}
+              className="zw-nav-item"
             >
               {tab.label}
             </button>
           ))}
         </nav>
+
 
 
         {mainTab === 'live' && <ZoomLiveOperations />}
@@ -322,24 +327,17 @@ export default function ZoomManagement() {
         {mainTab === 'vault' && <ZoomVaultPage />}
 
         {mainTab === 'accounts' && (<>
-        {/* Accounts sub-navigation — quiet segmented pills, no nested cards */}
-        <div className="flex flex-wrap items-center gap-1">
+        {/* Accounts sub-navigation */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {sectionButtons.map(btn => (
             <button
               key={btn.id}
               onClick={() => setActiveSection(btn.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                activeSection === btn.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
+              data-active={activeSection === btn.id}
+              className="zw-subnav-item inline-flex items-center gap-2"
             >
               {btn.label}
-              <span className={cn(
-                "tabular-nums text-[11px]",
-                activeSection === btn.id ? "text-background/70" : "text-muted-foreground/70"
-              )}>{btn.count}</span>
+              <span className="tabular-nums text-[11px] opacity-60">{btn.count}</span>
             </button>
           ))}
         </div>
@@ -359,20 +357,21 @@ export default function ZoomManagement() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">Session history</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Every live session with its duration and recording.</p>
+                <p className="zw-eyebrow">Archive</p>
+                <h2 className="zw-h2 mt-1.5">Session history</h2>
+                <p className="zw-meta mt-1">Every live session with its duration and recording.</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2 text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="zw-btn-ghost gap-2">
                   <RefreshCw className="h-4 w-4" /> Refresh
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="zw-btn-secondary gap-2">
                   <Download className="h-4 w-4" /> Download CSV
                 </Button>
               </div>
             </div>
 
-            <ScrollArea className="h-[560px]">
+            <ScrollArea className="zw-table-wrap h-[560px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -446,18 +445,19 @@ export default function ZoomManagement() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">Join &amp; leave activity</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="zw-eyebrow">Telemetry</p>
+                <h2 className="zw-h2 mt-1.5">Join &amp; leave activity</h2>
+                <p className="zw-meta mt-1">
                   Zoom telemetry only — attendance is always marked manually.
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="zw-btn-secondary gap-2">
                 <Download className="h-4 w-4" /> Download CSV
               </Button>
             </div>
 
-            <ScrollArea className="h-[560px]">
-              <ul className="divide-y divide-border/60">
+            <ScrollArea className="zw-table-wrap h-[560px] px-4">
+              <ul className="divide-y divide-border/50">
                 {visibleAttendanceLogs.map((log: any) => {
                   const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
                   const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');

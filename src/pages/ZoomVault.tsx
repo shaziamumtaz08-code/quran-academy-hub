@@ -245,50 +245,49 @@ export default function ZoomVault() {
   ];
 
   return (
-    <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="zoom-ws mx-auto max-w-[1400px] space-y-6 py-1">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Zoom Vault</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="zw-eyebrow">Asset inventory</p>
+          <h1 className="zw-h2 mt-1.5 text-xl">Zoom Vault</h1>
+          <p className="zw-body mt-1">
             Encrypted credential store for every Zoom seat. Password reveals are logged.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" disabled={importing} onClick={runImport}>
+          <Button variant="outline" className="zw-btn-secondary" disabled={importing} onClick={runImport}>
             <Download className="h-4 w-4 mr-1" /> {importing ? 'Importing…' : 'Import Zoom accounts'}
           </Button>
-          <Button onClick={() => { setEditing(null); setForm(emptyForm); setOpen(true); }}>
+          <Button className="zw-btn-primary" onClick={() => { setEditing(null); setForm(emptyForm); setOpen(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add account
           </Button>
         </div>
       </div>
 
       {accounts.length === 0 && !isLoading && (
-        <div className="border border-dashed rounded-lg p-8 text-sm text-muted-foreground text-center">
+        <div className="zw-card px-6 py-10 text-center zw-body">
           The vault is empty. Click <strong>Import Zoom accounts</strong> to pull every active Zoom seat already
           configured in the LMS — seats linked to a teacher become <em>dedicated</em>, and paid seats with no teacher
           join the <em>shared pool</em> with cloud recording on.
         </div>
       )}
 
-      <div className="inline-flex rounded-full border p-0.5 flex-wrap">
+      <div className="zw-nav w-fit max-w-full flex-wrap">
         {FILTERS.map(f => (
           <button
             key={f.id}
             type="button"
             onClick={() => setTab(f.id)}
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-              tab === f.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
+            data-active={tab === f.id}
+            className="zw-nav-item !px-3.5 !py-1.5 !text-xs"
           >
-            {f.label} <span className="opacity-70">{f.count}</span>
+            {f.label} <span className="ml-1 tabular-nums opacity-60">{f.count}</span>
           </button>
         ))}
       </div>
 
       {tab !== 'log' && (
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="zw-table-wrap overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -312,21 +311,21 @@ export default function ZoomVault() {
                   <TableCell className="font-medium">{a.label}</TableCell>
                   <TableCell>{a.zoom_email}</TableCell>
                   <TableCell>
-                    <Badge variant={a.account_type === 'paid' ? 'default' : 'secondary'}>
-                      {a.account_type === 'paid' ? 'Paid' : 'Free'}
-                    </Badge>
+                    <span className="zw-chip" data-tone={a.account_type === 'paid' ? 'brass' : 'quiet'}>
+                      <span className="zw-dot" />{a.account_type === 'paid' ? 'Paid' : 'Free'}
+                    </span>
                   </TableCell>
                   <TableCell className="capitalize">{a.pool_assignment}</TableCell>
                   <TableCell>
-                    <Badge variant={a.zoom_account_id ? 'default' : 'secondary'}>
-                      {a.zoom_account_id ? 'Active seat' : 'Spare'}
-                    </Badge>
+                    <span className="zw-chip" data-tone={a.zoom_account_id ? 'ok' : 'quiet'}>
+                      <span className="zw-dot" />{a.zoom_account_id ? 'Active seat' : 'Spare'}
+                    </span>
                   </TableCell>
                   <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
                   <TableCell>
-                    <Badge variant={a.status === 'active' ? 'outline' : 'destructive'} className="capitalize">
-                      {a.status.replace('_', ' ')}
-                    </Badge>
+                    <span className="zw-chip capitalize" data-tone={a.status === 'active' ? 'ok' : 'live'}>
+                      <span className="zw-dot" />{a.status.replace('_', ' ')}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                     <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
@@ -351,7 +350,7 @@ export default function ZoomVault() {
       )}
 
       {tab === 'log' && (
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="zw-table-wrap overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

@@ -20,7 +20,7 @@ const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() *
 function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</h2>
+      <h2 className="zw-eyebrow">{children}</h2>
       {action}
     </div>
   );
@@ -147,22 +147,19 @@ export default function SharedPool() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto space-y-8">
+    <div className="zoom-ws mx-auto max-w-[1400px] space-y-8 py-1">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Pool booking</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="zw-eyebrow">Spare capacity</p>
+          <h1 className="zw-h2 mt-1.5 text-xl">Pool booking</h1>
+          <p className="zw-body mt-1">
             Reserve a spare Zoom seat for demos, group classes or quick meetings.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1">
-            <CircleDot className="h-3 w-3 text-primary" /> {freeCount} free in window
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1">
-            {seats.length} spare seats
-          </span>
+        <div className="flex items-center gap-2">
+          <span className="zw-chip" data-tone="ok"><span className="zw-dot" />{freeCount} free in window</span>
+          <span className="zw-chip" data-tone="quiet"><span className="zw-dot" />{seats.length} spare seats</span>
         </div>
       </div>
 
@@ -170,35 +167,38 @@ export default function SharedPool() {
       <section className="space-y-3">
         <SectionLabel
           action={
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" className="zw-btn-secondary" onClick={() => refetch()}>
               {isFetching ? 'Checking…' : 'Check availability'}
             </Button>
           }
         >
           Time window
         </SectionLabel>
-        <div className="grid gap-3 sm:grid-cols-3 rounded-lg border p-4">
-          <div><Label className="text-xs">Start</Label><Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /></div>
-          <div><Label className="text-xs">End</Label><Input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /></div>
+        <div className="zw-card grid gap-4 p-5 sm:grid-cols-3">
+          <div><Label className="zw-meta">Start</Label><Input type="datetime-local" className="mt-1.5 rounded-xl" value={start} onChange={e => setStart(e.target.value)} /></div>
+          <div><Label className="zw-meta">End</Label><Input type="datetime-local" className="mt-1.5 rounded-xl" value={end} onChange={e => setEnd(e.target.value)} /></div>
           <div>
-            <Label className="text-xs">Purpose</Label>
+            <Label className="zw-meta">Purpose</Label>
             <Select value={purpose} onValueChange={setPurpose}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1.5 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>{PURPOSES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         </div>
       </section>
 
-      {/* Seat picker — flat list */}
+      {/* Seat inventory */}
       <section className="space-y-3">
         <SectionLabel>Pick a seat</SectionLabel>
         {seats.length === 0 && !isFetching && (
-          <div className="border border-dashed rounded-lg py-10 text-center text-sm text-muted-foreground">
-            No spare seats available. Spare seats are active Zoom Vault accounts with no teacher account linked to them.
+          <div className="zw-card px-6 py-12 text-center">
+            <div className="zw-motif" />
+            <p className="zw-body mx-auto mt-5 max-w-sm">
+              No spare seats available. Spare seats are active Zoom Vault accounts with no teacher account linked to them.
+            </p>
           </div>
         )}
-        <div className="rounded-lg border divide-y">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {seats.map((s: any) => {
             const selected = seat === s.vault_account_id;
             return (
@@ -207,43 +207,42 @@ export default function SharedPool() {
                 type="button"
                 disabled={!s.is_available}
                 onClick={() => setSeat(s.vault_account_id)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                  selected ? 'bg-accent' : 'hover:bg-accent/50',
-                  !s.is_available && 'opacity-50 cursor-not-allowed'
-                )}
+                data-state={!s.is_available ? 'busy' : selected ? 'selected' : 'free'}
+                className="zw-tile"
               >
-                {selected
-                  ? <CircleDot className="h-4 w-4 text-primary shrink-0" />
-                  : <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{s.label}</p>
-                  {(s.bookings ?? []).length > 0 && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {(s.bookings ?? []).map((b: any) =>
-                        `${format(new Date(b.start_time), 'dd MMM HH:mm')}–${format(new Date(b.end_time), 'HH:mm')} · ${b.purpose}`
-                      ).join('  ·  ')}
-                    </p>
-                  )}
+                <div className="flex items-start gap-3">
+                  {selected
+                    ? <CircleDot className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'hsl(var(--zw-brass))' }} />
+                    : <Circle className="mt-0.5 h-4 w-4 shrink-0 opacity-30" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{s.label}</p>
+                    <p className="zw-meta mt-0.5">{seatTier(s)}</p>
+                  </div>
+                  <span className="zw-chip" data-tone={s.is_available ? 'ok' : 'warn'}>
+                    <span className="zw-dot" />{s.is_available ? 'Free' : 'Busy'}
+                  </span>
                 </div>
-                <Badge variant="secondary" className="shrink-0">{seatTier(s)}</Badge>
-                <Badge variant={s.is_available ? 'outline' : 'destructive'} className="shrink-0">
-                  {s.is_available ? 'Free' : 'Busy'}
-                </Badge>
+                {(s.bookings ?? []).length > 0 && (
+                  <p className="zw-meta mt-3 truncate border-t border-border/40 pt-2.5">
+                    {(s.bookings ?? []).map((b: any) =>
+                      `${format(new Date(b.start_time), 'dd MMM HH:mm')}–${format(new Date(b.end_time), 'HH:mm')} · ${b.purpose}`
+                    ).join('  ·  ')}
+                  </p>
+                )}
               </button>
             );
           })}
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button disabled={!seat || book.isPending} onClick={() => book.mutate()}>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Button disabled={!seat || book.isPending} className="zw-btn-primary" onClick={() => book.mutate()}>
             {book.isPending ? 'Booking…' : `Book ${seat ? seatLabel(seat) : 'seat'}`}
           </Button>
           {created && (
-            <div className="flex items-center gap-2 text-sm min-w-0">
-              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-              <span className="truncate max-w-md">{created.link}</span>
-              <Button size="sm" variant="outline" onClick={() => copy(created.link)}><Copy className="h-3.5 w-3.5" /></Button>
+            <div className="zw-linkbox min-w-0 max-w-xl flex-1">
+              <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <span className="zw-linkbox-text font-mono">{created.link}</span>
+              <Button size="sm" variant="ghost" className="zw-btn-ghost h-8 px-2" onClick={() => copy(created.link)}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
           )}
         </div>
@@ -256,21 +255,21 @@ export default function SharedPool() {
         >
           Day schedule
         </SectionLabel>
-        <div className="rounded-lg border divide-y">
-          {dayLoading && <p className="px-4 py-6 text-sm text-muted-foreground">Loading schedule…</p>}
+        <div className="zw-card divide-y divide-border/40 overflow-hidden">
+          {dayLoading && <p className="zw-body px-5 py-6">Loading schedule…</p>}
           {!dayLoading && daySchedule.length === 0 && (
-            <p className="px-4 py-6 text-sm text-muted-foreground">
+            <p className="zw-body px-5 py-6">
               No spare seats in the pool yet. Spare seats are Zoom Vault accounts that are not linked to a teacher's Zoom account.
             </p>
           )}
           {daySchedule.map((s: any) => (
-            <div key={s.vault_account_id} className="px-4 py-3">
+            <div key={s.vault_account_id} className="px-5 py-3.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-sm">{s.label}</span>
-                <Badge variant="secondary">{seatTier(s)}</Badge>
+                <span className="text-sm font-semibold">{s.label}</span>
+                <span className="zw-chip" data-tone="brass"><span className="zw-dot" />{seatTier(s)}</span>
               </div>
               {(s.bookings ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-1">Free all day</p>
+                <p className="zw-meta mt-1">Free all day</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {(s.bookings ?? []).map((b: any) => (
@@ -290,16 +289,14 @@ export default function SharedPool() {
         <SectionLabel
           action={
             isAdmin ? (
-              <div className="inline-flex rounded-full border p-0.5">
+              <div className="zw-nav">
                 {(['mine', 'all'] as const).map(v => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setBookingsView(v)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                      bookingsView === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                    )}
+                    data-active={bookingsView === v}
+                    className="zw-nav-item !px-3 !py-1 !text-xs"
                   >
                     {v === 'mine' ? 'My bookings' : 'All bookings'}
                   </button>
@@ -311,7 +308,7 @@ export default function SharedPool() {
           Bookings
         </SectionLabel>
 
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="zw-table-wrap overflow-x-auto">
           {(!isAdmin || bookingsView === 'mine') ? (
             <Table>
               <TableHeader><TableRow>
@@ -324,7 +321,7 @@ export default function SharedPool() {
                   <TableRow key={b.id}>
                     <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
                     <TableCell>{b.purpose}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
+                    <TableCell><span className="zw-chip capitalize" data-tone={b.status === 'cancelled' ? 'quiet' : b.status === 'in_progress' ? 'live' : 'ok'}><span className="zw-dot" />{b.status.replace('_', ' ')}</span></TableCell>
                     <TableCell>{b.meeting_link ? <Button size="sm" variant="ghost" onClick={() => copy(b.meeting_link)}><Copy className="h-3.5 w-3.5 mr-1" /> Copy</Button> : '—'}</TableCell>
                     <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
                   </TableRow>
@@ -344,7 +341,7 @@ export default function SharedPool() {
                     <TableCell>{b.seat?.label ?? '—'}</TableCell>
                     <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
                     <TableCell>{b.purpose}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
+                    <TableCell><span className="zw-chip capitalize" data-tone={b.status === 'cancelled' ? 'quiet' : b.status === 'in_progress' ? 'live' : 'ok'}><span className="zw-dot" />{b.status.replace('_', ' ')}</span></TableCell>
                     <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
                   </TableRow>
                 ))}

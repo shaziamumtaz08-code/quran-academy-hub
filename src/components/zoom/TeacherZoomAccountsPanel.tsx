@@ -85,12 +85,20 @@ const STATUS_META: Record<SeatStatus, { label: string; hint: string; dot: string
   },
 };
 
+const STATUS_TONE: Record<SeatStatus, string> = {
+  healthy: 'ok',
+  no_events: 'quiet',
+  missing_host_id: 'warn',
+  no_credentials: 'live',
+  credentials_invalid: 'live',
+};
+
 function StatusLabel({ status, className }: { status?: SeatStatus; className?: string }) {
-  if (!status) return <span className="text-xs text-muted-foreground">—</span>;
+  if (!status) return <span className="zw-meta">—</span>;
   const meta = STATUS_META[status];
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text, className)}>
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', meta.dot)} />
+    <span className={cn('zw-chip', className)} data-tone={STATUS_TONE[status]}>
+      <span className="zw-dot" />
       {meta.label}
     </span>
   );
@@ -119,27 +127,23 @@ const FILTERS: { id: HealthFilter; label: string }[] = [
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-6 py-2.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-right text-sm text-foreground">{children}</dd>
+      <dt className="zw-body text-sm">{label}</dt>
+      <dd className="min-w-0 text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{children}</h4>
-  );
+  return <h4 className="zw-eyebrow">{children}</h4>;
 }
 
-/** One segment of the operational status rail (not a card). */
-function RailSegment({ value, label, dot }: { value: number; label: string; dot?: string }) {
+/** One operational metric module. */
+function RailSegment({ value, label, tone = 'quiet' }: { value: number; label: string; tone?: 'brass' | 'sage' | 'warn' | 'quiet' }) {
   return (
-    <div className="px-0 py-3 sm:px-5 sm:first:pl-0">
-      <div className="flex items-center gap-2">
-        {dot ? <span className={cn('h-1.5 w-1.5 rounded-full', dot)} /> : null}
-        <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground">{value}</span>
-      </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    <div className="zw-metric">
+      <p className="zw-metric-value">{value}</p>
+      <p className="zw-eyebrow mt-2">{label}</p>
+      <div className="zw-metric-rule" data-tone={tone} />
     </div>
   );
 }
@@ -459,88 +463,82 @@ export function TeacherZoomAccountsPanel() {
       <button
         type="button"
         onClick={() => setDetailId(a.id)}
+        data-selected={selected}
         aria-current={selected ? 'true' : undefined}
-        className={cn(
-          'flex min-h-[68px] w-full items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors',
-          selected
-            ? 'border-l-primary bg-muted/60'
-            : 'border-l-transparent hover:bg-muted/40',
-        )}
+        className="zw-seat"
       >
-
-        <span
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-            a.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-          )}
-        >
+        <span className="zw-avatar" data-muted={!a.is_active}>
           {initials(a.profile?.full_name || a.zoom_account_email || '?')}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-medium text-foreground">
+            <span className="truncate text-sm font-semibold">
               {a.profile?.full_name || 'Unassigned seat'}
             </span>
-            <span className="shrink-0 text-[11px] capitalize text-muted-foreground">{a.tier}</span>
+            <span className="zw-meta shrink-0 capitalize">{a.tier}</span>
           </span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{a.zoom_account_email}</span>
-          <span className="mt-1 flex items-center gap-2">
+          <span className="zw-meta mt-0.5 block truncate">{a.zoom_account_email}</span>
+          <span className="mt-1.5 flex items-center gap-2">
             <StatusLabel status={seat?.status} />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="zw-meta">
               {seat?.last_event_at
                 ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
                 : seat ? 'no activity' : ''}
             </span>
           </span>
         </span>
-        <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground', selected && 'text-primary')} />
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
       </button>
     );
   };
 
   // ── Detail surface ──────────────────────────────────────────────────────
   const DetailBody = ({ a }: { a: any }) => (
-    <div className="space-y-8">
-      {/* Identity header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-            {initials(a.profile?.full_name || a.zoom_account_email || '?')}
-          </span>
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-semibold tracking-tight text-foreground">
-              {a.profile?.full_name || 'Unassigned seat'}
-            </h3>
-            <p className="truncate text-sm text-muted-foreground">{a.zoom_account_email}</p>
-            <div className="mt-1 flex items-center gap-3">
-              <StatusLabel status={detailHealth?.status} />
-              <span className="text-xs capitalize text-muted-foreground">{a.tier} tier</span>
+    <div className="space-y-6">
+      {/* Identity header — anchors the workspace */}
+      <div className="zw-card zw-inset-top zw-raised zw-accent-edge px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="zw-avatar zw-avatar-lg" data-muted={!a.is_active}>
+              {initials(a.profile?.full_name || a.zoom_account_email || '?')}
+            </span>
+            <div className="min-w-0">
+              <p className="zw-eyebrow">Teacher seat</p>
+              <h3 className="zw-h2 mt-1 truncate text-xl">
+                {a.profile?.full_name || 'Unassigned seat'}
+              </h3>
+              <p className="zw-meta truncate">{a.zoom_account_email}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusLabel status={detailHealth?.status} />
+                <span className="zw-chip capitalize" data-tone="brass"><span className="zw-dot" />{a.tier} tier</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="flex cursor-pointer items-center gap-2">
-            <Switch
-              checked={Boolean(a.is_active)}
-              onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
-              aria-label="Toggle seat active"
-            />
-            <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
-              {a.is_active ? 'Active' : 'Disabled'}
-            </span>
-          </label>
-          {/* contextual primary action for this seat */}
-          {a.meeting_link ? (
-            <Button size="sm" asChild className="gap-2">
-              <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
-            </Button>
-          ) : (
-            <Button size="sm" className="gap-2" onClick={() => openEditLink(a)}>
-              <Pencil className="h-4 w-4" /> Add join link
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-2">
+              <Switch
+                checked={Boolean(a.is_active)}
+                onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
+                aria-label="Toggle seat active"
+              />
+              <span className={cn('text-sm font-medium', !a.is_active && 'opacity-60')}>
+                {a.is_active ? 'Active' : 'Disabled'}
+              </span>
+            </label>
+            {/* contextual primary action for this seat */}
+            {a.meeting_link ? (
+              <Button size="sm" asChild className="zw-btn-primary gap-2">
+                <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
+              </Button>
+            ) : (
+              <Button size="sm" className="zw-btn-primary gap-2" onClick={() => openEditLink(a)}>
+                <Pencil className="h-4 w-4" /> Add join link
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
 
 
       {detailHealth && detailHealth.status !== 'healthy' && (
@@ -555,85 +553,87 @@ export function TeacherZoomAccountsPanel() {
         </Alert>
       )}
 
-      <Separator />
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* Connection */}
+        <section className="zw-card px-6 py-5">
+          <SectionTitle>Connection</SectionTitle>
+          <dl className="mt-2 divide-y divide-border/40">
+            <Field label="Server-to-Server app">
+              {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
+            </Field>
+            <Field label="Last validated">
+              {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
+            </Field>
+            <Field label="Webhook events">
+              {detailHealth ? `${detailHealth.event_count} received` : '—'}
+            </Field>
+            <Field label="Last event">
+              {detailHealth?.last_event_at
+                ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
+                : 'Never'}
+            </Field>
+          </dl>
+        </section>
 
-      {/* Connection */}
-      <section className="space-y-1">
-        <SectionTitle>Connection</SectionTitle>
-        <dl className="divide-y divide-border/60">
-          <Field label="Server-to-Server app">
-            {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
-          </Field>
-          <Field label="Last validated">
-            {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
-          </Field>
-          <Field label="Webhook events">
-            {detailHealth ? `${detailHealth.event_count} received` : '—'}
-          </Field>
-          <Field label="Last event">
-            {detailHealth?.last_event_at
-              ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
-              : 'Never'}
-          </Field>
-        </dl>
-      </section>
-
-      {/* Meeting access */}
-      <section className="space-y-3">
-        <SectionTitle>Meeting access</SectionTitle>
-        {a.meeting_link ? (
-          <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded bg-muted/60 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
-              {a.meeting_link}
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { navigator.clipboard.writeText(a.meeting_link); toast({ title: 'Join link copied' }); }}
-            >
-              <Copy className="h-4 w-4" />
+        {/* Meeting access */}
+        <section className="zw-card px-6 py-5">
+          <SectionTitle>Meeting access</SectionTitle>
+          <div className="mt-3 space-y-3">
+            {a.meeting_link ? (
+              <div className="zw-linkbox">
+                <Video className="h-4 w-4 shrink-0 opacity-45" />
+                <span className="zw-linkbox-text font-mono">{a.meeting_link}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="zw-btn-ghost h-8 shrink-0 px-2"
+                  onClick={() => { navigator.clipboard.writeText(a.meeting_link); toast({ title: 'Join link copied' }); }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <p className="zw-body">No shareable join link yet.</p>
+            )}
+            {a.meeting_passcode && (
+              <p className="zw-meta">Passcode · <span className="font-mono">{a.meeting_passcode}</span></p>
+            )}
+            <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => openEditLink(a)}>
+              <Pencil className="h-4 w-4" /> Edit join link
             </Button>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No shareable join link yet.</p>
-        )}
-        {a.meeting_passcode && (
-          <p className="text-xs text-muted-foreground">Passcode · {a.meeting_passcode}</p>
-        )}
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditLink(a)}>
-          <Pencil className="h-4 w-4" /> Edit join link
-        </Button>
-      </section>
+        </section>
+      </div>
 
-      {/* Diagnostics — quiet, technical */}
-      <section className="space-y-1">
+      {/* Diagnostics — quiet, technical drawer */}
+      <section className="zw-drawer">
         <SectionTitle>Diagnostics</SectionTitle>
-        <dl className="divide-y divide-border/60">
+        <dl className="mt-1 divide-y divide-border/40">
           <Field label="Host ID">
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[11px] opacity-70">
               {detailHealth?.host_id || a.zoom_user_id || '—'}
             </span>
           </Field>
           <Field label="Seat ID">
-            <span className="font-mono text-[11px] text-muted-foreground">{a.id}</span>
+            <span className="font-mono text-[11px] opacity-70">{a.id}</span>
           </Field>
         </dl>
       </section>
 
       {/* Action bar — frequent actions inline, destructive behind overflow */}
-      <div className="flex items-center gap-2 border-t border-border pt-4">
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+      <div className="flex items-center gap-2 border-t border-border/50 pt-4">
+        <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
           {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
         </Button>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+        <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
           <Wrench className="h-4 w-4" /> Repair host ID
         </Button>
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openEditLink(a)}>
+        <Button variant="ghost" size="sm" className="zw-btn-ghost gap-2" onClick={() => openEditLink(a)}>
           <Pencil className="h-4 w-4" /> Edit link
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground" aria-label="More seat actions">
+            <Button variant="ghost" size="icon" className="zw-btn-ghost ml-auto h-8 w-8" aria-label="More seat actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -650,6 +650,7 @@ export function TeacherZoomAccountsPanel() {
         </DropdownMenu>
       </div>
 
+
     </div>
   );
 
@@ -658,17 +659,18 @@ export function TeacherZoomAccountsPanel() {
   return (
     <section className="space-y-5">
       {/* Header + toolbar hierarchy */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Zoom Accounts</h2>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+          <p className="zw-eyebrow">Seat directory</p>
+          <h2 className="zw-h2 mt-1.5 text-xl">Zoom Accounts</h2>
+          <p className="zw-body mt-1 max-w-xl">
             Every teacher’s dedicated Zoom seat — pick one to review its connection, room and diagnostics.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+              <Button variant="ghost" size="sm" className="zw-btn-ghost gap-2">
                 More <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -688,26 +690,26 @@ export function TeacherZoomAccountsPanel() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="gap-2" onClick={() => setAddOpen(true)}>
+          <Button size="sm" className="zw-btn-primary gap-2" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" /> Link account
           </Button>
         </div>
       </div>
 
-      {/* Operational status rail — four segments, one line */}
-      <div className="grid grid-cols-2 divide-border border-y border-border sm:grid-cols-4 sm:divide-x">
+      {/* Operational metrics */}
+      <div className="zw-metrics grid-cols-2 sm:grid-cols-4">
         {healthRun.isPending && !health ? (
-          <div className="col-span-full py-4"><Skeleton className="h-6 w-72" /></div>
+          <div className="col-span-full bg-background p-5"><Skeleton className="h-6 w-72" /></div>
         ) : (
           <>
-            <RailSegment value={totals.total} label="Seats" />
-            <RailSegment value={totals.healthy} label="Healthy" dot="bg-emerald-500" />
+            <RailSegment value={totals.total} label="Seats" tone="brass" />
+            <RailSegment value={totals.healthy} label="Healthy" tone="sage" />
             <RailSegment
               value={totals.attention}
               label="Needs attention"
-              dot={totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40'}
+              tone={totals.attention ? 'warn' : 'quiet'}
             />
-            <RailSegment value={spareCount ?? 0} label="Spares" />
+            <RailSegment value={spareCount ?? 0} label="Spares" tone="quiet" />
           </>
         )}
       </div>
@@ -756,35 +758,30 @@ export function TeacherZoomAccountsPanel() {
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Try again</Button>
         </div>
       ) : (
-        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-0">
+        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-6">
           {/* LEFT — seat list (independent scroll) */}
-          <div className="flex min-h-0 flex-col lg:border-r lg:border-border">
-            <div className="space-y-3 px-0 pb-4 lg:pr-5">
-
+          <div className="zw-card flex min-h-0 flex-col overflow-hidden">
+            <div className="space-y-3 border-b border-border/40 p-4">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-40" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search teacher or Zoom email"
-                  className="h-9 border-none bg-muted/50 pl-9 shadow-none focus-visible:ring-1"
+                  className="h-9 rounded-xl border-border/60 bg-background/60 pl-9 shadow-none focus-visible:ring-1"
                   aria-label="Search Zoom seats"
                 />
               </div>
-              <div className="-mx-1 flex flex-wrap gap-1" role="tablist" aria-label="Filter by health">
+              <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter by health">
                 {FILTERS.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     role="tab"
                     aria-selected={filter === f.id}
+                    data-active={filter === f.id}
                     onClick={() => setFilter(f.id)}
-                    className={cn(
-                      'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                      filter === f.id
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
+                    className="zw-subnav-item !px-2.5 !py-1 !text-[11px]"
                   >
                     {f.label}
                   </button>
@@ -792,23 +789,24 @@ export function TeacherZoomAccountsPanel() {
               </div>
             </div>
 
-            <div className="-mx-4 min-h-0 flex-1 divide-y divide-border/60 lg:mx-0 lg:overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-1 p-2 lg:overflow-y-auto">
               {isLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
+                  <div key={i} className="px-2 py-3"><Skeleton className="h-12 w-full" /></div>
                 ))
               ) : rows.length === 0 ? (
                 <div className="px-4 py-14 text-center">
-                  <p className="text-sm font-medium text-foreground">
+                  <div className="zw-motif" />
+                  <p className="mt-5 text-sm font-semibold">
                     {(accounts || []).length === 0 ? 'No Zoom seats yet' : 'No seats match this view'}
                   </p>
-                  <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                  <p className="zw-body mx-auto mt-1 max-w-xs">
                     {(accounts || []).length === 0
                       ? 'Link a teacher’s dedicated Zoom account to start hosting classes from their own room.'
                       : 'Try a different search term or switch back to All.'}
                   </p>
                   {(accounts || []).length === 0 && (
-                    <Button size="sm" className="mt-4 gap-2" onClick={() => setAddOpen(true)}>
+                    <Button size="sm" className="zw-btn-primary mt-4 gap-2" onClick={() => setAddOpen(true)}>
                       <Plus className="h-4 w-4" /> Link account
                     </Button>
                   )}
@@ -820,13 +818,15 @@ export function TeacherZoomAccountsPanel() {
           </div>
 
           {/* RIGHT — detail workspace (independent scroll) */}
-          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pl-8">
+          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pr-1">
             {detail ? (
               <DetailBody a={detail} />
             ) : (
-              <div className="flex h-full min-h-[320px] items-center justify-center">
-                <p className="max-w-xs text-center text-sm text-muted-foreground">
-                  Select a seat to see its connection, meeting access and diagnostics.
+              <div className="zw-card flex h-full min-h-[320px] flex-col items-center justify-center px-6 text-center">
+                <div className="zw-motif" />
+                <p className="zw-h2 mt-5">No seat selected</p>
+                <p className="zw-body mx-auto mt-1 max-w-xs">
+                  Choose a teacher on the left to review connection, meeting access and diagnostics.
                 </p>
               </div>
             )}
@@ -836,11 +836,11 @@ export function TeacherZoomAccountsPanel() {
 
       {/* System configuration — tiny inline row */}
       {health?.webhook_url && (
-        <div className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-emerald-500" />
+        <div className="zw-meta flex items-center gap-2 border-t border-border/50 pt-3">
+          <Check className="h-3.5 w-3.5" style={{ color: 'hsl(var(--zw-sage))' }} />
           <span>System webhook configured</span>
           <code className="hidden min-w-0 flex-1 truncate font-mono text-[11px] sm:block">{health.webhook_url}</code>
-          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:opacity-70">
             <Copy className="h-3.5 w-3.5" /> Copy
           </button>
         </div>
