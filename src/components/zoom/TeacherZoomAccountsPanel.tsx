@@ -494,47 +494,51 @@ export function TeacherZoomAccountsPanel() {
 
   // ── Detail surface ──────────────────────────────────────────────────────
   const DetailBody = ({ a }: { a: any }) => (
-    <div className="space-y-8">
-      {/* Identity header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-            {initials(a.profile?.full_name || a.zoom_account_email || '?')}
-          </span>
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-semibold tracking-tight text-foreground">
-              {a.profile?.full_name || 'Unassigned seat'}
-            </h3>
-            <p className="truncate text-sm text-muted-foreground">{a.zoom_account_email}</p>
-            <div className="mt-1 flex items-center gap-3">
-              <StatusLabel status={detailHealth?.status} />
-              <span className="text-xs capitalize text-muted-foreground">{a.tier} tier</span>
+    <div className="space-y-6">
+      {/* Identity header — anchors the workspace */}
+      <div className="zw-card zw-inset-top zw-raised zw-accent-edge px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="zw-avatar zw-avatar-lg" data-muted={!a.is_active}>
+              {initials(a.profile?.full_name || a.zoom_account_email || '?')}
+            </span>
+            <div className="min-w-0">
+              <p className="zw-eyebrow">Teacher seat</p>
+              <h3 className="zw-h2 mt-1 truncate text-xl">
+                {a.profile?.full_name || 'Unassigned seat'}
+              </h3>
+              <p className="zw-meta truncate">{a.zoom_account_email}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusLabel status={detailHealth?.status} />
+                <span className="zw-chip capitalize" data-tone="brass"><span className="zw-dot" />{a.tier} tier</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="flex cursor-pointer items-center gap-2">
-            <Switch
-              checked={Boolean(a.is_active)}
-              onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
-              aria-label="Toggle seat active"
-            />
-            <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
-              {a.is_active ? 'Active' : 'Disabled'}
-            </span>
-          </label>
-          {/* contextual primary action for this seat */}
-          {a.meeting_link ? (
-            <Button size="sm" asChild className="gap-2">
-              <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
-            </Button>
-          ) : (
-            <Button size="sm" className="gap-2" onClick={() => openEditLink(a)}>
-              <Pencil className="h-4 w-4" /> Add join link
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-2">
+              <Switch
+                checked={Boolean(a.is_active)}
+                onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
+                aria-label="Toggle seat active"
+              />
+              <span className={cn('text-sm font-medium', !a.is_active && 'opacity-60')}>
+                {a.is_active ? 'Active' : 'Disabled'}
+              </span>
+            </label>
+            {/* contextual primary action for this seat */}
+            {a.meeting_link ? (
+              <Button size="sm" asChild className="zw-btn-primary gap-2">
+                <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
+              </Button>
+            ) : (
+              <Button size="sm" className="zw-btn-primary gap-2" onClick={() => openEditLink(a)}>
+                <Pencil className="h-4 w-4" /> Add join link
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
 
 
       {detailHealth && detailHealth.status !== 'healthy' && (
