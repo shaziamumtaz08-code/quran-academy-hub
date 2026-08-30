@@ -32,6 +32,7 @@ interface VaultAccount {
   status: 'active' | 'disabled' | 'locked_out';
   zoom_password_secret_id: string | null;
   google_password_secret_id: string | null;
+  zoom_account_id: string | null;
 }
 
 const emptyForm = {
@@ -91,6 +92,14 @@ export default function ZoomVault() {
     },
   });
 
+  const { data: zoomAccounts = [] } = useQuery({
+    queryKey: ['zoom-vault-linked-accounts'],
+    queryFn: async () => {
+      const { data } = await supabase.from('zoom_accounts').select('id, teacher_id, zoom_account_email');
+      return (data ?? []) as { id: string; teacher_id: string | null; zoom_account_email: string | null }[];
+    },
+  });
+
   const { data: teachers = [] } = useQuery({
     queryKey: ['zoom-vault-teachers'],
     queryFn: async () => {
@@ -114,6 +123,14 @@ export default function ZoomVault() {
 
   const teacherName = (id: string | null) =>
     teachers.find(t => t.id === id)?.full_name ?? '—';
+
+  // Teacher shown for a vault row is driven by the FK link to zoom_accounts when present,
+  // falling back to the legacy assigned_teacher_id text only for unlinked rows.
+  const linkedTeacherId = (a: VaultAccount) => {
+    if (!a.zoom_account_id) return null;
+    return zoomAccounts.find(z => z.id === a.zoom_account_id)?.teacher_id ?? null;
+  };
+  const rowTeacherId = (a: VaultAccount) => linkedTeacherId(a) ?? a.assigned_teacher_id;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -271,15 +288,17 @@ export default function ZoomVault() {
                       <TableHead>Zoom email</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Pool</TableHead>
+
+                      <TableHead>Link</TableHead>
                       <TableHead>Teacher</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
+                    {isLoading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
                     {!isLoading && filtered.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
                     )}
                     {filtered.map(a => (
                       <TableRow key={a.id}>
@@ -291,13 +310,19 @@ export default function ZoomVault() {
                           </Badge>
                         </TableCell>
                         <TableCell className="capitalize">{a.pool_assignment}</TableCell>
-                        <TableCell>{teacherName(a.assigned_teacher_id)}</TableCell>
+                        <TableCell>
+                          <Badge variant={a.zoom_account_id ? 'default' : 'secondary'}>
+                            {a.zoom_account_id ? 'Active seat' : 'Spare'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
                         <TableCell>
                           <Badge variant={a.status === 'active' ? 'outline' : 'destructive'} className="capitalize">
                             {a.status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
+
                           <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -364,7 +389,7 @@ export default function ZoomVault() {
                 ['Host key', viewing.host_key || '—'],
                 ['Type', viewing.account_type],
                 ['Pool', viewing.pool_assignment],
-                ['Teacher', teacherName(viewing.assigned_teacher_id)],
+                ['Teacher', teacherName(rowTeacherId(viewing))],
                 ['Auto record', viewing.auto_record ? 'On' : 'Off'],
                 ['Status', viewing.status.replace('_', ' ')],
               ] as [string, string][]).map(([k, v]) => (
