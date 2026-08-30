@@ -341,9 +341,9 @@ export default function ZoomManagement() {
         {/* Workspace header */}
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Zoom workspace</h1>
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Zoom Management</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Rooms, seats and live sessions for every class across the academy.
+              Manage live classes, teacher accounts, spare seats and Zoom activity for the whole academy.
             </p>
           </div>
           <div className="flex items-center gap-2">

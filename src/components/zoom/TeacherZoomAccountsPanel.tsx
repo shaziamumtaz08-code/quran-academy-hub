@@ -153,6 +153,20 @@ export function TeacherZoomAccountsPanel() {
     refetchInterval: 30000,
   });
 
+  // Spare (unlinked) vault seats — read-only count for the summary strip.
+  const { data: spareCount } = useQuery({
+    queryKey: ['zoom-vault-spare-count'],
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from('zoom_vault_accounts')
+        .select('id', { count: 'exact', head: true })
+        .is('zoom_account_id', null)
+        .eq('status', 'active');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const [editingAccount, setEditingAccount] = React.useState<any>(null);
   const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
 
@@ -389,7 +403,7 @@ export function TeacherZoomAccountsPanel() {
     { label: 'Total seats', value: totals.total },
     { label: 'Healthy', value: totals.healthy, tone: 'text-emerald-700 dark:text-emerald-400' },
     { label: 'Needs attention', value: totals.attention, tone: totals.attention ? 'text-amber-700 dark:text-amber-400' : undefined },
-    { label: 'Disabled', value: totals.disabled },
+    { label: 'Spares', value: spareCount ?? 0 },
   ];
 
   return (
@@ -598,10 +612,17 @@ export function TeacherZoomAccountsPanel() {
                           ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
                           : seat ? 'No activity' : '—'}
                       </TableCell>
-                      <TableCell className="py-4">
-                        <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
-                          {a.is_active ? 'Active' : 'Disabled'}
-                        </span>
+                      <TableCell className="py-4" onClick={(e) => e.stopPropagation()}>
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <Switch
+                            checked={Boolean(a.is_active)}
+                            onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
+                            aria-label={`Toggle ${a.profile?.full_name || 'seat'} active`}
+                          />
+                          <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
+                            {a.is_active ? 'Active' : 'Disabled'}
+                          </span>
+                        </label>
                       </TableCell>
                       <TableCell className="py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
