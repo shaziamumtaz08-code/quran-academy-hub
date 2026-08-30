@@ -7,16 +7,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Video, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { Copy, CheckCircle2, CircleDot, Circle } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const PURPOSES = ['Demo class', 'Group class', 'Quick meeting', 'Other'];
 
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</h2>
+      {action}
+    </div>
+  );
+}
+
+const seatTier = (s: any) =>
+  s.account_type === 'paid' && s.auto_record ? 'Paid + Recording' : s.account_type === 'paid' ? 'Paid' : 'Free';
 
 export default function SharedPool() {
   const { toast } = useToast();
@@ -31,6 +42,7 @@ export default function SharedPool() {
   const [seat, setSeat] = useState<string>('');
   const [created, setCreated] = useState<{ link: string; label: string; records: boolean } | null>(null);
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [bookingsView, setBookingsView] = useState<'mine' | 'all'>('mine');
 
   const { data: teacherBookingEnabled = false } = useQuery({
     queryKey: ['teacher-pool-booking-enabled'],
@@ -119,48 +131,148 @@ export default function SharedPool() {
   const seatLabel = (id: string) =>
     seats.find((s: any) => s.vault_account_id === id)?.label ?? '—';
 
+  const freeCount = seats.filter((s: any) => s.is_available).length;
+
   if (!canBook) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Shared pool booking is not enabled yet</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
+      <div className="px-4 sm:px-6 py-10 max-w-2xl mx-auto">
+        <div className="border border-dashed rounded-lg p-8 text-center">
+          <p className="font-medium">Pool booking is not enabled yet</p>
+          <p className="text-sm text-muted-foreground mt-1">
             An administrator needs to switch on teacher booking before you can reserve a shared Zoom seat.
-          </CardContent>
-        </Card>
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Video className="h-6 w-6 text-primary" /> Shared Zoom Pool
-        </h1>
-        <p className="text-sm text-muted-foreground">Book one of the academy's spare Zoom seats (backup/pool accounts not assigned to a teacher) for demos, group classes or quick meetings.</p>
+    <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Pool booking</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Reserve a spare Zoom seat for demos, group classes or quick meetings.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1">
+            <CircleDot className="h-3 w-3 text-primary" /> {freeCount} free in window
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1">
+            {seats.length} spare seats
+          </span>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-          <CardTitle className="text-base flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Day schedule</CardTitle>
-          <Input type="date" className="w-auto" value={day} onChange={e => setDay(e.target.value)} />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {dayLoading && <p className="text-sm text-muted-foreground">Loading schedule…</p>}
+      {/* Time window */}
+      <section className="space-y-3">
+        <SectionLabel
+          action={
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              {isFetching ? 'Checking…' : 'Check availability'}
+            </Button>
+          }
+        >
+          Time window
+        </SectionLabel>
+        <div className="grid gap-3 sm:grid-cols-3 rounded-lg border p-4">
+          <div><Label className="text-xs">Start</Label><Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /></div>
+          <div><Label className="text-xs">End</Label><Input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /></div>
+          <div>
+            <Label className="text-xs">Purpose</Label>
+            <Select value={purpose} onValueChange={setPurpose}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{PURPOSES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      {/* Seat picker — flat list */}
+      <section className="space-y-3">
+        <SectionLabel>Pick a seat</SectionLabel>
+        {seats.length === 0 && !isFetching && (
+          <div className="border border-dashed rounded-lg py-10 text-center text-sm text-muted-foreground">
+            No spare seats available. Spare seats are active Zoom Vault accounts with no teacher account linked to them.
+          </div>
+        )}
+        <div className="rounded-lg border divide-y">
+          {seats.map((s: any) => {
+            const selected = seat === s.vault_account_id;
+            return (
+              <button
+                key={s.vault_account_id}
+                type="button"
+                disabled={!s.is_available}
+                onClick={() => setSeat(s.vault_account_id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                  selected ? 'bg-accent' : 'hover:bg-accent/50',
+                  !s.is_available && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {selected
+                  ? <CircleDot className="h-4 w-4 text-primary shrink-0" />
+                  : <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{s.label}</p>
+                  {(s.bookings ?? []).length > 0 && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {(s.bookings ?? []).map((b: any) =>
+                        `${format(new Date(b.start_time), 'dd MMM HH:mm')}–${format(new Date(b.end_time), 'HH:mm')} · ${b.purpose}`
+                      ).join('  ·  ')}
+                    </p>
+                  )}
+                </div>
+                <Badge variant="secondary" className="shrink-0">{seatTier(s)}</Badge>
+                <Badge variant={s.is_available ? 'outline' : 'destructive'} className="shrink-0">
+                  {s.is_available ? 'Free' : 'Busy'}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button disabled={!seat || book.isPending} onClick={() => book.mutate()}>
+            {book.isPending ? 'Booking…' : `Book ${seat ? seatLabel(seat) : 'seat'}`}
+          </Button>
+          {created && (
+            <div className="flex items-center gap-2 text-sm min-w-0">
+              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="truncate max-w-md">{created.link}</span>
+              <Button size="sm" variant="outline" onClick={() => copy(created.link)}><Copy className="h-3.5 w-3.5" /></Button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Day schedule — flat rows */}
+      <section className="space-y-3">
+        <SectionLabel
+          action={<Input type="date" className="w-auto h-8 text-xs" value={day} onChange={e => setDay(e.target.value)} />}
+        >
+          Day schedule
+        </SectionLabel>
+        <div className="rounded-lg border divide-y">
+          {dayLoading && <p className="px-4 py-6 text-sm text-muted-foreground">Loading schedule…</p>}
           {!dayLoading && daySchedule.length === 0 && (
-            <p className="text-sm text-muted-foreground">No spare seats in the pool yet. Spare seats are Zoom Vault accounts that are not linked to a teacher's Zoom account.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">
+              No spare seats in the pool yet. Spare seats are Zoom Vault accounts that are not linked to a teacher's Zoom account.
+            </p>
           )}
           {daySchedule.map((s: any) => (
-            <div key={s.vault_account_id} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2 mb-2">
+            <div key={s.vault_account_id} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-sm">{s.label}</span>
-                <Badge variant="secondary">{s.account_type === 'paid' && s.auto_record ? 'Paid + Recording' : s.account_type === 'paid' ? 'Paid' : 'Free'}</Badge>
+                <Badge variant="secondary">{seatTier(s)}</Badge>
               </div>
               {(s.bookings ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground">Free all day</p>
+                <p className="text-xs text-muted-foreground mt-1">Free all day</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {(s.bookings ?? []).map((b: any) => (
                     <Badge key={b.id} variant={b.mine ? 'default' : 'outline'} className="font-normal">
                       {format(new Date(b.start_time), 'HH:mm')}–{format(new Date(b.end_time), 'HH:mm')} · {b.purpose} · {b.booked_by}
@@ -170,79 +282,37 @@ export default function SharedPool() {
               )}
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Time window</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-4">
-          <div><Label>Start</Label><Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /></div>
-          <div><Label>End</Label><Input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /></div>
-          <div>
-            <Label>Purpose</Label>
-            <Select value={purpose} onValueChange={setPurpose}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PURPOSES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end"><Button variant="outline" className="w-full" onClick={() => refetch()}>{isFetching ? 'Checking…' : 'Check availability'}</Button></div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {seats.length === 0 && !isFetching && (
-          <Card className="sm:col-span-2 lg:col-span-3"><CardContent className="py-10 text-center text-muted-foreground">
-            No spare seats available. Spare seats are active Zoom Vault accounts with no teacher account linked to them.
-          </CardContent></Card>
-        )}
-        {seats.map((s: any) => {
-          const selected = seat === s.vault_account_id;
-          return (
-            <Card
-              key={s.vault_account_id}
-              onClick={() => s.is_available && setSeat(s.vault_account_id)}
-              className={`cursor-pointer transition ${selected ? 'ring-2 ring-primary' : ''} ${s.is_available ? 'hover:shadow-md' : 'opacity-60'}`}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base">{s.label}</CardTitle>
-                  <Badge variant={s.is_available ? 'default' : 'destructive'}>{s.is_available ? 'Free' : 'Busy'}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <Badge variant="secondary">{s.account_type === 'paid' && s.auto_record ? 'Paid + Recording' : s.account_type === 'paid' ? 'Paid' : 'Free'}</Badge>
-                {(s.bookings ?? []).map((b: any) => (
-                  <div key={b.id} className="text-xs text-muted-foreground">
-                    {format(new Date(b.start_time), 'dd MMM HH:mm')}–{format(new Date(b.end_time), 'HH:mm')} · {b.purpose}
-                  </div>
+      {/* Bookings */}
+      <section className="space-y-3">
+        <SectionLabel
+          action={
+            isAdmin ? (
+              <div className="inline-flex rounded-full border p-0.5">
+                {(['mine', 'all'] as const).map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setBookingsView(v)}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                      bookingsView === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {v === 'mine' ? 'My bookings' : 'All bookings'}
+                  </button>
                 ))}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              </div>
+            ) : undefined
+          }
+        >
+          Bookings
+        </SectionLabel>
 
-      <div className="flex items-center gap-3">
-        <Button disabled={!seat || book.isPending} onClick={() => book.mutate()}>
-          {book.isPending ? 'Booking…' : `Book ${seat ? seatLabel(seat) : 'seat'}`}
-        </Button>
-        {created && (
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            <span className="truncate max-w-md">{created.link}</span>
-            <Button size="sm" variant="outline" onClick={() => copy(created.link)}><Copy className="h-3.5 w-3.5" /></Button>
-          </div>
-        )}
-      </div>
-
-      <Tabs defaultValue="mine">
-        <TabsList>
-          <TabsTrigger value="mine">My bookings</TabsTrigger>
-          {isAdmin && <TabsTrigger value="all">All bookings</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="mine">
-          <Card><CardContent className="p-0 overflow-x-auto">
+        <div className="rounded-lg border overflow-x-auto">
+          {(!isAdmin || bookingsView === 'mine') ? (
             <Table>
               <TableHeader><TableRow>
                 <TableHead>When</TableHead><TableHead>Purpose</TableHead><TableHead>Status</TableHead>
@@ -252,7 +322,7 @@ export default function SharedPool() {
                 {myBookings.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No bookings yet.</TableCell></TableRow>}
                 {myBookings.map(b => (
                   <TableRow key={b.id}>
-                    <TableCell>{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
+                    <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
                     <TableCell>{b.purpose}</TableCell>
                     <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
                     <TableCell>{b.meeting_link ? <Button size="sm" variant="ghost" onClick={() => copy(b.meeting_link)}><Copy className="h-3.5 w-3.5 mr-1" /> Copy</Button> : '—'}</TableCell>
@@ -261,34 +331,28 @@ export default function SharedPool() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent></Card>
-        </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="all">
-            <Card><CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Seat</TableHead><TableHead>When</TableHead><TableHead>Purpose</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Recording</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {allBookings.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No bookings recorded.</TableCell></TableRow>}
-                  {allBookings.map(b => (
-                    <TableRow key={b.id}>
-                      <TableCell>{b.seat?.label ?? '—'}</TableCell>
-                      <TableCell>{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
-                      <TableCell>{b.purpose}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent></Card>
-          </TabsContent>
-        )}
-      </Tabs>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Seat</TableHead><TableHead>When</TableHead><TableHead>Purpose</TableHead>
+                <TableHead>Status</TableHead><TableHead>Recording</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {allBookings.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No bookings recorded.</TableCell></TableRow>}
+                {allBookings.map(b => (
+                  <TableRow key={b.id}>
+                    <TableCell>{b.seat?.label ?? '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
+                    <TableCell>{b.purpose}</TableCell>
+                    <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
+                    <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
