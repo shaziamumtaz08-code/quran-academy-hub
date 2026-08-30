@@ -337,6 +337,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Account ID</p>
                 <Input
+                  name="zoom-s2s-account-id"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={s2sAccountId}
                   onChange={(e) => setS2sAccountId(e.target.value)}
                   placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Account ID from the S2S app'}
@@ -345,6 +348,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Client ID</p>
                 <Input
+                  name="zoom-s2s-client-id"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={s2sClientId}
                   onChange={(e) => setS2sClientId(e.target.value)}
                   placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Client ID'}
@@ -354,12 +360,16 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                 <p className="zw-eyebrow mb-1.5">Client Secret</p>
                 <Input
                   type="password"
+                  name="zoom-s2s-client-secret"
+                  autoComplete="new-password"
+                  data-lpignore="true"
                   value={s2sClientSecret}
                   onChange={(e) => setS2sClientSecret(e.target.value)}
                   placeholder="Client Secret"
                 />
               </div>
             </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -417,6 +427,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                 <p className="zw-eyebrow mb-1.5">Secret Token for this app</p>
                 <Input
                   type="password"
+                  name="zoom-webhook-secret-token"
+                  autoComplete="new-password"
+                  data-lpignore="true"
                   value={webhookToken}
                   onChange={(e) => setWebhookToken(e.target.value)}
                   placeholder="Paste the Secret Token from Zoom → Feature → Event Subscriptions"
@@ -443,11 +456,11 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
               <div className="min-w-0 flex-1">
                 <p className="zw-eyebrow mb-1.5">Meeting SDK Client ID</p>
-                <Input value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
+                <Input name="zoom-sdk-client-id" autoComplete="off" data-lpignore="true" value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="zw-eyebrow mb-1.5">Meeting SDK Client Secret</p>
-                <Input type="password" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder="Client Secret" />
+                <Input type="password" name="zoom-sdk-client-secret" autoComplete="new-password" data-lpignore="true" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder="Client Secret" />
               </div>
               <button type="button" className="zw-btn-primary" disabled={!sdkClientId || !sdkClientSecret || savingCreds} onClick={saveCreds}>
                 {savingCreds ? 'Saving…' : 'Save'}
