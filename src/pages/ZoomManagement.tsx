@@ -285,7 +285,7 @@ export default function ZoomManagement() {
   const unclaimedLegacy = legacyLicenses.filter(
     (l: any) => !dedicatedEmails.has((l.zoom_email || '').trim().toLowerCase()),
   );
-  const totalCount = legacyLicenses.length;
+  
   const busyCount = liveSessionsList.length;
   const availableCount = Math.max(0, unclaimedLegacy.length + accountsCount - busyCount);
 
