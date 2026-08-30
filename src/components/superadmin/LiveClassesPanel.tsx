@@ -9,6 +9,7 @@ import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 import { cn } from '@/lib/utils';
 import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 interface ClassRow {
   key: string;
@@ -40,6 +41,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [expanded, setExpanded] = useState(false);
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(0);
 
 
   useEffect(() => {
@@ -129,9 +131,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
   const handleJoin = async (row: ClassRow) => {
     setJoiningKey(row.key);
     try {
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
-        body: {
+      await joinClass(
+        {
           teacherId: row.teacherId,
           studentId: row.studentId,
           assignmentId: row.assignmentId,
@@ -139,17 +140,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           scheduledStart: new Date(row.startMs).toISOString(),
           liveSessionId: row.liveSessionId,
         },
-      });
-      if (error) throw error;
-      const payload = data as any;
-      if (!payload?.joinUrl) {
-        toast.info(payload?.message || "This class isn't open yet.");
-        return;
-      }
-      notifyMeetingPasscode(payload?.passcode);
-      window.open(payload.joinUrl, '_blank', 'noopener,noreferrer');
-    } catch (e: any) {
-      toast.error(e?.message || 'Could not open the class link.');
+        row.className,
+      );
     } finally {
       setJoiningKey(null);
     }
@@ -237,6 +229,7 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           </button>
         </>
       )}
+      {zoomDialog}
     </section>
   );
 }
