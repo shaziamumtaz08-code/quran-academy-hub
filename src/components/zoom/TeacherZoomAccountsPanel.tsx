@@ -804,8 +804,8 @@ export function TeacherZoomAccountsPanel() {
             </div>
           </div>
 
-          {/* RIGHT — detail pane (desktop) */}
-          <div className="hidden lg:block lg:pl-8">
+          {/* RIGHT — detail workspace (independent scroll) */}
+          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pl-8">
             {detail ? (
               <DetailBody a={detail} />
             ) : (
@@ -818,6 +818,19 @@ export function TeacherZoomAccountsPanel() {
           </div>
         </div>
       )}
+
+      {/* System configuration — tiny inline row */}
+      {health?.webhook_url && (
+        <div className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+          <Check className="h-3.5 w-3.5 text-emerald-500" />
+          <span>System webhook configured</span>
+          <code className="hidden min-w-0 flex-1 truncate font-mono text-[11px] sm:block">{health.webhook_url}</code>
+          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+            <Copy className="h-3.5 w-3.5" /> Copy
+          </button>
+        </div>
+      )}
+
 
       {/* Mobile — full-screen detail sheet */}
       <Sheet open={Boolean(isMobile && detail)} onOpenChange={(o) => !o && setDetailId(null)}>
