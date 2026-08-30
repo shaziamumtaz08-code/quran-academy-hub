@@ -20,7 +20,6 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
-import { SharedZoomAvailabilityPanel } from '@/components/zoom/SharedZoomAvailabilityPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
@@ -54,7 +53,7 @@ export default function ZoomManagement() {
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
-  const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'shared' | 'vault' | 'pool'>('live');
+  const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'vault' | 'pool'>('live');
   const [activeSection, setActiveSection] = React.useState<'accounts' | 'health' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
@@ -505,8 +504,6 @@ export default function ZoomManagement() {
 
 
         {mainTab === 'live' && <ZoomLiveOperations />}
-
-        {mainTab === 'shared' && <SharedZoomAvailabilityPanel />}
 
         {mainTab === 'pool' && <SharedPoolPage />}
 
