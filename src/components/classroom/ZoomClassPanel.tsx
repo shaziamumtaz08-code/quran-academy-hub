@@ -493,6 +493,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
               ) : zoomParsed && !sdkFailed ? (
                 <div className="p-2">
                   <ZoomSdkMeeting
+                    courseClassId={classId}
                     meetingNumber={zoomParsed.meetingNumber}
                     passcode={zoomParsed.passcode}
                     userName={sdkDisplayName}
