@@ -279,20 +279,8 @@ export function TeacherZoomAccountsPanel() {
     setValidating(true);
     setValidateResult(null);
     try {
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess?.session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
-      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-validate-account`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ ...form, save: true }),
-      });
-      const body = await resp.json();
+      const body = await validateAndSaveZoomAccount(form as any);
+
       setValidateResult(body);
       qc.invalidateQueries({ queryKey: ['zoom-accounts-list'] });
       qc.invalidateQueries({ queryKey: ['zoom-seat-status'] });
