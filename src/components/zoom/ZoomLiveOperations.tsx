@@ -536,8 +536,34 @@ export function ZoomLiveOperations() {
             {busyLicenses} of {totalLicenses} in use
           </span>
         </div>
+
+        {/* In-app Zoom player (admin joins as attendee; teacher stays host) */}
+        <Dialog open={!!sdkJoin} onOpenChange={(o) => !o && setSdkJoin(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>{sdkJoin ? `${sdkJoin.teacherName}'s class` : 'Class'}</DialogTitle>
+            </DialogHeader>
+            {sdkJoin && (
+              <ZoomSdkMeeting
+                zoomAccountId={sdkJoin.zoomAccountId}
+                meetingNumber={sdkJoin.meetingNumber}
+                passcode={sdkJoin.passcode}
+                userName={profile?.full_name || user?.email || 'Admin'}
+                userEmail={user?.email || undefined}
+                role={0}
+                height={580}
+                onFailure={() => {
+                  const url = sdkJoin.joinUrl;
+                  setSdkJoin(null);
+                  openExternally(url);
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
+
   );
 }
 
