@@ -20,7 +20,7 @@ const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() *
 function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</h2>
+      <h2 className="zw-eyebrow">{children}</h2>
       {action}
     </div>
   );
