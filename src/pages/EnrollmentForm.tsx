@@ -105,17 +105,36 @@ export default function EnrollmentForm() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      setDuplicate(null);
       const { data, error } = await supabase.functions.invoke('enrollment-form', {
-        body: { token, action: 'submit', values: form },
+        body: openMode
+          ? { action: 'open-submit', values: form }
+          : { token, action: 'submit', values: form },
       });
-      if (error) throw error;
+      if (error) {
+        // Non-2xx responses carry the JSON body on error.context
+        const payload = await (error as any)?.context?.json?.().catch(() => null);
+        if (payload?.error === 'duplicate') {
+          setDuplicate({ info: payload.duplicate, message: payload.message });
+          throw new Error(payload.message);
+        }
+        throw new Error(payload?.error || error.message);
+      }
       if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => toast({ title: 'Enrollment form submitted successfully!' }),
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Could not submit', description: e.message, variant: 'destructive' }),
   });
 
   const alreadySubmitted = Boolean(lead?.enrollment_form_data);
+
+  // Editing an earlier submission: prefill from the saved values.
+  useEffect(() => {
+    const saved = (lead as any)?.enrollment_form_data;
+    if (!editing || !saved) return;
+    const { _revisions, ...values } = saved as Record<string, any>;
+    setForm(prev => ({ ...prev, ...values, password: '', confirm_password: '' }));
+  }, [editing, lead]);
 
   const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
@@ -134,7 +153,7 @@ export default function EnrollmentForm() {
     </div>
   );
 
-  if (isLoading) {
+  if (!openMode && isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
@@ -145,7 +164,7 @@ export default function EnrollmentForm() {
     );
   }
 
-  if (error || !lead) {
+  if (!openMode && (error || !lead)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md mx-auto shadow-xl border-0">
@@ -154,14 +173,15 @@ export default function EnrollmentForm() {
               <AlertTriangle className="h-7 w-7 text-destructive" />
             </div>
             <h2 className="text-xl font-bold">Invalid or Expired Link</h2>
-            <p className="text-sm text-muted-foreground">This enrollment form link is no longer valid. Please contact the academy for a new link.</p>
+            <p className="text-sm text-muted-foreground">This enrollment form link is no longer valid. You can still apply directly.</p>
+            <Button variant="outline" onClick={() => (window.location.href = '/enroll')}>Start a new enrollment</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (alreadySubmitted || submitMutation.isSuccess) {
+  if ((alreadySubmitted && !editing) || submitMutation.isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md mx-auto shadow-xl border-0">
@@ -175,11 +195,17 @@ export default function EnrollmentForm() {
               <Star className="h-3 w-3 text-amber-500" fill="currentColor" />
               <span>You'll receive a confirmation within 24 hours</span>
             </div>
+            {!openMode && (
+              <Button variant="outline" className="mt-2" onClick={() => { submitMutation.reset(); setEditing(true); }}>
+                Edit my details
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background">
