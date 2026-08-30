@@ -168,32 +168,11 @@ export default function ZoomManagement() {
     refetchInterval: 15000,
   });
 
-  // Active sessions mapped by license_id
-  const activeSessionsByLicense = React.useMemo(() => {
-    const map = new Map<string, any>();
-    liveSessions?.filter((s: any) => s.status === 'live').forEach((s: any) => {
-      if (s.license_id) map.set(s.license_id, s);
-    });
-    return map;
-  }, [liveSessions]);
-
   const visibleAttendanceLogs = React.useMemo(() => {
     return attendanceLogs || [];
   }, [attendanceLogs]);
 
-  const activeParticipantNamesBySession = React.useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    visibleAttendanceLogs.forEach((log: any) => {
-      if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
-      if (!['meeting.started', 'meeting.participant_joined'].includes(log.zoom_event_type)) return;
-      const label = log.participant_name || log.userName;
-      if (!label) return;
-      const existing = map.get(log.session_id) || new Set<string>();
-      existing.add(label);
-      map.set(log.session_id, existing);
-    });
-    return map;
-  }, [visibleAttendanceLogs]);
+
 
   const participantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
