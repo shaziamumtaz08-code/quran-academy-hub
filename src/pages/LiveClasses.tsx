@@ -12,6 +12,7 @@ import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from
 import { playPingChime } from '@/lib/pingChime';
 import { Bell, X } from 'lucide-react';
 import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 type Row = {
   key: string;
@@ -58,6 +59,7 @@ export default function LiveClasses() {
   const [now, setNow] = useState(Date.now());
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
   const tz = useAcademyTimezone();
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(role === 'teacher' ? 1 : 0);
   const occurrenceDate = zonedDateKey(tz);
   const [pingState, setPingState] = useState<Record<string, { cooldown: number; sending: boolean }>>({});
   const [incomingPings, setIncomingPings] = useState<Record<string, "teacher" | "student">>({});
@@ -294,7 +296,7 @@ export default function LiveClasses() {
           scheduledStart: new Date(row.scheduledStartMs).toISOString(),
           liveSessionId: row.liveSessionId || null,
         },
-        row.title || 'Class',
+        role === 'teacher' ? `Class with ${row.studentName || 'student'}` : `Class with ${row.teacherName || 'teacher'}`,
       );
       if (!opened) await load();
       else setTimeout(load, 500);
@@ -439,6 +441,7 @@ export default function LiveClasses() {
         </div>
         {content}
       </div>
+      {zoomDialog}
     </DashboardLayout>
   );
 }
