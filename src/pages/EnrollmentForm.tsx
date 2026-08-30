@@ -32,8 +32,18 @@ interface LeadData {
   status: string;
 }
 
+interface DuplicateInfo {
+  reason: string;
+  matched_name: string | null;
+  has_submission: boolean;
+  edit_token: string | null;
+}
+
 export default function EnrollmentForm() {
   const { token } = useParams<{ token: string }>();
+  const openMode = !token;
+  const [duplicate, setDuplicate] = useState<{ info: DuplicateInfo; message: string } | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const { data: lead, isLoading, error } = useQuery({
     queryKey: ['enrollment-form', token],
@@ -48,6 +58,7 @@ export default function EnrollmentForm() {
     retry: false,
     enabled: !!token,
   });
+
 
 
   const isChild = lead?.for_whom === 'child';
@@ -94,17 +105,36 @@ export default function EnrollmentForm() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      setDuplicate(null);
       const { data, error } = await supabase.functions.invoke('enrollment-form', {
-        body: { token, action: 'submit', values: form },
+        body: openMode
+          ? { action: 'open-submit', values: form }
+          : { token, action: 'submit', values: form },
       });
-      if (error) throw error;
+      if (error) {
+        // Non-2xx responses carry the JSON body on error.context
+        const payload = await (error as any)?.context?.json?.().catch(() => null);
+        if (payload?.error === 'duplicate') {
+          setDuplicate({ info: payload.duplicate, message: payload.message });
+          throw new Error(payload.message);
+        }
+        throw new Error(payload?.error || error.message);
+      }
       if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => toast({ title: 'Enrollment form submitted successfully!' }),
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Could not submit', description: e.message, variant: 'destructive' }),
   });
 
   const alreadySubmitted = Boolean(lead?.enrollment_form_data);
+
+  // Editing an earlier submission: prefill from the saved values.
+  useEffect(() => {
+    const saved = (lead as any)?.enrollment_form_data;
+    if (!editing || !saved) return;
+    const { _revisions, ...values } = saved as Record<string, any>;
+    setForm(prev => ({ ...prev, ...values, password: '', confirm_password: '' }));
+  }, [editing, lead]);
 
   const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
@@ -123,7 +153,7 @@ export default function EnrollmentForm() {
     </div>
   );
 
-  if (isLoading) {
+  if (!openMode && isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
@@ -134,7 +164,7 @@ export default function EnrollmentForm() {
     );
   }
 
-  if (error || !lead) {
+  if (!openMode && (error || !lead)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md mx-auto shadow-xl border-0">
@@ -143,14 +173,15 @@ export default function EnrollmentForm() {
               <AlertTriangle className="h-7 w-7 text-destructive" />
             </div>
             <h2 className="text-xl font-bold">Invalid or Expired Link</h2>
-            <p className="text-sm text-muted-foreground">This enrollment form link is no longer valid. Please contact the academy for a new link.</p>
+            <p className="text-sm text-muted-foreground">This enrollment form link is no longer valid. You can still apply directly.</p>
+            <Button variant="outline" onClick={() => (window.location.href = '/enroll')}>Start a new enrollment</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (alreadySubmitted || submitMutation.isSuccess) {
+  if ((alreadySubmitted && !editing) || submitMutation.isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md mx-auto shadow-xl border-0">
@@ -164,11 +195,17 @@ export default function EnrollmentForm() {
               <Star className="h-3 w-3 text-amber-500" fill="currentColor" />
               <span>You'll receive a confirmation within 24 hours</span>
             </div>
+            {!openMode && (
+              <Button variant="outline" className="mt-2" onClick={() => { submitMutation.reset(); setEditing(true); }}>
+                Edit my details
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -187,11 +224,11 @@ export default function EnrollmentForm() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">Complete Your Enrollment</h1>
           <p className="text-primary-foreground/80 text-sm sm:text-base">
-            Welcome, {lead.name}! Fill in the details below to finalize your enrollment.
+            {lead?.name ? `Welcome, ${lead.name}! ` : ''}Fill in the details below to complete your enrollment.
           </p>
-          {lead.subject_interest && (
+          {lead?.subject_interest && (
             <Badge className="mt-3 bg-white/20 text-primary-foreground border-0 text-sm px-4 py-1">
-              {lead.subject_interest}
+              {lead?.subject_interest}
             </Badge>
           )}
         </div>
@@ -204,6 +241,28 @@ export default function EnrollmentForm() {
 
       {/* Form */}
       <div className="max-w-2xl mx-auto px-4 pb-12 space-y-5 -mt-1">
+
+        {duplicate && (
+          <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 shadow-sm">
+            <CardContent className="pt-5 pb-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-sm text-foreground">We already have a record for this student</p>
+                  <p className="text-sm text-muted-foreground">{duplicate.message}</p>
+                  {duplicate.info.matched_name && (
+                    <p className="text-xs text-muted-foreground">Existing record: <span className="font-medium">{duplicate.info.matched_name}</span></p>
+                  )}
+                </div>
+              </div>
+              {duplicate.info.edit_token && (
+                <Button variant="outline" className="w-full" onClick={() => (window.location.href = `/enroll/${duplicate.info.edit_token}`)}>
+                  Open and update my existing form
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Step 1: Student Details */}
         <Card className="shadow-lg border-0 overflow-hidden">
@@ -340,12 +399,12 @@ export default function EnrollmentForm() {
           <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
           <CardContent className="pt-6 space-y-4">
             <StepBadge step={computedIsMinor ? 3 : 3} label="Course & Schedule" icon={Calendar} />
-            {lead.subject_interest && (
+            {lead?.subject_interest && (
               <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-3">
                 <GraduationCap className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-xs text-muted-foreground">Subject of Interest</p>
-                  <p className="font-medium text-sm">{lead.subject_interest}</p>
+                  <p className="font-medium text-sm">{lead?.subject_interest}</p>
                 </div>
               </div>
             )}
@@ -404,7 +463,7 @@ export default function EnrollmentForm() {
           ) : (
             <CheckCircle className="h-5 w-5 mr-2" />
           )}
-          Submit Enrollment
+          {editing ? 'Save Changes' : 'Submit Enrollment'}
         </Button>
       </div>
     </div>
