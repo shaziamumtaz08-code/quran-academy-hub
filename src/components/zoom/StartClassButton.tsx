@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
+import { reserveTab, closeTab } from '@/lib/popupWindow';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 interface StartClassButtonProps {
