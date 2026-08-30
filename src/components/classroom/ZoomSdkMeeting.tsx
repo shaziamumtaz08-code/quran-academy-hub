@@ -87,7 +87,7 @@ export function ZoomSdkMeeting({
       clientRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingNumber, passcode, userName, role]);
+  }, [meetingNumber, passcode, userName, role, courseClassId]);
 
   return (
     <div className="relative w-full" style={{ height }}>
