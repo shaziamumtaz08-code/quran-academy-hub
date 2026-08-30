@@ -49,31 +49,37 @@ Deno.serve(async (req) => {
     const meetingNumber = String((body as any)?.meetingNumber ?? '').replace(/\D/g, '');
     const role = Number((body as any)?.role) === 1 ? 1 : 0;
     const courseClassId = String((body as any)?.courseClassId ?? '').trim();
+    const zoomAccountId = String((body as any)?.zoomAccountId ?? '').trim();
 
     if (!meetingNumber || meetingNumber.length < 9 || meetingNumber.length > 12) {
       return json({ error: 'Invalid meetingNumber' }, 400);
     }
-    if (!courseClassId) {
-      return json({ error: 'courseClassId is required' }, 400);
+    if (!courseClassId && !zoomAccountId) {
+      return json({ error: 'courseClassId or zoomAccountId is required' }, 400);
     }
 
     // Resolve the Meeting SDK app credentials of the Zoom account that hosts
     // this class. No global fallback — the client falls back to the iframe.
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: cls, error: clsErr } = await admin
-      .from('course_classes')
-      .select('id, zoom_account_id')
-      .eq('id', courseClassId)
-      .maybeSingle();
-    if (clsErr) return json({ error: clsErr.message }, 500);
-    if (!cls?.zoom_account_id) {
-      return json({ error: 'This class has no linked Zoom account' }, 404);
+    let accountId = zoomAccountId;
+
+    if (!accountId) {
+      const { data: cls, error: clsErr } = await admin
+        .from('course_classes')
+        .select('id, zoom_account_id')
+        .eq('id', courseClassId)
+        .maybeSingle();
+      if (clsErr) return json({ error: clsErr.message }, 500);
+      if (!cls?.zoom_account_id) {
+        return json({ error: 'This class has no linked Zoom account' }, 404);
+      }
+      accountId = cls.zoom_account_id;
     }
 
     const { data: acct, error: acctErr } = await admin
       .from('zoom_accounts')
       .select('id, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret')
-      .eq('id', cls.zoom_account_id)
+      .eq('id', accountId)
       .maybeSingle();
     if (acctErr) return json({ error: acctErr.message }, 500);
 
@@ -82,6 +88,7 @@ Deno.serve(async (req) => {
     if (!clientId || !clientSecret) {
       return json({ error: 'Meeting SDK credentials are not configured for this Zoom account' }, 404);
     }
+
 
     const iat = Math.floor(Date.now() / 1000) - 30;
     const exp = iat + 60 * 60 * 2; // 2 hours max
