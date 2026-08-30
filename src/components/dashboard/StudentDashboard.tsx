@@ -23,6 +23,7 @@ import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
 import { ensureFreshSession } from '@/lib/ensureSession';
 import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
@@ -421,18 +422,19 @@ export function StudentDashboard() {
   const withinJoinWindow = minsUntil !== null && minsUntil <= 15 && minsUntil >= -60;
   const canClickJoin = isLive || withinJoinWindow;
   const [joining, setJoining] = useState(false);
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(0);
 
   const handleJoinClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isLive && meetingLink) {
-      window.open(meetingLink, '_blank', 'noopener');
-      return;
-    }
     if (!assignment?.teacher_id) {
+      if (isLive && meetingLink) {
+        window.open(meetingLink, '_blank', 'noopener');
+        return;
+      }
       toast.error('No assigned teacher yet.');
       return;
     }
-    if (!withinJoinWindow) {
+    if (!isLive && !withinJoinWindow) {
       toast.info('Join opens 15 minutes before class.');
       return;
     }
@@ -878,6 +880,8 @@ export function StudentDashboard() {
       </div>
 
       
+
+      {zoomDialog}
 
       <DMChatSheet
         open={dmOpen}
