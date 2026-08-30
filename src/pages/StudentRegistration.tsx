@@ -120,11 +120,27 @@ export default function StudentRegistration() {
 
   const studentValid = (student: Student) => Boolean(student.fullName.trim() && student.dob);
 
-  const valid = useMemo(() => Boolean(
-    locationDone && home.address.trim() && EMAIL_RE.test(home.guardianEmail.trim()) &&
-    home.fatherName.trim() && home.fatherPhone.trim() && home.motherName.trim() && home.motherPhone.trim() &&
-    home.emergencyPhone.trim() && home.consent && students.length && students.every(studentValid),
-  ), [home, students, locationDone]);
+  const missing = useMemo(() => {
+    const list: string[] = [];
+    if (!home.country) list.push('Country');
+    if (!home.timezone) list.push('Timezone');
+    if (!home.address.trim()) list.push('Residential address');
+    if (!home.fatherName.trim()) list.push("Father's full name");
+    if (!home.fatherPhone.trim()) list.push("Father's contact number");
+    if (!home.motherName.trim()) list.push("Mother's full name");
+    if (!home.motherPhone.trim()) list.push("Mother's contact number");
+    if (!EMAIL_RE.test(home.guardianEmail.trim())) list.push('Parent / guardian email');
+    if (!home.emergencyPhone.trim()) list.push('Emergency contact number');
+    students.forEach((student, index) => {
+      if (!student.fullName.trim()) list.push(`Student ${index + 1}: full name`);
+      if (!student.dob) list.push(`Student ${index + 1}: date of birth`);
+    });
+    if (!home.consent) list.push('Accept the terms & policies');
+    return list;
+  }, [home, students]);
+
+  const valid = missing.length === 0 && students.length > 0;
+
 
 
   const submit = useMutation({
