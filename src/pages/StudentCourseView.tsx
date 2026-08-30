@@ -833,6 +833,7 @@ export default function StudentCourseView() {
                 sessionDuration: myClass.session_duration || 30,
               }}
               userRole="student"
+              classId={myClass.id}
             />
           ) : myClass ? (
             <Card>

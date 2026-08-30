@@ -7,9 +7,9 @@ export interface ZoomValidatePayload {
   zoom_account_row_id?: string;
   teacher_id: string;
   tier: 'free' | 'licensed' | string;
-  account_id: string;
-  client_id: string;
-  client_secret: string;
+  account_id?: string;
+  client_id?: string;
+  client_secret?: string;
   zoom_email: string;
   personal_meeting_link?: string;
 }

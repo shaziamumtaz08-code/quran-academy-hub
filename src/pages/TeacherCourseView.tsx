@@ -447,7 +447,7 @@ export default function TeacherCourseView() {
         <TabsContent value="today" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* LEFT: Attendance */}
-            <div className="md:col-span-7 space-y-3">
+            <div className={cn('md:col-span-7 space-y-3', showZoomIframe && 'hidden')}>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Attendance — {format(new Date(), 'EEEE, MMM d')}</h3>
                 <Button size="sm" onClick={handleSaveAttendance} disabled={savingAttendance}>
@@ -512,7 +512,7 @@ export default function TeacherCourseView() {
             </div>
 
             {/* RIGHT: Live Class */}
-            <div className="md:col-span-5 space-y-3">
+            <div className={cn('space-y-3', showZoomIframe ? 'md:col-span-12' : 'md:col-span-5')}>
               <h3 className="text-sm font-semibold">Live Class</h3>
               {selectedClass?.meeting_link ? (
                 <ZoomClassPanel
@@ -525,6 +525,9 @@ export default function TeacherCourseView() {
                     sessionDuration: selectedClass.session_duration || 30,
                   }}
                   userRole="teacher"
+                  courseId={courseId}
+                  classId={selectedClass.id}
+                  onMeetingOpenChange={setShowZoomIframe}
                   onSessionEnd={() => handleTabChange('today')}
                 />
               ) : selectedClass ? (

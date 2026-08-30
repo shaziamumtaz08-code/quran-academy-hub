@@ -62,6 +62,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             hasWebhookToken: !!r.webhook_secret_token,
             hasSdkCreds: !!r.zoom_meeting_sdk_client_id,
             hasS2S: !!(r.zoom_account_id_cred && r.zoom_client_id),
+             sdkClientId: (r.zoom_meeting_sdk_client_id as string | null) || null,
+             s2sAccountId: (r.zoom_account_id_cred as string | null) || null,
+             s2sClientId: (r.zoom_client_id as string | null) || null,
             s2sStatus: (r.credential_status as string | null) || null,
             s2sError: (r.credential_error as string | null) || null,
             hostId: (r.zoom_user_id as string | null) || null,
@@ -72,6 +75,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
         hasWebhookToken: boolean;
         hasSdkCreds: boolean;
         hasS2S: boolean;
+         sdkClientId: string | null;
+         s2sAccountId: string | null;
+         s2sClientId: string | null;
         s2sStatus: string | null;
         s2sError: string | null;
         hostId: string | null;
@@ -118,19 +124,19 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const [validating, setValidating] = React.useState(false);
   const [validateResult, setValidateResult] = React.useState<ZoomValidateResult | null>(null);
 
-  // Reset transient input state when the admin switches accounts so values
-  // typed for one account never bleed into another.
+  // Show safe identifiers for the selected account while keeping every secret
+  // write-only. This makes saved configuration visible without exposing keys.
   React.useEffect(() => {
     setWebhookToken('');
-    setSdkClientId('');
+    setSdkClientId(status?.sdkClientId || '');
     setSdkClientSecret('');
     setCopied(false);
     setClassId('');
-    setS2sAccountId('');
-    setS2sClientId('');
+    setS2sAccountId(status?.s2sAccountId || '');
+    setS2sClientId(status?.s2sClientId || '');
     setS2sClientSecret('');
     setValidateResult(null);
-  }, [accountId]);
+  }, [accountId, status?.sdkClientId, status?.s2sAccountId, status?.s2sClientId]);
 
   // Live badge state for the S2S block: local validation result wins, then the
   // persisted credential_status on the row.
@@ -182,6 +188,16 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
       setValidating(false);
     }
   };
+
+  const s2sIdentifiersChanged = Boolean(
+    status?.hasS2S &&
+    (s2sAccountId.trim() !== (status.s2sAccountId || '') || s2sClientId.trim() !== (status.s2sClientId || '')),
+  );
+  const canValidateS2S = Boolean(
+    s2sAccountId.trim() &&
+    s2sClientId.trim() &&
+    (s2sClientSecret.trim() || (status?.hasS2S && !s2sIdentifiersChanged)),
+  );
 
 
   const linkedClasses = React.useMemo(
@@ -344,7 +360,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                   data-lpignore="true"
                   value={s2sAccountId}
                   onChange={(e) => setS2sAccountId(e.target.value)}
-                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Account ID from the S2S app'}
+                  placeholder="Account ID from the S2S app"
                 />
               </div>
               <div className="min-w-0">
@@ -356,7 +372,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                   data-lpignore="true"
                   value={s2sClientId}
                   onChange={(e) => setS2sClientId(e.target.value)}
-                  placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Client ID'}
+                  placeholder="Client ID"
                 />
               </div>
               <div className="min-w-0">
@@ -369,7 +385,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                   data-lpignore="true"
                   value={s2sClientSecret}
                   onChange={(e) => setS2sClientSecret(e.target.value)}
-                  placeholder="Client Secret"
+                  placeholder={status?.hasS2S ? 'Stored securely — leave blank to recheck' : 'Client Secret'}
                 />
               </div>
             </div>
@@ -382,13 +398,11 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                   validating ||
                   !account.teacher_id ||
                   !account.zoom_account_email ||
-                  !s2sAccountId.trim() ||
-                  !s2sClientId.trim() ||
-                  !s2sClientSecret.trim()
+                  !canValidateS2S
                 }
                 onClick={runValidateS2S}
               >
-                {validating ? 'Validating…' : 'Validate & save'}
+                {validating ? 'Validating…' : status?.hasS2S && !s2sClientSecret ? 'Recheck saved connection' : 'Validate & save'}
               </button>
               {!account.teacher_id && (
                 <span className="zw-meta">This seat has no teacher attached — attach one in Zoom Accounts first.</span>
@@ -460,11 +474,11 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
               <div className="min-w-0 flex-1">
                 <p className="zw-eyebrow mb-1.5">Meeting SDK Client ID</p>
-                <Input name="zoom-sdk-client-id" autoComplete="off" data-lpignore="true" value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
+                <Input key={`sdk-client-${account.id}`} name="zoom-sdk-client-id" autoComplete="off" data-lpignore="true" value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="zw-eyebrow mb-1.5">Meeting SDK Client Secret</p>
-                <Input type="password" name="zoom-sdk-client-secret" autoComplete="new-password" data-lpignore="true" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder="Client Secret" />
+                <Input key={`sdk-secret-${account.id}`} type="password" name="zoom-sdk-client-secret" autoComplete="new-password" data-lpignore="true" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder={status?.hasSdkCreds ? 'Stored securely — type only to replace' : 'Client Secret'} />
               </div>
               <button type="button" className="zw-btn-primary" disabled={!sdkClientId || !sdkClientSecret || savingCreds} onClick={saveCreds}>
                 {savingCreds ? 'Saving…' : 'Save'}
