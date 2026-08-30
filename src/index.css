@@ -1008,6 +1008,9 @@
    Everything is scoped under .zoom-ws so the rest of the LMS is untouched.
    ═══════════════════════════════════════════════════════════════════ */
 .zoom-ws {
+  /* Layout guard: wide content scrolls inside .zw-table-wrap, never the page */
+  max-width: 100%;
+  overflow-x: clip;
   /* ── palette ── */
   --zw-canvas: 42 30% 96.5%;
   --zw-canvas-deep: 40 24% 93.5%;
