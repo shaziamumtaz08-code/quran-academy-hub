@@ -38,10 +38,14 @@ export function useInAppZoomJoin(role: 0 | 1) {
   const [sdk, setSdk] = useState<SdkState | null>(null);
 
   const join = useCallback(
-    async (body: JoinClassBody, title = 'Class'): Promise<boolean> => {
+    async (
+      body: JoinClassBody,
+      title = 'Class',
+      preReservedTab?: Window | null,
+    ): Promise<boolean> => {
       // Reserve the tab inside the click gesture — popup blockers reject
       // window.open() issued after an await. Closed again if we go in-app.
-      const tab = reserveTab();
+      const tab = preReservedTab !== undefined ? preReservedTab : reserveTab();
       try {
         await ensureFreshSession();
         const { data, error } = await supabase.functions.invoke('zoom-join-class', { body });
