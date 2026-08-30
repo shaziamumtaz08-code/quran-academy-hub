@@ -127,27 +127,23 @@ const FILTERS: { id: HealthFilter; label: string }[] = [
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-6 py-2.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-right text-sm text-foreground">{children}</dd>
+      <dt className="zw-body text-sm">{label}</dt>
+      <dd className="min-w-0 text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{children}</h4>
-  );
+  return <h4 className="zw-eyebrow">{children}</h4>;
 }
 
-/** One segment of the operational status rail (not a card). */
-function RailSegment({ value, label, dot }: { value: number; label: string; dot?: string }) {
+/** One operational metric module. */
+function RailSegment({ value, label, tone = 'quiet' }: { value: number; label: string; tone?: 'brass' | 'sage' | 'warn' | 'quiet' }) {
   return (
-    <div className="px-0 py-3 sm:px-5 sm:first:pl-0">
-      <div className="flex items-center gap-2">
-        {dot ? <span className={cn('h-1.5 w-1.5 rounded-full', dot)} /> : null}
-        <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground">{value}</span>
-      </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    <div className="zw-metric">
+      <p className="zw-metric-value">{value}</p>
+      <p className="zw-eyebrow mt-2">{label}</p>
+      <div className="zw-metric-rule" data-tone={tone} />
     </div>
   );
 }
