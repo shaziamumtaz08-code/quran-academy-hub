@@ -176,10 +176,9 @@ Deno.serve(async (req) => {
           child_gender: (values.student_gender as string) || null,
           guardian_name: isChild ? String(values.parent_name) : null,
           guardian_relationship: (values.parent_relationship as string) || null,
-          source: 'self_enrollment',
           status: 'form_submitted',
+          enrollment_form_token: crypto.randomUUID(),
           enrollment_form_data: withRevision(null, values),
-          enrollment_form_submitted_at: new Date().toISOString(),
         })
         .select('id, enrollment_form_token')
         .single();
@@ -220,20 +219,9 @@ Deno.serve(async (req) => {
       const payload = withRevision(leadRow.enrollment_form_data, values);
       const { error: upErr } = await admin
         .from('leads')
-        .update({
-          enrollment_form_data: payload,
-          status: 'form_submitted',
-          enrollment_form_submitted_at: new Date().toISOString(),
-        })
+        .update({ enrollment_form_data: payload, status: 'form_submitted' })
         .eq('id', leadRow.id);
-      // enrollment_form_submitted_at may not exist on older schemas — retry without it.
-      if (upErr) {
-        const { error: retryErr } = await admin
-          .from('leads')
-          .update({ enrollment_form_data: payload, status: 'form_submitted' })
-          .eq('id', leadRow.id);
-        if (retryErr) throw retryErr;
-      }
+      if (upErr) throw upErr;
       return json({ ok: true });
     }
 
