@@ -600,7 +600,7 @@ export default function OrganizationSettings() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2"><CalendarOff className="h-5 w-5" /> Holiday Calendar</CardTitle>
-                  <CardDescription>Manage holidays — these dates are excluded from missing attendance</CardDescription>
+                  <CardDescription>Manage holidays — dates are teacher/academy local and are excluded from missing attendance</CardDescription>
                 </div>
                 <Button onClick={openNewHoliday} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Holiday</Button>
               </CardHeader>
