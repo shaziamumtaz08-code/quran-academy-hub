@@ -446,12 +446,13 @@ export function TeacherZoomAccountsPanel() {
         onClick={() => setDetailId(a.id)}
         aria-current={selected ? 'true' : undefined}
         className={cn(
-          'flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors',
+          'flex min-h-[68px] w-full items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors',
           selected
             ? 'border-l-primary bg-muted/60'
             : 'border-l-transparent hover:bg-muted/40',
         )}
       >
+
         <span
           className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
