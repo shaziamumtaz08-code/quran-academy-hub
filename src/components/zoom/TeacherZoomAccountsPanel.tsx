@@ -741,10 +741,11 @@ export function TeacherZoomAccountsPanel() {
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Try again</Button>
         </div>
       ) : (
-        <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_1fr] lg:gap-0">
-          {/* LEFT — seat list */}
-          <div className="lg:border-r lg:border-border lg:pr-0">
+        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-0">
+          {/* LEFT — seat list (independent scroll) */}
+          <div className="flex min-h-0 flex-col lg:border-r lg:border-border">
             <div className="space-y-3 px-0 pb-4 lg:pr-5">
+
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
