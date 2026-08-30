@@ -153,6 +153,20 @@ export function TeacherZoomAccountsPanel() {
     refetchInterval: 30000,
   });
 
+  // Spare (unlinked) vault seats — read-only count for the summary strip.
+  const { data: spareCount } = useQuery({
+    queryKey: ['zoom-vault-spare-count'],
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from('zoom_vault_accounts')
+        .select('id', { count: 'exact', head: true })
+        .is('zoom_account_id', null)
+        .eq('status', 'active');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const [editingAccount, setEditingAccount] = React.useState<any>(null);
   const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
 
