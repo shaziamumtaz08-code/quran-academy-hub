@@ -10,7 +10,6 @@ import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
-import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchIslamicDate } from '@/lib/islamicDate';
@@ -21,8 +20,7 @@ import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import { PrayerBar } from '@/components/dashboard/teacher/PrayerBar';
 import { findOrCreateAssignmentDM } from '@/lib/messaging';
 import { toast } from 'sonner';
-import { ensureFreshSession } from '@/lib/ensureSession';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
@@ -421,47 +419,36 @@ export function StudentDashboard() {
   const withinJoinWindow = minsUntil !== null && minsUntil <= 15 && minsUntil >= -60;
   const canClickJoin = isLive || withinJoinWindow;
   const [joining, setJoining] = useState(false);
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(0);
 
   const handleJoinClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isLive && meetingLink) {
-      window.open(meetingLink, '_blank', 'noopener');
-      return;
-    }
     if (!assignment?.teacher_id) {
+      if (isLive && meetingLink) {
+        window.open(meetingLink, '_blank', 'noopener');
+        return;
+      }
       toast.error('No assigned teacher yet.');
       return;
     }
-    if (!withinJoinWindow) {
+    if (!isLive && !withinJoinWindow) {
       toast.info('Join opens 15 minutes before class.');
       return;
     }
     // Reserve the tab within the click gesture — popup blockers reject
     // window.open() that happens after an await.
-    const tab = reserveTab();
     try {
       setJoining(true);
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
-        body: {
+      await joinClass(
+        {
           teacherId: assignment.teacher_id,
           studentId: activeStudentId,
           assignmentId: assignment.id,
           scheduleId: sched?.id || null,
           scheduledStart: nextSlot?.when?.toISOString() || new Date().toISOString(),
         },
-      });
-      if (error) throw error;
-      if (data?.ready && data?.joinUrl) {
-        notifyMeetingPasscode((data as any)?.passcode);
-        navigateTab(tab, data.joinUrl);
-      } else {
-        closeTab(tab);
-        toast.info(data?.message || 'Waiting for teacher to open the class.');
-      }
-    } catch (err: any) {
-      closeTab(tab);
-      toast.error(err?.message || 'Could not join class');
+        'Your class',
+      );
     } finally {
       setJoining(false);
     }
@@ -890,6 +877,8 @@ export function StudentDashboard() {
       </div>
 
       
+
+      {zoomDialog}
 
       <DMChatSheet
         open={dmOpen}

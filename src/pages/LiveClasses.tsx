@@ -7,11 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Video, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { ensureFreshSession } from '@/lib/ensureSession';
 import { useAcademyTimezone, zonedDayName, zonedTimeToEpoch, zonedDateKey } from '@/hooks/useAcademyTimezone';
 import { playPingChime } from '@/lib/pingChime';
 import { Bell, X } from 'lucide-react';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 type Row = {
   key: string;
@@ -58,6 +57,7 @@ export default function LiveClasses() {
   const [now, setNow] = useState(Date.now());
   const [joiningKey, setJoiningKey] = useState<string | null>(null);
   const tz = useAcademyTimezone();
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(role === 'teacher' ? 1 : 0);
   const occurrenceDate = zonedDateKey(tz);
   const [pingState, setPingState] = useState<Record<string, { cooldown: number; sending: boolean }>>({});
   const [incomingPings, setIncomingPings] = useState<Record<string, "teacher" | "student">>({});
@@ -285,9 +285,8 @@ export default function LiveClasses() {
     if (row.scheduleId) dismissPing(row.scheduleId);
     setJoiningKey(row.key);
     try {
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke("zoom-join-class", {
-        body: {
+      const opened = await joinClass(
+        {
           teacherId: row.teacherId,
           studentId: row.studentId || null,
           assignmentId: row.assignmentId || null,
@@ -295,24 +294,15 @@ export default function LiveClasses() {
           scheduledStart: new Date(row.scheduledStartMs).toISOString(),
           liveSessionId: row.liveSessionId || null,
         },
-      });
-      if (error) throw error;
-      const payload = data as any;
-      if (!payload?.joinUrl) {
-        toast.info(payload?.message || "This class isn't ready yet. Please wait for your teacher to open the room.");
-        await load();
-        return;
-      }
-      notifyMeetingPasscode(payload?.passcode);
-      window.open(payload.joinUrl, "_blank", "noopener,noreferrer");
-      // Refresh so the row now shows the meeting link
-      setTimeout(load, 500);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not open the class link.");
+        role === 'teacher' ? `Class with ${row.studentName || 'student'}` : `Class with ${row.teacherName || 'teacher'}`,
+      );
+      if (!opened) await load();
+      else setTimeout(load, 500);
     } finally {
       setJoiningKey(null);
     }
   };
+
 
   const content = useMemo(() => {
     if (loading) {
@@ -449,6 +439,7 @@ export default function LiveClasses() {
         </div>
         {content}
       </div>
+      {zoomDialog}
     </DashboardLayout>
   );
 }

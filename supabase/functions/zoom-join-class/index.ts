@@ -152,9 +152,10 @@ Deno.serve(async (req) => {
     }
     const { data: dedicatedAccountRows } = await service
       .from("zoom_accounts")
-      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active")
+      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret")
       .eq("teacher_id", p.teacherId)
       .eq("is_active", true);
+
     const activeAccounts = (dedicatedAccountRows || []) as any[];
     const dedicatedAccount =
       activeAccounts.find((a) => a.tier === preferredTier) ||
@@ -230,18 +231,31 @@ Deno.serve(async (req) => {
         (dedicatedAccount.meeting_passcode && String(dedicatedAccount.meeting_passcode).trim()) ||
         (rawPwd && rawPwd.length < 20 ? rawPwd : null);
 
+      // Meeting number for the in-app (Meeting SDK) player. The LMS opens the
+      // class inside the app whenever this account carries SDK credentials.
+      const mnMatch = /\/(?:j|wc)\/(\d{9,12})/.exec(dedicatedAccount.meeting_link);
+      const meetingNumber = mnMatch ? mnMatch[1] : null;
+      const sdkReady = Boolean(
+        meetingNumber &&
+          dedicatedAccount.zoom_meeting_sdk_client_id &&
+          dedicatedAccount.zoom_meeting_sdk_client_secret,
+      );
+
       return jsonResp({
         ready: true,
         sessionId: session.id,
         licenseId: null,
         zoomAccountId: dedicatedAccount.id,
         passcode,
+        meetingNumber,
+        sdkReady,
         joinUrl: isTeacher
           ? appendUname(dedicatedAccount.meeting_link)
           : toWebClient(dedicatedAccount.meeting_link),
         joinName: displayName,
 
       });
+
     }
 
     // DEDICATED-ONLY POLICY — the shared pool (Room 1/Room 2, owner account)

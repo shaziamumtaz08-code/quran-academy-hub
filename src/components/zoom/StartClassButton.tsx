@@ -6,9 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { reserveTab, navigateTab, closeTab } from '@/lib/popupWindow';
-import { ensureFreshSession } from '@/lib/ensureSession';
-import { notifyMeetingPasscode } from '@/lib/zoomPasscode';
+import { reserveTab, closeTab } from '@/lib/popupWindow';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 interface StartClassButtonProps {
   sessionId?: string;
@@ -23,6 +22,7 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null);
   const startTabRef = useRef<Window | null>(null);
   const [rejoining, setRejoining] = useState(false);
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(1);
 
   // Check if teacher has an active live session
   const { data: activeSession, isLoading: checkingSession } = useQuery({
@@ -140,9 +140,10 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
         }
       }
 
-      await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
-        body: {
+      // The join itself (in-app Meeting SDK when the hosting Zoom account has
+      // SDK credentials, external Zoom tab otherwise) is handled centrally.
+      const opened = await joinClass(
+        {
           teacherId: user.id,
           studentId: null,
           assignmentId: null,
@@ -150,40 +151,25 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
           scheduledStart: new Date().toISOString(),
           liveSessionId: sessionToUse,
         },
-      });
+        'Your class',
+        startTabRef.current,
+      );
 
-      if (error) {
-        if (error.message.includes('All Zoom rooms are currently occupied')) {
-          throw new Error('All Zoom rooms are currently occupied. Please try again in a few minutes.');
-        }
-        throw error;
-      }
-
-      if (!data?.joinUrl) {
-        throw new Error(data?.message || 'No Zoom room link returned');
-      }
-
-      return { 
-        sessionId: sessionToUse, 
-        meetingLink: data.joinUrl,
-        licenseId: data.licenseId || null,
-        passcode: (data as any)?.passcode || null,
-      };
+      return { sessionId: sessionToUse as string, opened };
     },
     onSuccess: (result) => {
-      toast({
-        title: '✅ Class Started',
-        description: 'Opening Zoom meeting...',
-      });
-
-      notifyMeetingPasscode((result as any)?.passcode);
-      navigateTab(startTabRef.current, result.meetingLink);
+      if (result.opened) {
+        toast({
+          title: '✅ Class Started',
+          description: 'Opening the class…',
+        });
+      }
       startTabRef.current = null;
 
       queryClient.invalidateQueries({ queryKey: ['active-session'] });
       queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
 
-      onSessionCreated?.(result.sessionId, result.meetingLink);
+      onSessionCreated?.(result.sessionId, '');
     },
     onError: (error: Error) => {
       closeTab(startTabRef.current);
@@ -249,28 +235,18 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
             const tab = reserveTab();
             setRejoining(true);
             try {
-              await ensureFreshSession();
-      const { data, error } = await supabase.functions.invoke('zoom-join-class', {
-                body: {
-                  teacherId: user?.id,
+              await joinClass(
+                {
+                  teacherId: user?.id as string,
                   studentId: (activeSession as any).student_id || null,
                   assignmentId: (activeSession as any).assignment_id || null,
                   scheduleId: (activeSession as any).schedule_id || null,
                   scheduledStart: (activeSession as any).scheduled_start || new Date().toISOString(),
                   liveSessionId: activeSession.id,
                 },
-              });
-              if (error) throw error;
-              const link = (data as any)?.joinUrl || (activeSession.license as any)?.meeting_link;
-              if (!link) throw new Error((data as any)?.message || 'No Zoom room link available for your account.');
-              navigateTab(tab, link);
-            } catch (error: any) {
-              closeTab(tab);
-              toast({
-                title: 'Failed to Rejoin Class',
-                description: error?.message || 'Could not open the Zoom room.',
-                variant: 'destructive',
-              });
+                'Your class',
+                tab,
+              );
             } finally {
               setRejoining(false);
             }
@@ -292,11 +268,13 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
           )}
           End Class
         </Button>
+        {zoomDialog}
       </div>
     );
   }
 
   return (
+    <>
     <Button
       variant="default"
       className={cn("gap-2 bg-emerald-600 hover:bg-emerald-700", className)}
@@ -313,5 +291,7 @@ export function StartClassButton({ sessionId, onSessionCreated, className }: Sta
       )}
       Start Class
     </Button>
+    {zoomDialog}
+    </>
   );
 }
