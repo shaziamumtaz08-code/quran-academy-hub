@@ -94,17 +94,18 @@ export default function EnrollmentForm() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('leads').update({
-        enrollment_form_data: form,
-        status: 'form_submitted',
-      }).eq('id', lead!.id);
+      const { data, error } = await supabase.functions.invoke('enrollment-form', {
+        body: { token, action: 'submit', values: form },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => toast({ title: 'Enrollment form submitted successfully!' }),
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const alreadySubmitted = lead?.enrollment_form_data !== null;
+  const alreadySubmitted = Boolean(lead?.enrollment_form_data);
+
   const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
     (computedIsMinor || (form.password && form.password === form.confirm_password));
