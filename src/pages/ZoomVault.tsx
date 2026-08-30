@@ -292,11 +292,17 @@ export default function ZoomVault() {
                       <TableHead>Status</TableHead>
                       <TableHead />
                     </TableRow>
+                      <TableHead>Pool</TableHead>
+                      <TableHead>Link</TableHead>
+                      <TableHead>Teacher</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead />
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
+                    {isLoading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
                     {!isLoading && filtered.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No accounts yet — add your first Zoom seat.</TableCell></TableRow>
                     )}
                     {filtered.map(a => (
                       <TableRow key={a.id}>
@@ -308,13 +314,19 @@ export default function ZoomVault() {
                           </Badge>
                         </TableCell>
                         <TableCell className="capitalize">{a.pool_assignment}</TableCell>
-                        <TableCell>{teacherName(a.assigned_teacher_id)}</TableCell>
+                        <TableCell>
+                          <Badge variant={a.zoom_account_id ? 'default' : 'secondary'}>
+                            {a.zoom_account_id ? 'Active seat' : 'Spare'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{teacherName(rowTeacherId(a))}</TableCell>
                         <TableCell>
                           <Badge variant={a.status === 'active' ? 'outline' : 'destructive'} className="capitalize">
                             {a.status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
+
                           <Button size="sm" variant="ghost" onClick={() => setViewing(a)}>
                             <Eye className="h-4 w-4" />
                           </Button>
