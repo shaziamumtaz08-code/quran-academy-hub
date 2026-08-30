@@ -423,191 +423,150 @@ export default function ZoomManagement() {
 
 
 
-        {/* Sessions Section */}
+        {/* Sessions */}
         {activeSection === 'sessions' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle className="font-serif">Session History</CardTitle>
-                <CardDescription>All live sessions with duration and recording</CardDescription>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Session history</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Every live session with its duration and recording.</p>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2 text-muted-foreground">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
                   <Download className="h-4 w-4" /> Download CSV
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Refresh
-                </Button>
               </div>
+            </div>
 
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Session</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Ended</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Recording</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {liveSessions?.map((session: any) => {
-                      const duration = session.actual_start && session.actual_end
-                        ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
-                        : session.actual_start && session.status === 'live'
-                          ? differenceInMinutes(new Date(), new Date(session.actual_start))
-                          : 0;
-                      const expectedDuration = 30;
-                      const durationPct = Math.min(100, Math.round((duration / expectedDuration) * 100));
+            <ScrollArea className="h-[560px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-10">Session</TableHead>
+                    <TableHead className="h-10">Started</TableHead>
+                    <TableHead className="h-10">Ended</TableHead>
+                    <TableHead className="h-10">Duration</TableHead>
+                    <TableHead className="h-10">Recording</TableHead>
+                    <TableHead className="h-10">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {liveSessions?.map((session: any) => {
+                    const duration = session.actual_start && session.actual_end
+                      ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
+                      : session.actual_start && session.status === 'live'
+                        ? differenceInMinutes(new Date(), new Date(session.actual_start))
+                        : 0;
 
-                      return (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-xs font-bold text-primary">{getSessionPrimaryLabel(session).charAt(0)}</span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-sm">{getSessionPrimaryLabel(session)}</span>
-                                {session.teacherName && (
-                                  <p className="text-xs text-muted-foreground">
-                                    Room owner: {session.teacherName}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '-'}</TableCell>
-                          <TableCell className="text-sm">{session.actual_end ? format(new Date(session.actual_end), 'HH:mm') : '-'}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1 w-24">
-                              <span className="text-sm font-medium">{duration > 0 ? `${duration} min` : '-'}</span>
-                              {duration > 0 && (
-                                <Progress value={durationPct} className={cn("h-1.5", durationPct < 60 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
+                    return (
+                      <TableRow key={session.id}>
+                        <TableCell className="py-3">
+                          <p className="text-sm font-medium text-foreground">{getSessionPrimaryLabel(session)}</p>
+                          {session.teacherName && (
+                            <p className="text-xs text-muted-foreground">Room owner · {session.teacherName}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{session.actual_end ? format(new Date(session.actual_end), 'HH:mm') : '—'}</TableCell>
+                        <TableCell className="text-sm tabular-nums">{duration > 0 ? `${duration} min` : '—'}</TableCell>
+                        <TableCell>
                           {session.recording_link ? (
-                              <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
-                                <Play className="h-3 w-3" /> Watch
-                              </Button>
-                            ) : session.status === 'completed' && session.recording_status === 'pending' ? (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                ⏳ Processing
-                              </Badge>
-                            ) : session.status === 'completed' && session.recording_status === 'failed' ? (
-                              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20">
-                                Recording failed
-                              </Badge>
-                            ) : session.status === 'completed' ? (
-                              <span className="text-muted-foreground text-sm">No recording</span>
-                            ) : session.status === 'live' ? (
-                              <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
-                                Recording...
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={cn(
-                              session.status === 'live' && 'bg-destructive/10 text-destructive border-destructive/20 animate-pulse',
-                              session.status === 'completed' && 'bg-muted text-muted-foreground border-border',
-                              session.status === 'scheduled' && 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                            )} variant="outline">
-                              {session.status === 'live' ? '● Live' : session.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {(!liveSessions || liveSessions.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No sessions yet.</TableCell>
+                            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
+                              <Play className="h-3 w-3" /> Watch
+                            </Button>
+                          ) : session.status === 'completed' && session.recording_status === 'pending' ? (
+                            <span className="text-xs text-amber-700 dark:text-amber-400">Processing</span>
+                          ) : session.status === 'completed' && session.recording_status === 'failed' ? (
+                            <span className="text-xs text-destructive">Failed</span>
+                          ) : session.status === 'live' ? (
+                            <span className="text-xs text-muted-foreground">Recording…</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            'inline-flex items-center gap-1.5 text-xs',
+                            session.status === 'live' ? 'text-destructive' : 'text-muted-foreground',
+                          )}>
+                            <span className={cn('h-1.5 w-1.5 rounded-full', session.status === 'live' ? 'bg-destructive' : 'bg-muted-foreground/40')} />
+                            {session.status === 'live' ? 'Live' : session.status}
+                          </span>
+                        </TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                    );
+                  })}
+                  {(!liveSessions || liveSessions.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-14 text-center text-sm text-muted-foreground">No sessions yet.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </section>
         )}
 
-        {/* Join Logs Section */}
+        {/* Join logs */}
         {activeSection === 'logs' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle className="font-serif">Join &amp; Leave Logs</CardTitle>
-                <CardDescription>Real-time tracking of participant activity</CardDescription>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Join &amp; leave activity</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Zoom telemetry only — attendance is always marked manually.
+                </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
                 <Download className="h-4 w-4" /> Download CSV
               </Button>
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <div className="space-y-2">
-                  {visibleAttendanceLogs.map((log: any) => {
-                    const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
-                    const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
-                    const durationMin = (log.join_time && log.leave_time)
-                      ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
-                      : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : null);
-                    return (
-                      <div key={log.id} className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl border transition-colors",
-                        isJoin ? "border-emerald-500/20 bg-emerald-500/5" : isLeave ? "border-amber-500/20 bg-amber-500/5" : "border-border bg-card"
-                      )}>
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                          isJoin ? "bg-emerald-500/10" : "bg-amber-500/10"
-                        )}>
-                          {isJoin
-                            ? <ArrowUpRight className="h-4 w-4 text-emerald-600" />
-                            : <ArrowDownLeft className="h-4 w-4 text-amber-600" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{log.userName}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                            {log.role ? ` • ${log.role}` : ''}
-                            {log.participant_email ? ` • ${log.participant_email}` : ''}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {log.join_time ? `Joined ${format(new Date(log.join_time), 'HH:mm:ss')}` : ''}
-                            {log.leave_time ? ` → Left ${format(new Date(log.leave_time), 'HH:mm:ss')}` : ''}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge variant="outline" className={cn(
-                            "text-[10px]",
-                            isJoin ? "text-emerald-600 border-emerald-500/20" : "text-amber-600 border-amber-500/20"
-                          )}>
-                            {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
-                          </Badge>
-                          {durationMin !== null && durationMin > 0 && (
-                            <p className="text-[11px] font-medium text-foreground mt-1">{durationMin} min</p>
-                          )}
-                        </div>
+            <ScrollArea className="h-[560px]">
+              <ul className="divide-y divide-border/60">
+                {visibleAttendanceLogs.map((log: any) => {
+                  const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
+                  const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
+                  const durationMin = (log.join_time && log.leave_time)
+                    ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
+                    : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : null);
+                  return (
+                    <li key={log.id} className="flex items-center gap-3 py-3">
+                      {isJoin
+                        ? <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-600" />
+                        : <ArrowDownLeft className="h-4 w-4 shrink-0 text-amber-600" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{log.userName}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                          {log.role ? ` • ${log.role}` : ''}
+                          {log.participant_email ? ` • ${log.participant_email}` : ''}
+                          {log.join_time ? ` • joined ${format(new Date(log.join_time), 'HH:mm:ss')}` : ''}
+                          {log.leave_time ? ` → left ${format(new Date(log.leave_time), 'HH:mm:ss')}` : ''}
+                        </p>
                       </div>
-                    );
-                  })}
-                  {visibleAttendanceLogs.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">No join logs recorded yet.</div>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                      <div className="shrink-0 text-right">
+                        <p className={cn('text-xs', isJoin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400')}>
+                          {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
+                        </p>
+                        {durationMin !== null && durationMin > 0 && (
+                          <p className="text-[11px] tabular-nums text-muted-foreground">{durationMin} min</p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+                {visibleAttendanceLogs.length === 0 && (
+                  <li className="py-14 text-center text-sm text-muted-foreground">No join logs recorded yet.</li>
+                )}
+              </ul>
+            </ScrollArea>
+          </section>
         )}
+
         </>)}
 
         <ExportDialog
