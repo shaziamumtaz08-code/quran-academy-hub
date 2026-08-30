@@ -659,17 +659,18 @@ export function TeacherZoomAccountsPanel() {
   return (
     <section className="space-y-5">
       {/* Header + toolbar hierarchy */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Zoom Accounts</h2>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+          <p className="zw-eyebrow">Seat directory</p>
+          <h2 className="zw-h2 mt-1.5 text-xl">Zoom Accounts</h2>
+          <p className="zw-body mt-1 max-w-xl">
             Every teacher’s dedicated Zoom seat — pick one to review its connection, room and diagnostics.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+              <Button variant="ghost" size="sm" className="zw-btn-ghost gap-2">
                 More <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
