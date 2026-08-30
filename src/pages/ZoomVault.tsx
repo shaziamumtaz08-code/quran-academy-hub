@@ -389,7 +389,7 @@ export default function ZoomVault() {
                 ['Host key', viewing.host_key || '—'],
                 ['Type', viewing.account_type],
                 ['Pool', viewing.pool_assignment],
-                ['Teacher', teacherName(viewing.assigned_teacher_id)],
+                ['Teacher', teacherName(rowTeacherId(viewing))],
                 ['Auto record', viewing.auto_record ? 'On' : 'Off'],
                 ['Status', viewing.status.replace('_', ' ')],
               ] as [string, string][]).map(([k, v]) => (
