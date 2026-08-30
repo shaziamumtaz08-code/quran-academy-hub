@@ -496,8 +496,12 @@ export function TeacherZoomAccountsPanel() {
           <SectionTitle>Connection</SectionTitle>
           <dl className="mt-2 divide-y divide-border/40">
             <Field label="Server-to-Server app">
-              {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
+              <span className="flex flex-col items-end gap-0.5">
+                <span>{detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}</span>
+                <span className="zw-meta">Edit in Accounts → Credentials</span>
+              </span>
             </Field>
+
             <Field label="Last validated">
               {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
             </Field>
