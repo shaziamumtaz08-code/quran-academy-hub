@@ -42,7 +42,7 @@ export default function ZoomManagement() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'vault' | 'pool'>('live');
-  const [activeSection, setActiveSection] = React.useState<'accounts' | 'sessions' | 'logs'>('accounts');
+  const [activeSection, setActiveSection] = React.useState<'accounts' | 'credentials' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
 
@@ -168,32 +168,11 @@ export default function ZoomManagement() {
     refetchInterval: 15000,
   });
 
-  // Active sessions mapped by license_id
-  const activeSessionsByLicense = React.useMemo(() => {
-    const map = new Map<string, any>();
-    liveSessions?.filter((s: any) => s.status === 'live').forEach((s: any) => {
-      if (s.license_id) map.set(s.license_id, s);
-    });
-    return map;
-  }, [liveSessions]);
-
   const visibleAttendanceLogs = React.useMemo(() => {
     return attendanceLogs || [];
   }, [attendanceLogs]);
 
-  const activeParticipantNamesBySession = React.useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    visibleAttendanceLogs.forEach((log: any) => {
-      if (!log.session_id || log.action !== 'join_intent' || log.leave_time) return;
-      if (!['meeting.started', 'meeting.participant_joined'].includes(log.zoom_event_type)) return;
-      const label = log.participant_name || log.userName;
-      if (!label) return;
-      const existing = map.get(log.session_id) || new Set<string>();
-      existing.add(label);
-      map.set(log.session_id, existing);
-    });
-    return map;
-  }, [visibleAttendanceLogs]);
+
 
   const participantNamesBySession = React.useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -216,56 +195,8 @@ export default function ZoomManagement() {
     return 'Monitor session';
   }, [participantNamesBySession]);
 
-  // Count distinct participants per live session — used to surface the
-  // free-tier 40-min cap warning when a group class hits 3+ attendees.
-  const participantCountBySession = React.useMemo(() => {
-    const map = new Map<string, number>();
-    visibleAttendanceLogs.forEach((log: any) => {
-      if (!log.session_id) return;
-      const key = `${log.session_id}::${log.user_id || log.participant_email || log.participant_name}`;
-      const existing = map.get(log.session_id) || 0;
-      // Simple dedupe by session — using a Set-per-session would be cleaner but this suffices
-      if (!(map as any)[`__seen_${key}`]) {
-        (map as any)[`__seen_${key}`] = true;
-        map.set(log.session_id, existing + 1);
-      }
-    });
-    return map;
-  }, [visibleAttendanceLogs]);
-
-  // End session mutation for admin
-  const endSessionMutation = useMutation({
-    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId?: string | null }) => {
-      const { error: sessionError } = await (supabase as any)
-        .from('live_sessions')
-        .update({ status: 'completed', actual_end: new Date().toISOString() })
-        .eq('id', sessionId);
-      if (sessionError) throw sessionError;
-
-      // Sessions running on a teacher's dedicated account have no pooled licence.
-      if (licenseId) {
-        const { error: licenseError } = await supabase
-          .from('zoom_licenses')
-          .update({ status: 'available' })
-          .eq('id', licenseId);
-        if (licenseError) throw licenseError;
-      }
-    },
-    onSuccess: () => {
-      toast({ title: 'Session Ended', description: 'The session was marked completed.' });
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-      queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['zoom-today-sessions'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
   const liveSessionsList = liveSessions?.filter((s: any) => s.status === 'live') || [];
-  const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
+
 
   // Rooms = dedicated teacher accounts + legacy pool licenses that are NOT the
   // same Zoom account already linked to a teacher. Room 1 and Shazia's dedicated
@@ -327,12 +258,12 @@ export default function ZoomManagement() {
   }), [visibleAttendanceLogs]);
 
   const sectionButtons = [
-
-    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
-
+    { id: 'accounts' as const, label: 'Zoom seats', icon: ShieldCheck, count: accountsCount },
+    { id: 'credentials' as const, label: 'Credentials', icon: ShieldCheck, count: accountsCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
-    { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
+    { id: 'logs' as const, label: 'Join logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
+
 
 
   return (
@@ -391,406 +322,182 @@ export default function ZoomManagement() {
         {mainTab === 'vault' && <ZoomVaultPage />}
 
         {mainTab === 'accounts' && (<>
-        {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
-        <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
-
-
-        {/* Room Cards Grid */}
-        <div>
-
-          <div className="flex items-center gap-2 mb-3">
-            <Radio className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Room Status</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {licenses?.map((license, idx) => {
-              const session = activeSessionsByLicense.get(license.id);
-              // A room is live if a session claims it, even when the legacy
-              // status flag was never flipped (dedicated-account flow).
-              const isBusy = license.status === 'busy' || Boolean(session);
-              const statusColor = isBusy ? 'border-destructive/40 bg-destructive/5' : 'border-emerald-500/30 bg-emerald-500/5';
-              return (
-                <Card key={license.id} className={cn("relative overflow-hidden transition-all hover:shadow-md", statusColor)}>
-                  {isBusy && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive to-destructive/60 animate-pulse" />
-                  )}
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm">Room {idx + 1}</span>
-                      <Badge className={cn(
-                        "text-[10px] px-2",
-                        isBusy
-                          ? 'bg-destructive/10 text-destructive border-destructive/20'
-                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      )} variant="outline">
-                        {isBusy ? '● Live' : '● Ready'}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate mb-2">
-                      {license.zoom_email?.split('@')[0]}@...
-                    </p>
-                    {session ? (
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-foreground truncate">
-                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || 'Waiting for participant'}
-                        </p>
-                        <div className="flex items-center gap-1 text-destructive">
-                          <Timer className="h-3 w-3" />
-                          <LiveTimer startTime={session.actual_start} />
-                        </div>
-                        <div className="flex gap-1 mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-[10px] gap-1 flex-1"
-                            onClick={() => window.open(license.meeting_link, '_blank')}
-                          >
-                            <UserPlus className="h-3 w-3" /> Join
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-6 text-[10px] gap-1 flex-1"
-                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: license.id })}
-                            disabled={endSessionMutation.isPending}
-                          >
-                            <Power className="h-3 w-3" /> End
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {license.last_used_at
-                          ? `Last used ${formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true })}`
-                          : 'Never used'}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {(!licenses || licenses.length === 0) && (
-              <Card className="col-span-full border-dashed">
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No Zoom rooms configured yet.
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-
-        {/* Live Class Queue - Horizontal Scrollable */}
-        {liveSessionsList.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Video className="h-4 w-4 text-destructive" />
-              <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Live Now</h2>
-              <Badge className="bg-destructive/10 text-destructive border-destructive/20 animate-pulse" variant="outline">
-                {liveSessionsList.length} active
-              </Badge>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-              {liveSessionsList.map((session: any) => (
-                <Card key={session.id} className="min-w-[260px] snap-start border-destructive/20 bg-gradient-to-br from-destructive/5 to-transparent flex-shrink-0">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-destructive">{getSessionPrimaryLabel(session).charAt(0)}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold truncate max-w-[140px]">{getSessionPrimaryLabel(session)}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
-                    </div>
-                    <Separator className="my-2" />
-                    {(() => {
-                      const pcount = participantCountBySession.get(session.id) || 0;
-                      const startedMin = session.actual_start
-                        ? Math.floor((Date.now() - new Date(session.actual_start).getTime()) / 60000)
-                        : 0;
-                      const groupAtRisk = pcount >= 3;
-                      return groupAtRisk ? (
-                        <div className={cn(
-                          "flex items-center gap-1.5 rounded-md px-2 py-1 mb-2 border text-[10px]",
-                          startedMin >= 30
-                            ? "bg-destructive/10 border-destructive/30 text-destructive"
-                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
-                        )}>
-                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                          <span className="font-semibold">
-                            {pcount} participants · Basic tier cap 40 min
-                            {startedMin >= 30 && ` · ${40 - startedMin}m left`}
-                          </span>
-                        </div>
-                      ) : null;
-                    })()}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Duration</span>
-                      {session.actual_start && <LiveTimer startTime={session.actual_start} />}
-                    </div>
-                    <div className="flex items-center justify-between text-xs mt-1">
-                      <span className="text-muted-foreground">Started</span>
-                      <span className="text-muted-foreground">
-                        {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
-                      </span>
-                    </div>
-                    {(() => {
-                      const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
-                      const license = licenses?.find((item: any) => item.id === session.license_id);
-                      const roomEmail = account?.zoom_account_email || license?.zoom_email;
-                      return roomEmail ? (
-                        <div className="flex items-center justify-between gap-2 text-xs mt-1">
-                          <span className="text-muted-foreground">Zoom room</span>
-                          <span className="truncate text-muted-foreground" title={roomEmail}>{roomEmail}</span>
-                        </div>
-                      ) : null;
-                    })()}
-                    <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
-                      {(session.license_id || session.zoom_account_id) && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-1 text-[10px] h-7"
-                            onClick={() => {
-                              const lic = licenses?.find(l => l.id === session.license_id);
-                              const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
-                              const meetingLink = account?.meeting_link || lic?.meeting_link;
-                              if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
-                            }}
-                          >
-                            <UserPlus className="h-3 w-3" /> Join
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="flex-1 gap-1 text-[10px] h-7"
-                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: session.license_id })}
-                            disabled={endSessionMutation.isPending}
-                          >
-                            <Power className="h-3 w-3" /> End
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section Switcher */}
-        <div className="flex gap-2 border-b border-border pb-0">
+        {/* Accounts sub-navigation — quiet segmented pills, no nested cards */}
+        <div className="flex flex-wrap items-center gap-1">
           {sectionButtons.map(btn => (
             <button
               key={btn.id}
               onClick={() => setActiveSection(btn.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
                 activeSection === btn.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <btn.icon className="h-4 w-4" />
               {btn.label}
-              <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-full">{btn.count}</span>
+              <span className={cn(
+                "tabular-nums text-[11px]",
+                activeSection === btn.id ? "text-background/70" : "text-muted-foreground/70"
+              )}>{btn.count}</span>
             </button>
           ))}
         </div>
 
-        {/* Teacher Zoom Accounts (dedicated) — includes per-seat webhook health */}
+        {/* Zoom seats workspace (master/detail) */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
 
+        {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
+        {activeSection === 'credentials' && (
+          <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
+        )}
 
-        {/* Sessions Section */}
+
+
+        {/* Sessions */}
         {activeSection === 'sessions' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle className="font-serif">Session History</CardTitle>
-                <CardDescription>All live sessions with duration and recording</CardDescription>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Session history</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Every live session with its duration and recording.</p>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2 text-muted-foreground">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
                   <Download className="h-4 w-4" /> Download CSV
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Refresh
-                </Button>
               </div>
+            </div>
 
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Session</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Ended</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Recording</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {liveSessions?.map((session: any) => {
-                      const duration = session.actual_start && session.actual_end
-                        ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
-                        : session.actual_start && session.status === 'live'
-                          ? differenceInMinutes(new Date(), new Date(session.actual_start))
-                          : 0;
-                      const expectedDuration = 30;
-                      const durationPct = Math.min(100, Math.round((duration / expectedDuration) * 100));
+            <ScrollArea className="h-[560px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-10">Session</TableHead>
+                    <TableHead className="h-10">Started</TableHead>
+                    <TableHead className="h-10">Ended</TableHead>
+                    <TableHead className="h-10">Duration</TableHead>
+                    <TableHead className="h-10">Recording</TableHead>
+                    <TableHead className="h-10">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {liveSessions?.map((session: any) => {
+                    const duration = session.actual_start && session.actual_end
+                      ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
+                      : session.actual_start && session.status === 'live'
+                        ? differenceInMinutes(new Date(), new Date(session.actual_start))
+                        : 0;
 
-                      return (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-xs font-bold text-primary">{getSessionPrimaryLabel(session).charAt(0)}</span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-sm">{getSessionPrimaryLabel(session)}</span>
-                                {session.teacherName && (
-                                  <p className="text-xs text-muted-foreground">
-                                    Room owner: {session.teacherName}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '-'}</TableCell>
-                          <TableCell className="text-sm">{session.actual_end ? format(new Date(session.actual_end), 'HH:mm') : '-'}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1 w-24">
-                              <span className="text-sm font-medium">{duration > 0 ? `${duration} min` : '-'}</span>
-                              {duration > 0 && (
-                                <Progress value={durationPct} className={cn("h-1.5", durationPct < 60 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
+                    return (
+                      <TableRow key={session.id}>
+                        <TableCell className="py-3">
+                          <p className="text-sm font-medium text-foreground">{getSessionPrimaryLabel(session)}</p>
+                          {session.teacherName && (
+                            <p className="text-xs text-muted-foreground">Room owner · {session.teacherName}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{session.actual_end ? format(new Date(session.actual_end), 'HH:mm') : '—'}</TableCell>
+                        <TableCell className="text-sm tabular-nums">{duration > 0 ? `${duration} min` : '—'}</TableCell>
+                        <TableCell>
                           {session.recording_link ? (
-                              <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
-                                <Play className="h-3 w-3" /> Watch
-                              </Button>
-                            ) : session.status === 'completed' && session.recording_status === 'pending' ? (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                ⏳ Processing
-                              </Badge>
-                            ) : session.status === 'completed' && session.recording_status === 'failed' ? (
-                              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20">
-                                Recording failed
-                              </Badge>
-                            ) : session.status === 'completed' ? (
-                              <span className="text-muted-foreground text-sm">No recording</span>
-                            ) : session.status === 'live' ? (
-                              <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
-                                Recording...
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={cn(
-                              session.status === 'live' && 'bg-destructive/10 text-destructive border-destructive/20 animate-pulse',
-                              session.status === 'completed' && 'bg-muted text-muted-foreground border-border',
-                              session.status === 'scheduled' && 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                            )} variant="outline">
-                              {session.status === 'live' ? '● Live' : session.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {(!liveSessions || liveSessions.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No sessions yet.</TableCell>
+                            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
+                              <Play className="h-3 w-3" /> Watch
+                            </Button>
+                          ) : session.status === 'completed' && session.recording_status === 'pending' ? (
+                            <span className="text-xs text-amber-700 dark:text-amber-400">Processing</span>
+                          ) : session.status === 'completed' && session.recording_status === 'failed' ? (
+                            <span className="text-xs text-destructive">Failed</span>
+                          ) : session.status === 'live' ? (
+                            <span className="text-xs text-muted-foreground">Recording…</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            'inline-flex items-center gap-1.5 text-xs',
+                            session.status === 'live' ? 'text-destructive' : 'text-muted-foreground',
+                          )}>
+                            <span className={cn('h-1.5 w-1.5 rounded-full', session.status === 'live' ? 'bg-destructive' : 'bg-muted-foreground/40')} />
+                            {session.status === 'live' ? 'Live' : session.status}
+                          </span>
+                        </TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                    );
+                  })}
+                  {(!liveSessions || liveSessions.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-14 text-center text-sm text-muted-foreground">No sessions yet.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </section>
         )}
 
-        {/* Join Logs Section */}
+        {/* Join logs */}
         {activeSection === 'logs' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle className="font-serif">Join &amp; Leave Logs</CardTitle>
-                <CardDescription>Real-time tracking of participant activity</CardDescription>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Join &amp; leave activity</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Zoom telemetry only — attendance is always marked manually.
+                </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
                 <Download className="h-4 w-4" /> Download CSV
               </Button>
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <div className="space-y-2">
-                  {visibleAttendanceLogs.map((log: any) => {
-                    const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
-                    const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
-                    const durationMin = (log.join_time && log.leave_time)
-                      ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
-                      : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : null);
-                    return (
-                      <div key={log.id} className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl border transition-colors",
-                        isJoin ? "border-emerald-500/20 bg-emerald-500/5" : isLeave ? "border-amber-500/20 bg-amber-500/5" : "border-border bg-card"
-                      )}>
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                          isJoin ? "bg-emerald-500/10" : "bg-amber-500/10"
-                        )}>
-                          {isJoin
-                            ? <ArrowUpRight className="h-4 w-4 text-emerald-600" />
-                            : <ArrowDownLeft className="h-4 w-4 text-amber-600" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{log.userName}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                            {log.role ? ` • ${log.role}` : ''}
-                            {log.participant_email ? ` • ${log.participant_email}` : ''}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {log.join_time ? `Joined ${format(new Date(log.join_time), 'HH:mm:ss')}` : ''}
-                            {log.leave_time ? ` → Left ${format(new Date(log.leave_time), 'HH:mm:ss')}` : ''}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge variant="outline" className={cn(
-                            "text-[10px]",
-                            isJoin ? "text-emerald-600 border-emerald-500/20" : "text-amber-600 border-amber-500/20"
-                          )}>
-                            {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
-                          </Badge>
-                          {durationMin !== null && durationMin > 0 && (
-                            <p className="text-[11px] font-medium text-foreground mt-1">{durationMin} min</p>
-                          )}
-                        </div>
+            <ScrollArea className="h-[560px]">
+              <ul className="divide-y divide-border/60">
+                {visibleAttendanceLogs.map((log: any) => {
+                  const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
+                  const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
+                  const durationMin = (log.join_time && log.leave_time)
+                    ? Math.max(0, Math.round((new Date(log.leave_time).getTime() - new Date(log.join_time).getTime()) / 60000))
+                    : (typeof log.total_duration_minutes === 'number' ? log.total_duration_minutes : null);
+                  return (
+                    <li key={log.id} className="flex items-center gap-3 py-3">
+                      {isJoin
+                        ? <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-600" />
+                        : <ArrowDownLeft className="h-4 w-4 shrink-0 text-amber-600" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{log.userName}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                          {log.role ? ` • ${log.role}` : ''}
+                          {log.participant_email ? ` • ${log.participant_email}` : ''}
+                          {log.join_time ? ` • joined ${format(new Date(log.join_time), 'HH:mm:ss')}` : ''}
+                          {log.leave_time ? ` → left ${format(new Date(log.leave_time), 'HH:mm:ss')}` : ''}
+                        </p>
                       </div>
-                    );
-                  })}
-                  {visibleAttendanceLogs.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">No join logs recorded yet.</div>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                      <div className="shrink-0 text-right">
+                        <p className={cn('text-xs', isJoin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400')}>
+                          {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
+                        </p>
+                        {durationMin !== null && durationMin > 0 && (
+                          <p className="text-[11px] tabular-nums text-muted-foreground">{durationMin} min</p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+                {visibleAttendanceLogs.length === 0 && (
+                  <li className="py-14 text-center text-sm text-muted-foreground">No join logs recorded yet.</li>
+                )}
+              </ul>
+            </ScrollArea>
+          </section>
         )}
+
         </>)}
 
         <ExportDialog

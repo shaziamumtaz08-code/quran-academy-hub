@@ -1,26 +1,27 @@
 import React from 'react';
-// Single "Zoom seats" workspace: per-teacher accounts + per-seat webhook health.
-// Technical fields (host ID, event counts, credential errors) live in the row
-// detail drawer — the table itself stays deliberately narrow and scannable.
+// Zoom Seats workspace — master/detail.
+// LEFT: searchable seat list (one row per teacher seat).
+// RIGHT: the selected seat is the main surface (identity, connection,
+// meeting access, diagnostics). On mobile the detail opens as a full sheet.
+// Backend calls, query keys, mutations and permissions are unchanged.
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, Upload, RefreshCw,
-  AlertTriangle, Copy, Pencil, Wrench, Clock, MoreHorizontal, ChevronRight, Search,
+  AlertTriangle, Copy, Pencil, Wrench, MoreHorizontal, ChevronRight, ChevronLeft, Search, Check,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -61,7 +62,7 @@ const STATUS_META: Record<SeatStatus, { label: string; hint: string; dot: string
   no_events: {
     label: 'No events yet',
     hint: 'Credentials and host ID are set, but Zoom has never posted an event. Check the Event Subscription URL in this account’s Marketplace app.',
-    dot: 'bg-muted-foreground/50',
+    dot: 'bg-muted-foreground/40',
     text: 'text-muted-foreground',
   },
   missing_host_id: {
@@ -84,33 +85,62 @@ const STATUS_META: Record<SeatStatus, { label: string; hint: string; dot: string
   },
 };
 
-function StatusDot({ status }: { status?: SeatStatus }) {
+function StatusLabel({ status, className }: { status?: SeatStatus; className?: string }) {
   if (!status) return <span className="text-xs text-muted-foreground">—</span>;
   const meta = STATUS_META[status];
   return (
-    <span className={cn('inline-flex items-center gap-2 text-sm', meta.text)}>
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', meta.dot)} />
+    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text, className)}>
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', meta.dot)} />
       {meta.label}
     </span>
   );
 }
 
-type HealthFilter = 'all' | 'healthy' | 'attention';
+function initials(name: string) {
+  return (name || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase())
+    .join('');
+}
 
-/**
- * Dedicated Zoom Accounts (per-teacher).
- * Admin validates + saves one Zoom account per teacher per tier (free for 1:1,
- * licensed for Group Academy). Once saved, the teacher's own account handles
- * all live sessions natively.
- */
+type HealthFilter = 'all' | 'healthy' | 'attention' | 'no_events' | 'no_credentials';
+
+const FILTERS: { id: HealthFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'healthy', label: 'Healthy' },
+  { id: 'attention', label: 'Needs attention' },
+  { id: 'no_events', label: 'No events' },
+  { id: 'no_credentials', label: 'Missing credentials' },
+];
+
+/** Row of quiet label/value pairs used inside the detail sections. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-6 py-2.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right text-sm text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{children}</h4>
+  );
+}
+
 export function TeacherZoomAccountsPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [addOpen, setAddOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState<HealthFilter>('all');
+  const [step, setStep] = React.useState(1);
 
   const [form, setForm] = React.useState({
     teacher_id: '',
@@ -153,7 +183,7 @@ export function TeacherZoomAccountsPanel() {
     refetchInterval: 30000,
   });
 
-  // Spare (unlinked) vault seats — read-only count for the summary strip.
+  // Spare (unlinked) vault seats — read-only count for the status bar.
   const { data: spareCount } = useQuery({
     queryKey: ['zoom-vault-spare-count'],
     queryFn: async () => {
@@ -170,7 +200,6 @@ export function TeacherZoomAccountsPanel() {
   const [editingAccount, setEditingAccount] = React.useState<any>(null);
   const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
 
-  // Webhook health check — same edge function as before.
   const [health, setHealth] = React.useState<HealthResponse | null>(null);
   const healthRun = useMutation({
     mutationFn: async (repair: boolean) => {
@@ -275,6 +304,7 @@ export function TeacherZoomAccountsPanel() {
       personal_meeting_link: '',
     });
     setValidateResult(null);
+    setStep(1);
   };
 
   const runValidateAndSave = async () => {
@@ -362,9 +392,11 @@ export function TeacherZoomAccountsPanel() {
   const rows = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return ((accounts || []) as any[]).filter((a) => {
-      const seat = healthById.get(a.id);
-      if (filter === 'healthy' && seat?.status !== 'healthy') return false;
-      if (filter === 'attention' && (!seat || seat.status === 'healthy')) return false;
+      const status = healthById.get(a.id)?.status;
+      if (filter === 'healthy' && status !== 'healthy') return false;
+      if (filter === 'attention' && (!status || status === 'healthy')) return false;
+      if (filter === 'no_events' && status !== 'no_events') return false;
+      if (filter === 'no_credentials' && status !== 'no_credentials' && status !== 'credentials_invalid') return false;
       if (!q) return true;
       return (
         (a.profile?.full_name || '').toLowerCase().includes(q) ||
@@ -375,18 +407,23 @@ export function TeacherZoomAccountsPanel() {
 
   const totals = React.useMemo(() => {
     const list = (accounts || []) as any[];
-    const healthy = list.filter((a) => healthById.get(a.id)?.status === 'healthy').length;
-    const attention = list.filter((a) => {
-      const s = healthById.get(a.id)?.status;
-      return s && s !== 'healthy';
-    }).length;
     return {
       total: list.length,
-      healthy,
-      attention,
+      healthy: list.filter((a) => healthById.get(a.id)?.status === 'healthy').length,
+      attention: list.filter((a) => {
+        const s = healthById.get(a.id)?.status;
+        return s && s !== 'healthy';
+      }).length,
       disabled: list.filter((a) => !a.is_active).length,
     };
   }, [accounts, healthById]);
+
+  // Keep a seat selected on desktop so the right pane is never empty.
+  React.useEffect(() => {
+    if (isMobile) return;
+    if (!rows.length) { setDetailId(null); return; }
+    if (!detailId || !rows.some((r: any) => r.id === detailId)) setDetailId(rows[0].id);
+  }, [rows, detailId, isMobile]);
 
   const detail = React.useMemo(
     () => ((accounts || []) as any[]).find((a) => a.id === detailId) || null,
@@ -399,43 +436,220 @@ export function TeacherZoomAccountsPanel() {
     setLinkForm({ meeting_link: a.meeting_link || '', meeting_passcode: a.meeting_passcode || '' });
   };
 
-  const summary: { label: string; value: number; tone?: string }[] = [
-    { label: 'Total seats', value: totals.total },
-    { label: 'Healthy', value: totals.healthy, tone: 'text-emerald-700 dark:text-emerald-400' },
-    { label: 'Needs attention', value: totals.attention, tone: totals.attention ? 'text-amber-700 dark:text-amber-400' : undefined },
-    { label: 'Spares', value: spareCount ?? 0 },
-  ];
+  // ── Seat list row ───────────────────────────────────────────────────────
+  const SeatRow = ({ a }: { a: any }) => {
+    const seat = healthById.get(a.id);
+    const selected = !isMobile && a.id === detailId;
+    return (
+      <button
+        type="button"
+        onClick={() => setDetailId(a.id)}
+        aria-current={selected ? 'true' : undefined}
+        className={cn(
+          'flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors',
+          selected
+            ? 'border-l-primary bg-muted/60'
+            : 'border-l-transparent hover:bg-muted/40',
+        )}
+      >
+        <span
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+            a.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {initials(a.profile?.full_name || a.zoom_account_email || '?')}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <span className="truncate text-sm font-medium text-foreground">
+              {a.profile?.full_name || 'Unassigned seat'}
+            </span>
+            <span className="shrink-0 text-[11px] capitalize text-muted-foreground">{a.tier}</span>
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{a.zoom_account_email}</span>
+          <span className="mt-1 flex items-center gap-2">
+            <StatusLabel status={seat?.status} />
+            <span className="text-[11px] text-muted-foreground">
+              {seat?.last_event_at
+                ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
+                : seat ? 'no activity' : ''}
+            </span>
+          </span>
+        </span>
+        <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground', selected && 'text-primary')} />
+      </button>
+    );
+  };
+
+  // ── Detail surface ──────────────────────────────────────────────────────
+  const DetailBody = ({ a }: { a: any }) => (
+    <div className="space-y-8">
+      {/* Identity header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+            {initials(a.profile?.full_name || a.zoom_account_email || '?')}
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-semibold tracking-tight text-foreground">
+              {a.profile?.full_name || 'Unassigned seat'}
+            </h3>
+            <p className="truncate text-sm text-muted-foreground">{a.zoom_account_email}</p>
+            <div className="mt-1 flex items-center gap-3">
+              <StatusLabel status={detailHealth?.status} />
+              <span className="text-xs capitalize text-muted-foreground">{a.tier} tier</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="flex cursor-pointer items-center gap-2">
+            <Switch
+              checked={Boolean(a.is_active)}
+              onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
+              aria-label="Toggle seat active"
+            />
+            <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
+              {a.is_active ? 'Active' : 'Disabled'}
+            </span>
+          </label>
+          {a.meeting_link && (
+            <Button variant="ghost" size="sm" asChild className="gap-2">
+              <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {detailHealth && detailHealth.status !== 'healthy' && (
+        <Alert variant={detailHealth.status === 'no_events' ? 'default' : 'destructive'}>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="text-sm">{STATUS_META[detailHealth.status].label}</AlertTitle>
+          <AlertDescription className="text-xs">
+            {detailHealth.credential_error
+              ? `${STATUS_META[detailHealth.status].hint} — ${detailHealth.credential_error}`
+              : STATUS_META[detailHealth.status].hint}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Separator />
+
+      {/* Connection */}
+      <section className="space-y-1">
+        <SectionTitle>Connection</SectionTitle>
+        <dl className="divide-y divide-border/60">
+          <Field label="Server-to-Server app">
+            {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
+          </Field>
+          <Field label="Last validated">
+            {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
+          </Field>
+          <Field label="Webhook events">
+            {detailHealth ? `${detailHealth.event_count} received` : '—'}
+          </Field>
+          <Field label="Last event">
+            {detailHealth?.last_event_at
+              ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
+              : 'Never'}
+          </Field>
+        </dl>
+      </section>
+
+      {/* Meeting access */}
+      <section className="space-y-3">
+        <SectionTitle>Meeting access</SectionTitle>
+        {a.meeting_link ? (
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded bg-muted/60 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+              {a.meeting_link}
+            </code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { navigator.clipboard.writeText(a.meeting_link); toast({ title: 'Join link copied' }); }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No shareable join link yet.</p>
+        )}
+        {a.meeting_passcode && (
+          <p className="text-xs text-muted-foreground">Passcode · {a.meeting_passcode}</p>
+        )}
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditLink(a)}>
+          <Pencil className="h-4 w-4" /> Edit join link
+        </Button>
+      </section>
+
+      {/* Diagnostics — quiet, technical */}
+      <section className="space-y-1">
+        <SectionTitle>Diagnostics</SectionTitle>
+        <dl className="divide-y divide-border/60">
+          <Field label="Host ID">
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {detailHealth?.host_id || a.zoom_user_id || '—'}
+            </span>
+          </Field>
+          <Field label="Seat ID">
+            <span className="font-mono text-[11px] text-muted-foreground">{a.id}</span>
+          </Field>
+        </dl>
+        <div className="flex flex-wrap gap-2 pt-3">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+            {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+            <Wrench className="h-4 w-4" /> Repair host ID
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-destructive hover:text-destructive"
+            onClick={() => {
+              if (confirm(`Remove dedicated Zoom account for ${a.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(a.id);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Remove account
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+
+  const wizardSteps = ['Teacher & tier', 'Zoom identity', 'App credentials', 'Verify & save'];
 
   return (
     <section className="space-y-6">
-      {/* Section header + actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      {/* Header + toolbar hierarchy */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground">Zoom seats</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            One dedicated Zoom account per teacher, per tier. Select a seat to see its full setup.
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+            One dedicated Zoom account per teacher, per tier. Pick a seat on the left to review and fix its setup.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                More actions <MoreHorizontal className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                More <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Recheck health
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
-                <Wrench className="mr-2 h-4 w-4" /> Repair host IDs
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={runSyncZoomUsers} disabled={syncing}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Sync Zoom users
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setBulkOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" /> Bulk link accounts
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+                <Wrench className="mr-2 h-4 w-4" /> Repair host IDs
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Recheck health
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -445,32 +659,37 @@ export function TeacherZoomAccountsPanel() {
         </div>
       </div>
 
-      {/* Summary strip */}
-      <div className="grid grid-cols-2 divide-border rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x">
-        {summary.map((s) => (
-          <div key={s.label} className="px-5 py-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
-            {healthRun.isPending && !health ? (
-              <Skeleton className="mt-2 h-7 w-12" />
-            ) : (
-              <p className={cn('mt-1 text-2xl font-semibold tabular-nums', s.tone)}>{s.value}</p>
+      {/* Subtle horizontal status bar */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
+        {healthRun.isPending && !health ? (
+          <Skeleton className="h-5 w-64" />
+        ) : (
+          <>
+            <span className="text-foreground"><span className="font-semibold tabular-nums">{totals.total}</span> seats</span>
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="tabular-nums text-foreground">{totals.healthy}</span> healthy
+            </span>
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              <span className={cn('h-1.5 w-1.5 rounded-full', totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40')} />
+              <span className="tabular-nums text-foreground">{totals.attention}</span> need attention
+            </span>
+            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{totals.disabled}</span> disabled</span>
+            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{spareCount ?? 0}</span> spare seats</span>
+            {health?.webhook_url && (
+              <button
+                type="button"
+                onClick={copyWebhook}
+                className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                title={health.webhook_url}
+              >
+                <Check className="h-3.5 w-3.5 text-emerald-500" /> System webhook configured
+                <Copy className="h-3.5 w-3.5" />
+              </button>
             )}
-          </div>
-        ))}
+          </>
+        )}
       </div>
-
-      {/* System webhook — secondary information */}
-      {health?.webhook_url && (
-        <div className="flex flex-col gap-2 rounded-md bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-foreground">System webhook</p>
-            <p className="truncate font-mono text-xs text-muted-foreground">{health.webhook_url}</p>
-          </div>
-          <Button variant="ghost" size="sm" className="self-start sm:self-auto" onClick={copyWebhook}>
-            <Copy className="mr-2 h-4 w-4" /> Copy
-          </Button>
-        </div>
-      )}
 
       {syncResult && (
         <Alert variant={syncResult.success ? 'default' : 'destructive'}>
@@ -507,299 +726,114 @@ export function TeacherZoomAccountsPanel() {
         </Alert>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search teacher or Zoom email"
-            className="pl-9"
-            aria-label="Search Zoom seats"
-          />
-        </div>
-        <div className="flex items-center gap-1 rounded-md bg-muted/60 p-1" role="tablist" aria-label="Filter by health">
-          {([
-            { id: 'all' as const, label: 'All' },
-            { id: 'healthy' as const, label: 'Healthy' },
-            { id: 'attention' as const, label: 'Needs attention' },
-          ]).map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={cn(
-                'rounded px-3 py-1.5 text-xs font-medium transition-colors',
-                filter === f.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Seats */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-md" />)}
-        </div>
-      ) : isError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
+      {/* ── Master / detail ─────────────────────────────────────────────── */}
+      {isError ? (
+        <div className="py-16 text-center">
           <p className="text-sm font-medium text-destructive">We couldn’t load the Zoom seats</p>
           <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">{(error as any)?.message}</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Try again</Button>
         </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-6 py-14 text-center">
-          <p className="text-sm font-medium text-foreground">
-            {(accounts || []).length === 0 ? 'No Zoom seats yet' : 'No seats match this view'}
-          </p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            {(accounts || []).length === 0
-              ? 'Link a teacher’s dedicated Zoom account to start hosting classes from their own room.'
-              : 'Try a different search term or switch back to All.'}
-          </p>
-          {(accounts || []).length === 0 && (
-            <Button size="sm" className="mt-4 gap-2" onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" /> Link account
-            </Button>
-          )}
-        </div>
       ) : (
-        <>
-          {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-lg border border-border md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-11">Teacher</TableHead>
-                  <TableHead className="h-11">Tier</TableHead>
-                  <TableHead className="h-11">Health</TableHead>
-                  <TableHead className="h-11">Last activity</TableHead>
-                  <TableHead className="h-11">State</TableHead>
-                  <TableHead className="h-11 w-[1%] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((a: any) => {
-                  const seat = healthById.get(a.id);
-                  return (
-                    <TableRow
-                      key={a.id}
-                      className="cursor-pointer"
-                      onClick={() => setDetailId(a.id)}
-                    >
-                      <TableCell className="py-4">
-                        <p className="font-medium leading-tight text-foreground">{a.profile?.full_name || 'Unassigned seat'}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{a.zoom_account_email}</p>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <Badge variant={a.tier === 'licensed' ? 'default' : 'secondary'} className="font-normal capitalize">
-                          {a.tier}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        {seat ? <StatusDot status={seat.status} /> : (
-                          <span className="text-sm text-muted-foreground">{healthRun.isPending ? 'Checking…' : '—'}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-muted-foreground">
-                        {seat?.last_event_at
-                          ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
-                          : seat ? 'No activity' : '—'}
-                      </TableCell>
-                      <TableCell className="py-4" onClick={(e) => e.stopPropagation()}>
-                        <label className="inline-flex cursor-pointer items-center gap-2">
-                          <Switch
-                            checked={Boolean(a.is_active)}
-                            onCheckedChange={(v) => toggleActiveMut.mutate({ id: a.id, is_active: v })}
-                            aria-label={`Toggle ${a.profile?.full_name || 'seat'} active`}
-                          />
-                          <span className={cn('text-sm', a.is_active ? 'text-foreground' : 'text-muted-foreground')}>
-                            {a.is_active ? 'Active' : 'Disabled'}
-                          </span>
-                        </label>
-                      </TableCell>
-                      <TableCell className="py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {a.meeting_link && (
-                            <Button variant="ghost" size="sm" asChild title="Open Zoom room">
-                              <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /></a>
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => setDetailId(a.id)}>
-                            Details <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+        <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_1fr] lg:gap-0">
+          {/* LEFT — seat list */}
+          <div className="lg:border-r lg:border-border lg:pr-0">
+            <div className="space-y-3 px-0 pb-4 lg:pr-5">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search teacher or Zoom email"
+                  className="h-9 border-none bg-muted/50 pl-9 shadow-none focus-visible:ring-1"
+                  aria-label="Search Zoom seats"
+                />
+              </div>
+              <div className="-mx-1 flex flex-wrap gap-1" role="tablist" aria-label="Filter by health">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={filter === f.id}
+                    onClick={() => setFilter(f.id)}
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      filter === f.id
+                        ? 'bg-foreground text-background'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="-mx-4 divide-y divide-border/60 lg:mx-0 lg:max-h-[70vh] lg:overflow-y-auto">
+              {isLoading ? (
+                [0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
+                ))
+              ) : rows.length === 0 ? (
+                <div className="px-4 py-14 text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    {(accounts || []).length === 0 ? 'No Zoom seats yet' : 'No seats match this view'}
+                  </p>
+                  <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                    {(accounts || []).length === 0
+                      ? 'Link a teacher’s dedicated Zoom account to start hosting classes from their own room.'
+                      : 'Try a different search term or switch back to All.'}
+                  </p>
+                  {(accounts || []).length === 0 && (
+                    <Button size="sm" className="mt-4 gap-2" onClick={() => setAddOpen(true)}>
+                      <Plus className="h-4 w-4" /> Link account
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                rows.map((a: any) => <SeatRow key={a.id} a={a} />)
+              )}
+            </div>
           </div>
 
-          {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
-            {rows.map((a: any) => {
-              const seat = healthById.get(a.id);
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setDetailId(a.id)}
-                  className="flex w-full items-start justify-between gap-3 rounded-lg border border-border bg-card px-4 py-4 text-left transition-colors hover:bg-muted/40"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">{a.profile?.full_name || 'Unassigned seat'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{a.zoom_account_email}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <Badge variant={a.tier === 'licensed' ? 'default' : 'secondary'} className="font-normal capitalize">{a.tier}</Badge>
-                      {seat && <StatusDot status={seat.status} />}
-                      {!a.is_active && <span className="text-xs text-muted-foreground">Disabled</span>}
-                    </div>
-                  </div>
-                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              );
-            })}
+          {/* RIGHT — detail pane (desktop) */}
+          <div className="hidden lg:block lg:pl-8">
+            {detail ? (
+              <DetailBody a={detail} />
+            ) : (
+              <div className="flex h-full min-h-[320px] items-center justify-center">
+                <p className="max-w-xs text-center text-sm text-muted-foreground">
+                  Select a seat to see its connection, meeting access and diagnostics.
+                </p>
+              </div>
+            )}
           </div>
-        </>
+        </div>
       )}
 
-      {/* ── Seat detail drawer ─────────────────────────────────────────── */}
-      <Sheet open={Boolean(detail)} onOpenChange={(o) => !o && setDetailId(null)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      {/* Mobile — full-screen detail sheet */}
+      <Sheet open={Boolean(isMobile && detail)} onOpenChange={(o) => !o && setDetailId(null)}>
+        <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-full">
           {detail && (
-            <>
-              <SheetHeader className="text-left">
-                <SheetTitle>{detail.profile?.full_name || 'Unassigned seat'}</SheetTitle>
-                <SheetDescription>{detail.zoom_account_email}</SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Seat active</p>
-                    <p className="text-xs text-muted-foreground">Disabled seats are skipped when allocating rooms.</p>
-                  </div>
-                  <Switch
-                    checked={Boolean(detail.is_active)}
-                    onCheckedChange={(v) => toggleActiveMut.mutate({ id: detail.id, is_active: v })}
-                    aria-label="Toggle seat active"
-                  />
-                </div>
-
-                <Separator />
-
-                <dl className="space-y-3 text-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Tier</dt>
-                    <dd className="capitalize">{detail.tier}</dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Health</dt>
-                    <dd>{detailHealth ? <StatusDot status={detailHealth.status} /> : '—'}</dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Credentials</dt>
-                    <dd>{detailHealth ? (detailHealth.has_credentials ? 'Stored' : 'Not set') : '—'}</dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Host ID</dt>
-                    <dd className="font-mono text-xs">{detailHealth?.host_id || detail.zoom_user_id || '—'}</dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Webhook events</dt>
-                    <dd className="tabular-nums">{detailHealth ? detailHealth.event_count : '—'}</dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Last event</dt>
-                    <dd>
-                      {detailHealth?.last_event_at
-                        ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
-                        : 'Never'}
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">Last validated</dt>
-                    <dd>{detail.last_validated_at ? format(new Date(detail.last_validated_at), 'MMM d, HH:mm') : '—'}</dd>
-                  </div>
-                </dl>
-
-                {detailHealth && detailHealth.status !== 'healthy' && (
-                  <Alert variant={detailHealth.status === 'no_events' ? 'default' : 'destructive'}>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle className="text-sm">{STATUS_META[detailHealth.status].label}</AlertTitle>
-                    <AlertDescription className="text-xs">
-                      {detailHealth.credential_error
-                        ? `${STATUS_META[detailHealth.status].hint} — ${detailHealth.credential_error}`
-                        : STATUS_META[detailHealth.status].hint}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Shareable join link</p>
-                  {detail.meeting_link ? (
-                    <div className="flex items-center gap-2">
-                      <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 font-mono text-[11px]">{detail.meeting_link}</code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { navigator.clipboard.writeText(detail.meeting_link); toast({ title: 'Join link copied' }); }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Not set yet.</p>
-                  )}
-                  {detail.meeting_passcode && (
-                    <p className="text-xs text-muted-foreground">Passcode: {detail.meeting_passcode}</p>
-                  )}
-                  <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditLink(detail)}>
-                    <Pencil className="h-4 w-4" /> Edit join link
-                  </Button>
-                </div>
-
-                <Separator />
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-                    {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
-                    <Wrench className="h-4 w-4" /> Repair host ID
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      if (confirm(`Remove dedicated Zoom account for ${detail.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(detail.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" /> Remove seat
-                  </Button>
-                </div>
-              </div>
-            </>
+            <div className="p-4 pt-5">
+              <button
+                type="button"
+                onClick={() => setDetailId(null)}
+                className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground"
+              >
+                <ChevronLeft className="h-4 w-4" /> All seats
+              </button>
+              <DetailBody a={detail} />
+            </div>
           )}
         </SheetContent>
       </Sheet>
 
-      {/* ── Link account dialog (grouped steps) ─────────────────────────── */}
+      {/* ── Link account wizard ─────────────────────────────────────────── */}
       <BulkLinkZoomAccountsDialog open={bulkOpen} onOpenChange={setBulkOpen} teachers={(teachers || []) as any} />
 
       <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Link a dedicated Zoom account</DialogTitle>
             <DialogDescription>
@@ -808,10 +842,38 @@ export function TeacherZoomAccountsPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">1 · Who is this seat for</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+          {/* Step rail */}
+          <ol className="flex items-center gap-2 border-y border-border py-3 text-xs">
+            {wizardSteps.map((label, i) => {
+              const n = i + 1;
+              const done = n < step;
+              return (
+                <li key={label} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(n)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
+                      n === step ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <span className={cn(
+                      'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold',
+                      n === step ? 'bg-foreground text-background' : done ? 'bg-emerald-500/15 text-emerald-600' : 'bg-muted text-muted-foreground',
+                    )}>
+                      {done ? <Check className="h-3 w-3" /> : n}
+                    </span>
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                  {n < wizardSteps.length && <span className="h-px w-3 bg-border" />}
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="min-h-[220px] py-2">
+            {step === 1 && (
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Teacher</Label>
                   <Select value={form.teacher_id} onValueChange={(v) => setForm({ ...form, teacher_id: v })}>
@@ -834,29 +896,25 @@ export function TeacherZoomAccountsPanel() {
                   </Select>
                 </div>
               </div>
-            </div>
+            )}
 
-            <Separator />
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">2 · Zoom identity</p>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Zoom host email</Label>
-                <Input value={form.zoom_email} onChange={(e) => setForm({ ...form, zoom_email: e.target.value })} placeholder="teacher@aqta.example" />
-                <p className="text-[11px] text-muted-foreground">The academy-owned Zoom login that hosts this teacher’s classes.</p>
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Zoom host email</Label>
+                  <Input value={form.zoom_email} onChange={(e) => setForm({ ...form, zoom_email: e.target.value })} placeholder="teacher@aqta.example" />
+                  <p className="text-[11px] text-muted-foreground">The academy-owned Zoom login that hosts this teacher’s classes.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Personal meeting link (optional)</Label>
+                  <Input value={form.personal_meeting_link} onChange={(e) => setForm({ ...form, personal_meeting_link: e.target.value })} placeholder="https://zoom.us/j/1234567890" />
+                  <p className="text-[11px] text-muted-foreground">Leave blank to use the Zoom user’s own PMI.</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Personal meeting link (optional)</Label>
-                <Input value={form.personal_meeting_link} onChange={(e) => setForm({ ...form, personal_meeting_link: e.target.value })} placeholder="https://zoom.us/j/1234567890" />
-                <p className="text-[11px] text-muted-foreground">Leave blank to use the Zoom user’s own PMI.</p>
-              </div>
-            </div>
+            )}
 
-            <Separator />
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">3 · Server-to-Server app credentials</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+            {step === 3 && (
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Account ID</Label>
                   <Input value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} />
@@ -870,13 +928,20 @@ export function TeacherZoomAccountsPanel() {
                   <Input type="password" value={form.client_secret} onChange={(e) => setForm({ ...form, client_secret: e.target.value })} />
                 </div>
               </div>
-            </div>
+            )}
 
-            {validateResult && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">4 · Verification</p>
+            {step === 4 && (
+              <div className="space-y-4">
+                <dl className="divide-y divide-border/60 text-sm">
+                  <Field label="Teacher">
+                    {(teachers || []).find((t: any) => t.id === form.teacher_id)?.full_name || '—'}
+                  </Field>
+                  <Field label="Tier"><span className="capitalize">{form.tier}</span></Field>
+                  <Field label="Zoom host email">{form.zoom_email || '—'}</Field>
+                  <Field label="Credentials">{form.client_secret ? 'Provided' : 'Missing'}</Field>
+                </dl>
+
+                {validateResult && (
                   <Alert variant={validateResult.ok ? 'default' : 'destructive'}>
                     {validateResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                     <AlertTitle className="text-sm">
@@ -894,16 +959,26 @@ export function TeacherZoomAccountsPanel() {
                       )}
                     </AlertDescription>
                   </Alert>
-                </div>
-              </>
+                )}
+              </div>
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Close</Button>
-            <Button onClick={runValidateAndSave} disabled={!canSubmit || validating}>
-              {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Validating &amp; saving…</> : 'Validate & Save'}
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => (step === 1 ? setAddOpen(false) : setStep(step - 1))}
+              disabled={validating}
+            >
+              {step === 1 ? 'Cancel' : 'Back'}
             </Button>
+            {step < 4 ? (
+              <Button onClick={() => setStep(step + 1)}>Continue</Button>
+            ) : (
+              <Button onClick={runValidateAndSave} disabled={!canSubmit || validating}>
+                {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Validating &amp; saving…</> : 'Validate & Save'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
