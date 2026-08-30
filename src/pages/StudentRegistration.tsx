@@ -118,7 +118,7 @@ export default function StudentRegistration() {
   const dial = home.dialCode || '+—';
   const withDial = (value: string) => (value.trim() ? `${home.dialCode} ${value.trim()}`.trim() : '');
 
-  const studentValid = (student: Student) => Boolean(student.fullName.trim() && student.dob);
+  
 
   const missing = useMemo(() => {
     const list: string[] = [];
