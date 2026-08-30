@@ -38,19 +38,17 @@ export default function EnrollmentForm() {
   const { data: lead, isLoading, error } = useQuery({
     queryKey: ['enrollment-form', token],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('enrollment_form_token', token)
-        .single();
+      const { data, error } = await supabase.functions.invoke('enrollment-form', {
+        body: { token, action: 'load' },
+      });
       if (error) throw error;
-      if (data && !data.enrollment_form_opened_at) {
-        await supabase.from('leads').update({ enrollment_form_opened_at: new Date().toISOString() }).eq('id', data.id);
-      }
-      return data as LeadData;
+      if (data?.error) throw new Error(data.error);
+      return data.lead as LeadData;
     },
+    retry: false,
     enabled: !!token,
   });
+
 
   const isChild = lead?.for_whom === 'child';
   const studentAge = lead?.child_age || null;
