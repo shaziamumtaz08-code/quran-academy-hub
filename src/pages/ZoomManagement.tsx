@@ -327,12 +327,12 @@ export default function ZoomManagement() {
   }), [visibleAttendanceLogs]);
 
   const sectionButtons = [
-
-    { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
-
+    { id: 'accounts' as const, label: 'Zoom seats', icon: ShieldCheck, count: accountsCount },
+    { id: 'credentials' as const, label: 'Credentials', icon: ShieldCheck, count: accountsCount },
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
-    { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
+    { id: 'logs' as const, label: 'Join logs', icon: Users, count: visibleAttendanceLogs.length },
   ];
+
 
 
   return (
