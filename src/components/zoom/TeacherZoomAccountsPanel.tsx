@@ -131,6 +131,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** One segment of the operational status rail (not a card). */
+function RailSegment({ value, label, dot }: { value: number; label: string; dot?: string }) {
+  return (
+    <div className="px-0 py-3 sm:px-5 sm:first:pl-0">
+      <div className="flex items-center gap-2">
+        {dot ? <span className={cn('h-1.5 w-1.5 rounded-full', dot)} /> : null}
+        <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground">{value}</span>
+      </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+
+
 export function TeacherZoomAccountsPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
