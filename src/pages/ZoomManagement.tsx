@@ -195,56 +195,8 @@ export default function ZoomManagement() {
     return 'Monitor session';
   }, [participantNamesBySession]);
 
-  // Count distinct participants per live session — used to surface the
-  // free-tier 40-min cap warning when a group class hits 3+ attendees.
-  const participantCountBySession = React.useMemo(() => {
-    const map = new Map<string, number>();
-    visibleAttendanceLogs.forEach((log: any) => {
-      if (!log.session_id) return;
-      const key = `${log.session_id}::${log.user_id || log.participant_email || log.participant_name}`;
-      const existing = map.get(log.session_id) || 0;
-      // Simple dedupe by session — using a Set-per-session would be cleaner but this suffices
-      if (!(map as any)[`__seen_${key}`]) {
-        (map as any)[`__seen_${key}`] = true;
-        map.set(log.session_id, existing + 1);
-      }
-    });
-    return map;
-  }, [visibleAttendanceLogs]);
-
-  // End session mutation for admin
-  const endSessionMutation = useMutation({
-    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId?: string | null }) => {
-      const { error: sessionError } = await (supabase as any)
-        .from('live_sessions')
-        .update({ status: 'completed', actual_end: new Date().toISOString() })
-        .eq('id', sessionId);
-      if (sessionError) throw sessionError;
-
-      // Sessions running on a teacher's dedicated account have no pooled licence.
-      if (licenseId) {
-        const { error: licenseError } = await supabase
-          .from('zoom_licenses')
-          .update({ status: 'available' })
-          .eq('id', licenseId);
-        if (licenseError) throw licenseError;
-      }
-    },
-    onSuccess: () => {
-      toast({ title: 'Session Ended', description: 'The session was marked completed.' });
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-      queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['zoom-today-sessions'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
   const liveSessionsList = liveSessions?.filter((s: any) => s.status === 'live') || [];
-  const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
+
 
   // Rooms = dedicated teacher accounts + legacy pool licenses that are NOT the
   // same Zoom account already linked to a teacher. Room 1 and Shazia's dedicated
