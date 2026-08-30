@@ -4,14 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Video, Users, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, ShieldCheck } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -59,65 +56,6 @@ export default function ZoomManagement() {
 
 
 
-
-  const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
-  const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
-  const [hostIdResults, setHostIdResults] = React.useState<Array<{ email: string; host_id: string | null; status: string; error?: string }> | null>(null);
-  const [refreshingHostIds, setRefreshingHostIds] = React.useState(false);
-
-  const fetchHostIds = async (creds?: { account_id: string; client_id: string; client_secret: string }) => {
-    setRefreshingHostIds(true);
-    setHostIdResults(null);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
-      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-fetch-host-ids`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify(creds || {}),
-      });
-
-      const result = await resp.json();
-      if (!resp.ok) throw new Error(result.error || 'Failed to fetch host IDs');
-
-      setHostIdResults(result.results);
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-      toast({ title: 'Host IDs Updated', description: `${result.results.filter((r: any) => r.status === 'updated').length} of ${result.results.length} licenses updated.` });
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    } finally {
-      setRefreshingHostIds(false);
-    }
-  };
-
-  // Allocation mode query
-  const { data: allocationMode } = useQuery({
-    queryKey: ['zoom-allocation-mode'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('app_settings').select('setting_value').eq('setting_key', 'zoom_allocation_mode').single();
-      if (error) return 'round_robin';
-      const val = typeof data.setting_value === 'string' ? data.setting_value : JSON.stringify(data.setting_value);
-      return val.replace(/"/g, '') || 'round_robin';
-    },
-  });
-
-  const updateAllocationModeMutation = useMutation({
-    mutationFn: async (mode: string) => {
-      const { error } = await supabase.from('app_settings').update({ setting_value: JSON.stringify(mode) as any }).eq('setting_key', 'zoom_allocation_mode');
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Allocation mode updated' });
-      queryClient.invalidateQueries({ queryKey: ['zoom-allocation-mode'] });
-    },
-  });
 
   // Shares the query key with TeacherZoomAccountsPanel so linking/deleting an
   // account (which invalidates 'zoom-accounts-list') also refreshes this badge.
@@ -299,71 +237,6 @@ export default function ZoomManagement() {
     });
     return map;
   }, [visibleAttendanceLogs]);
-
-  const addLicenseMutation = useMutation({
-    mutationFn: async (license: typeof newLicense) => {
-      const { error } = await supabase.from('zoom_licenses').insert({
-        zoom_email: license.zoom_email,
-        meeting_link: license.meeting_link,
-        host_id: license.host_id || null,
-        status: 'available',
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'License Added' });
-      setNewLicense({ zoom_email: '', meeting_link: '', host_id: '' });
-      setAddDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const deleteLicenseMutation = useMutation({
-    mutationFn: async (licenseId: string) => {
-      // Clear FK references in live_sessions
-      await (supabase as any).from('live_sessions')
-        .update({ license_id: null, status: 'completed', actual_end: new Date().toISOString() })
-        .eq('license_id', licenseId);
-      // Clear FK references in course_classes
-      await (supabase as any).from('course_classes')
-        .update({ zoom_license_id: null })
-        .eq('zoom_license_id', licenseId);
-      const { error } = await supabase.from('zoom_licenses').delete().eq('id', licenseId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'License Removed' });
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const editLicenseMutation = useMutation({
-    mutationFn: async (license: { id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number }) => {
-      const { error } = await supabase.from('zoom_licenses').update({
-        zoom_email: license.zoom_email,
-        meeting_link: license.meeting_link,
-        host_id: license.host_id || null,
-        license_type: license.license_type,
-        priority: license.priority,
-      } as any).eq('id', license.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'License Updated' });
-      setEditDialogOpen(false);
-      setEditingLicense(null);
-      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
 
   // End session mutation for admin
   const endSessionMutation = useMutation({
@@ -737,7 +610,6 @@ export default function ZoomManagement() {
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
 
 
-        {/* Rooms Section (legacy shared pool) */}
         {/* Sessions Section */}
         {activeSection === 'sessions' && (
           <Card>
