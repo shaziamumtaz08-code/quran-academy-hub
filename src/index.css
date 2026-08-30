@@ -1100,7 +1100,7 @@
   inset: 0 14px auto 14px;
   height: 1px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.9), transparent);
+  background: hsl(0 0% 100% / 0.75);
   pointer-events: none;
 }
 .zoom-ws .zw-accent-edge::before {
@@ -1153,7 +1153,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(var(--zw-brass) / 0.75), transparent);
+  background: hsl(var(--zw-brass) / 0.55);
 }
 
 /* ── Metric modules (not four identical cards) ── */
@@ -1320,7 +1320,7 @@
   gap: 10px;
   padding: 11px 12px;
   border-radius: 13px;
-  background: linear-gradient(180deg, hsl(var(--zw-canvas)) 0%, hsl(var(--zw-canvas-deep)) 100%);
+  background: hsl(var(--zw-canvas-deep) / 0.75);
   border: 1px solid hsl(var(--zw-line));
   box-shadow: inset 0 1px 2px hsl(var(--zw-ink) / 0.04);
 }
@@ -1453,11 +1453,8 @@
   background: hsl(var(--zw-brass-soft) / 0.4);
 }
 .zoom-ws .zw-tile[data-state="busy"] {
-  background: repeating-linear-gradient(
-    135deg,
-    hsl(var(--zw-canvas-deep)) 0 8px,
-    hsl(var(--zw-canvas)) 8px 16px
-  );
+  background-color: hsl(var(--zw-canvas-deep));
+  background-image: repeating-linear-gradient(135deg, hsl(var(--zw-ink) / 0.045) 0 6px, transparent 6px 12px);
   opacity: 0.75;
   cursor: not-allowed;
 }
