@@ -463,7 +463,7 @@ export default function EnrollmentForm() {
           ) : (
             <CheckCircle className="h-5 w-5 mr-2" />
           )}
-          Submit Enrollment
+          {editing ? 'Save Changes' : 'Submit Enrollment'}
         </Button>
       </div>
     </div>
