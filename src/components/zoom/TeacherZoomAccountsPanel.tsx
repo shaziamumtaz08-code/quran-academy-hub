@@ -1,4 +1,5 @@
 import React from 'react';
+// Merged view: per-teacher account details + per-seat webhook health in one table.
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
