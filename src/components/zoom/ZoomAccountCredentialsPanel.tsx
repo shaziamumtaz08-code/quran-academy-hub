@@ -50,7 +50,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, webhook_app_slug, webhook_secret_token, zoom_meeting_sdk_client_id');
+        .select('id, webhook_app_slug, webhook_secret_token, zoom_meeting_sdk_client_id, zoom_account_id_cred, zoom_client_id, credential_status, credential_error, zoom_user_id');
       if (error) throw error;
       return Object.fromEntries(
         (data || []).map((r: any) => [
@@ -59,11 +59,24 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             slug: r.webhook_app_slug as string | null,
             hasWebhookToken: !!r.webhook_secret_token,
             hasSdkCreds: !!r.zoom_meeting_sdk_client_id,
+            hasS2S: !!(r.zoom_account_id_cred && r.zoom_client_id),
+            s2sStatus: (r.credential_status as string | null) || null,
+            s2sError: (r.credential_error as string | null) || null,
+            hostId: (r.zoom_user_id as string | null) || null,
           },
         ]),
-      ) as Record<string, { slug: string | null; hasWebhookToken: boolean; hasSdkCreds: boolean }>;
+      ) as Record<string, {
+        slug: string | null;
+        hasWebhookToken: boolean;
+        hasSdkCreds: boolean;
+        hasS2S: boolean;
+        s2sStatus: string | null;
+        s2sError: string | null;
+        hostId: string | null;
+      }>;
     },
   });
+
 
   const { data: classes } = useQuery({
     queryKey: ['course-classes-zoom-link'],
