@@ -11,10 +11,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil, Wrench, Clock } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
 import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
+
+// ── Webhook health (merged from the former ZoomWebhookHealthPanel) ──────────
+type SeatStatus = 'healthy' | 'no_events' | 'missing_host_id' | 'no_credentials' | 'credentials_invalid';
+
+interface SeatHealth {
+  id: string;
+  teacher_name: string;
+  zoom_account_email: string;
+  tier: string | null;
+  has_credentials: boolean;
+  host_id: string | null;
+  repaired: boolean;
+  credential_error: string | null;
+  event_count: number;
+  last_event_at: string | null;
+  status: SeatStatus;
+}
+
+interface HealthResponse {
+  ok: boolean;
+  webhook_url: string;
+  repaired_count: number;
+  summary: Record<string, number>;
+  accounts: SeatHealth[];
+}
+
+const STATUS_META: Record<SeatStatus, { label: string; hint: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; Icon: typeof CheckCircle2 }> = {
+  healthy: { label: 'Receiving events', hint: 'Zoom is delivering real attendance telemetry for this seat.', variant: 'default', Icon: CheckCircle2 },
+  no_events: { label: 'No events yet', hint: 'Credentials and host ID are set, but Zoom has never posted an event. Check the Event Subscription URL in this account’s Marketplace app.', variant: 'secondary', Icon: Clock },
+  missing_host_id: { label: 'Host ID missing', hint: 'Events cannot be matched to this teacher. Click Repair to fetch the host ID from Zoom.', variant: 'destructive', Icon: AlertTriangle },
+  no_credentials: { label: 'No app credentials', hint: 'This seat has no Server-to-Server OAuth app. Add one via Validate & Save, then subscribe it to the webhook URL.', variant: 'destructive', Icon: XCircle },
+  credentials_invalid: { label: 'Credentials rejected', hint: 'Zoom refused these credentials or the user lookup failed.', variant: 'destructive', Icon: XCircle },
+};
 
 
 /**
