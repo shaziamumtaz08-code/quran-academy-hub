@@ -641,13 +641,13 @@ export function TeacherZoomAccountsPanel() {
   const wizardSteps = ['Teacher & tier', 'Zoom identity', 'App credentials', 'Verify & save'];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       {/* Header + toolbar hierarchy */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Zoom seats</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Zoom Accounts</h2>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            One dedicated Zoom account per teacher, per tier. Pick a seat on the left to review and fix its setup.
+            Every teacher’s dedicated Zoom seat — pick one to review its connection, room and diagnostics.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -669,7 +669,7 @@ export function TeacherZoomAccountsPanel() {
                 <Wrench className="mr-2 h-4 w-4" /> Repair host IDs
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Recheck health
+                <RefreshCw className="mr-2 h-4 w-4" /> Recheck all
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -679,37 +679,24 @@ export function TeacherZoomAccountsPanel() {
         </div>
       </div>
 
-      {/* Subtle horizontal status bar */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
+      {/* Operational status rail — four segments, one line */}
+      <div className="grid grid-cols-2 divide-border border-y border-border sm:grid-cols-4 sm:divide-x">
         {healthRun.isPending && !health ? (
-          <Skeleton className="h-5 w-64" />
+          <div className="col-span-full py-4"><Skeleton className="h-6 w-72" /></div>
         ) : (
           <>
-            <span className="text-foreground"><span className="font-semibold tabular-nums">{totals.total}</span> seats</span>
-            <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="tabular-nums text-foreground">{totals.healthy}</span> healthy
-            </span>
-            <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span className={cn('h-1.5 w-1.5 rounded-full', totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40')} />
-              <span className="tabular-nums text-foreground">{totals.attention}</span> need attention
-            </span>
-            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{totals.disabled}</span> disabled</span>
-            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{spareCount ?? 0}</span> spare seats</span>
-            {health?.webhook_url && (
-              <button
-                type="button"
-                onClick={copyWebhook}
-                className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                title={health.webhook_url}
-              >
-                <Check className="h-3.5 w-3.5 text-emerald-500" /> System webhook configured
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            )}
+            <RailSegment value={totals.total} label="Seats" />
+            <RailSegment value={totals.healthy} label="Healthy" dot="bg-emerald-500" />
+            <RailSegment
+              value={totals.attention}
+              label="Needs attention"
+              dot={totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40'}
+            />
+            <RailSegment value={spareCount ?? 0} label="Spares" />
           </>
         )}
       </div>
+
 
       {syncResult && (
         <Alert variant={syncResult.success ? 'default' : 'destructive'}>
