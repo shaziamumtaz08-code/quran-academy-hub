@@ -22,7 +22,7 @@ import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccount
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
-import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
+
 import { ZoomAccountCredentialsPanel } from '@/components/zoom/ZoomAccountCredentialsPanel';
 
 import ZoomVaultPage from '@/pages/ZoomVault';
