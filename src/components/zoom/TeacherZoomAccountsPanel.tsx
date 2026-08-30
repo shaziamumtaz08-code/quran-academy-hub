@@ -553,85 +553,87 @@ export function TeacherZoomAccountsPanel() {
         </Alert>
       )}
 
-      <Separator />
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* Connection */}
+        <section className="zw-card px-6 py-5">
+          <SectionTitle>Connection</SectionTitle>
+          <dl className="mt-2 divide-y divide-border/40">
+            <Field label="Server-to-Server app">
+              {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
+            </Field>
+            <Field label="Last validated">
+              {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
+            </Field>
+            <Field label="Webhook events">
+              {detailHealth ? `${detailHealth.event_count} received` : '—'}
+            </Field>
+            <Field label="Last event">
+              {detailHealth?.last_event_at
+                ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
+                : 'Never'}
+            </Field>
+          </dl>
+        </section>
 
-      {/* Connection */}
-      <section className="space-y-1">
-        <SectionTitle>Connection</SectionTitle>
-        <dl className="divide-y divide-border/60">
-          <Field label="Server-to-Server app">
-            {detailHealth ? (detailHealth.has_credentials ? 'Credentials stored' : 'Not set') : '—'}
-          </Field>
-          <Field label="Last validated">
-            {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : 'Never'}
-          </Field>
-          <Field label="Webhook events">
-            {detailHealth ? `${detailHealth.event_count} received` : '—'}
-          </Field>
-          <Field label="Last event">
-            {detailHealth?.last_event_at
-              ? formatDistanceToNow(new Date(detailHealth.last_event_at), { addSuffix: true })
-              : 'Never'}
-          </Field>
-        </dl>
-      </section>
-
-      {/* Meeting access */}
-      <section className="space-y-3">
-        <SectionTitle>Meeting access</SectionTitle>
-        {a.meeting_link ? (
-          <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded bg-muted/60 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
-              {a.meeting_link}
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { navigator.clipboard.writeText(a.meeting_link); toast({ title: 'Join link copied' }); }}
-            >
-              <Copy className="h-4 w-4" />
+        {/* Meeting access */}
+        <section className="zw-card px-6 py-5">
+          <SectionTitle>Meeting access</SectionTitle>
+          <div className="mt-3 space-y-3">
+            {a.meeting_link ? (
+              <div className="zw-linkbox">
+                <Video className="h-4 w-4 shrink-0 opacity-45" />
+                <span className="zw-linkbox-text font-mono">{a.meeting_link}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="zw-btn-ghost h-8 shrink-0 px-2"
+                  onClick={() => { navigator.clipboard.writeText(a.meeting_link); toast({ title: 'Join link copied' }); }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <p className="zw-body">No shareable join link yet.</p>
+            )}
+            {a.meeting_passcode && (
+              <p className="zw-meta">Passcode · <span className="font-mono">{a.meeting_passcode}</span></p>
+            )}
+            <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => openEditLink(a)}>
+              <Pencil className="h-4 w-4" /> Edit join link
             </Button>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No shareable join link yet.</p>
-        )}
-        {a.meeting_passcode && (
-          <p className="text-xs text-muted-foreground">Passcode · {a.meeting_passcode}</p>
-        )}
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditLink(a)}>
-          <Pencil className="h-4 w-4" /> Edit join link
-        </Button>
-      </section>
+        </section>
+      </div>
 
-      {/* Diagnostics — quiet, technical */}
-      <section className="space-y-1">
+      {/* Diagnostics — quiet, technical drawer */}
+      <section className="zw-drawer">
         <SectionTitle>Diagnostics</SectionTitle>
-        <dl className="divide-y divide-border/60">
+        <dl className="mt-1 divide-y divide-border/40">
           <Field label="Host ID">
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[11px] opacity-70">
               {detailHealth?.host_id || a.zoom_user_id || '—'}
             </span>
           </Field>
           <Field label="Seat ID">
-            <span className="font-mono text-[11px] text-muted-foreground">{a.id}</span>
+            <span className="font-mono text-[11px] opacity-70">{a.id}</span>
           </Field>
         </dl>
       </section>
 
       {/* Action bar — frequent actions inline, destructive behind overflow */}
-      <div className="flex items-center gap-2 border-t border-border pt-4">
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+      <div className="flex items-center gap-2 border-t border-border/50 pt-4">
+        <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
           {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
         </Button>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+        <Button variant="outline" size="sm" className="zw-btn-secondary gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
           <Wrench className="h-4 w-4" /> Repair host ID
         </Button>
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openEditLink(a)}>
+        <Button variant="ghost" size="sm" className="zw-btn-ghost gap-2" onClick={() => openEditLink(a)}>
           <Pencil className="h-4 w-4" /> Edit link
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground" aria-label="More seat actions">
+            <Button variant="ghost" size="icon" className="zw-btn-ghost ml-auto h-8 w-8" aria-label="More seat actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -647,6 +649,7 @@ export function TeacherZoomAccountsPanel() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
 
     </div>
   );
