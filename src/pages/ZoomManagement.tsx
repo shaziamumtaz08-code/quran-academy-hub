@@ -5,17 +5,15 @@ import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layo
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Video, Users, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, ShieldCheck } from 'lucide-react';
+import { Video, Users, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, ShieldCheck, Download, AlertTriangle } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
-import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccountDialog';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
@@ -25,11 +23,9 @@ import { ZoomAccountCredentialsPanel } from '@/components/zoom/ZoomAccountCreden
 import ZoomVaultPage from '@/pages/ZoomVault';
 import SharedPoolPage from '@/pages/SharedPool';
 import { ExportDialog } from '@/components/export/ExportDialog';
-import { Download } from 'lucide-react';
 
 
 
-import { AlertTriangle } from 'lucide-react';
 
 function LiveTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = React.useState(0);
