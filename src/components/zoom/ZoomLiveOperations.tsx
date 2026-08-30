@@ -34,6 +34,10 @@ import {
   zonedDateLabel,
 } from '@/hooks/useAcademyTimezone';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { parseZoomLink } from '@/lib/zoomLink';
+import { ZoomSdkMeeting } from '@/components/classroom/ZoomSdkMeeting';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 type SlotState = 'live' | 'completed' | 'overdue' | 'upcoming';
 type TileFilter = 'all' | 'live' | 'upcoming' | 'completed' | 'overdue';
@@ -67,6 +71,37 @@ export function ZoomLiveOperations() {
   const [now, setNow] = React.useState(new Date());
   const [filter, setFilter] = React.useState<TileFilter>('all');
   const [recordingLinks, setRecordingLinks] = React.useState<Record<string, string>>({});
+  const { user, profile } = useAuth() as any;
+  // In-app player state for the admin "Join class" action.
+  const [sdkJoin, setSdkJoin] = React.useState<
+    | {
+        sessionId: string;
+        teacherName: string;
+        zoomAccountId: string;
+        meetingNumber: string;
+        passcode: string;
+        joinUrl: string;
+      }
+    | null
+  >(null);
+
+  const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+
+  const handleJoin = (session: any, joinUrl: string) => {
+    const parsed = session.zoom_account_id ? parseZoomLink(joinUrl) : null;
+    if (session.zoom_account_id && parsed) {
+      setSdkJoin({
+        sessionId: session.id,
+        teacherName: session.teacherName,
+        zoomAccountId: session.zoom_account_id,
+        meetingNumber: parsed.meetingNumber,
+        passcode: parsed.passcode,
+        joinUrl,
+      });
+      return;
+    }
+    openExternally(joinUrl);
+  };
 
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -240,7 +275,7 @@ export function ZoomLiveOperations() {
                   type="button"
                   className="zw-btn-primary"
                   disabled={!joinUrl}
-                  onClick={() => joinUrl && window.open(joinUrl, '_blank', 'noopener,noreferrer')}
+                  onClick={() => joinUrl && handleJoin(session, joinUrl)}
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Join class
