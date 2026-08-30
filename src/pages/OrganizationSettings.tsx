@@ -367,19 +367,16 @@ export default function OrganizationSettings() {
   const [holidayDialog, setHolidayDialog] = useState(false);
   const [editHoliday, setEditHoliday] = useState<any>(null);
   const [holidayForm, setHolidayForm] = useState({ name: '', holiday_date: '', is_recurring: false, branch_id: '', division_id: '' });
-  const [overrideAttendance, setOverrideAttendance] = useState(true);
 
   const openNewHoliday = () => {
     setEditHoliday(null);
     setHolidayForm({ name: '', holiday_date: format(new Date(), 'yyyy-MM-dd'), is_recurring: false, branch_id: '', division_id: '' });
-    setOverrideAttendance(true);
     setHolidayDialog(true);
   };
 
   const openEditHoliday = (h: any) => {
     setEditHoliday(h);
     setHolidayForm({ name: h.name, holiday_date: h.holiday_date, is_recurring: h.is_recurring, branch_id: h.branch_id || '', division_id: h.division_id || '' });
-    setOverrideAttendance(false);
     setHolidayDialog(true);
   };
 
@@ -402,10 +399,11 @@ export default function OrganizationSettings() {
         if (error) throw error;
       }
 
-      // Teachers who were not informed may already have marked that day.
-      // Converting those records keeps the day consistent with the holiday.
+      // A holiday always wins: teachers who were not informed may already have
+      // marked that day (present / absent / leave). Every record on the
+      // holiday date is converted so the day stays consistent everywhere.
       let overridden = 0;
-      if (overrideAttendance && holidayForm.holiday_date) {
+      if (holidayForm.holiday_date) {
         const { data: updated, error: attErr } = await supabase
           .from('attendance')
           .update({ status: 'holiday' })
@@ -417,6 +415,7 @@ export default function OrganizationSettings() {
       }
       return overridden;
     },
+
     onSuccess: (overridden: number) => {
       queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
