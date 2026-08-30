@@ -11,9 +11,12 @@ interface ZoomSdkMeetingProps {
   height?: number;
   /** The course class this meeting belongs to — resolves the hosting Zoom account. */
   courseClassId?: string;
+  /** Alternative to courseClassId: resolve credentials from this Zoom account directly. */
+  zoomAccountId?: string;
   /** Called when the SDK cannot start — parent should fall back to the iframe. */
   onFailure?: (message: string) => void;
 }
+
 
 
 /**
