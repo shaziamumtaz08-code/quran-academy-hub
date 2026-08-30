@@ -22,7 +22,7 @@ import { ValidateZoomAccountDialog } from '@/components/zoom/ValidateZoomAccount
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
 import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
-import { ZoomWebhookHealthPanel } from '@/components/zoom/ZoomWebhookHealthPanel';
+
 import { ZoomAccountCredentialsPanel } from '@/components/zoom/ZoomAccountCredentialsPanel';
 
 import ZoomVaultPage from '@/pages/ZoomVault';
@@ -54,7 +54,7 @@ export default function ZoomManagement() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'vault' | 'pool'>('live');
-  const [activeSection, setActiveSection] = React.useState<'accounts' | 'health' | 'rooms' | 'sessions' | 'logs'>('accounts');
+  const [activeSection, setActiveSection] = React.useState<'accounts' | 'rooms' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
 
@@ -465,7 +465,6 @@ export default function ZoomManagement() {
   const sectionButtons = [
 
     { id: 'accounts' as const, label: 'Teacher Accounts', icon: ShieldCheck, count: accountsCount },
-    { id: 'health' as const, label: 'Webhook Health', icon: Shield, count: accountsCount },
 
     { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
     { id: 'logs' as const, label: 'Join Logs', icon: Users, count: visibleAttendanceLogs.length },
@@ -738,11 +737,8 @@ export default function ZoomManagement() {
           ))}
         </div>
 
-        {/* Teacher Zoom Accounts (dedicated) */}
+        {/* Teacher Zoom Accounts (dedicated) — includes per-seat webhook health */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
-
-        {/* Per-seat webhook health */}
-        {activeSection === 'health' && <ZoomWebhookHealthPanel />}
 
 
         {/* Rooms Section (legacy shared pool) */}

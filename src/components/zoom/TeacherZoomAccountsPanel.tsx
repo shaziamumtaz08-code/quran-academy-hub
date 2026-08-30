@@ -1,4 +1,5 @@
 import React from 'react';
+// Merged view: per-teacher account details + per-seat webhook health in one table.
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,10 +12,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Loader2, CheckCircle2, XCircle, Trash2, Video, UserCheck, ShieldCheck, Upload, RefreshCw, AlertTriangle, Copy, Pencil, Wrench, Clock } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { BulkLinkZoomAccountsDialog } from './BulkLinkZoomAccountsDialog';
 import { ZoomSeatStatusTable } from './ZoomSeatStatusTable';
+
+// ── Webhook health (merged from the former ZoomWebhookHealthPanel) ──────────
+type SeatStatus = 'healthy' | 'no_events' | 'missing_host_id' | 'no_credentials' | 'credentials_invalid';
+
+interface SeatHealth {
+  id: string;
+  teacher_name: string;
+  zoom_account_email: string;
+  tier: string | null;
+  has_credentials: boolean;
+  host_id: string | null;
+  repaired: boolean;
+  credential_error: string | null;
+  event_count: number;
+  last_event_at: string | null;
+  status: SeatStatus;
+}
+
+interface HealthResponse {
+  ok: boolean;
+  webhook_url: string;
+  repaired_count: number;
+  summary: Record<string, number>;
+  accounts: SeatHealth[];
+}
+
+const STATUS_META: Record<SeatStatus, { label: string; hint: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; Icon: typeof CheckCircle2 }> = {
+  healthy: { label: 'Receiving events', hint: 'Zoom is delivering real attendance telemetry for this seat.', variant: 'default', Icon: CheckCircle2 },
+  no_events: { label: 'No events yet', hint: 'Credentials and host ID are set, but Zoom has never posted an event. Check the Event Subscription URL in this account’s Marketplace app.', variant: 'secondary', Icon: Clock },
+  missing_host_id: { label: 'Host ID missing', hint: 'Events cannot be matched to this teacher. Click Repair to fetch the host ID from Zoom.', variant: 'destructive', Icon: AlertTriangle },
+  no_credentials: { label: 'No app credentials', hint: 'This seat has no Server-to-Server OAuth app. Add one via Validate & Save, then subscribe it to the webhook URL.', variant: 'destructive', Icon: XCircle },
+  credentials_invalid: { label: 'Credentials rejected', hint: 'Zoom refused these credentials or the user lookup failed.', variant: 'destructive', Icon: XCircle },
+};
 
 
 /**
@@ -72,6 +106,59 @@ export function TeacherZoomAccountsPanel() {
 
   const [editingAccount, setEditingAccount] = React.useState<any>(null);
   const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
+
+  // Webhook health check — same edge function the old standalone tab used.
+  const [health, setHealth] = React.useState<HealthResponse | null>(null);
+  const healthRun = useMutation({
+    mutationFn: async (repair: boolean) => {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error('Your session expired — sign in again to run the health check.');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-webhook-health`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ repair }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok || res?.error) throw new Error(res?.error || `Health check failed (HTTP ${resp.status})`);
+      return res as HealthResponse;
+    },
+    onSuccess: (res, repair) => {
+      setHealth(res);
+      if (repair) {
+        toast({
+          title: res.repaired_count > 0 ? `Repaired ${res.repaired_count} seat(s)` : 'Nothing to repair',
+          description: res.repaired_count > 0
+            ? 'Host IDs were fetched from Zoom and saved, so incoming events can now be matched.'
+            : 'All reachable seats already had a valid host ID.',
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: 'Health check failed', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  React.useEffect(() => {
+    healthRun.mutate(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const healthById = React.useMemo(
+    () => new Map((health?.accounts || []).map((s) => [s.id, s])),
+    [health],
+  );
+
+  const copyWebhook = () => {
+    if (!health?.webhook_url) return;
+    navigator.clipboard.writeText(health.webhook_url);
+    toast({ title: 'Webhook URL copied', description: 'Paste this as the Event Notification Endpoint in every Zoom app.' });
+  };
 
   const saveLinkMut = useMutation({
     mutationFn: async () => {
@@ -224,7 +311,13 @@ export function TeacherZoomAccountsPanel() {
             Each teacher can have one Free (1:1) and one Licensed (Group) account.
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+          {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
+        </Button>
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+          <Wrench className="h-4 w-4" /> Repair host IDs
+        </Button>
         <Button size="sm" variant="outline" className="gap-2" onClick={runSyncZoomUsers} disabled={syncing}>
           {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sync Zoom Users
         </Button>
@@ -322,6 +415,34 @@ export function TeacherZoomAccountsPanel() {
 
       </CardHeader>
       <CardContent className="space-y-4">
+        {health?.webhook_url && (
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">Event Notification Endpoint (same for all accounts)</p>
+              <p className="truncate font-mono text-xs">{health.webhook_url}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={copyWebhook}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+          </div>
+        )}
+        {health?.summary && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              { label: 'Seats', value: health.summary.total },
+              { label: 'Receiving', value: health.summary.healthy },
+              { label: 'Silent', value: health.summary.no_events },
+              { label: 'No host ID', value: health.summary.missing_host_id },
+              { label: 'No app', value: (health.summary.no_credentials || 0) + (health.summary.credentials_invalid || 0) },
+            ].map((s) => (
+              <div key={s.label} className="rounded-lg bg-muted/50 p-3">
+                <p className="text-2xl font-semibold">{s.value ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
         {syncResult && (
           <Alert variant={syncResult.success ? 'default' : 'destructive'}>
             {syncResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
@@ -375,14 +496,22 @@ export function TeacherZoomAccountsPanel() {
                 <TableHead>Zoom Email</TableHead>
                 <TableHead>Tier</TableHead>
                 <TableHead>Shareable join link</TableHead>
+                <TableHead>Host ID</TableHead>
+                <TableHead>Events</TableHead>
+                <TableHead>Last event</TableHead>
                 <TableHead>Last Validated</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Webhook</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(accounts || []).map((a: any) => (
-                <TableRow key={a.id}>
+              {(accounts || []).map((a: any) => {
+                const seat = healthById.get(a.id);
+                const meta = seat ? STATUS_META[seat.status] : null;
+                return (
+                <React.Fragment key={a.id}>
+                <TableRow>
                   <TableCell className="font-medium flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-muted-foreground" />
                     {a.profile?.full_name || 'Unknown teacher'}
@@ -414,6 +543,13 @@ export function TeacherZoomAccountsPanel() {
                       <span className="block text-[10px] text-muted-foreground">Passcode: {a.meeting_passcode}</span>
                     )}
                   </TableCell>
+                  <TableCell className="font-mono text-xs">{seat?.host_id || a.zoom_user_id || '—'}</TableCell>
+                  <TableCell className="text-xs">{seat ? seat.event_count : '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {seat?.last_event_at
+                      ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
+                      : seat ? 'Never' : '—'}
+                  </TableCell>
                   <TableCell className="text-xs">
                     {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : '—'}
                   </TableCell>
@@ -425,6 +561,16 @@ export function TeacherZoomAccountsPanel() {
                     >
                       {a.is_active ? 'Active' : 'Disabled'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {meta ? (
+                      <Badge variant={meta.variant} className="gap-1 whitespace-nowrap">
+                        <meta.Icon className="h-3 w-3" />
+                        {meta.label}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{healthRun.isPending ? 'Checking…' : '—'}</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     {a.meeting_link && (
@@ -454,7 +600,16 @@ export function TeacherZoomAccountsPanel() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                {seat && seat.status !== 'healthy' && meta && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={11} className="pt-0 text-xs text-muted-foreground">
+                      {seat.credential_error ? `${meta.hint} — ${seat.credential_error}` : meta.hint}
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         )}
