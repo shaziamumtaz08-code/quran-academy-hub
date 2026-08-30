@@ -265,9 +265,10 @@ export default function ZoomVault() {
       </div>
 
       <div className="zw-drawer p-4 zw-body text-sm">
-        This stores login passwords only — for the app credentials that power webhooks and attendance tracking, use
-        Zoom Management → Accounts → Credentials.
+        This stores login passwords and general info only — for app credentials that power webhooks, attendance
+        tracking, and the in-app video player, use Zoom Management → Accounts → Credentials.
       </div>
+
 
 
       {accounts.length === 0 && !isLoading && (
