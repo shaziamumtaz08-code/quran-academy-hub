@@ -32,8 +32,18 @@ interface LeadData {
   status: string;
 }
 
+interface DuplicateInfo {
+  reason: string;
+  matched_name: string | null;
+  has_submission: boolean;
+  edit_token: string | null;
+}
+
 export default function EnrollmentForm() {
   const { token } = useParams<{ token: string }>();
+  const openMode = !token;
+  const [duplicate, setDuplicate] = useState<{ info: DuplicateInfo; message: string } | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const { data: lead, isLoading, error } = useQuery({
     queryKey: ['enrollment-form', token],
@@ -48,6 +58,7 @@ export default function EnrollmentForm() {
     retry: false,
     enabled: !!token,
   });
+
 
 
   const isChild = lead?.for_whom === 'child';
