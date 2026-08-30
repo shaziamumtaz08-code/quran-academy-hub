@@ -11,9 +11,9 @@ const corsHeaders = {
 
 interface Body {
   zoom_account_row_id?: string;
-  account_id: string;
-  client_id: string;
-  client_secret: string;
+  account_id?: string;
+  client_id?: string;
+  client_secret?: string;
   zoom_email: string;
   teacher_id?: string;
   tier?: "free" | "licensed";
@@ -49,7 +49,23 @@ Deno.serve(async (req) => {
     if (!allowed) return json({ error: "Admin access required" }, 403);
 
     const body: Body = await req.json().catch(() => ({} as Body));
-    const { zoom_account_row_id, account_id, client_id, client_secret, zoom_email, teacher_id, tier, save, personal_meeting_link } = body;
+    const { zoom_account_row_id, zoom_email, teacher_id, tier, save, personal_meeting_link } = body;
+    let { account_id, client_id, client_secret } = body;
+
+    // Existing seats can be rechecked after Marketplace scope changes without
+    // asking an admin to paste the same secret again. Secrets never leave this
+    // function; only the selected row may supply missing values.
+    if (zoom_account_row_id && (!account_id || !client_id || !client_secret)) {
+      const { data: stored, error: storedError } = await adminClient
+        .from("zoom_accounts")
+        .select("zoom_account_id_cred, zoom_client_id, zoom_client_secret")
+        .eq("id", zoom_account_row_id)
+        .maybeSingle();
+      if (storedError || !stored) return json({ error: storedError?.message || "Selected Zoom account no longer exists." }, 404);
+      account_id ||= stored.zoom_account_id_cred || undefined;
+      client_id ||= stored.zoom_client_id || undefined;
+      client_secret ||= stored.zoom_client_secret || undefined;
+    }
     if (!account_id || !client_id || !client_secret || !zoom_email) {
       return json({
         step: "input",

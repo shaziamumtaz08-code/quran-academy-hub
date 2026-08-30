@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
-  CalendarPlus, X, MonitorUp, Bell,
+  CalendarPlus, X, MonitorUp, Bell, FolderOpen,
 } from 'lucide-react';
 import { ZoomSdkMeeting } from './ZoomSdkMeeting';
 import ClassroomTeachingPanel from './ClassroomTeachingPanel';
@@ -40,6 +40,7 @@ interface ZoomClassPanelProps {
   classId?: string;
   /** Optional: schedule row id for the Ping feature. Ping only renders when provided. */
   scheduleId?: string;
+  onMeetingOpenChange?: (open: boolean) => void;
 }
 
 
@@ -157,7 +158,7 @@ function generateIcsUrl(classInfo: ClassInfo, nextDate: Date): string {
 type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 
 // ═══ COMPONENT ═══
-export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId }: ZoomClassPanelProps) {
+export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId, scheduleId, onMeetingOpenChange }: ZoomClassPanelProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
@@ -214,6 +215,14 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
     setSessionEnded(true);
     onSessionEnd?.();
   };
+
+  useEffect(() => {
+    onMeetingOpenChange?.(showIframe);
+    window.dispatchEvent(new CustomEvent('aqt:meeting-layout', { detail: { collapsed: showIframe } }));
+    return () => {
+      if (showIframe) window.dispatchEvent(new CustomEvent('aqt:meeting-layout', { detail: { collapsed: false } }));
+    };
+  }, [showIframe, onMeetingOpenChange]);
 
   const icsUrl = useMemo(() => generateIcsUrl(classInfo, occurrence.nextDate), [classInfo, occurrence.nextDate]);
 
@@ -468,9 +477,17 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
             <CardContent className="p-0">
               <div className="flex items-center justify-between px-3 py-2 border-b">
                 <p className="text-sm font-medium">{classInfo.name} — Live Session</p>
-                <Button variant="ghost" size="sm" onClick={() => setShowIframe(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/class-room')}>
+                    <MonitorUp className="h-4 w-4" /> <span className="hidden sm:inline">VCR</span>
+                  </Button>
+                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/library')}>
+                    <FolderOpen className="h-4 w-4" /> <span className="hidden sm:inline">Library</span>
+                  </Button>
+                  <Button variant="ghost" size="sm" aria-label="Close in-app meeting" onClick={() => setShowIframe(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {iframeError ? (
                 <div className="p-6 text-center">
@@ -513,7 +530,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
             </CardContent>
           </Card>
 
-          {courseId && (
+          {courseId && userRole === 'teacher' && (
             <ClassroomTeachingPanel
               courseId={courseId}
               classId={classId}

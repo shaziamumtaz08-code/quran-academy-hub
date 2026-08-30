@@ -431,6 +431,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [collapsedStorageKey]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleMeetingLayout = (event: Event) => {
+      const detail = (event as CustomEvent<{ collapsed?: boolean }>).detail;
+      if (typeof detail?.collapsed === "boolean") setDesktopCollapsed(detail.collapsed);
+    };
+    window.addEventListener("aqt:meeting-layout", handleMeetingLayout);
+    return () => window.removeEventListener("aqt:meeting-layout", handleMeetingLayout);
+  }, []);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     if (!isDesktop && mobileOpen) {
       document.body.style.overflow = "hidden";
