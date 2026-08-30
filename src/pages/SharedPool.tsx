@@ -138,7 +138,7 @@ export default function SharedPool() {
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Video className="h-6 w-6 text-primary" /> Shared Zoom Pool
         </h1>
-        <p className="text-sm text-muted-foreground">Check seat availability and book a room for demos, group classes or quick meetings.</p>
+        <p className="text-sm text-muted-foreground">Book one of the academy's spare Zoom seats (backup/pool accounts not assigned to a teacher) for demos, group classes or quick meetings.</p>
       </div>
 
       <Card>
@@ -149,7 +149,7 @@ export default function SharedPool() {
         <CardContent className="space-y-3">
           {dayLoading && <p className="text-sm text-muted-foreground">Loading schedule…</p>}
           {!dayLoading && daySchedule.length === 0 && (
-            <p className="text-sm text-muted-foreground">No shared seats in the pool yet. Add or import them in Zoom Vault.</p>
+            <p className="text-sm text-muted-foreground">No spare seats in the pool yet. Spare seats are Zoom Vault accounts that are not linked to a teacher's Zoom account.</p>
           )}
           {daySchedule.map((s: any) => (
             <div key={s.vault_account_id} className="rounded-lg border p-3">
@@ -192,7 +192,7 @@ export default function SharedPool() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {seats.length === 0 && !isFetching && (
           <Card className="sm:col-span-2 lg:col-span-3"><CardContent className="py-10 text-center text-muted-foreground">
-            No shared seats configured yet. Add accounts in Zoom Vault and set their pool to “Shared”.
+            No spare seats available. Spare seats are active Zoom Vault accounts with no teacher account linked to them.
           </CardContent></Card>
         )}
         {seats.map((s: any) => {
