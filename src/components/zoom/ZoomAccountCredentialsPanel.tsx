@@ -337,6 +337,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Account ID</p>
                 <Input
+                  name="zoom-s2s-account-id"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={s2sAccountId}
                   onChange={(e) => setS2sAccountId(e.target.value)}
                   placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Account ID from the S2S app'}
@@ -345,6 +348,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Client ID</p>
                 <Input
+                  name="zoom-s2s-client-id"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={s2sClientId}
                   onChange={(e) => setS2sClientId(e.target.value)}
                   placeholder={status?.hasS2S ? 'Stored — type to replace' : 'Client ID'}
@@ -354,12 +360,16 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                 <p className="zw-eyebrow mb-1.5">Client Secret</p>
                 <Input
                   type="password"
+                  name="zoom-s2s-client-secret"
+                  autoComplete="new-password"
+                  data-lpignore="true"
                   value={s2sClientSecret}
                   onChange={(e) => setS2sClientSecret(e.target.value)}
                   placeholder="Client Secret"
                 />
               </div>
             </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
