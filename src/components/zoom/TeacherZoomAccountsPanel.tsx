@@ -690,26 +690,26 @@ export function TeacherZoomAccountsPanel() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="gap-2" onClick={() => setAddOpen(true)}>
+          <Button size="sm" className="zw-btn-primary gap-2" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" /> Link account
           </Button>
         </div>
       </div>
 
-      {/* Operational status rail — four segments, one line */}
-      <div className="grid grid-cols-2 divide-border border-y border-border sm:grid-cols-4 sm:divide-x">
+      {/* Operational metrics */}
+      <div className="zw-metrics grid-cols-2 sm:grid-cols-4">
         {healthRun.isPending && !health ? (
-          <div className="col-span-full py-4"><Skeleton className="h-6 w-72" /></div>
+          <div className="col-span-full bg-background p-5"><Skeleton className="h-6 w-72" /></div>
         ) : (
           <>
-            <RailSegment value={totals.total} label="Seats" />
-            <RailSegment value={totals.healthy} label="Healthy" dot="bg-emerald-500" />
+            <RailSegment value={totals.total} label="Seats" tone="brass" />
+            <RailSegment value={totals.healthy} label="Healthy" tone="sage" />
             <RailSegment
               value={totals.attention}
               label="Needs attention"
-              dot={totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40'}
+              tone={totals.attention ? 'warn' : 'quiet'}
             />
-            <RailSegment value={spareCount ?? 0} label="Spares" />
+            <RailSegment value={spareCount ?? 0} label="Spares" tone="quiet" />
           </>
         )}
       </div>
