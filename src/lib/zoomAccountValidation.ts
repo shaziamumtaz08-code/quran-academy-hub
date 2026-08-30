@@ -4,6 +4,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ZoomValidatePayload {
+  zoom_account_row_id?: string;
   teacher_id: string;
   tier: 'free' | 'licensed' | string;
   account_id: string;

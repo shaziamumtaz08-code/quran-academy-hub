@@ -150,6 +150,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     setValidateResult(null);
     try {
       const body = await validateAndSaveZoomAccount({
+        zoom_account_row_id: account.id,
         teacher_id: account.teacher_id,
         tier: (account.tier as any) || 'free',
         account_id: s2sAccountId.trim(),
@@ -337,8 +338,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Account ID</p>
                 <Input
+                  key={`s2s-account-${account.id}`}
                   name="zoom-s2s-account-id"
-                  autoComplete="off"
+                  autoComplete="section-zoom-s2s off"
                   data-lpignore="true"
                   value={s2sAccountId}
                   onChange={(e) => setS2sAccountId(e.target.value)}
@@ -348,8 +350,9 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Client ID</p>
                 <Input
+                  key={`s2s-client-${account.id}`}
                   name="zoom-s2s-client-id"
-                  autoComplete="off"
+                  autoComplete="section-zoom-s2s off"
                   data-lpignore="true"
                   value={s2sClientId}
                   onChange={(e) => setS2sClientId(e.target.value)}
@@ -359,9 +362,10 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
               <div className="min-w-0">
                 <p className="zw-eyebrow mb-1.5">Client Secret</p>
                 <Input
+                  key={`s2s-secret-${account.id}`}
                   type="password"
                   name="zoom-s2s-client-secret"
-                  autoComplete="new-password"
+                  autoComplete="section-zoom-s2s new-password"
                   data-lpignore="true"
                   value={s2sClientSecret}
                   onChange={(e) => setS2sClientSecret(e.target.value)}
