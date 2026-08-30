@@ -16,7 +16,6 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
-import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 
 import { ZoomAccountCredentialsPanel } from '@/components/zoom/ZoomAccountCredentialsPanel';
 
