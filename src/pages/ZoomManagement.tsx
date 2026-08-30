@@ -445,18 +445,19 @@ export default function ZoomManagement() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">Join &amp; leave activity</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="zw-eyebrow">Telemetry</p>
+                <h2 className="zw-h2 mt-1.5">Join &amp; leave activity</h2>
+                <p className="zw-meta mt-1">
                   Zoom telemetry only — attendance is always marked manually.
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setExportLogsOpen(true)} disabled={logExportRows.length === 0} className="zw-btn-secondary gap-2">
                 <Download className="h-4 w-4" /> Download CSV
               </Button>
             </div>
 
-            <ScrollArea className="h-[560px]">
-              <ul className="divide-y divide-border/60">
+            <ScrollArea className="zw-table-wrap h-[560px] px-4">
+              <ul className="divide-y divide-border/50">
                 {visibleAttendanceLogs.map((log: any) => {
                   const isLeave = log.action === 'leave' || (log.action !== 'join_intent' && (Boolean(log.leave_time) || log.zoom_event_type === 'meeting.participant_left'));
                   const isJoin = !isLeave && (log.action === 'join' || log.action === 'join_intent');
