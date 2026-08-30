@@ -403,7 +403,7 @@ export function TeacherZoomAccountsPanel() {
     { label: 'Total seats', value: totals.total },
     { label: 'Healthy', value: totals.healthy, tone: 'text-emerald-700 dark:text-emerald-400' },
     { label: 'Needs attention', value: totals.attention, tone: totals.attention ? 'text-amber-700 dark:text-amber-400' : undefined },
-    { label: 'Disabled', value: totals.disabled },
+    { label: 'Spares', value: spareCount ?? 0 },
   ];
 
   return (
