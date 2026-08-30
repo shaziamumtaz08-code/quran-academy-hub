@@ -773,9 +773,13 @@ export default function OrganizationSettings() {
               <Input value={holidayForm.name} onChange={e => setHolidayForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Eid ul Fitr" />
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>Date (teacher / academy local date)</Label>
               <Input type="date" value={holidayForm.holiday_date} onChange={e => setHolidayForm(p => ({ ...p, holiday_date: e.target.value }))} />
+              <p className="text-xs text-muted-foreground">
+                Enter the date as it falls for the teacher (academy time). Attendance and missing-attendance checks use the same teacher-local date, so an overseas student whose class lands on the next calendar day is still covered automatically.
+              </p>
             </div>
+
             <div className="flex items-center gap-3">
               <Switch checked={holidayForm.is_recurring} onCheckedChange={c => setHolidayForm(p => ({ ...p, is_recurring: c }))} />
               <Label>Recurring annually</Label>
