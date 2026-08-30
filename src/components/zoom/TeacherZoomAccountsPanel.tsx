@@ -463,41 +463,31 @@ export function TeacherZoomAccountsPanel() {
       <button
         type="button"
         onClick={() => setDetailId(a.id)}
+        data-selected={selected}
         aria-current={selected ? 'true' : undefined}
-        className={cn(
-          'flex min-h-[68px] w-full items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors',
-          selected
-            ? 'border-l-primary bg-muted/60'
-            : 'border-l-transparent hover:bg-muted/40',
-        )}
+        className="zw-seat"
       >
-
-        <span
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-            a.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-          )}
-        >
+        <span className="zw-avatar" data-muted={!a.is_active}>
           {initials(a.profile?.full_name || a.zoom_account_email || '?')}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-medium text-foreground">
+            <span className="truncate text-sm font-semibold">
               {a.profile?.full_name || 'Unassigned seat'}
             </span>
-            <span className="shrink-0 text-[11px] capitalize text-muted-foreground">{a.tier}</span>
+            <span className="zw-meta shrink-0 capitalize">{a.tier}</span>
           </span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{a.zoom_account_email}</span>
-          <span className="mt-1 flex items-center gap-2">
+          <span className="zw-meta mt-0.5 block truncate">{a.zoom_account_email}</span>
+          <span className="mt-1.5 flex items-center gap-2">
             <StatusLabel status={seat?.status} />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="zw-meta">
               {seat?.last_event_at
                 ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
                 : seat ? 'no activity' : ''}
             </span>
           </span>
         </span>
-        <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground', selected && 'text-primary')} />
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
       </button>
     );
   };
