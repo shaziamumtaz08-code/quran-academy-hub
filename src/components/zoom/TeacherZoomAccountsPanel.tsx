@@ -758,35 +758,30 @@ export function TeacherZoomAccountsPanel() {
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Try again</Button>
         </div>
       ) : (
-        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-0">
+        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-6">
           {/* LEFT — seat list (independent scroll) */}
-          <div className="flex min-h-0 flex-col lg:border-r lg:border-border">
-            <div className="space-y-3 px-0 pb-4 lg:pr-5">
-
+          <div className="zw-card flex min-h-0 flex-col overflow-hidden">
+            <div className="space-y-3 border-b border-border/40 p-4">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-40" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search teacher or Zoom email"
-                  className="h-9 border-none bg-muted/50 pl-9 shadow-none focus-visible:ring-1"
+                  className="h-9 rounded-xl border-border/60 bg-background/60 pl-9 shadow-none focus-visible:ring-1"
                   aria-label="Search Zoom seats"
                 />
               </div>
-              <div className="-mx-1 flex flex-wrap gap-1" role="tablist" aria-label="Filter by health">
+              <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter by health">
                 {FILTERS.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     role="tab"
                     aria-selected={filter === f.id}
+                    data-active={filter === f.id}
                     onClick={() => setFilter(f.id)}
-                    className={cn(
-                      'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-                      filter === f.id
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
+                    className="zw-subnav-item !px-2.5 !py-1 !text-[11px]"
                   >
                     {f.label}
                   </button>
@@ -794,23 +789,24 @@ export function TeacherZoomAccountsPanel() {
               </div>
             </div>
 
-            <div className="-mx-4 min-h-0 flex-1 divide-y divide-border/60 lg:mx-0 lg:overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-1 p-2 lg:overflow-y-auto">
               {isLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
+                  <div key={i} className="px-2 py-3"><Skeleton className="h-12 w-full" /></div>
                 ))
               ) : rows.length === 0 ? (
                 <div className="px-4 py-14 text-center">
-                  <p className="text-sm font-medium text-foreground">
+                  <div className="zw-motif" />
+                  <p className="mt-5 text-sm font-semibold">
                     {(accounts || []).length === 0 ? 'No Zoom seats yet' : 'No seats match this view'}
                   </p>
-                  <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                  <p className="zw-body mx-auto mt-1 max-w-xs">
                     {(accounts || []).length === 0
                       ? 'Link a teacher’s dedicated Zoom account to start hosting classes from their own room.'
                       : 'Try a different search term or switch back to All.'}
                   </p>
                   {(accounts || []).length === 0 && (
-                    <Button size="sm" className="mt-4 gap-2" onClick={() => setAddOpen(true)}>
+                    <Button size="sm" className="zw-btn-primary mt-4 gap-2" onClick={() => setAddOpen(true)}>
                       <Plus className="h-4 w-4" /> Link account
                     </Button>
                   )}
@@ -822,13 +818,15 @@ export function TeacherZoomAccountsPanel() {
           </div>
 
           {/* RIGHT — detail workspace (independent scroll) */}
-          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pl-8">
+          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pr-1">
             {detail ? (
               <DetailBody a={detail} />
             ) : (
-              <div className="flex h-full min-h-[320px] items-center justify-center">
-                <p className="max-w-xs text-center text-sm text-muted-foreground">
-                  Select a seat to see its connection, meeting access and diagnostics.
+              <div className="zw-card flex h-full min-h-[320px] flex-col items-center justify-center px-6 text-center">
+                <div className="zw-motif" />
+                <p className="zw-h2 mt-5">No seat selected</p>
+                <p className="zw-body mx-auto mt-1 max-w-xs">
+                  Choose a teacher on the left to review connection, meeting access and diagnostics.
                 </p>
               </div>
             )}
@@ -838,11 +836,11 @@ export function TeacherZoomAccountsPanel() {
 
       {/* System configuration — tiny inline row */}
       {health?.webhook_url && (
-        <div className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-emerald-500" />
+        <div className="zw-meta flex items-center gap-2 border-t border-border/50 pt-3">
+          <Check className="h-3.5 w-3.5" style={{ color: 'hsl(var(--zw-sage))' }} />
           <span>System webhook configured</span>
           <code className="hidden min-w-0 flex-1 truncate font-mono text-[11px] sm:block">{health.webhook_url}</code>
-          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:opacity-70">
             <Copy className="h-3.5 w-3.5" /> Copy
           </button>
         </div>
