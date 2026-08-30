@@ -124,6 +124,14 @@ export default function ZoomVault() {
   const teacherName = (id: string | null) =>
     teachers.find(t => t.id === id)?.full_name ?? '—';
 
+  // Teacher shown for a vault row is driven by the FK link to zoom_accounts when present,
+  // falling back to the legacy assigned_teacher_id text only for unlinked rows.
+  const linkedTeacherId = (a: VaultAccount) => {
+    if (!a.zoom_account_id) return null;
+    return zoomAccounts.find(z => z.id === a.zoom_account_id)?.teacher_id ?? null;
+  };
+  const rowTeacherId = (a: VaultAccount) => linkedTeacherId(a) ?? a.assigned_teacher_id;
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
