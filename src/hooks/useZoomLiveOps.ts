@@ -48,6 +48,8 @@ export function useLiveSessionsMonitor() {
           schedule_id,
           assignment_id,
           zoom_meeting_uuid,
+          zoom_account_id,
+
           session_source,
           stream_url,
           license:zoom_licenses(id, zoom_email, meeting_link)

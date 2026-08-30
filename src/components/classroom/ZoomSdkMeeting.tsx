@@ -11,9 +11,12 @@ interface ZoomSdkMeetingProps {
   height?: number;
   /** The course class this meeting belongs to — resolves the hosting Zoom account. */
   courseClassId?: string;
+  /** Alternative to courseClassId: resolve credentials from this Zoom account directly. */
+  zoomAccountId?: string;
   /** Called when the SDK cannot start — parent should fall back to the iframe. */
   onFailure?: (message: string) => void;
 }
+
 
 
 /**
@@ -22,6 +25,7 @@ interface ZoomSdkMeetingProps {
  */
 export function ZoomSdkMeeting({
   courseClassId,
+  zoomAccountId,
   meetingNumber,
   passcode,
   userName,
@@ -40,7 +44,7 @@ export function ZoomSdkMeeting({
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('zoom-meeting-signature', {
-          body: { meetingNumber, role, courseClassId },
+          body: { meetingNumber, role, courseClassId, zoomAccountId },
         });
         if (error || !data?.signature) throw new Error(error?.message || 'Could not get meeting signature');
         if (cancelled || !containerRef.current) return;
@@ -88,7 +92,7 @@ export function ZoomSdkMeeting({
       clientRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingNumber, passcode, userName, role, courseClassId]);
+  }, [meetingNumber, passcode, userName, role, courseClassId, zoomAccountId]);
 
   return (
     <div className="relative w-full" style={{ height }}>
