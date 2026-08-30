@@ -131,6 +131,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** One segment of the operational status rail (not a card). */
+function RailSegment({ value, label, dot }: { value: number; label: string; dot?: string }) {
+  return (
+    <div className="px-0 py-3 sm:px-5 sm:first:pl-0">
+      <div className="flex items-center gap-2">
+        {dot ? <span className={cn('h-1.5 w-1.5 rounded-full', dot)} /> : null}
+        <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground">{value}</span>
+      </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+
+
 export function TeacherZoomAccountsPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -446,12 +461,13 @@ export function TeacherZoomAccountsPanel() {
         onClick={() => setDetailId(a.id)}
         aria-current={selected ? 'true' : undefined}
         className={cn(
-          'flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors',
+          'flex min-h-[68px] w-full items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors',
           selected
             ? 'border-l-primary bg-muted/60'
             : 'border-l-transparent hover:bg-muted/40',
         )}
       >
+
         <span
           className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
@@ -513,13 +529,19 @@ export function TeacherZoomAccountsPanel() {
               {a.is_active ? 'Active' : 'Disabled'}
             </span>
           </label>
-          {a.meeting_link && (
-            <Button variant="ghost" size="sm" asChild className="gap-2">
+          {/* contextual primary action for this seat */}
+          {a.meeting_link ? (
+            <Button size="sm" asChild className="gap-2">
               <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
+            </Button>
+          ) : (
+            <Button size="sm" className="gap-2" onClick={() => openEditLink(a)}>
+              <Pencil className="h-4 w-4" /> Add join link
             </Button>
           )}
         </div>
       </div>
+
 
       {detailHealth && detailHealth.status !== 'healthy' && (
         <Alert variant={detailHealth.status === 'no_events' ? 'default' : 'destructive'}>
@@ -596,38 +618,51 @@ export function TeacherZoomAccountsPanel() {
             <span className="font-mono text-[11px] text-muted-foreground">{a.id}</span>
           </Field>
         </dl>
-        <div className="flex flex-wrap gap-2 pt-3">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-            {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
-            <Wrench className="h-4 w-4" /> Repair host ID
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm(`Remove dedicated Zoom account for ${a.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(a.id);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Remove account
-          </Button>
-        </div>
       </section>
+
+      {/* Action bar — frequent actions inline, destructive behind overflow */}
+      <div className="flex items-center gap-2 border-t border-border pt-4">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
+          {healthRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Recheck
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => healthRun.mutate(true)} disabled={healthRun.isPending}>
+          <Wrench className="h-4 w-4" /> Repair host ID
+        </Button>
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openEditLink(a)}>
+          <Pencil className="h-4 w-4" /> Edit link
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground" aria-label="More seat actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                if (confirm(`Remove dedicated Zoom account for ${a.profile?.full_name || 'this seat'}?`)) deleteMut.mutate(a.id);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Remove account
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
     </div>
   );
 
   const wizardSteps = ['Teacher & tier', 'Zoom identity', 'App credentials', 'Verify & save'];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       {/* Header + toolbar hierarchy */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Zoom seats</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Zoom Accounts</h2>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            One dedicated Zoom account per teacher, per tier. Pick a seat on the left to review and fix its setup.
+            Every teacher’s dedicated Zoom seat — pick one to review its connection, room and diagnostics.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -649,7 +684,7 @@ export function TeacherZoomAccountsPanel() {
                 <Wrench className="mr-2 h-4 w-4" /> Repair host IDs
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => healthRun.mutate(false)} disabled={healthRun.isPending}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Recheck health
+                <RefreshCw className="mr-2 h-4 w-4" /> Recheck all
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -659,37 +694,24 @@ export function TeacherZoomAccountsPanel() {
         </div>
       </div>
 
-      {/* Subtle horizontal status bar */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
+      {/* Operational status rail — four segments, one line */}
+      <div className="grid grid-cols-2 divide-border border-y border-border sm:grid-cols-4 sm:divide-x">
         {healthRun.isPending && !health ? (
-          <Skeleton className="h-5 w-64" />
+          <div className="col-span-full py-4"><Skeleton className="h-6 w-72" /></div>
         ) : (
           <>
-            <span className="text-foreground"><span className="font-semibold tabular-nums">{totals.total}</span> seats</span>
-            <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="tabular-nums text-foreground">{totals.healthy}</span> healthy
-            </span>
-            <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span className={cn('h-1.5 w-1.5 rounded-full', totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40')} />
-              <span className="tabular-nums text-foreground">{totals.attention}</span> need attention
-            </span>
-            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{totals.disabled}</span> disabled</span>
-            <span className="text-muted-foreground"><span className="tabular-nums text-foreground">{spareCount ?? 0}</span> spare seats</span>
-            {health?.webhook_url && (
-              <button
-                type="button"
-                onClick={copyWebhook}
-                className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                title={health.webhook_url}
-              >
-                <Check className="h-3.5 w-3.5 text-emerald-500" /> System webhook configured
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            )}
+            <RailSegment value={totals.total} label="Seats" />
+            <RailSegment value={totals.healthy} label="Healthy" dot="bg-emerald-500" />
+            <RailSegment
+              value={totals.attention}
+              label="Needs attention"
+              dot={totals.attention ? 'bg-amber-500' : 'bg-muted-foreground/40'}
+            />
+            <RailSegment value={spareCount ?? 0} label="Spares" />
           </>
         )}
       </div>
+
 
       {syncResult && (
         <Alert variant={syncResult.success ? 'default' : 'destructive'}>
@@ -734,10 +756,11 @@ export function TeacherZoomAccountsPanel() {
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Try again</Button>
         </div>
       ) : (
-        <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_1fr] lg:gap-0">
-          {/* LEFT — seat list */}
-          <div className="lg:border-r lg:border-border lg:pr-0">
+        <div className="lg:grid lg:h-[calc(100vh-24rem)] lg:min-h-[560px] lg:grid-cols-[34%_66%] lg:gap-0">
+          {/* LEFT — seat list (independent scroll) */}
+          <div className="flex min-h-0 flex-col lg:border-r lg:border-border">
             <div className="space-y-3 px-0 pb-4 lg:pr-5">
+
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -769,7 +792,7 @@ export function TeacherZoomAccountsPanel() {
               </div>
             </div>
 
-            <div className="-mx-4 divide-y divide-border/60 lg:mx-0 lg:max-h-[70vh] lg:overflow-y-auto">
+            <div className="-mx-4 min-h-0 flex-1 divide-y divide-border/60 lg:mx-0 lg:overflow-y-auto">
               {isLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
@@ -796,8 +819,8 @@ export function TeacherZoomAccountsPanel() {
             </div>
           </div>
 
-          {/* RIGHT — detail pane (desktop) */}
-          <div className="hidden lg:block lg:pl-8">
+          {/* RIGHT — detail workspace (independent scroll) */}
+          <div className="hidden min-h-0 lg:block lg:overflow-y-auto lg:pb-6 lg:pl-8">
             {detail ? (
               <DetailBody a={detail} />
             ) : (
@@ -810,6 +833,19 @@ export function TeacherZoomAccountsPanel() {
           </div>
         </div>
       )}
+
+      {/* System configuration — tiny inline row */}
+      {health?.webhook_url && (
+        <div className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+          <Check className="h-3.5 w-3.5 text-emerald-500" />
+          <span>System webhook configured</span>
+          <code className="hidden min-w-0 flex-1 truncate font-mono text-[11px] sm:block">{health.webhook_url}</code>
+          <button type="button" onClick={copyWebhook} className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+            <Copy className="h-3.5 w-3.5" /> Copy
+          </button>
+        </div>
+      )}
+
 
       {/* Mobile — full-screen detail sheet */}
       <Sheet open={Boolean(isMobile && detail)} onOpenChange={(o) => !o && setDetailId(null)}>
