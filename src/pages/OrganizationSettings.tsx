@@ -398,15 +398,37 @@ export default function OrganizationSettings() {
         const { error } = await supabase.from('holidays' as any).insert(payload);
         if (error) throw error;
       }
+
+      // A holiday always wins: teachers who were not informed may already have
+      // marked that day (present / absent / leave). Every record on the
+      // holiday date is converted so the day stays consistent everywhere.
+      let overridden = 0;
+      if (holidayForm.holiday_date) {
+        const { data: updated, error: attErr } = await supabase
+          .from('attendance')
+          .update({ status: 'holiday' })
+          .eq('class_date', holidayForm.holiday_date)
+          .neq('status', 'holiday')
+          .select('id');
+        if (attErr) throw attErr;
+        overridden = (updated || []).length;
+      }
+      return overridden;
     },
-    onSuccess: () => {
+
+    onSuccess: (overridden: number) => {
       queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       setHolidayDialog(false);
-      toast({ title: editHoliday ? 'Holiday updated' : 'Holiday created' });
+      toast({
+        title: editHoliday ? 'Holiday updated' : 'Holiday created',
+        description: overridden ? `${overridden} attendance record${overridden === 1 ? '' : 's'} on this date set to Holiday.` : undefined,
+      });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   const deleteHoliday = useMutation({
     mutationFn: async (id: string) => {
