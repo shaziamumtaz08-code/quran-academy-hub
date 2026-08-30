@@ -543,6 +543,13 @@ export function TeacherZoomAccountsPanel() {
                       <span className="block text-[10px] text-muted-foreground">Passcode: {a.meeting_passcode}</span>
                     )}
                   </TableCell>
+                  <TableCell className="font-mono text-xs">{seat?.host_id || a.zoom_user_id || '—'}</TableCell>
+                  <TableCell className="text-xs">{seat ? seat.event_count : '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {seat?.last_event_at
+                      ? formatDistanceToNow(new Date(seat.last_event_at), { addSuffix: true })
+                      : seat ? 'Never' : '—'}
+                  </TableCell>
                   <TableCell className="text-xs">
                     {a.last_validated_at ? format(new Date(a.last_validated_at), 'MMM d, HH:mm') : '—'}
                   </TableCell>
@@ -554,6 +561,16 @@ export function TeacherZoomAccountsPanel() {
                     >
                       {a.is_active ? 'Active' : 'Disabled'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {meta ? (
+                      <Badge variant={meta.variant} className="gap-1 whitespace-nowrap">
+                        <meta.Icon className="h-3 w-3" />
+                        {meta.label}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{healthRun.isPending ? 'Checking…' : '—'}</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     {a.meeting_link && (
