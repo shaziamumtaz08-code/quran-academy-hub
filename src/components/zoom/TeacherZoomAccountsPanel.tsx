@@ -496,14 +496,22 @@ export function TeacherZoomAccountsPanel() {
                 <TableHead>Zoom Email</TableHead>
                 <TableHead>Tier</TableHead>
                 <TableHead>Shareable join link</TableHead>
+                <TableHead>Host ID</TableHead>
+                <TableHead>Events</TableHead>
+                <TableHead>Last event</TableHead>
                 <TableHead>Last Validated</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Webhook</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(accounts || []).map((a: any) => (
-                <TableRow key={a.id}>
+              {(accounts || []).map((a: any) => {
+                const seat = healthById.get(a.id);
+                const meta = seat ? STATUS_META[seat.status] : null;
+                return (
+                <React.Fragment key={a.id}>
+                <TableRow>
                   <TableCell className="font-medium flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-muted-foreground" />
                     {a.profile?.full_name || 'Unknown teacher'}
