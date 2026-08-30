@@ -42,7 +42,7 @@ export default function ZoomManagement() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [mainTab, setMainTab] = React.useState<'live' | 'accounts' | 'vault' | 'pool'>('live');
-  const [activeSection, setActiveSection] = React.useState<'accounts' | 'sessions' | 'logs'>('accounts');
+  const [activeSection, setActiveSection] = React.useState<'accounts' | 'credentials' | 'sessions' | 'logs'>('accounts');
   const [exportSessionsOpen, setExportSessionsOpen] = React.useState(false);
   const [exportLogsOpen, setExportLogsOpen] = React.useState(false);
 
