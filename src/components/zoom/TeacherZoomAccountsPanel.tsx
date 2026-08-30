@@ -600,7 +600,16 @@ export function TeacherZoomAccountsPanel() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                {seat && seat.status !== 'healthy' && meta && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={11} className="pt-0 text-xs text-muted-foreground">
+                      {seat.credential_error ? `${meta.hint} — ${seat.credential_error}` : meta.hint}
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         )}
