@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 interface Body {
+  zoom_account_row_id?: string;
   account_id: string;
   client_id: string;
   client_secret: string;
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
     if (!allowed) return json({ error: "Admin access required" }, 403);
 
     const body: Body = await req.json().catch(() => ({} as Body));
-    const { account_id, client_id, client_secret, zoom_email, teacher_id, tier, save, personal_meeting_link } = body;
+    const { zoom_account_row_id, account_id, client_id, client_secret, zoom_email, teacher_id, tier, save, personal_meeting_link } = body;
     if (!account_id || !client_id || !client_secret || !zoom_email) {
       return json({
         step: "input",
@@ -58,17 +59,34 @@ Deno.serve(async (req) => {
 
     const checks: Array<{ step: string; ok: boolean; detail?: string; data?: any }> = [];
 
-    // Persist the credentials the admin typed even when Zoom rejects them, so
-    // nothing is lost and the seat is visibly marked as failed (never silently
-    // "saved but unverified"). Only ever touches the seat being saved.
-    const saveFailedCredentials = async (reason: string) => {
-      if (!(save && teacher_id)) return null;
-      const { data: existing } = await adminClient
+    // Existing-seat edits must target the exact row selected in the UI. The
+    // teacher+tier lookup remains only for the new-seat wizard.
+    const resolveExistingSeat = async () => {
+      if (zoom_account_row_id) {
+        return await adminClient
+          .from("zoom_accounts")
+          .select("id")
+          .eq("id", zoom_account_row_id)
+          .maybeSingle();
+      }
+      return await adminClient
         .from("zoom_accounts")
         .select("id")
         .eq("teacher_id", teacher_id)
         .eq("tier", tier || "free")
         .maybeSingle();
+    };
+
+    // Persist the credentials the admin typed even when Zoom rejects them, so
+    // nothing is lost and the seat is visibly marked as failed (never silently
+    // "saved but unverified"). Only ever touches the seat being saved.
+    const saveFailedCredentials = async (reason: string) => {
+      if (!(save && teacher_id)) return null;
+      const { data: existing, error: lookupError } = await resolveExistingSeat();
+      if (lookupError || (zoom_account_row_id && !existing)) {
+        checks.push({ step: "save_account", ok: false, detail: lookupError?.message || "Selected Zoom account no longer exists." });
+        return null;
+      }
       const payload: Record<string, unknown> = {
         teacher_id,
         tier: tier || "free",
@@ -182,9 +200,10 @@ Deno.serve(async (req) => {
         credential_error: null,
         credential_checked_at: nowIso,
       };
-      const { data: upserted, error: upErr } = await adminClient
-        .from("zoom_accounts")
-        .upsert(upsertPayload, { onConflict: "teacher_id,tier" })
+      const saveQuery = zoom_account_row_id
+        ? adminClient.from("zoom_accounts").update(upsertPayload).eq("id", zoom_account_row_id)
+        : adminClient.from("zoom_accounts").upsert(upsertPayload, { onConflict: "teacher_id,tier" });
+      const { data: upserted, error: upErr } = await saveQuery
         .select("id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, credential_status")
         .maybeSingle();
       if (upErr) {
