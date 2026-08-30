@@ -255,21 +255,21 @@ export default function SharedPool() {
         >
           Day schedule
         </SectionLabel>
-        <div className="rounded-lg border divide-y">
-          {dayLoading && <p className="px-4 py-6 text-sm text-muted-foreground">Loading schedule…</p>}
+        <div className="zw-card divide-y divide-border/40 overflow-hidden">
+          {dayLoading && <p className="zw-body px-5 py-6">Loading schedule…</p>}
           {!dayLoading && daySchedule.length === 0 && (
-            <p className="px-4 py-6 text-sm text-muted-foreground">
+            <p className="zw-body px-5 py-6">
               No spare seats in the pool yet. Spare seats are Zoom Vault accounts that are not linked to a teacher's Zoom account.
             </p>
           )}
           {daySchedule.map((s: any) => (
-            <div key={s.vault_account_id} className="px-4 py-3">
+            <div key={s.vault_account_id} className="px-5 py-3.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-sm">{s.label}</span>
-                <Badge variant="secondary">{seatTier(s)}</Badge>
+                <span className="text-sm font-semibold">{s.label}</span>
+                <span className="zw-chip" data-tone="brass"><span className="zw-dot" />{seatTier(s)}</span>
               </div>
               {(s.bookings ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-1">Free all day</p>
+                <p className="zw-meta mt-1">Free all day</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {(s.bookings ?? []).map((b: any) => (
@@ -289,16 +289,14 @@ export default function SharedPool() {
         <SectionLabel
           action={
             isAdmin ? (
-              <div className="inline-flex rounded-full border p-0.5">
+              <div className="zw-nav">
                 {(['mine', 'all'] as const).map(v => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setBookingsView(v)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                      bookingsView === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                    )}
+                    data-active={bookingsView === v}
+                    className="zw-nav-item !px-3 !py-1 !text-xs"
                   >
                     {v === 'mine' ? 'My bookings' : 'All bookings'}
                   </button>
@@ -310,7 +308,7 @@ export default function SharedPool() {
           Bookings
         </SectionLabel>
 
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="zw-table-wrap overflow-x-auto">
           {(!isAdmin || bookingsView === 'mine') ? (
             <Table>
               <TableHeader><TableRow>
@@ -323,7 +321,7 @@ export default function SharedPool() {
                   <TableRow key={b.id}>
                     <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
                     <TableCell>{b.purpose}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
+                    <TableCell><span className="zw-chip capitalize" data-tone={b.status === 'cancelled' ? 'quiet' : b.status === 'in_progress' ? 'live' : 'ok'}><span className="zw-dot" />{b.status.replace('_', ' ')}</span></TableCell>
                     <TableCell>{b.meeting_link ? <Button size="sm" variant="ghost" onClick={() => copy(b.meeting_link)}><Copy className="h-3.5 w-3.5 mr-1" /> Copy</Button> : '—'}</TableCell>
                     <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
                   </TableRow>
@@ -343,7 +341,7 @@ export default function SharedPool() {
                     <TableCell>{b.seat?.label ?? '—'}</TableCell>
                     <TableCell className="whitespace-nowrap">{format(new Date(b.start_time), 'dd MMM, HH:mm')} – {format(new Date(b.end_time), 'HH:mm')}</TableCell>
                     <TableCell>{b.purpose}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{b.status.replace('_', ' ')}</Badge></TableCell>
+                    <TableCell><span className="zw-chip capitalize" data-tone={b.status === 'cancelled' ? 'quiet' : b.status === 'in_progress' ? 'live' : 'ok'}><span className="zw-dot" />{b.status.replace('_', ' ')}</span></TableCell>
                     <TableCell>{b.recording_url ? <a className="text-primary underline" href={b.recording_url} target="_blank" rel="noreferrer">Watch</a> : '—'}</TableCell>
                   </TableRow>
                 ))}
