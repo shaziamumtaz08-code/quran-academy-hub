@@ -310,7 +310,7 @@ export default function StudentRegistration() {
               <Input value={home.motherPhone} onChange={e => set({ motherPhone: e.target.value })} className="h-11 flex-1" />
             </div>
           </Field>
-          <Field label="Parent / guardian email" hint="Students can reuse this instead of their own email.">
+          <Field label="Parent / guardian email" required hint="Students can reuse this instead of their own email.">
             <Input type="email" value={home.guardianEmail} onChange={e => set({ guardianEmail: e.target.value })} className="h-11" />
           </Field>
           <Field label="Emergency contact name">
