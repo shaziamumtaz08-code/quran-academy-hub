@@ -39,7 +39,7 @@ export function ZoomSdkMeeting({
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('zoom-meeting-signature', {
-          body: { meetingNumber, role },
+          body: { meetingNumber, role, courseClassId },
         });
         if (error || !data?.signature) throw new Error(error?.message || 'Could not get meeting signature');
         if (cancelled || !containerRef.current) return;
