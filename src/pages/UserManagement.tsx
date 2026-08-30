@@ -99,6 +99,7 @@ import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
 import { MigrateStudentLoginsDialog } from '@/components/users/MigrateStudentLoginsDialog';
+import { StudentLoginToolkitDialog } from '@/components/users/StudentLoginToolkitDialog';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
@@ -1799,6 +1800,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
           <div className="flex flex-wrap items-center gap-2.5">
             <RegistrationLinksCard />
             <MigrateStudentLoginsDialog />
+            <StudentLoginToolkitDialog />
           </div>
         )}
 
