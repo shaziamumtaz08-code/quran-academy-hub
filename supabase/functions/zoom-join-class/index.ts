@@ -152,9 +152,10 @@ Deno.serve(async (req) => {
     }
     const { data: dedicatedAccountRows } = await service
       .from("zoom_accounts")
-      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active")
+      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret")
       .eq("teacher_id", p.teacherId)
       .eq("is_active", true);
+
     const activeAccounts = (dedicatedAccountRows || []) as any[];
     const dedicatedAccount =
       activeAccounts.find((a) => a.tier === preferredTier) ||
