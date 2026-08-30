@@ -106,6 +106,59 @@ export function TeacherZoomAccountsPanel() {
   const [editingAccount, setEditingAccount] = React.useState<any>(null);
   const [linkForm, setLinkForm] = React.useState({ meeting_link: '', meeting_passcode: '' });
 
+  // Webhook health check — same edge function the old standalone tab used.
+  const [health, setHealth] = React.useState<HealthResponse | null>(null);
+  const healthRun = useMutation({
+    mutationFn: async (repair: boolean) => {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error('Your session expired — sign in again to run the health check.');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-webhook-health`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ repair }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok || res?.error) throw new Error(res?.error || `Health check failed (HTTP ${resp.status})`);
+      return res as HealthResponse;
+    },
+    onSuccess: (res, repair) => {
+      setHealth(res);
+      if (repair) {
+        toast({
+          title: res.repaired_count > 0 ? `Repaired ${res.repaired_count} seat(s)` : 'Nothing to repair',
+          description: res.repaired_count > 0
+            ? 'Host IDs were fetched from Zoom and saved, so incoming events can now be matched.'
+            : 'All reachable seats already had a valid host ID.',
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: 'Health check failed', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  React.useEffect(() => {
+    healthRun.mutate(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const healthById = React.useMemo(
+    () => new Map((health?.accounts || []).map((s) => [s.id, s])),
+    [health],
+  );
+
+  const copyWebhook = () => {
+    if (!health?.webhook_url) return;
+    navigator.clipboard.writeText(health.webhook_url);
+    toast({ title: 'Webhook URL copied', description: 'Paste this as the Event Notification Endpoint in every Zoom app.' });
+  };
+
   const saveLinkMut = useMutation({
     mutationFn: async () => {
       const { error } = await (supabase as any)
