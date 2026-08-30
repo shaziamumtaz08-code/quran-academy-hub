@@ -21,6 +21,7 @@ interface ZoomSdkMeetingProps {
  * not the full-page Zoom client). Desktop browsers only for this pass.
  */
 export function ZoomSdkMeeting({
+  courseClassId,
   meetingNumber,
   passcode,
   userName,
