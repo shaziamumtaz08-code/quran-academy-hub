@@ -357,20 +357,21 @@ export default function ZoomManagement() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">Session history</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Every live session with its duration and recording.</p>
+                <p className="zw-eyebrow">Archive</p>
+                <h2 className="zw-h2 mt-1.5">Session history</h2>
+                <p className="zw-meta mt-1">Every live session with its duration and recording.</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2 text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="zw-btn-ghost gap-2">
                   <RefreshCw className="h-4 w-4" /> Refresh
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExportSessionsOpen(true)} disabled={sessionExportRows.length === 0} className="zw-btn-secondary gap-2">
                   <Download className="h-4 w-4" /> Download CSV
                 </Button>
               </div>
             </div>
 
-            <ScrollArea className="h-[560px]">
+            <ScrollArea className="zw-table-wrap h-[560px]">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
