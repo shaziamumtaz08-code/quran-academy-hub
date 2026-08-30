@@ -514,13 +514,19 @@ export function TeacherZoomAccountsPanel() {
               {a.is_active ? 'Active' : 'Disabled'}
             </span>
           </label>
-          {a.meeting_link && (
-            <Button variant="ghost" size="sm" asChild className="gap-2">
+          {/* contextual primary action for this seat */}
+          {a.meeting_link ? (
+            <Button size="sm" asChild className="gap-2">
               <a href={a.meeting_link} target="_blank" rel="noreferrer"><Video className="h-4 w-4" /> Open room</a>
+            </Button>
+          ) : (
+            <Button size="sm" className="gap-2" onClick={() => openEditLink(a)}>
+              <Pencil className="h-4 w-4" /> Add join link
             </Button>
           )}
         </div>
       </div>
+
 
       {detailHealth && detailHealth.status !== 'healthy' && (
         <Alert variant={detailHealth.status === 'no_events' ? 'default' : 'destructive'}>
