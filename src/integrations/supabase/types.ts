@@ -13242,6 +13242,7 @@ export type Database = {
           pool_assignment: Database["public"]["Enums"]["zoom_pool_assignment"]
           status: Database["public"]["Enums"]["zoom_vault_status"]
           updated_at: string
+          zoom_account_id: string | null
           zoom_email: string
           zoom_password_secret_id: string | null
         }
@@ -13260,6 +13261,7 @@ export type Database = {
           pool_assignment?: Database["public"]["Enums"]["zoom_pool_assignment"]
           status?: Database["public"]["Enums"]["zoom_vault_status"]
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_email: string
           zoom_password_secret_id?: string | null
         }
@@ -13278,6 +13280,7 @@ export type Database = {
           pool_assignment?: Database["public"]["Enums"]["zoom_pool_assignment"]
           status?: Database["public"]["Enums"]["zoom_vault_status"]
           updated_at?: string
+          zoom_account_id?: string | null
           zoom_email?: string
           zoom_password_secret_id?: string | null
         }
@@ -13294,6 +13297,20 @@ export type Database = {
             columns: ["assigned_teacher_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_vault_accounts_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_vault_accounts_zoom_account_id_fkey"
+            columns: ["zoom_account_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_accounts_safe"
             referencedColumns: ["id"]
           },
         ]
