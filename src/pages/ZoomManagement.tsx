@@ -16,7 +16,6 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeacherZoomAccountsPanel } from '@/components/zoom/TeacherZoomAccountsPanel';
 import { ZoomLiveOperations } from '@/components/zoom/ZoomLiveOperations';
-import { SyncZoomUsersButton } from '@/components/zoom/SyncZoomUsersButton';
 
 import { ZoomAccountCredentialsPanel } from '@/components/zoom/ZoomAccountCredentialsPanel';
 
@@ -338,9 +337,29 @@ export default function ZoomManagement() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
-        {/* Top-level tabs */}
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-8 animate-fade-in">
+        {/* Workspace header */}
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Zoom workspace</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Rooms, seats and live sessions for every class across the academy.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {availableCount} ready
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
+              <span className="h-2 w-2 rounded-full bg-destructive" />
+              {busyCount} live
+            </span>
+          </div>
+        </header>
+
+        {/* Top-level navigation */}
+        <nav className="flex flex-wrap items-center gap-1 border-b border-border" aria-label="Zoom sections">
           {([
             { id: 'live' as const, label: 'Live operations' },
             { id: 'accounts' as const, label: 'Accounts' },
@@ -351,20 +370,18 @@ export default function ZoomManagement() {
               key={tab.id}
               type="button"
               onClick={() => setMainTab(tab.id)}
+              aria-current={mainTab === tab.id ? 'page' : undefined}
               className={cn(
-                'h-10 rounded-full px-4 text-sm font-medium transition-colors',
+                '-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
                 mainTab === tab.id
-                  ? 'bg-[hsl(var(--navy))] text-white dark:bg-primary dark:text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-muted',
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
               {tab.label}
             </button>
           ))}
-          <div className="ml-auto">
-            <SyncZoomUsersButton />
-          </div>
-        </div>
+        </nav>
 
 
         {mainTab === 'live' && <ZoomLiveOperations />}
@@ -374,26 +391,9 @@ export default function ZoomManagement() {
         {mainTab === 'vault' && <ZoomVaultPage />}
 
         {mainTab === 'accounts' && (<>
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Zoom Engine</h1>
-            <p className="text-muted-foreground text-sm mt-1">Live room management & session monitoring</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{availableCount} Ready</span>
-            </div>
-            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-destructive/10 border border-destructive/20">
-              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <span className="text-sm font-semibold text-destructive">{busyCount} Live</span>
-            </div>
-          </div>
-        </div>
-
         {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
         <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
+
 
         {/* Room Cards Grid */}
         <div>
