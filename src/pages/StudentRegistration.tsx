@@ -118,13 +118,29 @@ export default function StudentRegistration() {
   const dial = home.dialCode || '+—';
   const withDial = (value: string) => (value.trim() ? `${home.dialCode} ${value.trim()}`.trim() : '');
 
-  const studentValid = (student: Student) => Boolean(student.fullName.trim() && student.dob);
+  
 
-  const valid = useMemo(() => Boolean(
-    locationDone && home.address.trim() && EMAIL_RE.test(home.guardianEmail.trim()) &&
-    home.fatherName.trim() && home.fatherPhone.trim() && home.motherName.trim() && home.motherPhone.trim() &&
-    home.emergencyPhone.trim() && home.consent && students.length && students.every(studentValid),
-  ), [home, students, locationDone]);
+  const missing = useMemo(() => {
+    const list: string[] = [];
+    if (!home.country) list.push('Country');
+    if (!home.timezone) list.push('Timezone');
+    if (!home.address.trim()) list.push('Residential address');
+    if (!home.fatherName.trim()) list.push("Father's full name");
+    if (!home.fatherPhone.trim()) list.push("Father's contact number");
+    if (!home.motherName.trim()) list.push("Mother's full name");
+    if (!home.motherPhone.trim()) list.push("Mother's contact number");
+    if (!EMAIL_RE.test(home.guardianEmail.trim())) list.push('Parent / guardian email');
+    if (!home.emergencyPhone.trim()) list.push('Emergency contact number');
+    students.forEach((student, index) => {
+      if (!student.fullName.trim()) list.push(`Student ${index + 1}: full name`);
+      if (!student.dob) list.push(`Student ${index + 1}: date of birth`);
+    });
+    if (!home.consent) list.push('Accept the terms & policies');
+    return list;
+  }, [home, students]);
+
+  const valid = missing.length === 0 && students.length > 0;
+
 
 
   const submit = useMutation({
@@ -294,7 +310,7 @@ export default function StudentRegistration() {
               <Input value={home.motherPhone} onChange={e => set({ motherPhone: e.target.value })} className="h-11 flex-1" />
             </div>
           </Field>
-          <Field label="Parent / guardian email" hint="Students can reuse this instead of their own email.">
+          <Field label="Parent / guardian email" required hint="Students can reuse this instead of their own email.">
             <Input type="email" value={home.guardianEmail} onChange={e => set({ guardianEmail: e.target.value })} className="h-11" />
           </Field>
           <Field label="Emergency contact name">
@@ -470,11 +486,12 @@ export default function StudentRegistration() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <p className="hidden text-xs text-muted-foreground sm:block">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
             {valid
               ? `Ready to submit — ${students.length} student${students.length > 1 ? 's' : ''}.`
-              : 'Complete the fields marked * to submit.'}
+              : `Still needed: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` +${missing.length - 4} more` : ''}`}
           </p>
+
           <Button
             size="lg"
             disabled={!valid || submit.isPending}
