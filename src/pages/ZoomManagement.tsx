@@ -391,219 +391,36 @@ export default function ZoomManagement() {
         {mainTab === 'vault' && <ZoomVaultPage />}
 
         {mainTab === 'accounts' && (<>
-        {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
-        <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
-
-
-        {/* Room Cards Grid */}
-        <div>
-
-          <div className="flex items-center gap-2 mb-3">
-            <Radio className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Room Status</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {licenses?.map((license, idx) => {
-              const session = activeSessionsByLicense.get(license.id);
-              // A room is live if a session claims it, even when the legacy
-              // status flag was never flipped (dedicated-account flow).
-              const isBusy = license.status === 'busy' || Boolean(session);
-              const statusColor = isBusy ? 'border-destructive/40 bg-destructive/5' : 'border-emerald-500/30 bg-emerald-500/5';
-              return (
-                <Card key={license.id} className={cn("relative overflow-hidden transition-all hover:shadow-md", statusColor)}>
-                  {isBusy && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive to-destructive/60 animate-pulse" />
-                  )}
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm">Room {idx + 1}</span>
-                      <Badge className={cn(
-                        "text-[10px] px-2",
-                        isBusy
-                          ? 'bg-destructive/10 text-destructive border-destructive/20'
-                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      )} variant="outline">
-                        {isBusy ? '● Live' : '● Ready'}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate mb-2">
-                      {license.zoom_email?.split('@')[0]}@...
-                    </p>
-                    {session ? (
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-foreground truncate">
-                          {Array.from(activeParticipantNamesBySession.get(session.id) || []).join(', ') || 'Waiting for participant'}
-                        </p>
-                        <div className="flex items-center gap-1 text-destructive">
-                          <Timer className="h-3 w-3" />
-                          <LiveTimer startTime={session.actual_start} />
-                        </div>
-                        <div className="flex gap-1 mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-[10px] gap-1 flex-1"
-                            onClick={() => window.open(license.meeting_link, '_blank')}
-                          >
-                            <UserPlus className="h-3 w-3" /> Join
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-6 text-[10px] gap-1 flex-1"
-                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: license.id })}
-                            disabled={endSessionMutation.isPending}
-                          >
-                            <Power className="h-3 w-3" /> End
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {license.last_used_at
-                          ? `Last used ${formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true })}`
-                          : 'Never used'}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {(!licenses || licenses.length === 0) && (
-              <Card className="col-span-full border-dashed">
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No Zoom rooms configured yet.
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-
-        {/* Live Class Queue - Horizontal Scrollable */}
-        {liveSessionsList.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Video className="h-4 w-4 text-destructive" />
-              <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Live Now</h2>
-              <Badge className="bg-destructive/10 text-destructive border-destructive/20 animate-pulse" variant="outline">
-                {liveSessionsList.length} active
-              </Badge>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-              {liveSessionsList.map((session: any) => (
-                <Card key={session.id} className="min-w-[260px] snap-start border-destructive/20 bg-gradient-to-br from-destructive/5 to-transparent flex-shrink-0">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-destructive">{getSessionPrimaryLabel(session).charAt(0)}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold truncate max-w-[140px]">{getSessionPrimaryLabel(session)}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
-                    </div>
-                    <Separator className="my-2" />
-                    {(() => {
-                      const pcount = participantCountBySession.get(session.id) || 0;
-                      const startedMin = session.actual_start
-                        ? Math.floor((Date.now() - new Date(session.actual_start).getTime()) / 60000)
-                        : 0;
-                      const groupAtRisk = pcount >= 3;
-                      return groupAtRisk ? (
-                        <div className={cn(
-                          "flex items-center gap-1.5 rounded-md px-2 py-1 mb-2 border text-[10px]",
-                          startedMin >= 30
-                            ? "bg-destructive/10 border-destructive/30 text-destructive"
-                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
-                        )}>
-                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                          <span className="font-semibold">
-                            {pcount} participants · Basic tier cap 40 min
-                            {startedMin >= 30 && ` · ${40 - startedMin}m left`}
-                          </span>
-                        </div>
-                      ) : null;
-                    })()}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Duration</span>
-                      {session.actual_start && <LiveTimer startTime={session.actual_start} />}
-                    </div>
-                    <div className="flex items-center justify-between text-xs mt-1">
-                      <span className="text-muted-foreground">Started</span>
-                      <span className="text-muted-foreground">
-                        {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
-                      </span>
-                    </div>
-                    {(() => {
-                      const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
-                      const license = licenses?.find((item: any) => item.id === session.license_id);
-                      const roomEmail = account?.zoom_account_email || license?.zoom_email;
-                      return roomEmail ? (
-                        <div className="flex items-center justify-between gap-2 text-xs mt-1">
-                          <span className="text-muted-foreground">Zoom room</span>
-                          <span className="truncate text-muted-foreground" title={roomEmail}>{roomEmail}</span>
-                        </div>
-                      ) : null;
-                    })()}
-                    <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
-                      {(session.license_id || session.zoom_account_id) && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-1 text-[10px] h-7"
-                            onClick={() => {
-                              const lic = licenses?.find(l => l.id === session.license_id);
-                              const account = zoomAccounts?.find((item: any) => item.id === session.zoom_account_id);
-                              const meetingLink = account?.meeting_link || lic?.meeting_link;
-                              if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
-                            }}
-                          >
-                            <UserPlus className="h-3 w-3" /> Join
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="flex-1 gap-1 text-[10px] h-7"
-                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: session.license_id })}
-                            disabled={endSessionMutation.isPending}
-                          >
-                            <Power className="h-3 w-3" /> End
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section Switcher */}
-        <div className="flex gap-2 border-b border-border pb-0">
+        {/* Accounts sub-navigation — quiet segmented pills, no nested cards */}
+        <div className="flex flex-wrap items-center gap-1">
           {sectionButtons.map(btn => (
             <button
               key={btn.id}
               onClick={() => setActiveSection(btn.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
                 activeSection === btn.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <btn.icon className="h-4 w-4" />
               {btn.label}
-              <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-full">{btn.count}</span>
+              <span className={cn(
+                "tabular-nums text-[11px]",
+                activeSection === btn.id ? "text-background/70" : "text-muted-foreground/70"
+              )}>{btn.count}</span>
             </button>
           ))}
         </div>
 
-        {/* Teacher Zoom Accounts (dedicated) — includes per-seat webhook health */}
+        {/* Zoom seats workspace (master/detail) */}
         {activeSection === 'accounts' && <TeacherZoomAccountsPanel />}
+
+        {/* Account-scoped credentials: webhook + Meeting SDK + class links */}
+        {activeSection === 'credentials' && (
+          <ZoomAccountCredentialsPanel zoomAccounts={(zoomAccounts || []) as any} />
+        )}
+
 
 
         {/* Sessions Section */}
