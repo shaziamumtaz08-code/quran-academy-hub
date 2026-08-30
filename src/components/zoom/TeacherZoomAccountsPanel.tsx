@@ -85,12 +85,20 @@ const STATUS_META: Record<SeatStatus, { label: string; hint: string; dot: string
   },
 };
 
+const STATUS_TONE: Record<SeatStatus, string> = {
+  healthy: 'ok',
+  no_events: 'quiet',
+  missing_host_id: 'warn',
+  no_credentials: 'live',
+  credentials_invalid: 'live',
+};
+
 function StatusLabel({ status, className }: { status?: SeatStatus; className?: string }) {
-  if (!status) return <span className="text-xs text-muted-foreground">—</span>;
+  if (!status) return <span className="zw-meta">—</span>;
   const meta = STATUS_META[status];
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text, className)}>
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', meta.dot)} />
+    <span className={cn('zw-chip', className)} data-tone={STATUS_TONE[status]}>
+      <span className="zw-dot" />
       {meta.label}
     </span>
   );
