@@ -268,7 +268,7 @@ export default function ZoomManagement() {
 
   return (
     <DashboardLayout>
-      <div className="zoom-ws zw-canvas -m-4 space-y-7 p-4 sm:-m-6 sm:p-6">
+      <div className="zoom-ws zw-canvas mx-auto w-full max-w-[1400px] space-y-7 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
         {/* Workspace hero */}
         <header className="zw-hero px-6 py-7 sm:px-8 sm:py-8">
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
