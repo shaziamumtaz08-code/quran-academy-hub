@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useAcademyTimezone, zonedParts } from '@/hooks/useAcademyTimezone';
 
 export interface HolidayRow {
   holiday_date: string;
@@ -9,13 +10,18 @@ export interface HolidayRow {
 }
 
 /**
- * Academy holiday lookup for a given date (defaults to today, local frame).
- * A holiday applies when it is academy-wide (division_id is null) or belongs
- * to the currently active division.
+ * Academy holiday lookup for a given date.
+ *
+ * Holiday dates are stored in the TEACHER/academy local frame — the same frame
+ * as `attendance.class_date` and `schedules.day_of_week`. So the default date
+ * is resolved in the academy timezone, never the viewer's browser date
+ * (otherwise a US student would see the holiday shift by a day).
  */
 export function useHolidayOn(date?: string) {
   const { activeDivision } = useDivision();
-  const day = date || new Date().toLocaleDateString('en-CA');
+  const academyTz = useAcademyTimezone();
+  const day = date || zonedParts(new Date(), academyTz).dateKey;
+
 
   return useQuery({
     queryKey: ['holiday-on', day, activeDivision?.id ?? 'all'],
