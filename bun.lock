@@ -42,6 +42,7 @@
         "@types/canvas-confetti": "^1.9.0",
         "@types/dagre": "^0.7.54",
         "@types/dompurify": "^3.2.0",
+        "@zoom/appssdk": "^0.16.41",
         "@zoom/meetingsdk": "^6.2.0",
         "ai": "5.0.92",
         "arabic-persian-reshaper": "^1.0.1",
@@ -1065,6 +1066,8 @@
     "@vitest/spy": ["@vitest/spy@4.1.10", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@vitest/spy/-/spy-4.1.10.tgz", {}, "sha512-PLf/Ugvoq5wO/b4rwYCR1h2PSIdXz7wnkQFMiUpLdtM7l6pqVFcQIBEHyT1+l+cj7mNwAfZHzqXqDyjvOuwbDw=="],
 
     "@vitest/utils": ["@vitest/utils@4.1.10", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@vitest/utils/-/utils-4.1.10.tgz", { "dependencies": { "@vitest/pretty-format": "4.1.10", "convert-source-map": "^2.0.0", "tinyrainbow": "^3.1.0" } }, "sha512-fy9am/HWxbaGt/Sawrp90vt6Y6jQwf1RX77cz3uwoJwJVMli/e1IEwRPnMNJ7vKfPTwo0diXifkpPvwH9v7nGA=="],
+
+    "@zoom/appssdk": ["@zoom/appssdk@0.16.41", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@zoom/appssdk/-/appssdk-0.16.41.tgz", {}, "sha512-FVxuczrcjznGBlqtK76xSDGgyYZBDp9Re6/ONcWT8q/g6o2u83EY3H27UJo+0avcDHdXGY5/hz56pB41yX9jkQ=="],
 
     "@zoom/meetingsdk": ["@zoom/meetingsdk@6.2.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@zoom/meetingsdk/-/meetingsdk-6.2.0.tgz", { "peerDependencies": { "lodash": "^4.18.1", "react": "18.2.0", "react-dom": "18.2.0", "react-redux": "8.1.2", "redux": "4.2.1", "redux-thunk": "2.4.2" } }, "sha512-QVoZKZMtt0xMuwQRyEQrh4wVWjsMSrqko9wbFS21E6eoTSGjq/Q2iSrUtkYjwPes1skXXmItuxW2ZpLS6zschg=="],
 
