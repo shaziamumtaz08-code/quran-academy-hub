@@ -44,7 +44,7 @@ export default function TeacherTeachingLanding() {
     queryFn: async () => {
       const { data: staff, error } = await (supabase as any)
         .from('course_class_staff')
-        .select('class_id, course_classes(id, name, course_id, courses(id, title))')
+        .select('class_id, course_classes(id, name, course_id, courses(id, name))')
         .eq('user_id', user!.id);
       if (error) throw error;
       return staff || [];
@@ -109,7 +109,7 @@ export default function TeacherTeachingLanding() {
                       <Link key={s.class_id} to={`/my-teaching/${cls.course_id}`} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/40 transition-colors">
                         <div>
                           <div className="font-medium text-sm">{cls.name}</div>
-                          <div className="text-xs text-muted-foreground">{cls.courses?.title}</div>
+                          <div className="text-xs text-muted-foreground">{cls.courses?.name}</div>
                         </div>
                         <Badge variant="outline" className="text-[10px]">Group</Badge>
                       </Link>

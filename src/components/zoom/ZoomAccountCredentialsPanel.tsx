@@ -91,7 +91,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('course_classes')
-        .select('id, name, meeting_link, zoom_account_id, course:courses(title)')
+        .select('id, name, meeting_link, zoom_account_id, course:courses(name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as any[];
@@ -503,7 +503,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                   <SelectContent>
                     {(classes || []).map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}
+                        {(c.course?.name ? `${c.course.name} — ` : '') + (c.name || 'Class')}
                         {c.zoom_account_id === accountId ? ' ✓' : c.zoom_account_id ? ' (linked elsewhere)' : ''}
                       </SelectItem>
                     ))}
@@ -524,7 +524,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
                 {linkedClasses.map((c: any) => (
                   <div key={c.id} className="zw-row">
                     <span className="truncate text-sm font-medium">
-                      {(c.course?.title ? `${c.course.title} — ` : '') + (c.name || 'Class')}
+                      {(c.course?.name ? `${c.course.name} — ` : '') + (c.name || 'Class')}
                     </span>
                     <button type="button" className="zw-btn-ghost shrink-0" onClick={() => unlinkClass(c.id)}>
                       Unlink
