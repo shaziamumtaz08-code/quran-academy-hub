@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { data: accounts, error: accErr } = await admin
       .from("zoom_accounts")
       .select(
-        "id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, zoom_account_id_cred, zoom_client_id, zoom_client_secret",
+        "id, teacher_id, zoom_account_email, zoom_user_id, tier, meeting_link, is_active, last_validated_at, zoom_account_id_cred, zoom_client_id, zoom_client_secret, credential_status, credential_error",
       )
       .eq("is_active", true);
     if (accErr) return json({ error: accErr.message }, 500);
