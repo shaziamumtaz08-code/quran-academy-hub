@@ -15,3 +15,24 @@ createRoot(document.getElementById("root")!).render(<App />);
 
 registerPWA();
 
+// Initialize the Zoom Apps SDK so the app can run inside Zoom's embedded
+// browser (Zoom client sidebar / in-meeting app). Outside Zoom this resolves
+// harmlessly; any failure is swallowed so the normal web app is unaffected.
+void (async () => {
+  try {
+    const { default: zoomSdk } = await import("@zoom/appssdk");
+    await zoomSdk.config({
+      version: "0.16",
+      popoutSize: { width: 480, height: 360 },
+      capabilities: [
+        "shareApp",
+        "getMeetingContext",
+        "getUserContext",
+        "getRunningContext",
+      ],
+    });
+  } catch {
+    // Not running inside the Zoom client — safe to ignore.
+  }
+})();
+
