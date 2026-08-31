@@ -207,20 +207,8 @@ export function NextClassCountdown() {
       scheduleLabel={`${nextClass.subjectName} · ${shortDay} ${timeDisplay}`}
       countdownLabel={countdownLabel}
       platform="Online class"
-      action={activeSession ? (
-        <Button
-          className="gap-2 w-full md:w-auto"
-          onClick={() => {
-            const link = (activeSession.license as any)?.meeting_link;
-            if (link) window.open(link, '_blank');
-          }}
-        >
-          <Video className="h-4 w-4" />
-          Rejoin
-        </Button>
-      ) : (
-        <StartClassButton className="w-full md:w-auto" />
-      )}
+      action={<StartClassButton className="w-full md:w-auto" />}
     />
   );
 }
+
