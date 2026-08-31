@@ -83,13 +83,15 @@ export function ZoomLiveOperations() {
         joinUrl: string;
       }
     | null
-  >(null);
+   >(null);
+  const [sdkFailed, setSdkFailed] = React.useState<string | null>(null);
 
   const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   const handleJoin = (session: any, joinUrl: string) => {
     const parsed = session.zoom_account_id ? parseZoomLink(joinUrl) : null;
     if (session.zoom_account_id && parsed) {
+      setSdkFailed(null);
       setSdkJoin({
         sessionId: session.id,
         teacherName: session.teacherName,
@@ -538,12 +540,20 @@ export function ZoomLiveOperations() {
         </div>
 
         {/* In-app Zoom player (admin joins as attendee; teacher stays host) */}
-        <Dialog open={!!sdkJoin} onOpenChange={(o) => !o && setSdkJoin(null)}>
+        <Dialog
+          open={!!sdkJoin}
+          onOpenChange={(o) => {
+            if (!o) {
+              setSdkJoin(null);
+              setSdkFailed(null);
+            }
+          }}
+        >
           <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>{sdkJoin ? `${sdkJoin.teacherName}'s class` : 'Class'}</DialogTitle>
             </DialogHeader>
-            {sdkJoin && (
+            {sdkJoin && !sdkFailed && (
               <ZoomSdkMeeting
                 zoomAccountId={sdkJoin.zoomAccountId}
                 meetingNumber={sdkJoin.meetingNumber}
@@ -552,12 +562,23 @@ export function ZoomLiveOperations() {
                 userEmail={user?.email || undefined}
                 role={0}
                 height={580}
-                onFailure={() => {
-                  const url = sdkJoin.joinUrl;
-                  setSdkJoin(null);
-                  openExternally(url);
-                }}
+                onFailure={(msg) => setSdkFailed(msg || 'The in-app player could not start')}
               />
+            )}
+            {sdkJoin && sdkFailed && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="max-w-md text-sm text-muted-foreground">
+                  The built-in Zoom player couldn't start ({sdkFailed}). You can join this class in the Zoom app instead.
+                </p>
+                <a
+                  href={sdkJoin.joinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Open class in Zoom
+                </a>
+              </div>
             )}
           </DialogContent>
         </Dialog>

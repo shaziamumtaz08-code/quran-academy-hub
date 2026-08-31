@@ -159,8 +159,10 @@ Deno.serve(async (req) => {
         return json({ error: 'Please provide an email address or WhatsApp number.' }, 400);
       }
 
+      // Only block on proven identity matches (email/phone). A merely similar
+      // name is common (e.g. "Muhammad Ali") and must not reject a genuine student.
       const match = await findDuplicate(values);
-      if (match) return duplicateResponse(match);
+      if (match?.strong) return duplicateResponse(match);
 
       const isChild = Boolean(values.parent_name) && Boolean(values.parent_email || values.parent_whatsapp);
       const { data: created, error: insErr } = await admin
@@ -213,8 +215,9 @@ Deno.serve(async (req) => {
     if (action === 'submit') {
       const values = stripSecrets({ ...(body?.values ?? {}) } as Record<string, unknown>);
       // Re-submitting the same link is an EDIT of that record, never a new one.
+      // Name-only matches never block an invited student; only same email/phone does.
       const match = await findDuplicate(values, leadRow.id);
-      if (match) return duplicateResponse(match);
+      if (match?.strong) return duplicateResponse(match);
 
       const payload = withRevision(leadRow.enrollment_form_data, values);
       const { error: upErr } = await admin

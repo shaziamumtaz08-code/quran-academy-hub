@@ -24,6 +24,8 @@ interface SdkState {
   passcode: string;
   joinUrl: string;
   title: string;
+  /** Set when the in-app player fails to start — dialog stays open with a fallback link. */
+  failed?: string;
 }
 
 /**
@@ -97,7 +99,7 @@ export function useInAppZoomJoin(role: 0 | 1) {
         <DialogHeader>
           <DialogTitle>{sdk?.title || 'Class'}</DialogTitle>
         </DialogHeader>
-        {sdk && (
+        {sdk && !sdk.failed && (
           <ZoomSdkMeeting
             zoomAccountId={sdk.zoomAccountId}
             meetingNumber={sdk.meetingNumber}
@@ -106,12 +108,24 @@ export function useInAppZoomJoin(role: 0 | 1) {
             userEmail={profile?.email || user?.email || undefined}
             role={role}
             height={580}
-            onFailure={() => {
-              const url = sdk.joinUrl;
-              setSdk(null);
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
+            onFailure={(msg) => setSdk((s) => (s ? { ...s, failed: msg } : s))}
           />
+        )}
+        {sdk?.failed && (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground max-w-md">
+              The built-in Zoom player couldn't start on this device
+              {sdk.failed ? ` (${sdk.failed})` : ''}. You can join the class in the Zoom app instead.
+            </p>
+            <a
+              href={sdk.joinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Open class in Zoom
+            </a>
+          </div>
         )}
       </DialogContent>
     </Dialog>
