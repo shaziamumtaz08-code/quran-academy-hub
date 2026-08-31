@@ -95,7 +95,14 @@ export function useInAppZoomJoin(role: 0 | 1) {
 
   const dialog = (
     <Dialog open={!!sdk} onOpenChange={(o) => !o && setSdk(null)}>
-      <DialogContent className="max-w-4xl">
+      {/* Keep the meeting surface alive: outside clicks / Escape must not
+          tear down the in-app class — only the explicit close button may. */}
+      <DialogContent
+        className="max-w-4xl"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{sdk?.title || 'Class'}</DialogTitle>
         </DialogHeader>

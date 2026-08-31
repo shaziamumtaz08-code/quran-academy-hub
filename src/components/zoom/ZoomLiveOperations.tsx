@@ -549,7 +549,12 @@ export function ZoomLiveOperations() {
             }
           }}
         >
-          <DialogContent className="max-w-4xl">
+          <DialogContent
+            className="max-w-4xl"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>{sdkJoin ? `${sdkJoin.teacherName}'s class` : 'Class'}</DialogTitle>
             </DialogHeader>
