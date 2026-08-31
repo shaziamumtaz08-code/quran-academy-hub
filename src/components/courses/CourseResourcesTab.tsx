@@ -137,6 +137,9 @@ function MaterialsSection({ courseId }: { courseId: string }) {
   const [assetType, setAssetType] = useState('pdf');
   const [visibility, setVisibility] = useState('all');
   const [uploading, setUploading] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryTargets, setLibraryTargets] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets = [], isLoading } = useQuery({
@@ -151,6 +154,31 @@ function MaterialsSection({ courseId }: { courseId: string }) {
       return data || [];
     },
   });
+
+  const assetIds = (assets as any[]).map((a) => a.id);
+  const { data: inLibrary = [] } = useQuery({
+    queryKey: ['course-materials-in-library', courseId, assetIds.length],
+    queryFn: async () => {
+      if (assetIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('library_items')
+        .select('source_asset_id')
+        .in('source_asset_id', assetIds);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.source_asset_id);
+    },
+    enabled: assetIds.length > 0,
+  });
+  const inLibrarySet = new Set(inLibrary as string[]);
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const openLibraryDialog = (ids: string[]) => {
+    setLibraryTargets(ids);
+    setLibraryOpen(true);
+  };
+
 
   const uploadAsset = useMutation({
     mutationFn: async () => {
@@ -204,11 +232,28 @@ function MaterialsSection({ courseId }: { courseId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="font-semibold text-sm">📁 Course Materials</h3>
-        <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
-          <Upload className="h-4 w-4" /> Upload
-        </Button>
+        <div className="flex items-center gap-2">
+          {assets.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setSelected(selected.length === assetIds.length ? [] : assetIds)}
+            >
+              {selected.length === assetIds.length && assetIds.length > 0 ? 'Clear all' : 'Select all'}
+            </Button>
+          )}
+          {selected.length > 0 && (
+            <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => openLibraryDialog(selected)}>
+              <BookOpen className="h-4 w-4" /> Send {selected.length} to Library
+            </Button>
+          )}
+          <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+            <Upload className="h-4 w-4" /> Upload
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -222,8 +267,13 @@ function MaterialsSection({ courseId }: { courseId: string }) {
           {assets.map((a: any) => (
             <Card key={a.id} className="shadow-sm">
               <CardContent className="p-3 space-y-1.5">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
+                    <Checkbox
+                      checked={selected.includes(a.id)}
+                      onCheckedChange={() => toggleSelected(a.id)}
+                      aria-label={`Select ${a.title}`}
+                    />
                     {typeIcon(a.asset_type)}
                     <p className="text-sm font-medium truncate">{a.title}</p>
                   </div>
@@ -231,25 +281,52 @@ function MaterialsSection({ courseId }: { courseId: string }) {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className="text-[10px] uppercase">{a.asset_type}</Badge>
                   <Badge variant="outline" className={cn("text-[10px]",
                     a.visibility === 'all' ? 'border-emerald-200 text-emerald-600' : 'border-amber-200 text-amber-600'
                   )}>
                     {a.visibility === 'all' ? <><Eye className="h-2.5 w-2.5 mr-0.5" /> All</> : <><EyeOff className="h-2.5 w-2.5 mr-0.5" /> Teachers</>}
                   </Badge>
+                  {inLibrarySet.has(a.id) && (
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                      <BookOpen className="h-2.5 w-2.5 mr-0.5" /> In Library
+                    </Badge>
+                  )}
                 </div>
-                {a.content_url && (
-                  <a href={a.content_url} target="_blank" rel="noopener noreferrer"
-                    className="text-[11px] text-primary hover:underline flex items-center gap-1">
-                    <ExternalLink className="h-3 w-3" /> Open
-                  </a>
-                )}
+                <div className="flex items-center gap-3">
+                  {a.content_url && (
+                    <a href={a.content_url} target="_blank" rel="noopener noreferrer"
+                      className="text-[11px] text-primary hover:underline flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" /> Open
+                    </a>
+                  )}
+                  {!inLibrarySet.has(a.id) && (
+                    <button
+                      onClick={() => openLibraryDialog([a.id])}
+                      className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1"
+                    >
+                      <BookOpen className="h-3 w-3" /> Send to Library
+                    </button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <SendToLibraryDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        assetIds={libraryTargets}
+        onDone={() => {
+          setSelected([]);
+          qc.invalidateQueries({ queryKey: ['course-materials-in-library', courseId] });
+          qc.invalidateQueries({ queryKey: ['library-items'] });
+        }}
+      />
+
 
       {/* Upload Dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
