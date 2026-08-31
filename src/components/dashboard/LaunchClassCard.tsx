@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
 
 interface LaunchClassCardProps {
   className?: string;
@@ -44,6 +45,7 @@ export function LaunchClassCard({ className }: LaunchClassCardProps) {
   const queryClient = useQueryClient();
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [personalLink, setPersonalLink] = useState('');
+  const { join: joinClass, dialog: zoomDialog } = useInAppZoomJoin(1);
 
   // Check for active session
   const { data: activeSession, isLoading: checkingSession } = useQuery({
@@ -236,11 +238,15 @@ export function LaunchClassCard({ className }: LaunchClassCardProps) {
               variant="outline"
               className="flex-1 gap-2"
               onClick={() => {
-                if (activeSession.license?.meeting_link) {
-                  window.open(activeSession.license.meeting_link, '_blank');
-                }
+                joinClass(
+                  {
+                    teacherId: user?.id as string,
+                    liveSessionId: activeSession.id,
+                    scheduledStart: new Date().toISOString(),
+                  },
+                  'Your class',
+                );
               }}
-              disabled={!activeSession.license?.meeting_link}
             >
               <Video className="h-4 w-4" />
               Rejoin
@@ -260,6 +266,7 @@ export function LaunchClassCard({ className }: LaunchClassCardProps) {
               End Class
             </Button>
           </div>
+          {zoomDialog}
         </CardContent>
       </Card>
     );
