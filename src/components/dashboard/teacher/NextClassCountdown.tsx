@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Video } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
-import { Button } from '@/components/ui/button';
 import { NextClassBanner } from '@/components/dashboard/shared/NextClassBanner';
 import { useHolidayOn } from '@/hooks/useHolidayToday';
 
@@ -150,23 +148,6 @@ export function NextClassCountdown() {
 
   const t = useCountdown(nextClass?.dateTime || null);
 
-  // Must be before any early returns to maintain hooks order
-  const { data: activeSession } = useQuery({
-    queryKey: ['active-session-compact', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from('live_sessions')
-        .select('id, status, license:zoom_licenses(meeting_link)')
-        .eq('teacher_id', user.id)
-        .eq('status', 'live')
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user?.id,
-    refetchInterval: 30000,
-  });
-
   if (isLoading) return <Skeleton className="h-14 rounded-xl" />;
 
   const isToday =
@@ -207,20 +188,8 @@ export function NextClassCountdown() {
       scheduleLabel={`${nextClass.subjectName} · ${shortDay} ${timeDisplay}`}
       countdownLabel={countdownLabel}
       platform="Online class"
-      action={activeSession ? (
-        <Button
-          className="gap-2 w-full md:w-auto"
-          onClick={() => {
-            const link = (activeSession.license as any)?.meeting_link;
-            if (link) window.open(link, '_blank');
-          }}
-        >
-          <Video className="h-4 w-4" />
-          Rejoin
-        </Button>
-      ) : (
-        <StartClassButton className="w-full md:w-auto" />
-      )}
+      action={<StartClassButton className="w-full md:w-auto" />}
     />
   );
 }
+
