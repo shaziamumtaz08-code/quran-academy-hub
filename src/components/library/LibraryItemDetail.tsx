@@ -41,7 +41,13 @@ export function LibraryItemDetail({
   useEffect(() => {
     if (!item) return;
     setShareToken(item.share_token || null);
-    (supabase as any).rpc("library_increment_view", { _item_id: item.id }).catch(() => {});
+    void (async () => {
+      try {
+        await (supabase as any).rpc("library_increment_view", { _item_id: item.id });
+      } catch {
+        /* view counting is best-effort */
+      }
+    })();
 
     if (item.cover_image) {
       supabase.storage.from("resources").createSignedUrl(item.cover_image, 3600)
