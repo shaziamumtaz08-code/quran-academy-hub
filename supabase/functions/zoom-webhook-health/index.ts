@@ -140,6 +140,14 @@ Deno.serve(async (req) => {
         lastEventAt = lastEvent?.timestamp || null;
       }
 
+      // If the Credentials panel's explicit validation marked this seat
+      // failed, respect it even though we skip live re-validation here —
+      // otherwise the list says "Healthy" while the detail says "failed".
+      const storedFailed = hasCreds && acc.credential_status === "failed";
+      if (storedFailed && !credentialError) {
+        credentialError = acc.credential_error || "Credential validation failed (see Credentials tab).";
+      }
+
       let status: SeatStatus;
       if (!hasCreds) status = "no_credentials";
       else if (credentialError) status = "credentials_invalid";
