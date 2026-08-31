@@ -5666,6 +5666,7 @@ export type Database = {
           publisher: string | null
           share_token: string | null
           share_token_expires_at: string | null
+          source_asset_id: string | null
           status: string
           tags: string[]
           thumbnail: string | null
@@ -5702,6 +5703,7 @@ export type Database = {
           publisher?: string | null
           share_token?: string | null
           share_token_expires_at?: string | null
+          source_asset_id?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
@@ -5738,6 +5740,7 @@ export type Database = {
           publisher?: string | null
           share_token?: string | null
           share_token_expires_at?: string | null
+          source_asset_id?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
@@ -5756,6 +5759,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "library_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_items_source_asset_id_fkey"
+            columns: ["source_asset_id"]
+            isOneToOne: false
+            referencedRelation: "course_library_assets"
             referencedColumns: ["id"]
           },
         ]
