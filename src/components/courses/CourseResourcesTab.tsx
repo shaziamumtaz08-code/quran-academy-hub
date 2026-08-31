@@ -25,6 +25,8 @@ import {
   Sparkles, Bot, ExternalLink, Copy, ClipboardCopy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SendToLibraryDialog } from './SendToLibraryDialog';
+
 
 interface CourseResourcesTabProps {
   courseId: string;
