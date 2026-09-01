@@ -23,6 +23,40 @@ async function signJwt(payload: Record<string, unknown>, secret: string) {
   return `${data}.${b64url(sig)}`;
 }
 
+/**
+ * Mint a host ZAK for the given Zoom account using its Server-to-Server OAuth
+ * app. Returns null when credentials are missing or Zoom refuses — callers
+ * then fall back to the external Zoom link rather than a failing SDK join.
+ */
+async function mintZak(opts: {
+  accountId: string;
+  clientId: string;
+  clientSecret: string;
+  zoomUserId: string;
+}): Promise<string | null> {
+  const { accountId, clientId, clientSecret, zoomUserId } = opts;
+  if (!accountId || !clientId || !clientSecret || !zoomUserId) return null;
+  try {
+    const basic = btoa(`${clientId}:${clientSecret}`);
+    const tokenResp = await fetch(
+      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(accountId)}`,
+      { method: 'POST', headers: { Authorization: `Basic ${basic}` } },
+    );
+    const tokenData = await tokenResp.json().catch(() => ({}));
+    if (!tokenResp.ok || !tokenData?.access_token) return null;
+
+    const zakResp = await fetch(
+      `https://api.zoom.us/v2/users/${encodeURIComponent(zoomUserId)}/token?type=zak`,
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } },
+    );
+    const zakData = await zakResp.json().catch(() => ({}));
+    if (!zakResp.ok || !zakData?.token) return null;
+    return String(zakData.token);
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
