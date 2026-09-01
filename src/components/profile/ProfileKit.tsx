@@ -97,9 +97,9 @@ export function ProfileHero({
       </div>
 
       <div className="px-5 pb-5">
-        <div className="-mt-11 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end min-w-0">
-            <div className="relative h-24 w-24 shrink-0">
+            <div className="relative -mt-11 h-24 w-24 shrink-0">
               <div className="h-24 w-24 rounded-full ring-4 ring-card bg-secondary flex items-center justify-center overflow-hidden shadow-lg">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={`${name} profile photo`} className="h-full w-full object-cover" />
@@ -137,7 +137,7 @@ export function ProfileHero({
               )}
             </div>
 
-            <div className="min-w-0 sm:pb-1">
+            <div className="min-w-0 pt-1 sm:pb-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-serif font-bold text-foreground break-words">{name}</h1>
                 {badges}
