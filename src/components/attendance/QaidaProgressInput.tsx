@@ -297,6 +297,9 @@ export function QaidaProgressInput({
           {overMax && <p className="text-xs text-destructive">This baab only has {max} {uLabel.toLowerCase()}s.</p>}
         </>
       )}
+      </>
+      )}
     </div>
   );
 }
+
