@@ -60,11 +60,32 @@ export function ImpersonateButton({
         ? new URL(target).pathname + new URL(target).search
         : target;
 
+      // The stored access token can be stale (expired, or belonging to a session
+      // that was signed out elsewhere) — that makes the edge function reject the
+      // call with "Invalid session". Force a refresh and use the fresh token.
+      let accessToken: string | undefined;
+      const { data: sessionData } = await supabase.auth.getSession();
+      accessToken = sessionData.session?.access_token;
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed?.session?.access_token) accessToken = refreshed.session.access_token;
+
+      if (!accessToken) {
+        if (newTab) newTab.close();
+        toast({
+          title: 'Session expired',
+          description: 'Please sign in again, then retry impersonation.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('impersonate-user', {
         body: {
           targetUserId: userId,
           redirectTo: `${window.location.origin}/impersonate`,
         },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (error || !(data?.tokenHash || data?.actionLink)) {
         if (newTab) newTab.close();
