@@ -88,7 +88,7 @@ export function NazraAttendanceFields({
   resumeAyah = null,
   resumeKey,
   defaultEntryTab,
-
+  initialPage,
 }: NazraAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -138,7 +138,7 @@ export function NazraAttendanceFields({
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
         defaultEntryTab={defaultEntryTab}
-
+        initialPage={initialPage}
       />
       
     </div>

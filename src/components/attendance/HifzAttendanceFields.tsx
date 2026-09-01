@@ -112,7 +112,7 @@ export function HifzAttendanceFields({
   resumeAyah = null,
   resumeKey,
   defaultEntryTab,
-
+  initialPage,
 }: HifzAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -167,7 +167,7 @@ export function HifzAttendanceFields({
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
         defaultEntryTab={defaultEntryTab}
-
+        initialPage={initialPage}
       />
       
       <TooltipProvider>
