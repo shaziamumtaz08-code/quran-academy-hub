@@ -123,25 +123,102 @@ export function NextClassCountdown() {
 
       if (!schedules?.length) return null;
 
+      // Base `schedules` rows go stale after a reschedule — the current time for
+      // each weekly slot lives in schedule_periods. Overlay them so the banner
+      // matches the My Schedule page.
+      const scheduleIds = schedules.map(s => s.id);
+      const { data: periodRows } = await supabase
+        .from('schedule_periods')
+        .select('id, schedule_id, day_of_week, teacher_local_time, duration_minutes, period_type, effective_from, effective_to, created_at')
+        .in('schedule_id', scheduleIds);
+
+      const periodsBySchedule = new Map<string, any[]>();
+      (periodRows || []).forEach((p: any) => {
+        const list = periodsBySchedule.get(p.schedule_id) || [];
+        list.push(p);
+        periodsBySchedule.set(p.schedule_id, list);
+      });
+
       const assignmentMap = new Map(assignments.map(a => [a.id, a]));
+      const tzNow = getNowInTimezone(teacherTz);
+      const nowSecsOfDay = tzNow.hours * 3600 + tzNow.minutes * 60 + tzNow.seconds;
 
-      const upcoming = schedules.map(s => {
-        const assignment = assignmentMap.get(s.assignment_id!);
-        const student = assignment?.student as any;
-        const subject = assignment?.subject as any;
-        const normalizedDay = s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '';
+      const isoInTz = (offsetDays: number) =>
+        new Intl.DateTimeFormat('en-CA', { timeZone: teacherTz }).format(
+          new Date(tzNow.absoluteMs + offsetDays * 86400000),
+        );
 
-        return {
-          studentName: student?.full_name || 'Student',
-          subjectName: subject?.name || 'Quran',
-          dateTime: buildNextOccurrence(s.day_of_week, s.teacher_local_time || '00:00', s.duration_minutes, teacherTz),
-          scheduleTime: s.teacher_local_time || '00:00',
-          dayOfWeek: normalizedDay,
-        };
-      }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+      type Candidate = {
+        studentName: string;
+        subjectName: string;
+        dateTime: Date;
+        scheduleTime: string;
+        dayOfWeek: string;
+      };
 
-      return upcoming[0] || null;
+      const candidates: Candidate[] = [];
+
+      for (let offset = 0; offset <= 7; offset++) {
+        const iso = isoInTz(offset);
+        const weekdayIndex = (tzNow.dayIndex + offset) % 7;
+        const weekday = DAY_NAMES[weekdayIndex].toLowerCase();
+
+        for (const s of schedules) {
+          const slotPeriods = periodsBySchedule.get(s.id) || [];
+          const active = slotPeriods
+            .filter(p => p.effective_from <= iso && (!p.effective_to || p.effective_to >= iso))
+            .sort((a, b) => {
+              if (a.period_type !== b.period_type) return a.period_type === 'temporary' ? -1 : 1;
+              return (
+                String(b.effective_from).localeCompare(String(a.effective_from)) ||
+                String(b.created_at).localeCompare(String(a.created_at))
+              );
+            })[0];
+
+          if (!active) {
+            // A permanent period that ended with nothing replacing it means the
+            // weekly slot was dismantled — skip it entirely.
+            const lastPermanent = slotPeriods
+              .filter(p => p.period_type === 'permanent' && p.effective_from <= iso)
+              .sort((a, b) =>
+                String(b.effective_from).localeCompare(String(a.effective_from)) ||
+                String(b.created_at).localeCompare(String(a.created_at)),
+              )[0];
+            if (lastPermanent?.effective_to && lastPermanent.effective_to < iso) continue;
+          }
+
+          const day = String(active?.day_of_week || s.day_of_week || '').toLowerCase();
+          if (day !== weekday) continue;
+
+          const time = (active?.teacher_local_time || s.teacher_local_time || '00:00').slice(0, 5);
+          const duration = active?.duration_minutes ?? s.duration_minutes ?? 30;
+          const [th, tm] = time.split(':').map(Number);
+          const targetSecsOfDay = th * 3600 + tm * 60;
+          const diffSecs = offset * 86400 + (targetSecsOfDay - nowSecsOfDay);
+          // Skip slots that already finished (a live class still counts as next).
+          if (diffSecs + duration * 60 <= 0) continue;
+
+          const assignment = assignmentMap.get(s.assignment_id!);
+          const student = assignment?.student as any;
+          const subject = assignment?.subject as any;
+
+          candidates.push({
+            studentName: student?.full_name || 'Student',
+            subjectName: subject?.name || 'Quran',
+            dateTime: new Date(tzNow.absoluteMs + diffSecs * 1000),
+            scheduleTime: time,
+            dayOfWeek: DAY_NAMES[weekdayIndex],
+          });
+        }
+
+        if (candidates.length) break;
+      }
+
+      candidates.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
+      return candidates[0] || null;
     },
+
     enabled: !!user?.id,
     refetchInterval: 60000,
   });
