@@ -91,7 +91,6 @@ export function ZoomSdkMeeting({
 
         await client.join({
           signature: data.signature,
-          sdkKey: data.sdkKey,
           meetingNumber,
           password: passcode || '',
           userName,

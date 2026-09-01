@@ -98,7 +98,6 @@ Deno.serve(async (req) => {
     const signature = await signJwt(
       {
         appKey: clientId,
-        sdkKey: clientId,
         mn: meetingNumber,
         role,
         iat,
@@ -108,7 +107,7 @@ Deno.serve(async (req) => {
       clientSecret,
     );
 
-    return json({ signature, sdkKey: clientId });
+    return json({ signature });
   } catch (e) {
     return json({ error: (e as Error).message || 'Unexpected error' }, 500);
   }
