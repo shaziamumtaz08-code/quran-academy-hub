@@ -8,6 +8,7 @@ import { Loader2, Video, Radio, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 import { cn } from '@/lib/utils';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
+import type { SchedulePeriod } from '@/lib/schedulePeriods';
 
 interface ClassRow {
   key: string;
