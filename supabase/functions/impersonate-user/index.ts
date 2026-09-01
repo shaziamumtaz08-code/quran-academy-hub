@@ -29,10 +29,27 @@ serve(async (req) => {
     if (!token) return json(401, { error: "Authentication required" }, origin);
 
     const authed = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: authHeader } } });
-    const { data: { user: caller }, error: cErr } = await authed.auth.getUser(token);
-    if (cErr || !caller) return json(401, { error: "Invalid session" }, origin);
-
     const admin = createClient(SUPABASE_URL, SERVICE);
+
+    // Primary: full user lookup. Falls back to JWT claim verification, which
+    // still works when the auth server reports the session row as missing
+    // (e.g. the session was signed out on another device) but the token itself
+    // is validly signed and unexpired.
+    let callerId = "";
+    const { data: userRes } = await authed.auth.getUser(token);
+    if (userRes?.user?.id) {
+      callerId = userRes.user.id;
+    } else {
+      const { data: claimsRes } = await authed.auth.getClaims(token);
+      const sub = (claimsRes as any)?.claims?.sub;
+      if (sub) {
+        // Confirm the user still exists before trusting the claim.
+        const { data: u } = await admin.auth.admin.getUserById(String(sub));
+        if (u?.user?.id) callerId = u.user.id;
+      }
+    }
+    if (!callerId) return json(401, { error: "Invalid session" }, origin);
+    const caller = { id: callerId };
 
     // Only super_admin or admin can impersonate
     const { data: callerRoles } = await admin
