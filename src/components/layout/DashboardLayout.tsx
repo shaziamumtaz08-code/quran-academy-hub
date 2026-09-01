@@ -29,6 +29,8 @@ import {
   Wallet,
 
   MonitorPlay,
+  ClipboardCheck,
+
   ListChecks,
   Building2,
 } from "lucide-react";
