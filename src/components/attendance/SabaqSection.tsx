@@ -112,6 +112,7 @@ export function SabaqSection({
   resumeAyah = null,
   resumeKey,
   defaultEntryTab = 'type',
+  initialPage,
 }: SabaqSectionProps) {
 
 
@@ -271,6 +272,7 @@ export function SabaqSection({
             compact
             markerType={markerType}
             resumeKey={resumeKey}
+            initialPage={initialPage}
             resumeAyah={
               getSurahByName(ayahToSurah)?.number && parseInt(ayahToNumber) > 0
                 ? { surah: getSurahByName(ayahToSurah)!.number, ayah: parseInt(ayahToNumber) }
