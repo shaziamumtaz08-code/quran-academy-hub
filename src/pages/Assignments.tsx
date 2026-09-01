@@ -1573,8 +1573,8 @@ export default function Assignments() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Payout Amount</Label>
-                      <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
+                      <Label className="text-xs">Payout Amount <span className="text-destructive">*</span></Label>
+                      <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} required aria-required="true" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Payout Type</Label>
@@ -1589,8 +1589,8 @@ export default function Assignments() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Effective From</Label>
-                      <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                      <Label className="text-xs">Effective From <span className="text-destructive">*</span></Label>
+                      <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} required aria-required="true" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Effective To</Label>
@@ -1598,7 +1598,11 @@ export default function Assignments() {
                       <p className="text-[10px] text-muted-foreground">Leave blank for ongoing.</p>
                     </div>
                   </div>
+                  {(!payoutAmount || !effectiveFromDate) && (
+                    <p className="text-[11px] text-destructive">Payout amount and Effective From are required before creating an assignment.</p>
+                  )}
                 </div>
+
               </div>
             )}
 
