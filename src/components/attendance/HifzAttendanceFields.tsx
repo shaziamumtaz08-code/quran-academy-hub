@@ -66,6 +66,8 @@ interface HifzAttendanceFieldsProps {
   resumeKey?: string;
   /** Entry mode the lesson section opens on. */
   defaultEntryTab?: 'type' | 'page';
+  /** Page the mushaf tap view opens on (e.g. the VCR's current page). */
+  initialPage?: number;
 }
 
 
@@ -110,7 +112,7 @@ export function HifzAttendanceFields({
   resumeAyah = null,
   resumeKey,
   defaultEntryTab,
-
+  initialPage,
 }: HifzAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -165,7 +167,7 @@ export function HifzAttendanceFields({
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
         defaultEntryTab={defaultEntryTab}
-
+        initialPage={initialPage}
       />
       
       <TooltipProvider>

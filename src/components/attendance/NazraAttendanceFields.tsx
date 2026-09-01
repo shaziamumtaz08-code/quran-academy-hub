@@ -50,6 +50,8 @@ interface NazraAttendanceFieldsProps {
   resumeKey?: string;
   /** Entry mode the lesson section opens on. */
   defaultEntryTab?: 'type' | 'page';
+  /** Page the mushaf tap view opens on (e.g. the VCR's current page). */
+  initialPage?: number;
 }
 
 
@@ -86,7 +88,7 @@ export function NazraAttendanceFields({
   resumeAyah = null,
   resumeKey,
   defaultEntryTab,
-
+  initialPage,
 }: NazraAttendanceFieldsProps) {
   return (
     <div className="space-y-4">
@@ -136,7 +138,7 @@ export function NazraAttendanceFields({
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
         defaultEntryTab={defaultEntryTab}
-
+        initialPage={initialPage}
       />
       
     </div>

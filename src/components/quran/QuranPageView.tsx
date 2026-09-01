@@ -209,6 +209,13 @@ export function QuranPageView({
           return;
         }
       }
+      // An explicit opening page (e.g. the VCR's current page) beats the
+      // remembered page but not a resume-ayah target.
+      if (!cancelled && initialPage > 1 && initialPage <= TOTAL_PAGES) {
+        setPage(initialPage);
+        setResumedAt(initialPage);
+        return;
+      }
       const saved = Number(localStorage.getItem(storageKey) || '');
       if (!cancelled && saved >= 1 && saved <= TOTAL_PAGES) {
         setPage(saved);

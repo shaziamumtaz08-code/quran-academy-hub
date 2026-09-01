@@ -1987,6 +1987,8 @@ export function UnifiedAttendanceForm({
                   resumeAyah={resumeAyah}
                   resumeKey={student.id}
                   defaultEntryTab={lessonEntryMode === 'tap' ? 'page' : 'type'}
+                  initialPage={initialContentPage}
+
 
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
@@ -2028,7 +2030,7 @@ export function UnifiedAttendanceForm({
                   resumeAyah={resumeAyah}
                   resumeKey={student.id}
                   defaultEntryTab={lessonEntryMode === 'tap' ? 'page' : 'type'}
-
+                  initialPage={initialContentPage}
                 />
               )}
 
