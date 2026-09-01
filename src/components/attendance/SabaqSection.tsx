@@ -70,6 +70,8 @@ interface SabaqSectionProps {
   resumeKey?: string;
   /** Entry mode the section opens on — typing stays the default. */
   defaultEntryTab?: 'type' | 'page';
+  /** Page the mushaf view opens on (e.g. the VCR's current page). */
+  initialPage?: number;
 }
 
 
