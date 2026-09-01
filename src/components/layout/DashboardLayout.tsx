@@ -287,8 +287,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     if (selfId) {
       items.push(
         { label: "Class Room (VCR)", href: `/vcr/${selfId}`, icon: MonitorPlay },
+        { label: "My Schedule", href: "/my-schedule", icon: CalendarDays },
         { label: "My Syllabus", href: `/syllabus/${selfId}`, icon: ListChecks },
       );
+
     }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
