@@ -25,7 +25,7 @@ export default function GroupAcademyFinance() {
       // Courses in division
       const { data: courses } = await supabase
         .from('courses')
-        .select('id, name, currency')
+        .select('id, name')
         .eq('division_id', divisionId!);
       const courseIds = (courses || []).map((c: any) => c.id);
       if (courseIds.length === 0) {
