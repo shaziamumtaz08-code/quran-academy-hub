@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Hash, BookOpenCheck } from 'lucide-react';
+import { SegmentedControl } from './SegmentedControl';
+import { QaidaTapPicker } from '@/components/qaida/QaidaTapPicker';
 import { useQaidaReference, useQaidaWords, unitLabel } from '@/hooks/useQaidaProgress';
+
 
 interface QaidaProgressInputProps {
   lessonNumber: string;
@@ -30,6 +33,10 @@ interface QaidaProgressInputProps {
   pageNumberTo?: string;
   onPageNumberToChange?: (value: string) => void;
   isPlanning?: boolean;
+  /** Entry mode the card opens on — dropdown stays the default everywhere. */
+  defaultEntryTab?: 'dropdown' | 'page';
+  /** Page the tap picker opens on (e.g. the page shown in the classroom). */
+  initialPage?: number;
 }
 
 export function QaidaProgressInput({
@@ -54,7 +61,11 @@ export function QaidaProgressInput({
   pageNumberTo,
   onPageNumberToChange,
   isPlanning = false,
+  defaultEntryTab = 'dropdown',
+  initialPage,
 }: QaidaProgressInputProps) {
+  const [tab, setTab] = useState<'dropdown' | 'page'>(defaultEntryTab);
+
   const { data: ref } = useQaidaReference();
   const baabs = ref?.baabs || [];
   const selectedBaab = baabs.find(b => b.id === qaidaBaabId) || null;

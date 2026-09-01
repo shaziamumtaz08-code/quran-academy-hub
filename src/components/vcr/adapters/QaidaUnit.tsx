@@ -20,6 +20,22 @@ interface Props extends VcrRenderContext {
   onWords?: (words: QaidaPageWord[]) => void;
   /** Fires when the teacher taps a word (broadcast as highlight.wordId). */
   onSelectWord?: (wordId: string | null) => void;
+  /**
+   * 'flashcard' (default) — tapping flips a word into its letters.
+   * 'select' — tapping picks lesson start / end points (attendance marking).
+   */
+  mode?: 'flashcard' | 'select';
+  /** Render these words instead of fetching (lets callers scope by baab). */
+  words?: QaidaPageWord[];
+  /** Restrict the fetch to a single baab (transition pages hold two). */
+  baabId?: string | null;
+  /** Selection endpoints in 'select' mode. */
+  fromId?: string | null;
+  toId?: string | null;
+  /** Ids that fall inside the selected range (inclusive), for highlighting. */
+  inRangeIds?: string[];
+  /** Fires in 'select' mode when a word is tapped. */
+  onTapWord?: (word: QaidaPageWord) => void;
 }
 
 /** Split a Qaida word into its individual letters for the flashcard back. */
@@ -29,34 +45,54 @@ function letters(text: string) {
 
 /**
  * One Noorani Qaida page: a right-to-left grid of tappable words.
- * Tapping a word flips it into a parchment/gold flashcard showing the word's
- * letters in isolation — the classic "break the word apart" drill.
+ * In flashcard mode tapping a word flips it into a parchment/gold card showing
+ * the word's letters in isolation. In select mode the same tappable words act
+ * as the lesson-range picker used by attendance marking.
  */
-export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWords, onSelectWord }: Props) {
-  const [words, setWords] = useState<QaidaPageWord[]>([]);
-  const [loading, setLoading] = useState(true);
+export function QaidaUnit({
+  page,
+  fontScale,
+  highlight,
+  canControl = true,
+  onWords,
+  onSelectWord,
+  mode = 'flashcard',
+  words: providedWords,
+  baabId = null,
+  fromId = null,
+  toId = null,
+  inRangeIds,
+  onTapWord,
+}: Props) {
+  const [fetched, setFetched] = useState<QaidaPageWord[]>([]);
+  const [loading, setLoading] = useState(!providedWords);
   const [localFlipped, setLocalFlipped] = useState<string | null>(null);
 
   useEffect(() => {
+    if (providedWords) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
     setLocalFlipped(null);
     (async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('noorani_qaida_words' as any)
         .select('id, baab_id, page_number, line_number, word_position, word_text')
-        .eq('page_number', page)
-        .order('line_number')
-        .order('word_position');
+        .eq('page_number', page);
+      if (baabId) q = q.eq('baab_id', baabId);
+      const { data } = await q.order('line_number').order('word_position');
       if (cancelled) return;
       const rows = ((data as any[]) || []) as QaidaPageWord[];
-      setWords(rows);
+      setFetched(rows);
       setLoading(false);
       onWords?.(rows);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, baabId, providedWords]);
+
+  const words = providedWords ?? fetched;
+
+
 
   /* Teacher's flip always wins; otherwise the learner can explore words too. */
   const remoteFlip = canControl ? null : highlight?.wordId ?? null;
@@ -90,25 +126,29 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
     if (canControl) onSelectWord?.(next);
   };
 
+  const selecting = mode === 'select';
+  const rangeSet = new Set(inRangeIds || []);
 
   return (
     <div dir="rtl" className="space-y-4">
       {lines.map(([lineNo, lineWords]) => (
         <div key={lineNo} className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {lineWords.map((w) => {
-            const flipped = flippedId === w.id;
+            const flipped = !selecting && flippedId === w.id;
+            const isEnd = selecting && (w.id === fromId || w.id === toId);
+            const inRange = selecting && rangeSet.has(w.id);
             return (
               <button
                 key={w.id}
                 type="button"
-                onClick={() => toggle(w.id)}
-                aria-pressed={flipped}
+                onClick={() => (selecting ? onTapWord?.(w) : toggle(w.id))}
+                aria-pressed={flipped || isEnd || inRange}
                 className={cn(
-                  'vcr-flip-card relative rounded-xl border px-4 py-2 transition-all duration-300',
-                  flipped
-                    ? 'border-vcr-gold bg-vcr-gold/15 shadow-[0_0_0_2px_rgba(197,160,89,0.35)]'
-                    : 'border-vcr-ink/15 bg-vcr-ink/[0.03] hover:border-vcr-gold/60',
-                  'cursor-pointer'
+                  'vcr-flip-card relative rounded-xl border px-4 py-2 transition-all duration-300 cursor-pointer',
+                  flipped && 'border-vcr-gold bg-vcr-gold/15 shadow-[0_0_0_2px_rgba(197,160,89,0.35)]',
+                  isEnd && 'border-primary bg-primary/20 ring-2 ring-primary',
+                  !isEnd && inRange && 'border-primary/40 bg-primary/10',
+                  !flipped && !isEnd && !inRange && 'border-vcr-ink/15 bg-vcr-ink/[0.03] hover:border-vcr-gold/60'
                 )}
                 style={{ perspective: '900px' }}
               >
@@ -131,10 +171,13 @@ export function QaidaUnit({ page, fontScale, highlight, canControl = true, onWor
         </div>
       ))}
       <p className="pt-2 text-center text-sm text-vcr-ink/50" dir="ltr">
-        Tap any word to break it into letters. Tap again to close.
+        {selecting
+          ? 'Tap the first word of the lesson, then the last word.'
+          : 'Tap any word to break it into letters. Tap again to close.'}
       </p>
     </div>
   );
 }
+
 
 export default QaidaUnit;
