@@ -1,4 +1,5 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
