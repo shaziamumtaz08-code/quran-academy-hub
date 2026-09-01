@@ -218,9 +218,20 @@ export default function StudentProfile() {
         </InfoCard>
       </div>
 
-      <InfoCard icon={Users} title="Parents" tone="violet">
+      <InfoCard
+        icon={Users}
+        title="Parents"
+        tone="violet"
+        action={
+          canAdmin && studentId ? (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGuardianOpen(true)}>
+              <Users className="h-3.5 w-3.5" /> Link guardian
+            </Button>
+          ) : undefined
+        }
+      >
         {data!.links.length === 0 ? (
-          <EmptyState icon={Users} title="No guardian linked" hint="Link a parent from the Parents page." />
+          <EmptyState icon={Users} title="No guardian linked" hint="Use “Link guardian” to connect an existing parent (e.g. a sibling’s parent) or create a new one." />
         ) : (
           <div className="grid gap-3 p-4 sm:grid-cols-2">
             {data!.links.map((l: any) => (
