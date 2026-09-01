@@ -64,6 +64,8 @@ interface HifzAttendanceFieldsProps {
   isRepeatLesson?: boolean;
   resumeAyah?: { surah: number; ayah: number } | null;
   resumeKey?: string;
+  /** Entry mode the lesson section opens on. */
+  defaultEntryTab?: 'type' | 'page';
 }
 
 
@@ -107,6 +109,7 @@ export function HifzAttendanceFields({
   isRepeatLesson = false,
   resumeAyah = null,
   resumeKey,
+  defaultEntryTab,
 
 }: HifzAttendanceFieldsProps) {
   return (
@@ -161,6 +164,7 @@ export function HifzAttendanceFields({
         onExtraSegmentsChange={onExtraSegmentsChange}
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
+        defaultEntryTab={defaultEntryTab}
 
       />
       

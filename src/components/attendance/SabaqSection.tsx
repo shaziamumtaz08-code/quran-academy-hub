@@ -68,6 +68,8 @@ interface SabaqSectionProps {
   resumeAyah?: { surah: number; ayah: number } | null;
   /** Scopes the remembered Quran page (usually the student id). */
   resumeKey?: string;
+  /** Entry mode the section opens on — typing stays the default. */
+  defaultEntryTab?: 'type' | 'page';
 }
 
 
@@ -107,6 +109,7 @@ export function SabaqSection({
   onExtraSegmentsChange,
   resumeAyah = null,
   resumeKey,
+  defaultEntryTab = 'type',
 }: SabaqSectionProps) {
 
 
@@ -200,7 +203,7 @@ export function SabaqSection({
   const addSegment = () => onExtraSegmentsChange?.([...extraSegments, emptySegment(markerType)]);
 
   // Two views of the same lesson field: manual entry vs tapping the mushaf page
-  const [tab, setTab] = useState<'type' | 'page'>('type');
+  const [tab, setTab] = useState<'type' | 'page'>(defaultEntryTab);
 
 
   /** Applies a segment picked on the Quran page into the primary inputs. */
