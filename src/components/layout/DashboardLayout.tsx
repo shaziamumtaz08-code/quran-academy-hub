@@ -237,7 +237,9 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         label: "MENU",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "My Schedule", href: "/my-schedule", icon: CalendarDays },
           { label: "Monthly Planning", href: "/monthly-planning", icon: Target },
+
           {
             label: "My Classes",
             icon: BookOpen,
