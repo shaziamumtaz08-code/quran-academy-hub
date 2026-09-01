@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 interface ZoomSdkMeetingProps {
   meetingNumber: string;
   passcode: string;
+  /** Zoom's encrypted `pwd` token from the join URL, when the link carries one. */
+  encryptedToken?: string;
   userName: string;
   userEmail?: string;
   role: 0 | 1;
@@ -28,6 +30,7 @@ export function ZoomSdkMeeting({
   zoomAccountId,
   meetingNumber,
   passcode,
+  encryptedToken,
   userName,
   userEmail,
   role,
@@ -55,7 +58,13 @@ export function ZoomSdkMeeting({
         const { data, error } = await supabase.functions.invoke('zoom-meeting-signature', {
           body: { meetingNumber, role, courseClassId, zoomAccountId },
         });
-        if (error || !data?.signature) throw new Error(error?.message || 'Could not get meeting signature');
+        if (error || !data?.signature) {
+          throw new Error(
+            (data as any)?.error === 'ZAK_UNAVAILABLE'
+              ? 'This Zoom account cannot host in-app classes yet'
+              : error?.message || 'Could not get meeting signature',
+          );
+        }
         if (cancelled || !containerRef.current) return;
 
         const ZoomMtgEmbedded = (await import('@zoom/meetingsdk/embedded')).default;
@@ -92,7 +101,12 @@ export function ZoomSdkMeeting({
         await client.join({
           signature: data.signature,
           meetingNumber,
+          // Only a plain passcode belongs in `password`; Zoom's long encrypted
+          // pwd token must travel as `tk` or the join is rejected.
           password: passcode || '',
+          tk: encryptedToken || undefined,
+          // Hosts need the ZAK to actually START the meeting.
+          zak: data.zak || undefined,
           userName,
           userEmail: userEmail || undefined,
         });
@@ -112,7 +126,7 @@ export function ZoomSdkMeeting({
       clientRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingNumber, passcode, userName, role, courseClassId, zoomAccountId]);
+  }, [meetingNumber, passcode, encryptedToken, userName, role, courseClassId, zoomAccountId]);
 
   return (
     <div className="relative w-full" style={{ height }}>
