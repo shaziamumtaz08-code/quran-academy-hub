@@ -8,6 +8,7 @@ import { Loader2, Video, Radio, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAcademyTimezone, zonedClockLabel, zonedDayName, zonedTimeToEpoch } from '@/hooks/useAcademyTimezone';
 import { cn } from '@/lib/utils';
 import { useInAppZoomJoin } from '@/hooks/useInAppZoomJoin';
+import type { SchedulePeriod } from '@/lib/schedulePeriods';
 
 interface ClassRow {
   key: string;
@@ -70,6 +71,75 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           .in('status', ['scheduled', 'live']),
       ]);
 
+      // Base `schedules` rows go stale after a reschedule — the *current* time
+      // for each weekly slot lives in schedule_periods. Overlay them so the
+      // queue shows the times admins see on the Schedules page.
+      const schedIds = (schedRes.data || []).map((s: any) => s.id).filter(Boolean);
+      let periods: SchedulePeriod[] = [];
+      if (schedIds.length) {
+        const { data: perRows } = await supabase
+          .from('schedule_periods')
+          .select('id, schedule_id, assignment_id, day_of_week, student_local_time, teacher_local_time, duration_minutes, period_type, effective_from, effective_to, created_at')
+          .in('schedule_id', schedIds);
+        periods = (perRows || []) as unknown as SchedulePeriod[];
+      }
+
+      // One-off reschedules: a slot moved off today must disappear from the queue.
+      const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(dayStart));
+      const movedAway = new Set<string>();
+      const movedIn = new Map<string, string>();
+      if (schedIds.length) {
+        const { data: ovRows } = await supabase
+          .from('schedule_overrides')
+          .select('id, schedule_id, original_date, new_date, new_start_time')
+          .in('schedule_id', schedIds)
+          .or(`original_date.eq.${todayKey},new_date.eq.${todayKey}`);
+        (ovRows || []).forEach((o: any) => {
+          if (o.original_date === todayKey && o.new_date !== todayKey) movedAway.add(o.schedule_id);
+          if (o.new_date === todayKey && o.new_start_time) movedIn.set(o.schedule_id, o.new_start_time);
+        });
+      }
+
+      // Effective (period-aware) time for each of today's slots. Resolved against
+      // the academy timezone's weekday/date, not the browser's.
+      const periodsBySchedule = new Map<string, any[]>();
+      periods.forEach((p: any) => {
+        if (String(p.day_of_week || '').toLowerCase() !== dayName) return;
+        const list = periodsBySchedule.get(p.schedule_id) || [];
+        list.push(p);
+        periodsBySchedule.set(p.schedule_id, list);
+      });
+
+      const effective = new Map<string, { time: string; duration: number | null; dropped: boolean }>();
+      (schedRes.data || []).forEach((s: any) => {
+        const forSlot = periodsBySchedule.get(s.id) || [];
+        const active = forSlot
+          .filter((p) => p.effective_from <= todayKey && (!p.effective_to || p.effective_to >= todayKey))
+          .sort((a, b) => {
+            if (a.period_type !== b.period_type) return a.period_type === 'temporary' ? -1 : 1;
+            return (
+              String(b.effective_from).localeCompare(String(a.effective_from)) ||
+              String(b.created_at).localeCompare(String(a.created_at))
+            );
+          })[0];
+
+        // A permanent period that ended with nothing replacing it means the
+        // weekly class was dismantled — it should not show up today.
+        const lastPermanent = forSlot
+          .filter((p) => p.period_type === 'permanent' && p.effective_from <= todayKey)
+          .sort((a, b) =>
+            String(b.effective_from).localeCompare(String(a.effective_from)) ||
+            String(b.created_at).localeCompare(String(a.created_at)),
+          )[0];
+        const discontinued = !active && Boolean(lastPermanent?.effective_to && lastPermanent.effective_to < todayKey);
+
+        effective.set(s.id, {
+          time: movedIn.get(s.id) || active?.teacher_local_time || s.teacher_local_time,
+          duration: active?.duration_minutes ?? s.duration_minutes ?? null,
+          dropped: discontinued || (movedAway.has(s.id) && !movedIn.has(s.id)),
+        });
+      });
+
       const liveByAssignment = new Map<string, any>();
       (liveRes.data || []).forEach((s: any) => {
         if (s.assignment_id) liveByAssignment.set(s.assignment_id, s);
@@ -88,9 +158,10 @@ export function LiveClassesPanel({ divisionNames }: Props) {
         (profs || []).forEach((p: any) => nameMap.set(p.id, p.full_name || '—'));
       }
 
-      const built: ClassRow[] = (schedRes.data || []).map((s: any) => {
+      const built: ClassRow[] = (schedRes.data || []).filter((s: any) => !effective.get(s.id)?.dropped).map((s: any) => {
         const a = s.student_teacher_assignments;
         const ls = a?.id ? liveByAssignment.get(a.id) : null;
+        const eff = effective.get(s.id);
         return {
           key: `sc:${s.id}`,
           divisionId: s.division_id || a?.division_id || null,
@@ -102,8 +173,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           assignmentId: a.id,
           scheduleId: s.id,
           liveSessionId: ls?.id || null,
-          startMs: zonedTimeToEpoch(tz, s.teacher_local_time),
-          durationMin: s.duration_minutes || a?.duration_minutes || 30,
+          startMs: zonedTimeToEpoch(tz, eff?.time || s.teacher_local_time),
+          durationMin: eff?.duration || s.duration_minutes || a?.duration_minutes || 30,
           isLive: ls?.status === 'live',
         };
       });
