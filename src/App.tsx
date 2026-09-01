@@ -102,6 +102,8 @@ const MyCourses = lazyWithRetry(() => import("./pages/MyCourses"));
 const Recordings = lazyWithRetry(() => import("./pages/Recordings"));
 const TeacherCourseView = lazyWithRetry(() => import("./pages/TeacherCourseView"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
+
 const IdentityResolution = lazyWithRetry(() => import("./pages/IdentityResolution"));
 const CourseCatalog = lazyWithRetry(() => import("./pages/CourseCatalog"));
 const RecordedCourses = lazyWithRetry(() => import("./pages/RecordedCourses"));
