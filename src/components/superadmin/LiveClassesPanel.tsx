@@ -99,25 +99,43 @@ export function LiveClassesPanel({ divisionNames }: Props) {
         });
       }
 
-      // Effective (period-aware) time for each of today's slots.
+      // Effective (period-aware) time for each of today's slots. Resolved against
+      // the academy timezone's weekday/date, not the browser's.
+      const periodsBySchedule = new Map<string, any[]>();
+      periods.forEach((p: any) => {
+        if (String(p.day_of_week || '').toLowerCase() !== dayName) return;
+        const list = periodsBySchedule.get(p.schedule_id) || [];
+        list.push(p);
+        periodsBySchedule.set(p.schedule_id, list);
+      });
+
       const effective = new Map<string, { time: string; duration: number | null; dropped: boolean }>();
       (schedRes.data || []).forEach((s: any) => {
-        const resolved = resolveScheduleForDate(
-          {
-            id: s.id,
-            assignment_id: s.assignment_id,
-            day_of_week: dayName,
-            student_local_time: s.teacher_local_time,
-            teacher_local_time: s.teacher_local_time,
-            duration_minutes: s.duration_minutes,
-          },
-          periods,
-          todayKey,
-        );
+        const forSlot = periodsBySchedule.get(s.id) || [];
+        const active = forSlot
+          .filter((p) => p.effective_from <= todayKey && (!p.effective_to || p.effective_to >= todayKey))
+          .sort((a, b) => {
+            if (a.period_type !== b.period_type) return a.period_type === 'temporary' ? -1 : 1;
+            return (
+              String(b.effective_from).localeCompare(String(a.effective_from)) ||
+              String(b.created_at).localeCompare(String(a.created_at))
+            );
+          })[0];
+
+        // A permanent period that ended with nothing replacing it means the
+        // weekly class was dismantled — it should not show up today.
+        const lastPermanent = forSlot
+          .filter((p) => p.period_type === 'permanent' && p.effective_from <= todayKey)
+          .sort((a, b) =>
+            String(b.effective_from).localeCompare(String(a.effective_from)) ||
+            String(b.created_at).localeCompare(String(a.created_at)),
+          )[0];
+        const discontinued = !active && Boolean(lastPermanent?.effective_to && lastPermanent.effective_to < todayKey);
+
         effective.set(s.id, {
-          time: movedIn.get(s.id) || resolved.teacher_local_time,
-          duration: resolved.duration_minutes ?? null,
-          dropped: Boolean(resolved.discontinued) || (movedAway.has(s.id) && !movedIn.has(s.id)),
+          time: movedIn.get(s.id) || active?.teacher_local_time || s.teacher_local_time,
+          duration: active?.duration_minutes ?? s.duration_minutes ?? null,
+          dropped: discontinued || (movedAway.has(s.id) && !movedIn.has(s.id)),
         });
       });
 
