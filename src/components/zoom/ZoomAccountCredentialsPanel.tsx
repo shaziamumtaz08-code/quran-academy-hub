@@ -35,7 +35,10 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const queryClient = useQueryClient();
 
   const activeAccounts = React.useMemo(
-    () => (zoomAccounts || []).filter((a) => a.is_active !== false),
+    () =>
+      (zoomAccounts || [])
+        .filter((a) => a.is_active !== false)
+        .sort((a, b) => accountLabel(a).localeCompare(accountLabel(b))),
     [zoomAccounts],
   );
 
