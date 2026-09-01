@@ -172,8 +172,8 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           assignmentId: a.id,
           scheduleId: s.id,
           liveSessionId: ls?.id || null,
-          startMs: zonedTimeToEpoch(tz, s.teacher_local_time),
-          durationMin: s.duration_minutes || a?.duration_minutes || 30,
+          startMs: zonedTimeToEpoch(tz, eff?.time || s.teacher_local_time),
+          durationMin: eff?.duration || s.duration_minutes || a?.duration_minutes || 30,
           isLive: ls?.status === 'live',
         };
       });
