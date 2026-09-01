@@ -83,17 +83,43 @@ export function LiveClassesPanel({ divisionNames }: Props) {
         periods = (perRows || []) as unknown as SchedulePeriod[];
       }
 
-      // Date-specific reschedules (one-off moves) win over the weekly slot.
-      const todayKey = localIsoDate(new Date(dayStart));
-      const overrideBySchedule = new Map<string, any>();
+      // One-off reschedules: a slot moved off today must disappear from the queue.
+      const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(dayStart));
+      const movedAway = new Set<string>();
+      const movedIn = new Map<string, string>();
       if (schedIds.length) {
         const { data: ovRows } = await supabase
           .from('schedule_overrides')
-          .select('id, schedule_id, override_date, new_teacher_time, new_duration_minutes, is_cancelled')
+          .select('id, schedule_id, original_date, new_date, new_start_time')
           .in('schedule_id', schedIds)
-          .eq('override_date', todayKey);
-        (ovRows || []).forEach((o: any) => overrideBySchedule.set(o.schedule_id, o));
+          .or(`original_date.eq.${todayKey},new_date.eq.${todayKey}`);
+        (ovRows || []).forEach((o: any) => {
+          if (o.original_date === todayKey && o.new_date !== todayKey) movedAway.add(o.schedule_id);
+          if (o.new_date === todayKey && o.new_start_time) movedIn.set(o.schedule_id, o.new_start_time);
+        });
       }
+
+      // Effective (period-aware) time for each of today's slots.
+      const effective = new Map<string, { time: string; duration: number | null; dropped: boolean }>();
+      (schedRes.data || []).forEach((s: any) => {
+        const resolved = resolveScheduleForDate(
+          {
+            id: s.id,
+            assignment_id: s.assignment_id,
+            day_of_week: dayName,
+            student_local_time: s.teacher_local_time,
+            teacher_local_time: s.teacher_local_time,
+            duration_minutes: s.duration_minutes,
+          },
+          periods,
+          todayKey,
+        );
+        effective.set(s.id, {
+          time: movedIn.get(s.id) || resolved.teacher_local_time,
+          duration: resolved.duration_minutes ?? null,
+          dropped: Boolean(resolved.discontinued) || (movedAway.has(s.id) && !movedIn.has(s.id)),
+        });
+      });
 
       const liveByAssignment = new Map<string, any>();
       (liveRes.data || []).forEach((s: any) => {
