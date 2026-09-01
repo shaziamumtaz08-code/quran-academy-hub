@@ -2,6 +2,7 @@ import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
+import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,7 @@ export default function StudentProfile() {
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [guardianOpen, setGuardianOpen] = useState(false);
   const canTeach = !!(canAdmin || hasRole('teacher'));
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
@@ -139,8 +141,8 @@ export default function StudentProfile() {
         actions={
           <>
             {canAdmin && (
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
-                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}
+              <Button size="sm" variant={advancedOpen ? 'secondary' : 'default'} className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Close editor' : 'Edit profile'}
               </Button>
             )}
             {p.email && (
@@ -218,9 +220,20 @@ export default function StudentProfile() {
         </InfoCard>
       </div>
 
-      <InfoCard icon={Users} title="Parents" tone="violet">
+      <InfoCard
+        icon={Users}
+        title="Parents"
+        tone="violet"
+        action={
+          canAdmin && studentId ? (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGuardianOpen(true)}>
+              <Users className="h-3.5 w-3.5" /> Link guardian
+            </Button>
+          ) : undefined
+        }
+      >
         {data!.links.length === 0 ? (
-          <EmptyState icon={Users} title="No guardian linked" hint="Link a parent from the Parents page." />
+          <EmptyState icon={Users} title="No guardian linked" hint="Use “Link guardian” to connect an existing parent (e.g. a sibling’s parent) or create a new one." />
         ) : (
           <div className="grid gap-3 p-4 sm:grid-cols-2">
             {data!.links.map((l: any) => (
@@ -287,6 +300,17 @@ export default function StudentProfile() {
         )}
       </InfoCard>
 
+      {canAdmin && studentId && (
+        <LinkGuardianDialog
+          open={guardianOpen}
+          onOpenChange={(o) => {
+            setGuardianOpen(o);
+            if (!o) queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] });
+          }}
+          studentId={studentId}
+          studentName={p.full_name ?? 'this student'}
+        />
+      )}
     </div>
   );
 }
