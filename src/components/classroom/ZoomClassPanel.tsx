@@ -170,6 +170,27 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
   const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
 
   const zoomParsed = useMemo(() => parseZoomLink(meetingLink || ''), [meetingLink]);
+  // The link's `pwd` is Zoom's encrypted token, never the passcode. Read the
+  // real passcode from the Zoom account linked to this class.
+  const { data: storedPasscode } = useQuery({
+    queryKey: ['class-zoom-passcode', classId],
+    enabled: !!classId,
+    queryFn: async () => {
+      const { data: cls } = await supabase
+        .from('course_classes')
+        .select('zoom_account_id')
+        .eq('id', classId!)
+        .maybeSingle();
+      if (!cls?.zoom_account_id) return '';
+      const { data: acct } = await supabase
+        .from('zoom_accounts')
+        .select('meeting_passcode')
+        .eq('id', cls.zoom_account_id)
+        .maybeSingle();
+      return (acct?.meeting_passcode || '') as string;
+    },
+  });
+
   const sdkDisplayName =
     (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
 
@@ -503,7 +524,8 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                   <ZoomSdkMeeting
                     courseClassId={classId}
                     meetingNumber={zoomParsed.meetingNumber}
-                    passcode={zoomParsed.passcode}
+                    passcode={storedPasscode || zoomParsed.passcode}
+                    encryptedToken={zoomParsed.encryptedToken}
                     userName={sdkDisplayName}
                     userEmail={user?.email || undefined}
                     role={userRole === 'teacher' ? 1 : 0}

@@ -22,6 +22,7 @@ interface SdkState {
   zoomAccountId: string;
   meetingNumber: string;
   passcode: string;
+  encryptedToken?: string;
   joinUrl: string;
   title: string;
   /** Set when the in-app player fails to start — dialog stays open with a fallback link. */
@@ -61,7 +62,11 @@ export function useInAppZoomJoin(role: 0 | 1) {
 
         const parsed =
           payload.meetingNumber
-            ? { meetingNumber: String(payload.meetingNumber), passcode: payload.passcode || '' }
+            ? {
+                meetingNumber: String(payload.meetingNumber),
+                passcode: payload.passcode || '',
+                encryptedToken: '',
+              }
             : parseZoomLink(payload.joinUrl);
 
         if (payload.sdkReady && payload.zoomAccountId && parsed?.meetingNumber) {
@@ -69,7 +74,8 @@ export function useInAppZoomJoin(role: 0 | 1) {
           setSdk({
             zoomAccountId: payload.zoomAccountId,
             meetingNumber: parsed.meetingNumber,
-            passcode: parsed.passcode || payload.passcode || '',
+            passcode: payload.passcode || parsed.passcode || '',
+            encryptedToken: parsed.encryptedToken || '',
             joinUrl: payload.joinUrl,
             title,
           });
@@ -111,6 +117,7 @@ export function useInAppZoomJoin(role: 0 | 1) {
             zoomAccountId={sdk.zoomAccountId}
             meetingNumber={sdk.meetingNumber}
             passcode={sdk.passcode}
+            encryptedToken={sdk.encryptedToken}
             userName={userName}
             userEmail={profile?.email || user?.email || undefined}
             role={role}
