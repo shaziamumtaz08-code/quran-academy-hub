@@ -1133,11 +1133,20 @@ export default function Assignments() {
       toast({ title: 'Error', description: 'Select a teacher and at least one student', variant: 'destructive' });
       return;
     }
+    if (!payoutAmount || !(parseFloat(payoutAmount) > 0)) {
+      toast({ title: 'Payout required', description: 'Enter the teacher payout amount for this assignment', variant: 'destructive' });
+      return;
+    }
+    if (!effectiveFromDate) {
+      toast({ title: 'Effective date required', description: 'Select the Effective From date so salary and billing start correctly', variant: 'destructive' });
+      return;
+    }
     createMutation.mutate({
       teacherId: selectedTeacher,
       studentIds: selectedStudents,
       subjectId: selectedSubject || undefined,
     });
+
   };
 
 
