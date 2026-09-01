@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
+import { clampedLookback } from '@/lib/complianceWindow';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
@@ -37,7 +38,7 @@ export function AcademicAdminDashboard() {
       const studentIds = [...new Set((assignments || []).map(a => a.student_id))];
 
       // Attendance in last 7 days for lesson log rate + stalled students
-      const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+      const sevenDaysAgo = clampedLookback(7);
       const { data: recentAttendance } = await supabase
         .from('attendance')
         .select('student_id, teacher_id, class_date')
