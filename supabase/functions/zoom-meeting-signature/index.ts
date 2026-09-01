@@ -3,8 +3,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.89.0';
 
 const enc = new TextEncoder();
 
-function b64url(bytes: Uint8Array | string): string {
-  const raw = typeof bytes === 'string' ? bytes : String.fromCharCode(...bytes);
+function b64url(value: Uint8Array | string): string {
+  const bytes = typeof value === 'string' ? enc.encode(value) : value;
+  const raw = String.fromCharCode(...bytes);
   return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
@@ -98,8 +99,9 @@ Deno.serve(async (req) => {
     const signature = await signJwt(
       {
         appKey: clientId,
-        sdkKey: clientId,
-        mn: meetingNumber,
+        // Zoom's current Meeting SDK validator expects the mn claim to be a
+        // number, matching its official signature endpoint sample.
+        mn: Number(meetingNumber),
         role,
         iat,
         exp,
@@ -108,7 +110,7 @@ Deno.serve(async (req) => {
       clientSecret,
     );
 
-    return json({ signature, sdkKey: clientId });
+    return json({ signature });
   } catch (e) {
     return json({ error: (e as Error).message || 'Unexpected error' }, 500);
   }
