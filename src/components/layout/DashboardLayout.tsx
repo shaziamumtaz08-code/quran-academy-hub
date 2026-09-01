@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Award,
   BarChart3,
+  CalendarDays,
+
   BookOpen,
   Briefcase,
   ChevronDown,
@@ -237,7 +239,9 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         label: "MENU",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "My Schedule", href: "/my-schedule", icon: CalendarDays },
           { label: "Monthly Planning", href: "/monthly-planning", icon: Target },
+
           {
             label: "My Classes",
             icon: BookOpen,
@@ -285,8 +289,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
     if (selfId) {
       items.push(
         { label: "Class Room (VCR)", href: `/vcr/${selfId}`, icon: MonitorPlay },
+        { label: "My Schedule", href: "/my-schedule", icon: CalendarDays },
         { label: "My Syllabus", href: `/syllabus/${selfId}`, icon: ListChecks },
       );
+
     }
     items.push(
       { label: "Attendance", href: "/attendance", icon: BarChart3 },
