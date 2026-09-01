@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchIslamicDate } from '@/lib/islamicDate';
+import { resolveSchedulesForDate } from '@/lib/schedulePeriods';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
