@@ -29,6 +29,8 @@ import {
   Wallet,
 
   MonitorPlay,
+  ClipboardCheck,
+
   ListChecks,
   Building2,
 } from "lucide-react";
@@ -240,24 +242,23 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { label: "My Schedule", href: "/my-schedule", icon: CalendarDays },
+          { label: "Attendance", href: "/teaching?view=attendance", icon: ClipboardCheck },
           { label: "Monthly Planning", href: "/monthly-planning", icon: Target },
-
+          { label: "Students", href: "/students", icon: Users },
+          { label: "Student Reports", href: "/student-reports", icon: FileText },
+          { label: "Progress Timeline", href: "/progress-timeline", icon: BarChart3 },
+          { label: "Performance", href: "/performance", icon: BarChart3 },
           {
-            label: "My Classes",
+            label: "Teaching Tools",
             icon: BookOpen,
             children: [
-              { label: "Attendance", href: "/teaching?view=attendance" },
-              { label: "Planning", href: "/monthly-planning" },
+              { label: "Class Room (VCR)", href: "/class-room" },
               { label: "AI Teaching OS", href: "/teaching-os" },
               { label: "Quiz Engine", href: "/quiz-engine" },
             ],
           },
-          { label: "Students", href: "/students", icon: Users },
-          { label: "Class Room (VCR)", href: "/class-room", icon: MonitorPlay },
-          { label: "Student Reports", href: "/student-reports", icon: FileText },
-          { label: "Progress Timeline", href: "/progress-timeline", icon: BarChart3 },
-          { label: "Performance", href: "/performance", icon: BarChart3 },
         ],
+
       },
       {
         label: "OTHERS",
