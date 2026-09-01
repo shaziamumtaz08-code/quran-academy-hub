@@ -581,7 +581,9 @@ function AppRoutes() {
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
       <Route path="/qa-testmate" element={<ProtectedRoute><RouteGuard moduleId="qa_testmate"><QATestMate /></RouteGuard></ProtectedRoute>} />
       <Route path="/connections/:userType/:userId" element={<ProtectedRoute><RouteGuard moduleId="connections"><UserConnections /></RouteGuard></ProtectedRoute>} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="*" element={<NotFound />} />
+
     </Routes>
   );
 }
