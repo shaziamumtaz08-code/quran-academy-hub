@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { format, subDays, isAfter, isBefore, startOfDay } from 'date-fns';
+import { format, subDays, differenceInCalendarDays } from 'date-fns';
+import { complianceWindowStart, backlogWindowStart } from '@/lib/complianceWindow';
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const OPERATIONAL_CUTOFF = '2026-04-01';
 
 interface MissedEntry {
   date: string;
@@ -19,9 +19,10 @@ export function MissedAttendanceBanner() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [visible, setVisible] = useState(true);
+  const [showBacklog, setShowBacklog] = useState(false);
 
   const { data: missedEntries } = useQuery({
-    queryKey: ['missed-attendance-banner', user?.id],
+    queryKey: ['missed-attendance-banner', user?.id, showBacklog],
     queryFn: async (): Promise<MissedEntry[]> => {
       if (!user?.id) return [];
 
@@ -40,22 +41,23 @@ export function MissedAttendanceBanner() {
 
       if (!assignments?.length) return [];
 
-      // Get attendance records for last 14 days
-      const twoWeeksAgoRaw = format(subDays(new Date(), 14), 'yyyy-MM-dd');
-      const twoWeeksAgo = twoWeeksAgoRaw < OPERATIONAL_CUTOFF ? OPERATIONAL_CUTOFF : twoWeeksAgoRaw;
+      // Highlight window: current month only (never before compliance go-live).
+      // Older gaps stay in the system and are only pulled in on request.
+      const windowStart = showBacklog ? backlogWindowStart() : complianceWindowStart();
       const today = format(new Date(), 'yyyy-MM-dd');
+      const lookbackDays = Math.max(0, differenceInCalendarDays(new Date(), new Date(`${windowStart}T00:00:00`)));
 
       const [attendanceRes, holidaysRes] = await Promise.all([
         supabase
           .from('attendance')
           .select('student_id, class_date')
           .eq('teacher_id', user.id)
-          .gte('class_date', twoWeeksAgo)
+          .gte('class_date', windowStart)
           .lt('class_date', today),
         supabase
           .from('holidays' as any)
           .select('holiday_date')
-          .gte('holiday_date', twoWeeksAgo)
+          .gte('holiday_date', windowStart)
           .lte('holiday_date', today),
       ]);
 
@@ -77,13 +79,13 @@ export function MissedAttendanceBanner() {
           .filter((s: any) => s.is_active)
           .map((s: any) => s.day_of_week);
 
-        // Check last 14 days (but not before April 2026 cutoff)
-        for (let i = 1; i <= 14; i++) {
+        // Only days inside the active highlight window
+        for (let i = 1; i <= lookbackDays; i++) {
           const checkDate = subDays(new Date(), i);
           const dayName = DAY_NAMES[checkDate.getDay()];
           const dateStr = format(checkDate, 'yyyy-MM-dd');
 
-          if (dateStr < OPERATIONAL_CUTOFF) continue;
+          if (dateStr < windowStart) continue;
           if (holidaySet.has(dateStr)) continue;
 
           if (activeDays.includes(dayName)) {
@@ -105,14 +107,35 @@ export function MissedAttendanceBanner() {
     staleTime: 5 * 60 * 1000,
   });
 
-  if (!visible || !missedEntries?.length) return null;
+  if (!visible) return null;
+
+  if (!missedEntries?.length) {
+    if (showBacklog) {
+      return (
+        <div className="rounded-xl border border-border bg-secondary/40 p-3 text-xs text-muted-foreground flex items-center justify-between gap-2">
+          <span>No earlier unmarked attendance found.</span>
+          <button onClick={() => setShowBacklog(false)} className="font-semibold text-foreground/70 hover:text-foreground">
+            Hide earlier
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-xl border border-border bg-secondary/40 p-3 text-xs text-muted-foreground flex items-center justify-between gap-2">
+        <span>{format(new Date(), 'MMMM')} attendance is fully marked.</span>
+        <button onClick={() => setShowBacklog(true)} className="font-semibold text-foreground/70 hover:text-foreground">
+          Show earlier
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gold-light/20 border border-gold-light rounded-xl p-3 flex items-start gap-2.5 relative">
       <span className="text-lg flex-shrink-0">⚠️</span>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-xs text-gold/90 mb-0.5">
-          {missedEntries.length} Attendance{missedEntries.length > 1 ? 's' : ''} Not Marked
+          {missedEntries.length} Attendance{missedEntries.length > 1 ? 's' : ''} Not Marked{showBacklog ? ' (earlier records)' : ` — ${format(new Date(), 'MMMM')}`}
         </p>
         {missedEntries.slice(0, 2).map((m, i) => (
           <p key={i} className="text-xs text-gold/70">
@@ -129,6 +152,12 @@ export function MissedAttendanceBanner() {
           className="mt-2 bg-gold text-primary-foreground border-none rounded-lg px-3.5 py-1.5 text-xs font-bold cursor-pointer hover:bg-gold/90 transition-colors"
         >
           Mark Now →
+        </button>
+        <button
+          onClick={() => setShowBacklog(v => !v)}
+          className="mt-2 ml-2 bg-transparent border border-border rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          {showBacklog ? 'Show this month only' : 'Show earlier'}
         </button>
       </div>
       <button
