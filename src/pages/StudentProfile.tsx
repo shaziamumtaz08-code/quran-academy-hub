@@ -298,6 +298,17 @@ export default function StudentProfile() {
         )}
       </InfoCard>
 
+      {canAdmin && studentId && (
+        <LinkGuardianDialog
+          open={guardianOpen}
+          onOpenChange={(o) => {
+            setGuardianOpen(o);
+            if (!o) queryClient.invalidateQueries({ queryKey: ['student-profile-page', studentId] });
+          }}
+          studentId={studentId}
+          studentName={p.full_name ?? 'this student'}
+        />
+      )}
     </div>
   );
 }
