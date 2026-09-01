@@ -80,6 +80,8 @@ export function ZoomLiveOperations() {
         zoomAccountId: string;
         meetingNumber: string;
         passcode: string;
+        encryptedToken?: string;
+
         joinUrl: string;
       }
     | null
