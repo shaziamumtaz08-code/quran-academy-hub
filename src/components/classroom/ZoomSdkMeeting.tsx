@@ -59,12 +59,24 @@ export function ZoomSdkMeeting({
           body: { meetingNumber, role, courseClassId, zoomAccountId },
         });
         if (error || !data?.signature) {
+          // invoke() drops the response body on non-2xx — read it back so the
+          // real reason (e.g. ZAK_UNAVAILABLE) is visible instead of the
+          // generic "Edge Function returned a non-2xx status code".
+          let payload: any = data ?? null;
+          if (!payload && (error as any)?.context?.json) {
+            try { payload = await (error as any).context.json(); } catch { /* ignore */ }
+          }
+          const detail = payload?.detail;
+          const detailText = detail
+            ? ` (Zoom ${detail.stage}${detail.status ? ` ${detail.status}` : ''}: ${detail.message || detail.code || 'no detail'})`
+            : '';
           throw new Error(
-            (data as any)?.error === 'ZAK_UNAVAILABLE'
-              ? 'This Zoom account cannot host in-app classes yet'
-              : error?.message || 'Could not get meeting signature',
+            payload?.error === 'ZAK_UNAVAILABLE'
+              ? `This Zoom account cannot host in-app classes yet${detailText}`
+              : payload?.error || error?.message || 'Could not get meeting signature',
           );
         }
+
         if (cancelled || !containerRef.current) return;
 
         const ZoomMtgEmbedded = (await import('@zoom/meetingsdk/embedded')).default;
