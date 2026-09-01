@@ -50,6 +50,8 @@ interface NazraAttendanceFieldsProps {
   resumeKey?: string;
   /** Entry mode the lesson section opens on. */
   defaultEntryTab?: 'type' | 'page';
+  /** Page the mushaf tap view opens on (e.g. the VCR's current page). */
+  initialPage?: number;
 }
 
 
