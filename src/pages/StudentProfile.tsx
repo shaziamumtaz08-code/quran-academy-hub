@@ -35,7 +35,6 @@ export default function StudentProfile() {
   const studentId = paramId ?? me?.id;
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [guardianOpen, setGuardianOpen] = useState(false);
   const canTeach = !!(canAdmin || hasRole('teacher'));
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
