@@ -1612,7 +1612,7 @@ export default function Assignments() {
                 onClick={handleSubmit}
                 disabled={
                   isPending ||
-                  (!editingAssignment && (!selectedTeacher || selectedStudents.length === 0))
+                  (!editingAssignment && (!selectedTeacher || selectedStudents.length === 0 || !payoutAmount || !(parseFloat(payoutAmount) > 0) || !effectiveFromDate))
                 }
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
