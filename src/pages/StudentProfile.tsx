@@ -159,8 +159,6 @@ export default function StudentProfile() {
         ]}
       />
 
-      {advancedOpen && canAdmin && studentId && <ProfileEditorPanel userId={studentId} />}
-
       <div className="grid gap-4 lg:grid-cols-2">
         <InfoCard icon={User} title="Personal information" tone="primary">
           <InfoRow icon={User} label="Full name" value={p.full_name} />
