@@ -1133,11 +1133,20 @@ export default function Assignments() {
       toast({ title: 'Error', description: 'Select a teacher and at least one student', variant: 'destructive' });
       return;
     }
+    if (!payoutAmount || !(parseFloat(payoutAmount) > 0)) {
+      toast({ title: 'Payout required', description: 'Enter the teacher payout amount for this assignment', variant: 'destructive' });
+      return;
+    }
+    if (!effectiveFromDate) {
+      toast({ title: 'Effective date required', description: 'Select the Effective From date so salary and billing start correctly', variant: 'destructive' });
+      return;
+    }
     createMutation.mutate({
       teacherId: selectedTeacher,
       studentIds: selectedStudents,
       subjectId: selectedSubject || undefined,
     });
+
   };
 
 
@@ -1564,8 +1573,8 @@ export default function Assignments() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Payout Amount</Label>
-                      <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
+                      <Label className="text-xs">Payout Amount <span className="text-destructive">*</span></Label>
+                      <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} required aria-required="true" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Payout Type</Label>
@@ -1580,8 +1589,8 @@ export default function Assignments() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Effective From</Label>
-                      <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                      <Label className="text-xs">Effective From <span className="text-destructive">*</span></Label>
+                      <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} required aria-required="true" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Effective To</Label>
@@ -1589,7 +1598,11 @@ export default function Assignments() {
                       <p className="text-[10px] text-muted-foreground">Leave blank for ongoing.</p>
                     </div>
                   </div>
+                  {(!payoutAmount || !effectiveFromDate) && (
+                    <p className="text-[11px] text-destructive">Payout amount and Effective From are required before creating an assignment.</p>
+                  )}
                 </div>
+
               </div>
             )}
 
@@ -1599,7 +1612,7 @@ export default function Assignments() {
                 onClick={handleSubmit}
                 disabled={
                   isPending ||
-                  (!editingAssignment && (!selectedTeacher || selectedStudents.length === 0))
+                  (!editingAssignment && (!selectedTeacher || selectedStudents.length === 0 || !payoutAmount || !(parseFloat(payoutAmount) > 0) || !effectiveFromDate))
                 }
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
