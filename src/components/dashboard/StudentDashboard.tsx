@@ -173,29 +173,59 @@ export function StudentDashboard() {
     },
   });
 
+  // Schedule periods carry the *current* effective time for each weekly slot —
+  // the base `schedules` row can be stale after a reschedule, which made the
+  // banner point at the wrong class.
+  const scheduleIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (assignments as any[]).flatMap((a) => (a?.schedules || []).map((s: any) => s.id)).filter(Boolean),
+        ),
+      ) as string[],
+    [assignments],
+  );
 
-  // Pick the assignment whose next active schedule occurrence is soonest.
+  const { data: periods = [] } = useQuery({
+    queryKey: ['sd-schedule-periods', scheduleIds.join(',')],
+    enabled: scheduleIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schedule_periods')
+        .select('id, schedule_id, assignment_id, day_of_week, student_local_time, teacher_local_time, duration_minutes, period_type, effective_from, effective_to, created_at')
+        .in('schedule_id', scheduleIds);
+      return (data || []) as any[];
+    },
+  });
+
+  // Pick the assignment whose next effective schedule occurrence is soonest.
   const nextSlot = useMemo(() => {
-    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const now = new Date();
     let best: { assignment: any; schedule: any; when: Date; minsUntil: number } | null = null;
-    for (const a of (assignments as any[])) {
-      for (const s of (a?.schedules || [])) {
-        if (!s?.is_active || !s?.day_of_week || !s?.student_local_time) continue;
-        const dow = DAYS.indexOf(String(s.day_of_week).toLowerCase());
-        if (dow < 0) continue;
-        const [hh, mm] = String(s.student_local_time).split(':').map(Number);
-        const target = new Date(now);
-        const diff = (dow - now.getDay() + 7) % 7;
-        target.setDate(now.getDate() + diff);
-        target.setHours(hh, mm || 0, 0, 0);
-        if (target.getTime() <= now.getTime() - 60 * 60 * 1000) target.setDate(target.getDate() + 7);
-        const mins = Math.round((target.getTime() - now.getTime()) / 60000);
-        if (!best || mins < best.minsUntil) best = { assignment: a, schedule: s, when: target, minsUntil: mins };
+    // Walk the next 8 days so each occurrence is resolved against the schedule
+    // period that is actually in force on that date.
+    for (let offset = 0; offset <= 8; offset++) {
+      const day = new Date(now);
+      day.setDate(now.getDate() + offset);
+      day.setHours(12, 0, 0, 0);
+      for (const a of (assignments as any[])) {
+        const resolved = resolveSchedulesForDate((a?.schedules || []) as any[], periods as any[], day);
+        for (const s of resolved) {
+          if (!s?.student_local_time) continue;
+          const [hh, mm] = String(s.student_local_time).split(':').map(Number);
+          const target = new Date(day);
+          target.setHours(hh, mm || 0, 0, 0);
+          const graceMs = ((s.duration_minutes || 30) + 10) * 60 * 1000;
+          if (target.getTime() <= now.getTime() - graceMs) continue;
+          const mins = Math.round((target.getTime() - now.getTime()) / 60000);
+          if (!best || mins < best.minsUntil) best = { assignment: a, schedule: s, when: target, minsUntil: mins };
+        }
       }
+      if (best) break;
     }
     return best;
-  }, [assignments]);
+  }, [assignments, periods]);
+
 
   const assignment = nextSlot?.assignment || (assignments as any[])[0] || null;
 
