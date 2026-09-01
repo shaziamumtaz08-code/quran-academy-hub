@@ -45,6 +45,15 @@ export function ImpersonateButton({
     // Open the tab synchronously (inside the click) so popup blockers allow it,
     // then navigate it once we have the magic link.
     const newTab = window.open('about:blank', '_blank');
+    // Paint a loading state immediately — otherwise the tab sits on a blank
+    // white page while the edge function runs and looks like it never loads.
+    try {
+      newTab?.document.write(
+        '<title>Starting session…</title><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font:14px system-ui;color:#475569;background:#f8fafc">Starting session…</body>',
+      );
+      newTab?.document.close();
+    } catch { /* noop */ }
+
     try {
       const target = redirectTo || '/dashboard';
       const targetPath = target.startsWith('http')
@@ -90,22 +99,31 @@ export function ImpersonateButton({
           }`
         : data.actionLink;
 
-      if (newTab) {
+      if (newTab && !newTab.closed) {
         newTab.location.href = landing;
+        toast({
+          title: 'Impersonation started',
+          description: `Opened ${label}'s session in a new tab. Close that tab to end impersonation.`,
+        });
       } else {
-        // Popup was blocked — fall back to opening in this tab is undesirable;
-        // surface a clear message instead.
+        // Popup blocked (common inside the embedded preview). Offer to switch
+        // this tab instead — the impersonated session is sessionStorage-scoped,
+        // so the admin's own login survives in localStorage.
+        const go = window.confirm(
+          `Your browser blocked the new tab. Open ${label}'s session in this tab instead?`,
+        );
+        if (go) {
+          window.location.href = landing;
+          return;
+        }
         toast({
           title: 'Popup blocked',
           description: 'Allow popups for this site to open the user session in a new tab.',
           variant: 'destructive',
         });
       }
-      toast({
-        title: 'Impersonation started',
-        description: `Opened ${label}'s session in a new tab. Close that tab to end impersonation.`,
-      });
       setLoading(false);
+
     } catch (e: any) {
       if (newTab) newTab.close();
       toast({
