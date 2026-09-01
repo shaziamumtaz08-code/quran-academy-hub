@@ -98,6 +98,7 @@ export function ZoomLiveOperations() {
         zoomAccountId: session.zoom_account_id,
         meetingNumber: parsed.meetingNumber,
         passcode: parsed.passcode,
+        encryptedToken: parsed.encryptedToken,
         joinUrl,
       });
       return;
@@ -563,6 +564,7 @@ export function ZoomLiveOperations() {
                 zoomAccountId={sdkJoin.zoomAccountId}
                 meetingNumber={sdkJoin.meetingNumber}
                 passcode={sdkJoin.passcode}
+                encryptedToken={sdkJoin.encryptedToken}
                 userName={profile?.full_name || user?.email || 'Admin'}
                 userEmail={user?.email || undefined}
                 role={0}
