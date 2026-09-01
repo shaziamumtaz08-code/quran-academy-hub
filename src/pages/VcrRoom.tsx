@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
+import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
@@ -228,6 +229,7 @@ export default function VcrRoom() {
     return /qaida|qa'ida|noorani/.test(text) ? 'qaida' : 'mushaf';
   }, [progress?.content_type, currentItem?.level, currentItem?.title]);
 
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
@@ -410,6 +412,13 @@ export default function VcrRoom() {
             </button>
             <button
               type="button"
+              onClick={() => setAttendanceOpen(true)}
+              className="vcr-btn inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base"
+            >
+              <ClipboardList className="h-4 w-4" /> Mark attendance from this page
+            </button>
+            <button
+              type="button"
               onClick={() => navigate(`/syllabus/${studentId}`)}
               className="vcr-btn inline-flex h-12 w-full items-center justify-center rounded-xl text-base"
             >
@@ -418,6 +427,22 @@ export default function VcrRoom() {
           </aside>
         )}
       </div>
+
+      {/* Tap-to-mark attendance without leaving the live class */}
+      {canControl && studentId && (
+        <UnifiedAttendanceForm
+          open={attendanceOpen}
+          onOpenChange={setAttendanceOpen}
+          student={{ id: studentId, full_name: student?.full_name ?? 'Student', subject_name: null, last_lesson: null }}
+          teacherId={user?.id}
+          lessonEntryMode="tap"
+          initialContentPage={currentPage}
+          onSuccess={() => {
+            setAttendanceOpen(false);
+            setAttendance('marked');
+          }}
+        />
+      )}
     </div>
   );
 }

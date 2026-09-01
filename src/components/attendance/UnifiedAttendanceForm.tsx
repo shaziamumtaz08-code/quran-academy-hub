@@ -237,6 +237,10 @@ interface UnifiedAttendanceFormProps {
   teacherTimezone?: string;
   /** When true, Class Time is editable (admins). Defaults to false. */
   allowTimeEdit?: boolean;
+  /** 'tap' opens the lesson pickers on their tap-on-page tab (used by the VCR). */
+  lessonEntryMode?: 'dropdown' | 'tap';
+  /** Page currently shown in the classroom — the tap picker opens there. */
+  initialContentPage?: number;
   onSuccess?: () => void;
 }
 
@@ -252,6 +256,8 @@ export function UnifiedAttendanceForm({
   teacherId,
   teacherTimezone,
   allowTimeEdit = false,
+  lessonEntryMode = 'dropdown',
+  initialContentPage,
   onSuccess
 }: UnifiedAttendanceFormProps) {
   // A teacher who lands on an already-marked slot can switch this dialog into edit
@@ -1939,6 +1945,8 @@ export function UnifiedAttendanceForm({
                   onUnitFromChange={setQaidaUnitFrom}
                   unitTo={qaidaUnitTo}
                   onUnitToChange={setQaidaUnitTo}
+                  defaultEntryTab={lessonEntryMode === 'tap' ? 'page' : 'dropdown'}
+                  initialPage={initialContentPage}
                 />
               )}
 
@@ -1978,6 +1986,7 @@ export function UnifiedAttendanceForm({
                   onExtraSegmentsChange={setExtraSegments}
                   resumeAyah={resumeAyah}
                   resumeKey={student.id}
+                  defaultEntryTab={lessonEntryMode === 'tap' ? 'page' : 'type'}
 
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
@@ -2018,6 +2027,7 @@ export function UnifiedAttendanceForm({
                   onExtraSegmentsChange={setExtraSegments}
                   resumeAyah={resumeAyah}
                   resumeKey={student.id}
+                  defaultEntryTab={lessonEntryMode === 'tap' ? 'page' : 'type'}
 
                 />
               )}

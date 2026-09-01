@@ -48,6 +48,8 @@ interface NazraAttendanceFieldsProps {
   isRepeatLesson?: boolean;
   resumeAyah?: { surah: number; ayah: number } | null;
   resumeKey?: string;
+  /** Entry mode the lesson section opens on. */
+  defaultEntryTab?: 'type' | 'page';
 }
 
 
@@ -83,6 +85,7 @@ export function NazraAttendanceFields({
   isRepeatLesson = false,
   resumeAyah = null,
   resumeKey,
+  defaultEntryTab,
 
 }: NazraAttendanceFieldsProps) {
   return (
@@ -132,6 +135,7 @@ export function NazraAttendanceFields({
         onExtraSegmentsChange={onExtraSegmentsChange}
         resumeAyah={resumeAyah}
         resumeKey={resumeKey}
+        defaultEntryTab={defaultEntryTab}
 
       />
       

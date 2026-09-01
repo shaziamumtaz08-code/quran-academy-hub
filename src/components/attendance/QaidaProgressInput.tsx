@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Hash, BookOpenCheck } from 'lucide-react';
+import { SegmentedControl } from './SegmentedControl';
+import { QaidaTapPicker } from '@/components/qaida/QaidaTapPicker';
 import { useQaidaReference, useQaidaWords, unitLabel } from '@/hooks/useQaidaProgress';
+
 
 interface QaidaProgressInputProps {
   lessonNumber: string;
@@ -30,6 +33,10 @@ interface QaidaProgressInputProps {
   pageNumberTo?: string;
   onPageNumberToChange?: (value: string) => void;
   isPlanning?: boolean;
+  /** Entry mode the card opens on — dropdown stays the default everywhere. */
+  defaultEntryTab?: 'dropdown' | 'page';
+  /** Page the tap picker opens on (e.g. the page shown in the classroom). */
+  initialPage?: number;
 }
 
 export function QaidaProgressInput({
@@ -54,7 +61,11 @@ export function QaidaProgressInput({
   pageNumberTo,
   onPageNumberToChange,
   isPlanning = false,
+  defaultEntryTab = 'dropdown',
+  initialPage,
 }: QaidaProgressInputProps) {
+  const [tab, setTab] = useState<'dropdown' | 'page'>(defaultEntryTab);
+
   const { data: ref } = useQaidaReference();
   const baabs = ref?.baabs || [];
   const selectedBaab = baabs.find(b => b.id === qaidaBaabId) || null;
@@ -171,7 +182,51 @@ export function QaidaProgressInput({
         )}
       </div>
 
+      {/* Two views of the same lesson fields — dropdown stays the default */}
+      <SegmentedControl
+        size="sm"
+        aria-label="Qaida lesson entry method"
+        value={tab}
+        onChange={(v) => setTab(v as 'dropdown' | 'page')}
+        options={[
+          { value: 'dropdown', label: 'Dropdown', icon: <Hash className="h-3.5 w-3.5" /> },
+          { value: 'page', label: 'Tap on page', icon: <BookOpenCheck className="h-3.5 w-3.5" /> },
+        ]}
+      />
+
+      {tab === 'page' ? (
+        <QaidaTapPicker
+          baabId={qaidaBaabId}
+          initialPage={initialPage}
+          onBaabIdChange={(id) => {
+            onQaidaBaabIdChange?.(id);
+            const b = baabs.find(x => x.id === id);
+            if (b) {
+              onLessonNumberChange(String(b.baab_number));
+              onPageNumberChange(String(b.start_page));
+              onQaidaPageIdChange?.(ref?.pages.find(p => p.page_number === b.start_page)?.id || '');
+            }
+            onWordFromIdChange?.('');
+            onWordToIdChange?.('');
+            onUnitFromChange?.('');
+            onUnitToChange?.('');
+          }}
+          onUseLesson={(sel) => {
+            onQaidaBaabIdChange?.(sel.baabId);
+            onLessonNumberChange(String(sel.baabNumber));
+            onPageNumberChange(String(sel.pageNumber));
+            onQaidaPageIdChange?.(sel.pageId);
+            onWordFromIdChange?.(sel.wordFromId);
+            onWordToIdChange?.(sel.wordToId);
+            onUnitFromChange?.(sel.unitFrom);
+            onUnitToChange?.(sel.unitTo);
+            setTab('dropdown');
+          }}
+        />
+      ) : (
+      <>
       <div className="space-y-2">
+
         <Label className="text-sm font-medium">Baab <span className="text-destructive">*</span></Label>
         <Select
           value={qaidaBaabId}
@@ -286,6 +341,9 @@ export function QaidaProgressInput({
           {overMax && <p className="text-xs text-destructive">This baab only has {max} {uLabel.toLowerCase()}s.</p>}
         </>
       )}
+      </>
+      )}
     </div>
   );
 }
+
