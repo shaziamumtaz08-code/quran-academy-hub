@@ -182,7 +182,51 @@ export function QaidaProgressInput({
         )}
       </div>
 
+      {/* Two views of the same lesson fields — dropdown stays the default */}
+      <SegmentedControl
+        size="sm"
+        aria-label="Qaida lesson entry method"
+        value={tab}
+        onChange={(v) => setTab(v as 'dropdown' | 'page')}
+        options={[
+          { value: 'dropdown', label: 'Dropdown', icon: <Hash className="h-3.5 w-3.5" /> },
+          { value: 'page', label: 'Tap on page', icon: <BookOpenCheck className="h-3.5 w-3.5" /> },
+        ]}
+      />
+
+      {tab === 'page' ? (
+        <QaidaTapPicker
+          baabId={qaidaBaabId}
+          initialPage={initialPage}
+          onBaabIdChange={(id) => {
+            onQaidaBaabIdChange?.(id);
+            const b = baabs.find(x => x.id === id);
+            if (b) {
+              onLessonNumberChange(String(b.baab_number));
+              onPageNumberChange(String(b.start_page));
+              onQaidaPageIdChange?.(ref?.pages.find(p => p.page_number === b.start_page)?.id || '');
+            }
+            onWordFromIdChange?.('');
+            onWordToIdChange?.('');
+            onUnitFromChange?.('');
+            onUnitToChange?.('');
+          }}
+          onUseLesson={(sel) => {
+            onQaidaBaabIdChange?.(sel.baabId);
+            onLessonNumberChange(String(sel.baabNumber));
+            onPageNumberChange(String(sel.pageNumber));
+            onQaidaPageIdChange?.(sel.pageId);
+            onWordFromIdChange?.(sel.wordFromId);
+            onWordToIdChange?.(sel.wordToId);
+            onUnitFromChange?.(sel.unitFrom);
+            onUnitToChange?.(sel.unitTo);
+            setTab('dropdown');
+          }}
+        />
+      ) : (
+      <>
       <div className="space-y-2">
+
         <Label className="text-sm font-medium">Baab <span className="text-destructive">*</span></Label>
         <Select
           value={qaidaBaabId}
