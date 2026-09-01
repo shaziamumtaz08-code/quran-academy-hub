@@ -184,19 +184,21 @@ Deno.serve(async (req) => {
     // requires the host's ZAK. Mint it with the same account's S2S OAuth app.
     let zak: string | null = null;
     if (role === 1) {
-      zak = await mintZak({
+      const result = await mintZak({
         accountId: String(acct?.zoom_account_id_cred ?? '').trim(),
         clientId: String(acct?.zoom_client_id ?? '').trim(),
         clientSecret: String(acct?.zoom_client_secret ?? '').trim(),
         zoomUserId: String(acct?.zoom_user_id ?? '').trim() ||
           String(acct?.zoom_account_email ?? '').trim(),
       });
+      zak = result.zak;
       if (!zak) {
         // Without a ZAK the SDK join fails with "Signature is invalid"; the
         // caller should send the teacher to the external Zoom link instead.
-        return json({ error: 'ZAK_UNAVAILABLE' }, 409);
+        return json({ error: 'ZAK_UNAVAILABLE', detail: result.diag ?? null }, 409);
       }
     }
+
 
     return json({ signature, zak });
 
