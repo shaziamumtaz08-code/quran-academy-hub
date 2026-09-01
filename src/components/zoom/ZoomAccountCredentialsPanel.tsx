@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, Link2, ShieldCheck, Webhook } from 'lucide-react';
+import { Check, Copy, KeyRound, ShieldCheck, Webhook } from 'lucide-react';
 import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
 import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
@@ -28,8 +28,7 @@ const zoomSlug = (a: ZoomAccountRow) => {
 /**
  * Account-scoped credentials screen: pick ONE Zoom account at the top, then
  * manage its webhook endpoint + Secret Token, Meeting SDK credentials, and
- * class links — all against that same selection. UI consolidation only; every
- * write still goes through the existing RPCs / table updates.
+ * Server-to-Server OAuth credentials — all against that same selection.
  */
 export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: ZoomAccountRow[] }) {
   const { toast } = useToast();
@@ -85,19 +84,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     },
   });
 
-
-  const { data: classes } = useQuery({
-    queryKey: ['course-classes-zoom-link'],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('course_classes')
-        .select('id, name, meeting_link, zoom_account_id, course:courses(name)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as any[];
-    },
-  });
-
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
   const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
 
@@ -114,9 +100,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const [sdkClientSecret, setSdkClientSecret] = React.useState('');
   const [savingCreds, setSavingCreds] = React.useState(false);
 
-  const [classId, setClassId] = React.useState<string>('');
-  const [savingLink, setSavingLink] = React.useState(false);
-
   // Server-to-Server OAuth app credentials (the ones webhooks / attendance need)
   const [s2sAccountId, setS2sAccountId] = React.useState('');
   const [s2sClientId, setS2sClientId] = React.useState('');
@@ -131,7 +114,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     setSdkClientId(status?.sdkClientId || '');
     setSdkClientSecret('');
     setCopied(false);
-    setClassId('');
     setS2sAccountId(status?.s2sAccountId || '');
     setS2sClientId(status?.s2sClientId || '');
     setS2sClientSecret('');
@@ -199,16 +181,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     (s2sClientSecret.trim() || (status?.hasS2S && !s2sIdentifiersChanged)),
   );
 
-
-  const linkedClasses = React.useMemo(
-    () => (classes || []).filter((c: any) => c.zoom_account_id === accountId),
-    [classes, accountId],
-  );
-  const selectedClass = React.useMemo(
-    () => (classes || []).find((c: any) => c.id === classId),
-    [classes, classId],
-  );
-
   const copyWebhook = async () => {
     try {
       await navigator.clipboard.writeText(webhookUrl);
@@ -261,38 +233,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     }
   };
 
-  const saveLink = async () => {
-    if (!account || !classId) return;
-    setSavingLink(true);
-    try {
-      const { error } = await (supabase as any)
-        .from('course_classes')
-        .update({ zoom_account_id: account.id })
-        .eq('id', classId);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['course-classes-zoom-link'] });
-      toast({ title: 'Class linked', description: 'This class will use this account’s Meeting SDK app.' });
-    } catch (e: any) {
-      toast({ title: 'Could not update class', description: e.message, variant: 'destructive' });
-    } finally {
-      setSavingLink(false);
-    }
-  };
-
-  const unlinkClass = async (id: string) => {
-    try {
-      const { error } = await (supabase as any)
-        .from('course_classes')
-        .update({ zoom_account_id: null })
-        .eq('id', id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['course-classes-zoom-link'] });
-      toast({ title: 'Link cleared', description: 'This class falls back to the embedded frame.' });
-    } catch (e: any) {
-      toast({ title: 'Could not update class', description: e.message, variant: 'destructive' });
-    }
-  };
-
   return (
     <div className="zoom-ws zw-card zw-inset-top space-y-6 p-6">
       {/* Single account selector */}
@@ -321,9 +261,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             <span className="zw-chip" data-tone={status.hasSdkCreds ? 'ok' : 'quiet'}>
               <span className="zw-dot" /> Meeting SDK {status.hasSdkCreds ? 'saved' : 'not set'}
             </span>
-            <span className="zw-chip" data-tone={linkedClasses.length > 0 ? 'brass' : 'quiet'}>
-              <span className="zw-dot" /> {linkedClasses.length} class{linkedClasses.length === 1 ? '' : 'es'} linked
-            </span>
           </div>
         )}
       </div>
@@ -332,7 +269,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <div className="zw-motif" />
           <p className="zw-body max-w-sm">
-            Select a Zoom account above — its webhook, in-app player credentials, and class links all appear here.
+            Select a Zoom account above — its webhook, in-app player credentials, and S2S OAuth credentials all appear here.
           </p>
         </div>
       )}
@@ -487,54 +424,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             <p className="zw-meta">
               These come from a separate <strong>Meeting SDK</strong> app in the Zoom Marketplace (not the Server-to-Server OAuth app). Accounts without them keep using the embedded frame.
             </p>
-          </div>
-
-          {/* Class links */}
-          <div className="zw-card space-y-4 p-6">
-            <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
-              <h3 className="zw-h2">Classes hosted by this account</h3>
-            </div>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <div className="min-w-0 flex-1">
-                <p className="zw-eyebrow mb-1.5">Class</p>
-                <Select value={classId} onValueChange={setClassId}>
-                  <SelectTrigger><SelectValue placeholder="Select class to link" /></SelectTrigger>
-                  <SelectContent>
-                    {(classes || []).map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {(c.course?.name ? `${c.course.name} — ` : '') + (c.name || 'Class')}
-                        {c.zoom_account_id === accountId ? ' ✓' : c.zoom_account_id ? ' (linked elsewhere)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <button type="button" className="zw-btn-secondary" disabled={!classId || savingLink} onClick={saveLink}>
-                {savingLink ? 'Saving…' : 'Link to this account'}
-              </button>
-            </div>
-            {selectedClass?.meeting_link && (
-              <div className="zw-linkbox">
-                <code className="zw-linkbox-text">{selectedClass.meeting_link}</code>
-              </div>
-            )}
-            {linkedClasses.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'hsl(var(--zw-line-soft))' }}>
-                {linkedClasses.map((c: any) => (
-                  <div key={c.id} className="zw-row">
-                    <span className="truncate text-sm font-medium">
-                      {(c.course?.name ? `${c.course.name} — ` : '') + (c.name || 'Class')}
-                    </span>
-                    <button type="button" className="zw-btn-ghost shrink-0" onClick={() => unlinkClass(c.id)}>
-                      Unlink
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="zw-meta">No classes are linked to this account yet — they stay on the embedded frame.</p>
-            )}
           </div>
         </>
       )}
