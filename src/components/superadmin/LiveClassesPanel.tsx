@@ -70,6 +70,31 @@ export function LiveClassesPanel({ divisionNames }: Props) {
           .in('status', ['scheduled', 'live']),
       ]);
 
+      // Base `schedules` rows go stale after a reschedule — the *current* time
+      // for each weekly slot lives in schedule_periods. Overlay them so the
+      // queue shows the times admins see on the Schedules page.
+      const schedIds = (schedRes.data || []).map((s: any) => s.id).filter(Boolean);
+      let periods: SchedulePeriod[] = [];
+      if (schedIds.length) {
+        const { data: perRows } = await supabase
+          .from('schedule_periods')
+          .select('id, schedule_id, assignment_id, day_of_week, student_local_time, teacher_local_time, duration_minutes, period_type, effective_from, effective_to, created_at')
+          .in('schedule_id', schedIds);
+        periods = (perRows || []) as unknown as SchedulePeriod[];
+      }
+
+      // Date-specific reschedules (one-off moves) win over the weekly slot.
+      const todayKey = localIsoDate(new Date(dayStart));
+      const overrideBySchedule = new Map<string, any>();
+      if (schedIds.length) {
+        const { data: ovRows } = await supabase
+          .from('schedule_overrides')
+          .select('id, schedule_id, override_date, new_teacher_time, new_duration_minutes, is_cancelled')
+          .in('schedule_id', schedIds)
+          .eq('override_date', todayKey);
+        (ovRows || []).forEach((o: any) => overrideBySchedule.set(o.schedule_id, o));
+      }
+
       const liveByAssignment = new Map<string, any>();
       (liveRes.data || []).forEach((s: any) => {
         if (s.assignment_id) liveByAssignment.set(s.assignment_id, s);
