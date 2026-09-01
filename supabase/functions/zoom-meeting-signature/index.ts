@@ -79,7 +79,9 @@ Deno.serve(async (req) => {
 
     const { data: acct, error: acctErr } = await admin
       .from('zoom_accounts')
-      .select('id, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret')
+      .select(
+        'id, zoom_user_id, zoom_account_email, zoom_account_id_cred, zoom_client_id, zoom_client_secret, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret',
+      )
       .eq('id', accountId)
       .maybeSingle();
     if (acctErr) return json({ error: acctErr.message }, 500);
@@ -98,10 +100,11 @@ Deno.serve(async (req) => {
 
     const signature = await signJwt(
       {
+        // Zoom's reference auth endpoint still emits both keys and keeps the
+        // meeting number as the string it received.
+        sdkKey: clientId,
         appKey: clientId,
-        // Zoom's current Meeting SDK validator expects the mn claim to be a
-        // number, matching its official signature endpoint sample.
-        mn: Number(meetingNumber),
+        mn: meetingNumber,
         role,
         iat,
         exp,
@@ -110,7 +113,26 @@ Deno.serve(async (req) => {
       clientSecret,
     );
 
-    return json({ signature });
+    // Hosts (role 1) cannot START a meeting with a signature alone — Zoom
+    // requires the host's ZAK. Mint it with the same account's S2S OAuth app.
+    let zak: string | null = null;
+    if (role === 1) {
+      zak = await mintZak({
+        accountId: String(acct?.zoom_account_id_cred ?? '').trim(),
+        clientId: String(acct?.zoom_client_id ?? '').trim(),
+        clientSecret: String(acct?.zoom_client_secret ?? '').trim(),
+        zoomUserId: String(acct?.zoom_user_id ?? '').trim() ||
+          String(acct?.zoom_account_email ?? '').trim(),
+      });
+      if (!zak) {
+        // Without a ZAK the SDK join fails with "Signature is invalid"; the
+        // caller should send the teacher to the external Zoom link instead.
+        return json({ error: 'ZAK_UNAVAILABLE' }, 409);
+      }
+    }
+
+    return json({ signature, zak });
+
   } catch (e) {
     return json({ error: (e as Error).message || 'Unexpected error' }, 500);
   }
