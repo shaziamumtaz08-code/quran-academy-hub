@@ -40,6 +40,15 @@ export function ZoomSdkMeeting({
 
   useEffect(() => {
     let cancelled = false;
+    let sdkErrorObserver: MutationObserver | null = null;
+    let failureReported = false;
+
+    const reportFailure = (message: string) => {
+      if (cancelled || failureReported) return;
+      failureReported = true;
+      setStatus('error');
+      onFailure?.(message);
+    };
 
     (async () => {
       try {
@@ -67,6 +76,19 @@ export function ZoomSdkMeeting({
           },
         });
 
+        // Some Meeting SDK authentication failures are rendered in Zoom's own
+        // modal instead of rejecting join(). Detect those terminal messages so
+        // the parent can expose the normal browser/Zoom-app fallback.
+        sdkErrorObserver = new MutationObserver(() => {
+          const text = containerRef.current?.textContent?.toLowerCase() || '';
+          if (text.includes('signature is invalid')) {
+            reportFailure('Zoom rejected this account’s Meeting SDK credentials');
+          } else if (text.includes('fail to join the meeting')) {
+            reportFailure('Zoom could not start the in-app meeting');
+          }
+        });
+        sdkErrorObserver.observe(containerRef.current, { childList: true, subtree: true, characterData: true });
+
         await client.join({
           signature: data.signature,
           sdkKey: data.sdkKey,
@@ -78,14 +100,13 @@ export function ZoomSdkMeeting({
 
         if (!cancelled) setStatus('joined');
       } catch (e: any) {
-        if (cancelled) return;
-        setStatus('error');
-        onFailure?.(e?.message || 'Zoom SDK failed to start');
+        reportFailure(e?.message || 'Zoom SDK failed to start');
       }
     })();
 
     return () => {
       cancelled = true;
+      sdkErrorObserver?.disconnect();
       try {
         clientRef.current?.leaveMeeting?.();
       } catch { /* ignore */ }

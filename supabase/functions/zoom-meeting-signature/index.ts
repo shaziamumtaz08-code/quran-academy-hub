@@ -83,8 +83,10 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (acctErr) return json({ error: acctErr.message }, 500);
 
-    const clientId = acct?.zoom_meeting_sdk_client_id;
-    const clientSecret = acct?.zoom_meeting_sdk_client_secret;
+    // Credentials are pasted from Zoom. Normalize harmless surrounding
+    // whitespace here so a copied newline cannot produce an invalid JWT.
+    const clientId = String(acct?.zoom_meeting_sdk_client_id ?? '').trim();
+    const clientSecret = String(acct?.zoom_meeting_sdk_client_secret ?? '').trim();
     if (!clientId || !clientSecret) {
       return json({ error: 'Meeting SDK credentials are not configured for this Zoom account' }, 404);
     }
