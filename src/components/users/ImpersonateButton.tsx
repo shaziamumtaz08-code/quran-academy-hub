@@ -45,6 +45,15 @@ export function ImpersonateButton({
     // Open the tab synchronously (inside the click) so popup blockers allow it,
     // then navigate it once we have the magic link.
     const newTab = window.open('about:blank', '_blank');
+    // Paint a loading state immediately — otherwise the tab sits on a blank
+    // white page while the edge function runs and looks like it never loads.
+    try {
+      newTab?.document.write(
+        '<title>Starting session…</title><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font:14px system-ui;color:#475569;background:#f8fafc">Starting session…</body>',
+      );
+      newTab?.document.close();
+    } catch { /* noop */ }
+
     try {
       const target = redirectTo || '/dashboard';
       const targetPath = target.startsWith('http')
