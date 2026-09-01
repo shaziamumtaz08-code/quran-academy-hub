@@ -23,39 +23,72 @@ async function signJwt(payload: Record<string, unknown>, secret: string) {
   return `${data}.${b64url(sig)}`;
 }
 
+/** Safe, secret-free description of why ZAK minting failed. */
+type ZakDiag = { stage: 'oauth' | 'zak' | 'config' | 'network'; status?: number; code?: string | number; message?: string };
+
 /**
  * Mint a host ZAK for the given Zoom account using its Server-to-Server OAuth
- * app. Returns null when credentials are missing or Zoom refuses — callers
- * then fall back to the external Zoom link rather than a failing SDK join.
+ * app. Returns a safe diagnostic (never tokens/secrets) when Zoom refuses so
+ * callers can surface the real reason instead of a blank failure.
  */
 async function mintZak(opts: {
   accountId: string;
   clientId: string;
   clientSecret: string;
   zoomUserId: string;
-}): Promise<string | null> {
+}): Promise<{ zak: string | null; diag?: ZakDiag }> {
   const { accountId, clientId, clientSecret, zoomUserId } = opts;
-  if (!accountId || !clientId || !clientSecret || !zoomUserId) return null;
+  const missing = [
+    !accountId && 'account_id',
+    !clientId && 'client_id',
+    !clientSecret && 'client_secret',
+    !zoomUserId && 'zoom_user_id',
+  ].filter(Boolean);
+  if (missing.length) {
+    return { zak: null, diag: { stage: 'config', message: `Missing S2S fields: ${missing.join(', ')}` } };
+  }
   try {
     const basic = btoa(`${clientId}:${clientSecret}`);
     const tokenResp = await fetch(
       `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(accountId)}`,
       { method: 'POST', headers: { Authorization: `Basic ${basic}` } },
     );
-    const tokenData = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok || !tokenData?.access_token) return null;
+    const tokenData = await tokenResp.json().catch(() => ({} as any));
+    if (!tokenResp.ok || !tokenData?.access_token) {
+      const diag: ZakDiag = {
+        stage: 'oauth',
+        status: tokenResp.status,
+        code: tokenData?.errorCode ?? tokenData?.code ?? tokenData?.error,
+        // Zoom returns only descriptive text here; no secrets are echoed back.
+        message: String(tokenData?.reason ?? tokenData?.message ?? tokenData?.error_description ?? 'OAuth token request failed'),
+      };
+      console.error('zak.oauth_failed', JSON.stringify(diag));
+      return { zak: null, diag };
+    }
 
     const zakResp = await fetch(
       `https://api.zoom.us/v2/users/${encodeURIComponent(zoomUserId)}/token?type=zak`,
       { headers: { Authorization: `Bearer ${tokenData.access_token}` } },
     );
-    const zakData = await zakResp.json().catch(() => ({}));
-    if (!zakResp.ok || !zakData?.token) return null;
-    return String(zakData.token);
-  } catch {
-    return null;
+    const zakData = await zakResp.json().catch(() => ({} as any));
+    if (!zakResp.ok || !zakData?.token) {
+      const diag: ZakDiag = {
+        stage: 'zak',
+        status: zakResp.status,
+        code: zakData?.code,
+        message: String(zakData?.message ?? 'ZAK request returned no token'),
+      };
+      console.error('zak.request_failed', JSON.stringify(diag));
+      return { zak: null, diag };
+    }
+    return { zak: String(zakData.token) };
+  } catch (e) {
+    const diag: ZakDiag = { stage: 'network', message: (e as Error).message || 'Network error contacting Zoom' };
+    console.error('zak.network_error', JSON.stringify(diag));
+    return { zak: null, diag };
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
