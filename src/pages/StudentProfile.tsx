@@ -1,7 +1,5 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
@@ -15,7 +13,7 @@ import {
 } from '@/components/profile/ProfileKit';
 import {
   BadgeCheck, BookOpen, CalendarDays, Clock, Droplet, GraduationCap, Globe, HeartPulse,
-  Mail, MapPin, Phone, School, ShieldCheck, Siren, Settings2, Target, User, Users, IdCard, Languages,
+  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
