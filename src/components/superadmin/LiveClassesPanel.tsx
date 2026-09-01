@@ -157,9 +157,10 @@ export function LiveClassesPanel({ divisionNames }: Props) {
         (profs || []).forEach((p: any) => nameMap.set(p.id, p.full_name || '—'));
       }
 
-      const built: ClassRow[] = (schedRes.data || []).map((s: any) => {
+      const built: ClassRow[] = (schedRes.data || []).filter((s: any) => !effective.get(s.id)?.dropped).map((s: any) => {
         const a = s.student_teacher_assignments;
         const ls = a?.id ? liveByAssignment.get(a.id) : null;
+        const eff = effective.get(s.id);
         return {
           key: `sc:${s.id}`,
           divisionId: s.division_id || a?.division_id || null,
