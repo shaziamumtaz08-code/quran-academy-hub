@@ -12,9 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BackLink, ProfileHero, StatTiles, InfoCard, InfoRow, StatusBadge, EmptyState,
 } from '@/components/profile/ProfileKit';
+import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import {
   BadgeCheck, BookOpen, CalendarDays, Clock, Droplet, GraduationCap, Globe, HeartPulse,
-  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages,
+  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages, Settings2,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
