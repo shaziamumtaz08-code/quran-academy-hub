@@ -10,6 +10,8 @@ interface Options {
   resumePage?: number | null;
   canControl?: boolean;
   libraryItemId?: string | null;
+  /** Student whose flashcard progress is recorded. */
+  studentId?: string | null;
   /** Teacher tapped a word — used to broadcast the flip to followers. */
   onSelectWord?: (wordId: string | null) => void;
 }
@@ -19,6 +21,7 @@ export function useQaidaAdapter({
   resumePage = null,
   canControl = true,
   libraryItemId = null,
+  studentId = null,
   onSelectWord,
 }: Options = {}): VcrAdapter {
   const { data: ref } = useQaidaReference();
@@ -38,10 +41,11 @@ export function useQaidaAdapter({
         fontScale: ctx.fontScale,
         highlight: ctx.highlight,
         canControl,
+        studentId,
         onWords: setWords,
         onSelectWord,
       }),
-    [canControl, onSelectWord]
+    [canControl, studentId, onSelectWord]
   );
 
   return useMemo<VcrAdapter>(() => {
