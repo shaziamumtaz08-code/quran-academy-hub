@@ -116,9 +116,25 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
     );
   }
 
-  const openRecording = async (url: string, password?: string) => {
+  /**
+   * Recording passwords are no longer readable as ordinary columns; they are
+   * issued on demand by a server-side check (teacher / student / parent / admin).
+   */
+  const fetchPassword = async (sessionId: string, recordingId?: string): Promise<string | undefined> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('get_recording_passwords', { _session_id: sessionId });
+      if (error || !data) return undefined;
+      if (recordingId) return data.recordings?.[recordingId] ?? data.session_password ?? undefined;
+      return data.session_password ?? undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const openRecording = async (url: string, sessionId: string, recordingId?: string) => {
     const resolved = await resolveFileUrl(url);
     if (!resolved) return;
+    const password = await fetchPassword(sessionId, recordingId);
     const fullUrl = password && !resolved.includes('token=') ? `${resolved}?pwd=${encodeURIComponent(password)}` : resolved;
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
