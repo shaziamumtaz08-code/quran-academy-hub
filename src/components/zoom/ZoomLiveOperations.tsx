@@ -545,7 +545,11 @@ export function ZoomLiveOperations() {
           </span>
         </div>
 
+        {/* Zoom S2S webhook telemetry, rolled up per class session */}
+        <ZoomSessionAttendanceReport />
+
         {/* In-app Zoom player (admin joins as attendee; teacher stays host) */}
+
         <Dialog
           open={!!sdkJoin}
           onOpenChange={(o) => {
