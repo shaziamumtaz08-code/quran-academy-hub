@@ -35,7 +35,7 @@ export function QaidaPracticeDeck({ open, onOpenChange, words, statuses, onGrade
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-3xl pb-8">
+      <SheetContent side="bottom" className="qaida-pop qaida-pastel max-h-[92vh] overflow-y-auto rounded-t-3xl pb-8">
         <SheetHeader className="mb-4">
           <SheetTitle className="text-center text-base">
             Practice deck {deck.length > 0 && <span className="text-muted-foreground">· {index + 1} / {deck.length}</span>}

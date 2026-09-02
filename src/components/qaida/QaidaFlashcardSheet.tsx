@@ -15,7 +15,7 @@ interface Props {
 export function QaidaFlashcardSheet({ word, status, open, onOpenChange, onGrade }: Props) {
   return (
     <Sheet open={open && !!word} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-3xl pb-8">
+      <SheetContent side="bottom" className="qaida-pop qaida-pastel max-h-[92vh] overflow-y-auto rounded-t-3xl pb-8">
         <SheetHeader className="mb-4">
           <SheetTitle className="text-center text-base">Flashcard</SheetTitle>
         </SheetHeader>

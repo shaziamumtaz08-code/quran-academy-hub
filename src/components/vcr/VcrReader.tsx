@@ -129,21 +129,31 @@ export function VcrReader({
     );
   }
 
+  const pastel = adapter.contentType === 'qaida';
+
   return (
     <div className={cn('vcr-stage w-full', className)}>
       <div
         className={cn(
-          'vcr-reading-card mx-auto w-full max-w-4xl rounded-2xl px-5 py-6 sm:px-10 sm:py-9',
+          'mx-auto w-full max-w-4xl rounded-2xl px-5 py-6 sm:px-10 sm:py-9',
+          pastel
+            ? 'qaida-pastel border-2 border-white/70 shadow-[0_24px_60px_-24px_rgba(60,50,90,0.55)]'
+            : 'vcr-reading-card',
           turning && 'vcr-turn vcr-turn-rtl'
         )}
       >
         {/* Page chrome */}
-        <div className="mb-5 flex items-center justify-between gap-3 border-b border-vcr-ink/15 pb-3">
-          <span className="font-display text-xl text-vcr-ink sm:text-2xl">{adapter.currentLabel}</span>
-          <span className="font-mono text-base tabular-nums text-vcr-ink/70 sm:text-lg">
+        <div className={cn('mb-5 flex items-center justify-between gap-3 border-b pb-3',
+          pastel ? 'border-slate-900/10' : 'border-vcr-ink/15')}>
+          <span className={cn('font-display text-xl sm:text-2xl', pastel ? 'text-slate-800' : 'text-vcr-ink')}>
+            {adapter.currentLabel}
+          </span>
+          <span className={cn('font-mono text-base tabular-nums sm:text-lg',
+            pastel ? 'text-slate-600' : 'text-vcr-ink/70')}>
             {adapter.currentSubLabel}
           </span>
         </div>
+
 
         {adapter.renderUnit(unit, { fontScale, highlight })}
       </div>
