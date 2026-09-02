@@ -20,6 +20,19 @@ export interface QaidaPageWord {
   audio_url?: string | null;
 }
 
+interface QaidaBaabMeta {
+  id: string;
+  baab_number: number;
+  name_urdu: string | null;
+  name_english: string | null;
+  start_page: number;
+  end_page: number;
+  total_units: number | null;
+  unit_label: string | null;
+  picker_mode: string | null;
+}
+
+
 interface Props extends Partial<VcrRenderContext> {
   page: number;
   fontScale?: number;
