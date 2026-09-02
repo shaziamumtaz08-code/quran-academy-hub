@@ -87,6 +87,63 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     },
   });
 
+  // Which classes this Zoom seat hosts — this link is what lets a class use the
+  // in-app player (the signature function resolves credentials through it).
+  const { data: classRows } = useQuery({
+    queryKey: ['zoom-linkable-classes'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('course_classes')
+        .select('id, name, status, zoom_account_id, course:courses(name)')
+        .order('name');
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        name: string | null;
+        status: string | null;
+        zoom_account_id: string | null;
+        course?: { name?: string | null } | null;
+      }>;
+    },
+  });
+
+  const [linking, setLinking] = React.useState(false);
+  const [pendingClassId, setPendingClassId] = React.useState('');
+
+  const linkedClasses = React.useMemo(
+    () => (classRows || []).filter((c) => c.zoom_account_id === accountId),
+    [classRows, accountId],
+  );
+  const unlinkedClasses = React.useMemo(
+    () => (classRows || []).filter((c) => c.zoom_account_id !== accountId),
+    [classRows, accountId],
+  );
+  const classLabel = (c: { name: string | null; course?: { name?: string | null } | null }) =>
+    [c.course?.name, c.name].filter(Boolean).join(' · ') || 'Untitled class';
+
+  const setClassAccount = async (classId: string, nextAccountId: string | null) => {
+    setLinking(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('course_classes')
+        .update({ zoom_account_id: nextAccountId })
+        .eq('id', classId);
+      if (error) throw error;
+      setPendingClassId('');
+      queryClient.invalidateQueries({ queryKey: ['zoom-linkable-classes'] });
+      toast({
+        title: nextAccountId ? 'Class linked' : 'Class unlinked',
+        description: nextAccountId
+          ? 'This class will now host through the selected Zoom account.'
+          : 'This class falls back to its embedded meeting link.',
+      });
+    } catch (e: any) {
+      toast({ title: 'Could not update class', description: e.message, variant: 'destructive' });
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
   const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
 
