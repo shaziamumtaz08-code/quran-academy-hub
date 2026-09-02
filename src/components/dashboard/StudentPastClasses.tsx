@@ -199,7 +199,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
                           {session.recordings.map((rec: any, idx: number) => (
                             <DropdownMenuItem
                               key={idx}
-                              onClick={() => openRecording(rec.play_url || rec.download_url, rec.password)}
+                              onClick={() => openRecording(rec.play_url || rec.download_url, session.id, rec.id)}
                             >
                               <Play className="h-3 w-3 mr-2" />
                               {rec.recording_type?.replace(/_/g, ' ') || rec.file_type}
@@ -213,7 +213,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-xs"
-                        onClick={() => openRecording(session.recordingLink!, session.recordingPassword)}
+                        onClick={() => openRecording(session.recordingLink!, session.id)}
                       >
                         <Play className="h-3 w-3" />
                         Recording
