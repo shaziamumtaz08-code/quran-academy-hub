@@ -12,9 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BackLink, ProfileHero, StatTiles, InfoCard, InfoRow, StatusBadge, EmptyState,
 } from '@/components/profile/ProfileKit';
+import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import {
   BadgeCheck, BookOpen, CalendarDays, Clock, Droplet, GraduationCap, Globe, HeartPulse,
-  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages,
+  Mail, MapPin, Phone, School, ShieldCheck, Siren, Target, User, Users, IdCard, Languages, Settings2,
 } from 'lucide-react';
 
 const fmtDate = (v?: string | null) =>
@@ -37,6 +38,7 @@ export default function StudentProfile() {
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const [guardianOpen, setGuardianOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const canTeach = !!(canAdmin || hasRole('teacher'));
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>
@@ -138,6 +140,11 @@ export default function StudentProfile() {
         }
         actions={
           <>
+            {canAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'Edit profile'}
+              </Button>
+            )}
             {p.email && (
               <Button asChild size="sm" variant="outline" className="gap-1.5">
                 <a href={`mailto:${p.email}`}><Mail className="h-3.5 w-3.5" /> Send email</a>
@@ -158,6 +165,9 @@ export default function StudentProfile() {
           { label: 'Blood group', value: p.blood_group ?? 'Not provided', icon: Droplet, tone: 'amber' },
         ]}
       />
+
+      {advancedOpen && canAdmin && studentId && <ProfileEditorPanel userId={studentId} />}
+
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InfoCard icon={User} title="Personal information" tone="primary">

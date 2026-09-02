@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, ShieldCheck, Webhook } from 'lucide-react';
+import { Check, Copy, KeyRound, ShieldCheck, Users, Webhook } from 'lucide-react';
 import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
 import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
@@ -86,6 +86,63 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
       }>;
     },
   });
+
+  // Which classes this Zoom seat hosts — this link is what lets a class use the
+  // in-app player (the signature function resolves credentials through it).
+  const { data: classRows } = useQuery({
+    queryKey: ['zoom-linkable-classes'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('course_classes')
+        .select('id, name, status, zoom_account_id, course:courses(name)')
+        .order('name');
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        name: string | null;
+        status: string | null;
+        zoom_account_id: string | null;
+        course?: { name?: string | null } | null;
+      }>;
+    },
+  });
+
+  const [linking, setLinking] = React.useState(false);
+  const [pendingClassId, setPendingClassId] = React.useState('');
+
+  const linkedClasses = React.useMemo(
+    () => (classRows || []).filter((c) => c.zoom_account_id === accountId),
+    [classRows, accountId],
+  );
+  const unlinkedClasses = React.useMemo(
+    () => (classRows || []).filter((c) => c.zoom_account_id !== accountId),
+    [classRows, accountId],
+  );
+  const classLabel = (c: { name: string | null; course?: { name?: string | null } | null }) =>
+    [c.course?.name, c.name].filter(Boolean).join(' · ') || 'Untitled class';
+
+  const setClassAccount = async (classId: string, nextAccountId: string | null) => {
+    setLinking(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('course_classes')
+        .update({ zoom_account_id: nextAccountId })
+        .eq('id', classId);
+      if (error) throw error;
+      setPendingClassId('');
+      queryClient.invalidateQueries({ queryKey: ['zoom-linkable-classes'] });
+      toast({
+        title: nextAccountId ? 'Class linked' : 'Class unlinked',
+        description: nextAccountId
+          ? 'This class will now host through the selected Zoom account.'
+          : 'This class falls back to its embedded meeting link.',
+      });
+    } catch (e: any) {
+      toast({ title: 'Could not update class', description: e.message, variant: 'destructive' });
+    } finally {
+      setLinking(false);
+    }
+  };
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
   const webhookBase = `https://${projectId}.supabase.co/functions/v1/zoom-webhook`;
@@ -217,6 +274,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
   const saveCreds = async () => {
     if (!account) return;
+
     setSavingCreds(true);
     try {
       const { error } = await (supabase as any).rpc('admin_set_zoom_meeting_sdk_creds', {
@@ -279,6 +337,66 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
       {account && (
         <>
+          {/* Classes hosted by this account — the link the in-app player needs */}
+          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <Users className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <h3 className="zw-h2">Classes hosted by this account</h3>
+              <span className="zw-chip" data-tone={linkedClasses.length ? 'ok' : 'quiet'}>
+                <span className="zw-dot" /> {linkedClasses.length} linked
+              </span>
+            </div>
+
+            {linkedClasses.length === 0 ? (
+              <p className="zw-meta">
+                No class is hosted by this seat yet — link one below so it can use the in-app player.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {linkedClasses.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2">
+                    <span className="zw-body min-w-0 truncate">{classLabel(c)}</span>
+                    <button
+                      type="button"
+                      className="zw-btn-ghost shrink-0"
+                      disabled={linking}
+                      onClick={() => setClassAccount(c.id, null)}
+                    >
+                      Unlink
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Link another class to this account</p>
+                <Select value={pendingClassId} onValueChange={setPendingClassId}>
+                  <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
+                  <SelectContent>
+                    {unlinkedClasses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {classLabel(c)}{c.zoom_account_id ? ' · linked elsewhere' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button
+                type="button"
+                className="zw-btn-secondary"
+                disabled={!pendingClassId || linking}
+                onClick={() => setClassAccount(pendingClassId, account.id)}
+              >
+                {linking ? 'Saving…' : 'Link class'}
+              </button>
+            </div>
+            <p className="zw-meta">
+              A class without a Zoom account keeps using its plain embedded meeting frame.
+            </p>
+          </div>
+
           {/* Server-to-Server OAuth app — powers webhooks, attendance telemetry, host ID */}
           <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
             <div className="flex flex-wrap items-center gap-2">
