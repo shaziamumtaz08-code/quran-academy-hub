@@ -244,74 +244,86 @@ export function QaidaUnit({
 
   const grade = (wordId: string, status: QaidaWordStatus) => { void setStatus(wordId, status); };
 
+  const tileSize = Math.round((paper ? 68 : 84) * fontScale);
+  const glyphSize = Math.round((paper ? 30 : 38) * fontScale);
+
   return (
     <div className={cn('relative', className)}>
-      <div dir="rtl" className="space-y-4">
-        {lines.map(([lineNo, lineWords]) => (
-          <div key={lineNo} className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            {lineWords.map((w) => {
-              const isEnd = selecting && (w.id === fromId || w.id === toId);
-              const inRange = selecting && rangeSet.has(w.id);
-              const open = !selecting && activeWordId === w.id;
-              const mark = selecting ? null : progress[w.id]?.status ?? null;
-              const accent = HARAKAT_STYLE[detectHarakat(w.word_text)];
-              return (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => tap(w)}
-                  aria-pressed={open || isEnd || inRange}
-                  className={cn(
-                    'relative rounded-xl border px-4 py-2 transition-all duration-200',
-                    isEnd && 'border-primary bg-primary/20 ring-2 ring-primary',
-                    !isEnd && inRange && 'border-primary/40 bg-primary/10',
-                    open && 'ring-2',
-                    !isEnd && !inRange && !open &&
-                      (paper
-                        ? 'border-border bg-background hover:border-primary/50'
-                        : 'border-vcr-ink/15 bg-vcr-ink/[0.03] hover:border-vcr-gold/60'),
-                  )}
-                  style={open ? { borderColor: `hsl(${accent.hsl})`, boxShadow: `0 0 0 2px hsl(${accent.hsl} / 0.35)` } : undefined}
-                >
-                  <span className={cn('font-uthmani', inkClass)} style={{ fontSize: `${(paper ? 30 : 38) * fontScale}px` }}>
-                    {w.word_text}
-                  </span>
-                  {mark && (
+      <div className="qaida-pastel relative overflow-hidden rounded-3xl p-4 sm:p-6">
+        <div dir="rtl" className="space-y-3 sm:space-y-4">
+          {lines.map(([lineNo, lineWords]) => (
+            <div key={lineNo} className="flex flex-wrap items-center justify-center gap-3">
+              {lineWords.map((w) => {
+                const isEnd = selecting && (w.id === fromId || w.id === toId);
+                const inRange = selecting && rangeSet.has(w.id);
+                const open = !selecting && activeWordId === w.id;
+                const mark = selecting ? null : progress[w.id]?.status ?? null;
+                const accent = HARAKAT_STYLE[detectHarakat(w.word_text)];
+                const active = isEnd || inRange || open;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => tap(w)}
+                    aria-pressed={active}
+                    style={{
+                      width: tileSize,
+                      height: tileSize,
+                      ...(open
+                        ? { borderColor: `hsl(${accent.hsl} / 0.7)` }
+                        : {}),
+                    }}
+                    className={cn(
+                      'qaida-tile relative flex shrink-0 items-center justify-center p-2',
+                      active && 'qaida-tile-selected',
+                      isEnd && 'ring-2 ring-primary',
+                    )}
+                  >
                     <span
-                      className={cn(
-                        'absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full text-white shadow',
-                        mark === 'mastered' ? 'bg-emerald-500' : 'bg-amber-500',
-                      )}
-                      aria-label={mark === 'mastered' ? 'Mastered' : 'Needs practice'}
+                      className="font-uthmani leading-none text-slate-900"
+                      style={{ fontSize: `${glyphSize}px` }}
                     >
-                      {mark === 'mastered'
-                        ? <Star className="h-3 w-3" />
-                        : <RefreshCw className="h-3 w-3" />}
+                      {w.word_text}
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-        <p className={cn('pt-2 text-center text-sm', mutedClass)} dir="ltr">
-          {selecting
-            ? 'Tap the first word of the lesson, then the last word.'
-            : 'Tap any letter or word to open its flashcard.'}
-        </p>
+                    {mark && (
+                      <span
+                        className={cn(
+                          'absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full text-white shadow-md ring-2 ring-white/80',
+                          mark === 'mastered' ? 'bg-emerald-500' : 'bg-amber-500',
+                        )}
+                        aria-label={mark === 'mastered' ? 'Mastered' : 'Needs practice'}
+                      >
+                        {mark === 'mastered'
+                          ? <Star className="h-3.5 w-3.5" />
+                          : <RefreshCw className="h-3.5 w-3.5" />}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <p className="pt-2 text-center text-sm text-slate-600" dir="ltr">
+            {selecting
+              ? 'Tap the first word of the lesson, then the last word.'
+              : 'Tap any letter or word to open its flashcard.'}
+          </p>
+        </div>
       </div>
 
       {!selecting && (
         <>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setDeckOpen(true)}
-            className="sticky bottom-4 float-left mt-4 gap-1.5 rounded-full shadow-lg"
-          >
-            <Layers className="h-4 w-4" /> Practice deck
-            {deckWords.length > 0 && <span className="opacity-80">· {deckWords.length}</span>}
-          </Button>
+          <div className="pointer-events-none sticky bottom-4 z-50 mt-4 flex justify-start">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setDeckOpen(true)}
+              className="pointer-events-auto gap-1.5 rounded-full shadow-xl"
+            >
+              <Layers className="h-4 w-4" /> Practice deck
+              {deckWords.length > 0 && <span className="opacity-80">· {deckWords.length}</span>}
+            </Button>
+          </div>
 
           <QaidaFlashcardSheet
             open={!!activeWord}

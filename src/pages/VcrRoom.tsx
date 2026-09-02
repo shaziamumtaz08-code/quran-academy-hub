@@ -275,7 +275,7 @@ export default function VcrRoom() {
   }
 
   return (
-    <div className="vcr-canvas flex min-h-screen flex-col text-vcr-chrome">
+    <div className={cn('flex min-h-screen flex-col text-vcr-chrome', content === 'qaida' ? 'qaida-room' : 'vcr-canvas')}>
       {/* Header — stays legible when screen-shared */}
       <header className="sticky top-0 z-20 border-b border-vcr-chrome/10 bg-[#0C1B1E]/90 backdrop-blur">
         <nav
