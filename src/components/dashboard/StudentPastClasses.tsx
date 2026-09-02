@@ -36,7 +36,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
 
       const { data: liveSessions, error } = await supabase
         .from('live_sessions')
-        .select('id, actual_start, actual_end, recording_link, recording_status, recording_password, teacher_id')
+        .select('id, actual_start, actual_end, recording_link, recording_status, teacher_id')
         .eq('teacher_id', assignment[0].teacher_id)
         .eq('status', 'completed')
         .not('actual_start', 'is', null)
@@ -66,7 +66,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
       // Fetch recordings from session_recordings table
       const { data: recordings } = await (supabase as any)
         .from('session_recordings')
-        .select('session_id, recording_type, play_url, download_url, password, file_type, file_size_mb')
+        .select('id, session_id, recording_type, play_url, download_url, file_type, file_size_mb')
         .in('session_id', sessionIds)
         .eq('status', 'available');
 
@@ -91,7 +91,6 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
           duration,
           recordingLink: session.recording_link,
           recordingStatus: (session as any).recording_status || 'pending',
-          recordingPassword: (session as any).recording_password,
           recordings: sessionRecordings,
           attended: !!attendance,
           attendedDuration: attendance?.total_duration_minutes || 0,
@@ -117,9 +116,25 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
     );
   }
 
-  const openRecording = async (url: string, password?: string) => {
+  /**
+   * Recording passwords are no longer readable as ordinary columns; they are
+   * issued on demand by a server-side check (teacher / student / parent / admin).
+   */
+  const fetchPassword = async (sessionId: string, recordingId?: string): Promise<string | undefined> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('get_recording_passwords', { _session_id: sessionId });
+      if (error || !data) return undefined;
+      if (recordingId) return data.recordings?.[recordingId] ?? data.session_password ?? undefined;
+      return data.session_password ?? undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const openRecording = async (url: string, sessionId: string, recordingId?: string) => {
     const resolved = await resolveFileUrl(url);
     if (!resolved) return;
+    const password = await fetchPassword(sessionId, recordingId);
     const fullUrl = password && !resolved.includes('token=') ? `${resolved}?pwd=${encodeURIComponent(password)}` : resolved;
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
@@ -184,7 +199,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
                           {session.recordings.map((rec: any, idx: number) => (
                             <DropdownMenuItem
                               key={idx}
-                              onClick={() => openRecording(rec.play_url || rec.download_url, rec.password)}
+                              onClick={() => openRecording(rec.play_url || rec.download_url, session.id, rec.id)}
                             >
                               <Play className="h-3 w-3 mr-2" />
                               {rec.recording_type?.replace(/_/g, ' ') || rec.file_type}
@@ -198,7 +213,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
                         variant="outline"
                         size="sm"
                         className="gap-1.5 text-xs"
-                        onClick={() => openRecording(session.recordingLink!, session.recordingPassword)}
+                        onClick={() => openRecording(session.recordingLink!, session.id)}
                       >
                         <Play className="h-3 w-3" />
                         Recording

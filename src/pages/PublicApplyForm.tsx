@@ -130,6 +130,12 @@ export default function PublicApplyForm() {
     return result;
   }, [formInfo?.fields]);
 
+  // Every visitor gets their own upload folder so public uploads can never
+  // land on (or overwrite) another applicant's files.
+  const submissionFolderRef = React.useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
+  );
+
   const handleFileUpload = (fieldKey: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -138,7 +144,8 @@ export default function PublicApplyForm() {
       return;
     }
     setUploadingFile(fieldKey);
-    const path = `${slug}/${Date.now()}_${file.name}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `submissions/${submissionFolderRef.current}/${Date.now()}_${safeName}`;
     const { data, error } = await supabase.storage.from('registration-uploads').upload(path, file);
     setUploadingFile(null);
     if (error) {

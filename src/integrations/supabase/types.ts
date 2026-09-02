@@ -13689,6 +13689,10 @@ export type Database = {
         }
         Returns: Json
       }
+      can_access_live_session: {
+        Args: { _session_id: string }
+        Returns: boolean
+      }
       can_edit_quiz_bank: {
         Args: { _quiz_id: string; _user_id: string }
         Returns: boolean
@@ -13703,6 +13707,10 @@ export type Database = {
         Returns: boolean
       }
       can_read_tutorial_capture: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
+      can_read_tutorial_video: {
         Args: { _object_name: string }
         Returns: boolean
       }
@@ -13967,6 +13975,7 @@ export type Database = {
         }[]
       }
       get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
+      get_recording_passwords: { Args: { _session_id: string }; Returns: Json }
       get_safe_profiles: {
         Args: { p_ids: string[] }
         Returns: {
