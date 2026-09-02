@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, PlayCircle, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { goBackToClassRoom } from '@/lib/classRoomBack';
+
 
 interface SyllabusItem { id: string; level: string; title: string; sequence_order: number }
 interface SessionRow {
