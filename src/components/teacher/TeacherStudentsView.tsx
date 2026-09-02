@@ -15,15 +15,22 @@ import { Link } from 'react-router-dom';
 function VcrLinks({ studentId }: { studentId: string }) {
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Link to={`/vcr/${studentId}`} className="vcr-btn-gold inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+      <Link
+        to={`/vcr/${studentId}`}
+        className="vcr-btn-gold inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
+      >
         <MonitorPlay className="h-3.5 w-3.5" /> Open VCR
       </Link>
-      <Link to={`/syllabus/${studentId}`} className="vcr-btn inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+      <Link
+        to={`/syllabus/${studentId}`}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
         <BookOpen className="h-3.5 w-3.5" /> View Syllabus
       </Link>
     </div>
   );
 }
+
 
 export default function TeacherStudentsView() {
   const { user } = useAuth();
