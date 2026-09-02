@@ -337,6 +337,66 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
       {account && (
         <>
+          {/* Classes hosted by this account — the link the in-app player needs */}
+          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <Users className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
+              <h3 className="zw-h2">Classes hosted by this account</h3>
+              <span className="zw-chip" data-tone={linkedClasses.length ? 'ok' : 'quiet'}>
+                <span className="zw-dot" /> {linkedClasses.length} linked
+              </span>
+            </div>
+
+            {linkedClasses.length === 0 ? (
+              <p className="zw-meta">
+                No class is hosted by this seat yet — link one below so it can use the in-app player.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {linkedClasses.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2">
+                    <span className="zw-body min-w-0 truncate">{classLabel(c)}</span>
+                    <button
+                      type="button"
+                      className="zw-btn-ghost shrink-0"
+                      disabled={linking}
+                      onClick={() => setClassAccount(c.id, null)}
+                    >
+                      Unlink
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <p className="zw-eyebrow mb-1.5">Link another class to this account</p>
+                <Select value={pendingClassId} onValueChange={setPendingClassId}>
+                  <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
+                  <SelectContent>
+                    {unlinkedClasses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {classLabel(c)}{c.zoom_account_id ? ' · linked elsewhere' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button
+                type="button"
+                className="zw-btn-secondary"
+                disabled={!pendingClassId || linking}
+                onClick={() => setClassAccount(pendingClassId, account.id)}
+              >
+                {linking ? 'Saving…' : 'Link class'}
+              </button>
+            </div>
+            <p className="zw-meta">
+              A class without a Zoom account keeps using its plain embedded meeting frame.
+            </p>
+          </div>
+
           {/* Server-to-Server OAuth app — powers webhooks, attendance telemetry, host ID */}
           <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
             <div className="flex flex-wrap items-center gap-2">
