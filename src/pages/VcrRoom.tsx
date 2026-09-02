@@ -14,6 +14,8 @@ import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
 
 import { cn } from '@/lib/utils';
+import { goBackToClassRoom } from '@/lib/classRoomBack';
+
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin', 'admin_academic', 'admin_division'];
 
