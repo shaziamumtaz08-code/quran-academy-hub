@@ -1628,3 +1628,35 @@
 .zoom-ws .zw-row[data-tone="warn"] { background: hsl(var(--zw-warn-soft) / 0.6); }
 .zoom-ws .zw-btn-primary:disabled,
 .zoom-ws .zw-btn-secondary:disabled { opacity: 0.45; pointer-events: none; }
+
+/* ── Qaida room: pastel light-mode remap of the VCR chrome ── */
+.qaida-room {
+  background:
+    radial-gradient(70% 55% at 8% 0%, rgba(255, 214, 226, 0.75), transparent 60%),
+    radial-gradient(70% 55% at 92% 4%, rgba(214, 219, 255, 0.75), transparent 60%),
+    radial-gradient(80% 60% at 50% 104%, rgba(198, 245, 226, 0.7), transparent 62%),
+    linear-gradient(160deg, #FDF7FF 0%, #F3F7FF 48%, #F1FFF9 100%);
+}
+.qaida-room > header {
+  background-color: rgba(255, 255, 255, 0.72);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+.qaida-room [class*="text-vcr-chrome"] { color: #26303F; }
+.qaida-room .vcr-panel {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 36px -20px rgba(60, 50, 90, 0.4);
+}
+.qaida-room .vcr-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #26303F;
+  box-shadow: 0 8px 18px -12px rgba(60, 50, 90, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.qaida-room textarea,
+.qaida-room input[type="number"] {
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #26303F;
+  border-color: rgba(15, 23, 42, 0.12);
+}
