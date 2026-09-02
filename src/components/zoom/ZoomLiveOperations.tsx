@@ -87,12 +87,14 @@ export function ZoomLiveOperations() {
     | null
    >(null);
   const [sdkFailed, setSdkFailed] = React.useState<string | null>(null);
+  const { data: sdkDisabled } = useSdkEmbedDisabledAccounts();
 
   const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   const handleJoin = (session: any, joinUrl: string) => {
-    const parsed = session.zoom_account_id ? parseZoomLink(joinUrl) : null;
-    if (session.zoom_account_id && parsed) {
+    const embedOff = session.zoom_account_id && sdkDisabled?.has(session.zoom_account_id);
+    const parsed = session.zoom_account_id && !embedOff ? parseZoomLink(joinUrl) : null;
+    if (session.zoom_account_id && !embedOff && parsed) {
       setSdkFailed(null);
       setSdkJoin({
         sessionId: session.id,

@@ -16,6 +16,7 @@ import {
   CalendarPlus, X, MonitorUp, Bell, FolderOpen,
 } from 'lucide-react';
 import { ZoomSdkMeeting } from './ZoomSdkMeeting';
+import { useClassSdkEmbedAllowed } from '@/hooks/useZoomSdkEmbed';
 import ClassroomTeachingPanel from './ClassroomTeachingPanel';
 
 import { parseZoomLink } from '@/lib/zoomLink';
@@ -190,6 +191,9 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
       return (acct?.meeting_passcode || '') as string;
     },
   });
+
+  // Accounts kept on the plain Zoom-link flow never render the embedded player.
+  const sdkEmbedAllowed = useClassSdkEmbedAllowed(classId);
 
   const sdkDisplayName =
     (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
@@ -519,7 +523,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                     </Button>
                   </a>
                 </div>
-              ) : zoomParsed && !sdkFailed ? (
+              ) : zoomParsed && sdkEmbedAllowed && !sdkFailed ? (
                 <div className="p-2">
                   <ZoomSdkMeeting
                     courseClassId={classId}
