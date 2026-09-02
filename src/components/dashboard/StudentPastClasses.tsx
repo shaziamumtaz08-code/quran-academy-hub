@@ -92,7 +92,6 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
           recordingLink: session.recording_link,
           recordingStatus: (session as any).recording_status || 'pending',
           recordings: sessionRecordings,
-          recordings: sessionRecordings,
           attended: !!attendance,
           attendedDuration: attendance?.total_duration_minutes || 0,
         };
