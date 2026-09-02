@@ -216,6 +216,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   };
 
   const saveCreds = async () => {
+    if (!account) return;
 
     setSavingCreds(true);
     try {
