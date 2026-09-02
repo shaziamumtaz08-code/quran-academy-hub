@@ -35,18 +35,26 @@ export function useQaidaAdapter({
   }, [resumePage]);
 
   const renderUnit = useCallback(
-    (u: number, ctx: VcrRenderContext) =>
-      React.createElement(QaidaUnit, {
+    (u: number, ctx: VcrRenderContext) => {
+      /* Transition pages belong to two baabs — show the content baab (the one
+         that actually has transcribed words) so the grid is never mixed. */
+      const covering = ref ? baabsForPage(ref.baabs, u) : [];
+      const scoped =
+        covering.find((b) => b.picker_mode === 'word_dropdown') ?? covering[0] ?? null;
+      return React.createElement(QaidaUnit, {
         page: u,
+        baabId: scoped?.id ?? null,
         fontScale: ctx.fontScale,
         highlight: ctx.highlight,
         canControl,
         studentId,
         onWords: setWords,
         onSelectWord,
-      }),
-    [canControl, studentId, onSelectWord]
+      });
+    },
+    [ref, canControl, studentId, onSelectWord]
   );
+
 
   return useMemo<VcrAdapter>(() => {
     const baabs = ref ? baabsForPage(ref.baabs, unit) : [];
