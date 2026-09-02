@@ -181,6 +181,7 @@ export function QaidaTapPicker({ baabId = '', onBaabIdChange, initialPage, onUse
           ) : (
             <QaidaUnit
               mode="select"
+              surface="paper"
               page={page}
               words={pageWords}
               fontScale={1}
