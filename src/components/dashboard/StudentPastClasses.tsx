@@ -36,7 +36,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
 
       const { data: liveSessions, error } = await supabase
         .from('live_sessions')
-        .select('id, actual_start, actual_end, recording_link, recording_status, recording_password, teacher_id')
+        .select('id, actual_start, actual_end, recording_link, recording_status, teacher_id')
         .eq('teacher_id', assignment[0].teacher_id)
         .eq('status', 'completed')
         .not('actual_start', 'is', null)
@@ -66,7 +66,7 @@ export function StudentPastClasses({ studentId, className }: StudentPastClassesP
       // Fetch recordings from session_recordings table
       const { data: recordings } = await (supabase as any)
         .from('session_recordings')
-        .select('session_id, recording_type, play_url, download_url, password, file_type, file_size_mb')
+        .select('id, session_id, recording_type, play_url, download_url, file_type, file_size_mb')
         .in('session_id', sessionIds)
         .eq('status', 'available');
 
