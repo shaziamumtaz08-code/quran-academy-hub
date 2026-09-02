@@ -258,6 +258,7 @@ export default function VcrRoom() {
   const qaidaAdapter = useQaidaAdapter({
     resumePage: content === 'qaida' ? resumePage : null,
     canControl,
+    studentId: studentId || null,
     onSelectWord: publishWord,
   });
   const adapter = content === 'qaida' ? qaidaAdapter : mushafAdapter;
