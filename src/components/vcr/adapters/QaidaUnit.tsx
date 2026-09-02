@@ -196,7 +196,7 @@ export function QaidaUnit({
                   )}
                   style={open ? { borderColor: `hsl(${accent.hsl})`, boxShadow: `0 0 0 2px hsl(${accent.hsl} / 0.35)` } : undefined}
                 >
-                  <span className={cn('font-arabic', inkClass)} style={{ fontSize: `${(paper ? 30 : 38) * fontScale}px` }}>
+                  <span className={cn('font-uthmani', inkClass)} style={{ fontSize: `${(paper ? 30 : 38) * fontScale}px` }}>
                     {w.word_text}
                   </span>
                   {mark && (
