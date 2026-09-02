@@ -14,6 +14,8 @@ import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
 
 import { cn } from '@/lib/utils';
+import { goBackToClassRoom } from '@/lib/classRoomBack';
+
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin', 'admin_academic', 'admin_division'];
 
@@ -296,7 +298,8 @@ export default function VcrRoom() {
           {canControl && (
             <button
               type="button"
-              onClick={() => navigate('/class-room')}
+              onClick={() => goBackToClassRoom(navigate)}
+
               className="vcr-btn inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Class Room

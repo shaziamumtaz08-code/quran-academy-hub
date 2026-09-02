@@ -20,6 +20,19 @@ export interface QaidaPageWord {
   audio_url?: string | null;
 }
 
+interface QaidaBaabMeta {
+  id: string;
+  baab_number: number;
+  name_urdu: string | null;
+  name_english: string | null;
+  start_page: number;
+  end_page: number;
+  total_units: number | null;
+  unit_label: string | null;
+  picker_mode: string | null;
+}
+
+
 interface Props extends Partial<VcrRenderContext> {
   page: number;
   fontScale?: number;
@@ -83,9 +96,30 @@ export function QaidaUnit({
   const [loading, setLoading] = useState(!providedWords);
   const [openWordId, setOpenWordId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
+  const [baab, setBaab] = useState<QaidaBaabMeta | null>(null);
 
   const selecting = mode === 'select';
   const { progress, setStatus } = useQaidaWordProgress(selecting ? null : studentId);
+
+  /* Baab metadata for the page — used to render a real chapter panel on the
+     pattern-drill baabs that have no word-level rows yet. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('noorani_qaida_baabs' as any)
+        .select('id, baab_number, name_urdu, name_english, start_page, end_page, total_units, unit_label, picker_mode')
+        .lte('start_page', page)
+        .gte('end_page', page)
+        .order('baab_number')
+        .limit(2);
+      if (cancelled) return;
+      const rows = ((data as any[]) || []) as QaidaBaabMeta[];
+      const match = baabId ? rows.find((r) => r.id === baabId) : rows[0];
+      setBaab(match ?? rows[0] ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [page, baabId]);
 
   useEffect(() => {
     if (providedWords) { setLoading(false); return; }
@@ -108,6 +142,7 @@ export function QaidaUnit({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, baabId, providedWords]);
+
 
   const words = providedWords ?? fetched;
 
@@ -150,12 +185,54 @@ export function QaidaUnit({
   }
 
   if (words.length === 0) {
+    /* Page 1 (and the closing page) sit outside every baab — render the book
+       itself rather than an error, so no page in 1–32 ever looks broken. */
+    if (!baab) {
+      const closing = page > 1;
+      return (
+        <div className={cn('flex flex-col items-center justify-center gap-4 py-14 text-center', className)}>
+          <span className={cn('font-uthmani leading-none', inkClass)} style={{ fontSize: `${64 * fontScale}px` }} dir="rtl">
+            {closing ? 'تمت بالخیر' : 'نورانی قاعدہ'}
+          </span>
+          <h3 className={cn('font-display text-2xl', inkClass)}>
+            {closing ? 'End of the Qaida' : 'Noorani Qaida'}
+          </h3>
+          <p className={cn('max-w-sm text-sm leading-relaxed', mutedClass)}>
+            {closing
+              ? 'The student has reached the closing page. Move back a page to revise, or continue to the Mushaf.'
+              : 'Cover page. The lessons begin on page 2 with Baab 1 — Single Letters (مفردات).'}
+          </p>
+        </div>
+      );
+    }
+
+    /* Pattern-drill baabs are marked by line range, not word-by-word, so
+       there are no word rows to tap — show the chapter panel instead. */
+    const unit = baab.unit_label || 'unit';
     return (
-      <p className={cn('py-16 text-center', paper ? 'text-base text-muted-foreground' : 'text-2xl text-vcr-ink/60', className)}>
-        No Qaida content available for page {page}.
-      </p>
+      <div className={cn('flex flex-col items-center justify-center gap-4 py-12 text-center', className)}>
+        <span className={cn('rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
+          paper ? 'border-border text-muted-foreground' : 'border-vcr-ink/20 text-vcr-ink/70')}>
+          Baab {baab.baab_number} · Pages {baab.start_page}–{baab.end_page}
+        </span>
+        <span className={cn('font-uthmani leading-tight', inkClass)} style={{ fontSize: `${44 * fontScale}px` }} dir="rtl">
+          {baab.name_urdu || ''}
+        </span>
+        <h3 className={cn('font-display text-2xl', inkClass)}>{baab.name_english || `Baab ${baab.baab_number}`}</h3>
+        <p className={cn('max-w-md text-sm leading-relaxed', mutedClass)}>
+          This is a practice-drill chapter — it is read and marked by {unit} range rather than
+          tapped word by word. {baab.total_units ? `${baab.total_units} ${unit}s` : 'The drills'} run across
+          pages {baab.start_page}–{baab.end_page}.
+        </p>
+        <p className={cn('text-xs', mutedClass)}>
+          {selecting
+            ? `Use the ${unit}-range option to record today's lesson for this chapter.`
+            : 'Read from the printed Qaida for this chapter; flashcards resume in the next lesson chapter.'}
+        </p>
+      </div>
     );
   }
+
 
   const rangeSet = new Set(inRangeIds || []);
 
