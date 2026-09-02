@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, ShieldCheck, Webhook } from 'lucide-react';
+import { Check, Copy, KeyRound, ShieldCheck, Users, Webhook } from 'lucide-react';
 import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
 import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
