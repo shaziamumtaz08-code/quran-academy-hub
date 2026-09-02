@@ -83,9 +83,30 @@ export function QaidaUnit({
   const [loading, setLoading] = useState(!providedWords);
   const [openWordId, setOpenWordId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
+  const [baab, setBaab] = useState<QaidaBaabMeta | null>(null);
 
   const selecting = mode === 'select';
   const { progress, setStatus } = useQaidaWordProgress(selecting ? null : studentId);
+
+  /* Baab metadata for the page — used to render a real chapter panel on the
+     pattern-drill baabs that have no word-level rows yet. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('noorani_qaida_baabs' as any)
+        .select('id, baab_number, name_urdu, name_english, start_page, end_page, total_units, unit_label, picker_mode')
+        .lte('start_page', page)
+        .gte('end_page', page)
+        .order('baab_number')
+        .limit(2);
+      if (cancelled) return;
+      const rows = ((data as any[]) || []) as QaidaBaabMeta[];
+      const match = baabId ? rows.find((r) => r.id === baabId) : rows[0];
+      setBaab(match ?? rows[0] ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [page, baabId]);
 
   useEffect(() => {
     if (providedWords) { setLoading(false); return; }
@@ -108,6 +129,7 @@ export function QaidaUnit({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, baabId, providedWords]);
+
 
   const words = providedWords ?? fetched;
 
