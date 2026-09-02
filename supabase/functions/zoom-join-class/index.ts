@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     }
     const { data: dedicatedAccountRows } = await service
       .from("zoom_accounts")
-      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret")
+      .select("id, zoom_account_email, zoom_user_id, tier, meeting_link, meeting_passcode, is_active, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret, sdk_embed_enabled")
       .eq("teacher_id", p.teacherId)
       .eq("is_active", true);
 
@@ -235,8 +235,10 @@ Deno.serve(async (req) => {
       // class inside the app whenever this account carries SDK credentials.
       const mnMatch = /\/(?:j|wc)\/(\d{9,12})/.exec(dedicatedAccount.meeting_link);
       const meetingNumber = mnMatch ? mnMatch[1] : null;
+      // Accounts flagged sdk_embed_enabled=false stay on the plain Zoom link.
       const sdkReady = Boolean(
         meetingNumber &&
+          dedicatedAccount.sdk_embed_enabled !== false &&
           dedicatedAccount.zoom_meeting_sdk_client_id &&
           dedicatedAccount.zoom_meeting_sdk_client_secret,
       );

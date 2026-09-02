@@ -9875,6 +9875,13 @@ export type Database = {
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "session_recordings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_session_attendance_report"
+            referencedColumns: ["session_id"]
+          },
         ]
       }
       session_reschedules: {
@@ -12887,6 +12894,7 @@ export type Database = {
           meeting_link: string | null
           meeting_passcode: string | null
           notes: string | null
+          sdk_embed_enabled: boolean
           shared_purposes: string[]
           teacher_id: string | null
           tier: Database["public"]["Enums"]["zoom_account_tier"]
@@ -12915,6 +12923,7 @@ export type Database = {
           meeting_link?: string | null
           meeting_passcode?: string | null
           notes?: string | null
+          sdk_embed_enabled?: boolean
           shared_purposes?: string[]
           teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
@@ -12943,6 +12952,7 @@ export type Database = {
           meeting_link?: string | null
           meeting_passcode?: string | null
           notes?: string | null
+          sdk_embed_enabled?: boolean
           shared_purposes?: string[]
           teacher_id?: string | null
           tier?: Database["public"]["Enums"]["zoom_account_tier"]
@@ -13039,6 +13049,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_attendance_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_session_attendance_report"
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "zoom_attendance_logs_zoom_account_id_fkey"
@@ -13503,6 +13520,55 @@ export type Database = {
           {
             foreignKeyName: "zoom_accounts_teacher_id_fkey"
             columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_session_attendance_report: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          assignment_id: string | null
+          duration_minutes: number | null
+          early_leave_minutes: number | null
+          join_time: string | null
+          late_minutes: number | null
+          leave_time: string | null
+          participant_email: string | null
+          participant_key: string | null
+          participant_name: string | null
+          punctuality: string | null
+          scheduled_end: string | null
+          scheduled_minutes: number | null
+          scheduled_start: string | null
+          session_id: string | null
+          session_status: Database["public"]["Enums"]["session_status"] | null
+          student_id: string | null
+          teacher_id: string | null
+          zoom_account_id: string | null
+          zoom_meeting_id: string | null
+          zoom_role: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_student_id_fkey"
+            columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]

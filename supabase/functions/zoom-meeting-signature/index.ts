@@ -147,11 +147,17 @@ Deno.serve(async (req) => {
     const { data: acct, error: acctErr } = await admin
       .from('zoom_accounts')
       .select(
-        'id, zoom_user_id, zoom_account_email, zoom_account_id_cred, zoom_client_id, zoom_client_secret, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret',
+        'id, zoom_user_id, zoom_account_email, zoom_account_id_cred, zoom_client_id, zoom_client_secret, zoom_meeting_sdk_client_id, zoom_meeting_sdk_client_secret, sdk_embed_enabled',
       )
       .eq('id', accountId)
       .maybeSingle();
     if (acctErr) return json({ error: acctErr.message }, 500);
+
+    // Some accounts are deliberately kept on the plain Zoom-link flow — the
+    // in-app embed must never be signed for them.
+    if (acct && (acct as any).sdk_embed_enabled === false) {
+      return json({ error: 'SDK_EMBED_DISABLED', detail: 'This Zoom account joins through the plain Zoom link.' }, 403);
+    }
 
     // Credentials are pasted from Zoom. Normalize harmless surrounding
     // whitespace here so a copied newline cannot produce an invalid JWT.
@@ -160,6 +166,7 @@ Deno.serve(async (req) => {
     if (!clientId || !clientSecret) {
       return json({ error: 'Meeting SDK credentials are not configured for this Zoom account' }, 404);
     }
+
 
 
     const iat = Math.floor(Date.now() / 1000) - 30;

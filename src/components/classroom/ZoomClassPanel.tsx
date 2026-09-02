@@ -16,6 +16,7 @@ import {
   CalendarPlus, X, MonitorUp, Bell, FolderOpen,
 } from 'lucide-react';
 import { ZoomSdkMeeting } from './ZoomSdkMeeting';
+import { useClassSdkEmbedAllowed } from '@/hooks/useZoomSdkEmbed';
 import ClassroomTeachingPanel from './ClassroomTeachingPanel';
 
 import { parseZoomLink } from '@/lib/zoomLink';
@@ -190,6 +191,21 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
       return (acct?.meeting_passcode || '') as string;
     },
   });
+
+  // Accounts kept on the plain Zoom-link flow never render the embedded player.
+  const sdkEmbedAllowed = useClassSdkEmbedAllowed(classId);
+
+  // With the embed switched off there is no in-app meeting surface at all —
+  // the join action hands straight over to Zoom in a new tab.
+  const openMeetingSurface = () => {
+    setIncomingPing(null);
+    if (!sdkEmbedAllowed) {
+      if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setShowIframe(true);
+    setIframeError(false);
+  };
 
   const sdkDisplayName =
     (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
@@ -449,7 +465,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
               <div className="flex gap-2">
                 <Button
                   className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+                  onClick={openMeetingSurface}
                 >
                   <Video className="h-4 w-4 mr-2" /> Prepare to Join
                 </Button>
@@ -463,7 +479,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
             <div className="flex gap-2">
               <Button
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => { setShowIframe(true); setIframeError(false); setIncomingPing(null); }}
+                onClick={openMeetingSurface}
               >
                 <Video className="h-4 w-4 mr-2" />
                 {userRole === 'teacher' ? 'Launch Class' : 'Join Live Class'}
@@ -519,7 +535,7 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                     </Button>
                   </a>
                 </div>
-              ) : zoomParsed && !sdkFailed ? (
+              ) : zoomParsed && sdkEmbedAllowed && !sdkFailed ? (
                 <div className="p-2">
                   <ZoomSdkMeeting
                     courseClassId={classId}

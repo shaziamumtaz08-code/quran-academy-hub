@@ -34,6 +34,8 @@ import {
   zonedDateLabel,
 } from '@/hooks/useAcademyTimezone';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { ZoomSessionAttendanceReport } from '@/components/zoom/ZoomSessionAttendanceReport';
+import { useSdkEmbedDisabledAccounts } from '@/hooks/useZoomSdkEmbed';
 import { parseZoomLink } from '@/lib/zoomLink';
 import { ZoomSdkMeeting } from '@/components/classroom/ZoomSdkMeeting';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -87,12 +89,14 @@ export function ZoomLiveOperations() {
     | null
    >(null);
   const [sdkFailed, setSdkFailed] = React.useState<string | null>(null);
+  const { data: sdkDisabled } = useSdkEmbedDisabledAccounts();
 
   const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   const handleJoin = (session: any, joinUrl: string) => {
-    const parsed = session.zoom_account_id ? parseZoomLink(joinUrl) : null;
-    if (session.zoom_account_id && parsed) {
+    const embedOff = session.zoom_account_id && sdkDisabled?.has(session.zoom_account_id);
+    const parsed = session.zoom_account_id && !embedOff ? parseZoomLink(joinUrl) : null;
+    if (session.zoom_account_id && !embedOff && parsed) {
       setSdkFailed(null);
       setSdkJoin({
         sessionId: session.id,
@@ -542,7 +546,11 @@ export function ZoomLiveOperations() {
           </span>
         </div>
 
+        {/* Zoom S2S webhook telemetry, rolled up per class session */}
+        <ZoomSessionAttendanceReport />
+
         {/* In-app Zoom player (admin joins as attendee; teacher stays host) */}
+
         <Dialog
           open={!!sdkJoin}
           onOpenChange={(o) => {
