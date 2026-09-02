@@ -58,11 +58,14 @@ export function QaidaTapPicker({ baabId = '', onBaabIdChange, initialPage, onUse
   }, [localBaabId, initialPage, baabs]);
 
   const baab = baabs.find(b => b.id === effectiveBaabId) || null;
-  const isWordMode = baab?.picker_mode === 'word_dropdown';
   const uLabel = unitLabel(baab?.unit_label);
 
-  const { data: wordsData } = useQaidaWords(isWordMode ? effectiveBaabId : null);
+  // Always try the real page content first — the same QaidaUnit page powers
+  // reading, flashcards and this range picker. Pattern-drill baabs that have
+  // no stored words fall back to numbered line tiles.
+  const { data: wordsData } = useQaidaWords(effectiveBaabId || null);
   const words = useMemo(() => (wordsData || []) as QaidaWord[], [wordsData]);
+  const isWordMode = words.length > 0;
 
   const ordinals = useMemo(() => {
     const m = new Map<string, number>();
