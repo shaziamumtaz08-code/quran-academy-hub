@@ -216,7 +216,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   };
 
   const saveCreds = async () => {
-    if (!account) return;
+
     setSavingCreds(true);
     try {
       const { error } = await (supabase as any).rpc('admin_set_zoom_meeting_sdk_creds', {
