@@ -34,6 +34,7 @@ import {
   zonedDateLabel,
 } from '@/hooks/useAcademyTimezone';
 import { getTimezoneAbbr } from '@/lib/timezones';
+import { useSdkEmbedDisabledAccounts } from '@/hooks/useZoomSdkEmbed';
 import { parseZoomLink } from '@/lib/zoomLink';
 import { ZoomSdkMeeting } from '@/components/classroom/ZoomSdkMeeting';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
