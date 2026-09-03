@@ -2,6 +2,7 @@ import React from 'react';
 import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
 import { useVcrRingHost, useVcrRingListener } from '@/hooks/useVcrRing';
+import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -12,6 +13,9 @@ interface Props {
   isCaller: boolean;
   /** Shown to the student in the ring banner. */
   callerName?: string;
+  /** Participants, used to attribute a consented recording. */
+  studentId?: string | null;
+  teacherId?: string | null;
 }
 
 const STATUS_LABEL: Record<CallStatus, string> = {
@@ -41,8 +45,8 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, callerName }: Props) {
-  const { status, muted, error, remoteJoined, start, end, toggleMute, retry } = useVcrCall({ roomId, peerId, isCaller });
+export function VcrCallPanel({ roomId, peerId, isCaller, callerName, studentId = null, teacherId = null }: Props) {
+  const { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams } = useVcrCall({ roomId, peerId, isCaller });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Announce / observe the call so the other side knows one is running. */
@@ -130,6 +134,17 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName }: Props) {
           </button>
         </>
       )}
+
+      {/* Opt-in call recording — requires the student's explicit consent */}
+      <VcrCallRecorder
+        roomId={roomId}
+        peerId={peerId}
+        isHost={isCaller}
+        live={status === 'connected' || status === 'reconnecting'}
+        studentId={studentId}
+        teacherId={teacherId}
+        getStreams={getStreams}
+      />
 
       {status === 'failed' && (
         <>
