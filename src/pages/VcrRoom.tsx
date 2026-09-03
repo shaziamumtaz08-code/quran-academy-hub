@@ -369,7 +369,7 @@ export default function VcrRoom() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
-        <main className="min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1">
           <VcrReader
             key={content}
             adapter={adapter}
@@ -382,7 +382,19 @@ export default function VcrRoom() {
             onUnitChange={(p) => setCurrentPage(p)}
           />
 
+          {/* Shared whiteboard layer — teacher draws, student mirrors live */}
+          {whiteboardVisible && (
+            <VcrWhiteboard
+              strokes={strokes}
+              canDraw={canControl}
+              onStroke={pushStroke}
+              onUndo={undoStroke}
+              onClear={clearBoard}
+              onClose={() => setWhiteboardOn(false)}
+            />
+          )}
         </main>
+
 
         {/* Receded side panel */}
         {canControl && (
