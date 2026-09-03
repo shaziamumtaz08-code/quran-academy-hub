@@ -234,10 +234,13 @@ export default function VcrRoom() {
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
+  const [whiteboardOn, setWhiteboardOn] = useState(false);
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
     ? (remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
+  /* Followers show the board whenever the teacher has it open. */
+  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
@@ -245,16 +248,23 @@ export default function VcrRoom() {
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content });
+      publish({ ...state, content, whiteboard: whiteboardOn });
     },
-    [publish, content]
+    [publish, content, whiteboardOn]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content });
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, whiteboard: whiteboardOn });
     },
-    [publish, content]
+    [publish, content, whiteboardOn]
   );
+
+  /* Announce whiteboard open/close immediately, not just on the next page turn. */
+  useEffect(() => {
+    if (!canControl) return;
+    publish({ ...lastView.current, highlight: null, content, whiteboard: whiteboardOn });
+  }, [whiteboardOn, canControl, content, publish]);
+
 
 
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
