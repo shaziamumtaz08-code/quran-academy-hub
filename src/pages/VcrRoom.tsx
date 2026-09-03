@@ -4,13 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, PenLine, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
+
 
 
 import { cn } from '@/lib/utils';
@@ -37,11 +39,12 @@ export default function VcrRoom() {
   /** The student viewing their own room: read-only mirror of the teacher's screen. */
   const isFollower = !canControl && !!user?.id && user.id === studentId;
 
-  const { remoteState, publish } = useVcrViewSync({
+  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard } = useVcrViewSync({
     roomId: studentId,
     isPresenter: canControl,
     enabled: !!studentId,
   });
+
 
 
   const [loading, setLoading] = useState(true);
@@ -233,10 +236,13 @@ export default function VcrRoom() {
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
+  const [whiteboardOn, setWhiteboardOn] = useState(false);
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
     ? (remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
+  /* Followers show the board whenever the teacher has it open. */
+  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
@@ -244,16 +250,23 @@ export default function VcrRoom() {
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content });
+      publish({ ...state, content, whiteboard: whiteboardOn });
     },
-    [publish, content]
+    [publish, content, whiteboardOn]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content });
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, whiteboard: whiteboardOn });
     },
-    [publish, content]
+    [publish, content, whiteboardOn]
   );
+
+  /* Announce whiteboard open/close immediately, not just on the next page turn. */
+  useEffect(() => {
+    if (!canControl) return;
+    publish({ ...lastView.current, highlight: null, content, whiteboard: whiteboardOn });
+  }, [whiteboardOn, canControl, content, publish]);
+
 
 
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
@@ -349,8 +362,22 @@ export default function VcrRoom() {
                 {c === 'mushaf' ? 'Mushaf' : 'Noorani Qaida'}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setWhiteboardOn((v) => !v)}
+              aria-pressed={whiteboardOn}
+              className={cn(
+                'ms-auto inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
+                whiteboardOn
+                  ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
+                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+              )}
+            >
+              <PenLine className="h-4 w-4" /> {whiteboardOn ? 'Whiteboard on' : 'Whiteboard'}
+            </button>
           </div>
         )}
+
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
@@ -359,6 +386,8 @@ export default function VcrRoom() {
               peerId={user.id}
               isCaller={canControl}
               callerName={(profile as any)?.full_name ?? 'Your teacher'}
+              studentId={studentId}
+              teacherId={canControl ? user.id : null}
             />
 
           </div>
@@ -368,7 +397,7 @@ export default function VcrRoom() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
-        <main className="min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1">
           <VcrReader
             key={content}
             adapter={adapter}
@@ -381,7 +410,19 @@ export default function VcrRoom() {
             onUnitChange={(p) => setCurrentPage(p)}
           />
 
+          {/* Shared whiteboard layer — teacher draws, student mirrors live */}
+          {whiteboardVisible && (
+            <VcrWhiteboard
+              strokes={strokes}
+              canDraw={canControl}
+              onStroke={pushStroke}
+              onUndo={undoStroke}
+              onClear={clearBoard}
+              onClose={() => setWhiteboardOn(false)}
+            />
+          )}
         </main>
+
 
         {/* Receded side panel */}
         {canControl && (

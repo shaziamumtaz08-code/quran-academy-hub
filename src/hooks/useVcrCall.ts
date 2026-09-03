@@ -33,6 +33,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<number | null>(null);
@@ -61,6 +62,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
+    remoteStreamRef.current = null;
 
     if (audioRef.current) {
       audioRef.current.srcObject = null;
@@ -97,6 +99,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
         document.body.appendChild(el);
         audioRef.current = el;
       }
+      remoteStreamRef.current = e.streams[0];
       audioRef.current.srcObject = e.streams[0];
       audioRef.current.play().catch(() => {
         setError('Tap anywhere on the page to allow audio playback.');
@@ -278,5 +281,11 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
   useEffect(() => () => teardown('idle'), [teardown]);
 
-  return { status, muted, error, remoteJoined, start, end, toggleMute, retry };
+  /** Live media handles for the (consented) call recorder. */
+  const getStreams = useCallback(
+    () => ({ local: localStreamRef.current, remote: remoteStreamRef.current }),
+    []
+  );
+
+  return { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams };
 }
