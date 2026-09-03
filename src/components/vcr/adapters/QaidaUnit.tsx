@@ -245,7 +245,17 @@ export function QaidaUnit({
   const grade = (wordId: string, status: QaidaWordStatus) => { void setStatus(wordId, status); };
 
   const tileSize = Math.round((paper ? 68 : 84) * fontScale);
-  const glyphSize = Math.round((paper ? 30 : 38) * fontScale);
+  const baseGlyph = Math.round((paper ? 30 : 38) * fontScale);
+  /* Multi-letter words and phrases (Baabs 3, 6, 9, 13) need wider tiles and a
+     smaller glyph so the text stays inside the glass box. Arabic diacritics
+     inflate code-point counts, so only shrink gently with length. */
+  const glyphFor = (text: string) => {
+    const len = Array.from(text).length;
+    if (len <= 3) return baseGlyph;
+    if (len <= 6) return Math.round(baseGlyph * 0.8);
+    if (len <= 10) return Math.round(baseGlyph * 0.62);
+    return Math.round(baseGlyph * 0.5);
+  };
 
   return (
     <div className={cn('relative', className)}>
