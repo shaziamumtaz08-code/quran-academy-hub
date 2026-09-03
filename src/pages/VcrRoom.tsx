@@ -4,13 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, PenLine, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
+
 
 
 import { cn } from '@/lib/utils';
