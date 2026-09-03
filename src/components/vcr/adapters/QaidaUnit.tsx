@@ -245,7 +245,17 @@ export function QaidaUnit({
   const grade = (wordId: string, status: QaidaWordStatus) => { void setStatus(wordId, status); };
 
   const tileSize = Math.round((paper ? 68 : 84) * fontScale);
-  const glyphSize = Math.round((paper ? 30 : 38) * fontScale);
+  const baseGlyph = Math.round((paper ? 30 : 38) * fontScale);
+  /* Multi-letter words and phrases (Baabs 3, 6, 9, 13) need wider tiles and a
+     smaller glyph so the text stays inside the glass box. Arabic diacritics
+     inflate code-point counts, so only shrink gently with length. */
+  const glyphFor = (text: string) => {
+    const len = Array.from(text).length;
+    if (len <= 3) return baseGlyph;
+    if (len <= 6) return Math.round(baseGlyph * 0.8);
+    if (len <= 10) return Math.round(baseGlyph * 0.62);
+    return Math.round(baseGlyph * 0.5);
+  };
 
   return (
     <div className={cn('relative', className)}>
@@ -267,21 +277,22 @@ export function QaidaUnit({
                     onClick={() => tap(w)}
                     aria-pressed={active}
                     style={{
-                      width: tileSize,
+                      minWidth: tileSize,
                       height: tileSize,
+                      paddingInline: Math.round(10 * fontScale),
                       ...(open
                         ? { borderColor: `hsl(${accent.hsl} / 0.7)` }
                         : {}),
                     }}
                     className={cn(
-                      'qaida-tile relative flex shrink-0 items-center justify-center p-2',
+                      'qaida-tile relative flex shrink-0 items-center justify-center px-2 py-2',
                       active && 'qaida-tile-selected',
                       isEnd && 'ring-2 ring-primary',
                     )}
                   >
                     <span
-                      className="font-uthmani leading-none text-slate-900"
-                      style={{ fontSize: `${glyphSize}px` }}
+                      className="font-uthmani whitespace-nowrap leading-none text-slate-900"
+                      style={{ fontSize: `${glyphFor(w.word_text)}px` }}
                     >
                       {w.word_text}
                     </span>
