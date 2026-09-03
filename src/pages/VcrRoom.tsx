@@ -350,8 +350,22 @@ export default function VcrRoom() {
                 {c === 'mushaf' ? 'Mushaf' : 'Noorani Qaida'}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setWhiteboardOn((v) => !v)}
+              aria-pressed={whiteboardOn}
+              className={cn(
+                'ms-auto inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
+                whiteboardOn
+                  ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
+                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+              )}
+            >
+              <PenLine className="h-4 w-4" /> {whiteboardOn ? 'Whiteboard on' : 'Whiteboard'}
+            </button>
           </div>
         )}
+
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
         {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
