@@ -92,7 +92,7 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
   const ROUTE_GROUPS: Record<string, string[]> = {
     '/people': ['/people', '/students', '/teachers', '/user-management', '/leads', '/identity', '/applicants'],
     '/teaching': ['/teaching', '/teaching-os', '/quiz-engine', '/courses', '/course-builder', '/my-courses', '/lessons', '/assignments', '/subjects', '/schedules', '/attendance', '/monthly-planning'],
-    '/class-room': ['/class-room', '/vcr', '/syllabus'],
+    '/class-room': ['/class-room', '/vcr', '/syllabus', '/class-recordings'],
     '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
     '/reports': ['/reports-hub', '/reports', '/student-reports', '/progress-timeline', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
