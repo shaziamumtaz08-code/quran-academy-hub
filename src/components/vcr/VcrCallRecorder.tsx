@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Circle, Loader2, ShieldCheck, Square } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Circle, Loader2, PlayCircle, ShieldCheck, Square } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -38,6 +39,8 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
   const [phase, setPhase] = useState<HostPhase>('idle');
   const [remoteRecording, setRemoteRecording] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  /** Flipped on after a recording is successfully saved, so the room can link to playback. */
+  const [savedOnce, setSavedOnce] = useState(false);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -246,6 +249,16 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
           <Circle className="h-2.5 w-2.5 animate-pulse fill-red-400 text-red-400" aria-hidden />
           Recording — both sides agreed
         </span>
+      )}
+
+      {/* After a save, keep a visible path to playback/downloads right in the room. */}
+      {!recording && savedOnce && (
+        <Link
+          to="/class-recordings"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-vcr-chrome/20 bg-black/25 px-3 text-sm text-vcr-chrome/90 transition-colors hover:bg-black/40"
+        >
+          <PlayCircle className="h-4 w-4 text-emerald-300" aria-hidden /> View Class Recordings
+        </Link>
       )}
 
       {isHost && live && (

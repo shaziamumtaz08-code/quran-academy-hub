@@ -126,7 +126,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
             className="inline-flex items-center gap-2 rounded-full border border-vcr-chrome/15 bg-black/25 px-3 py-1 text-xs text-vcr-chrome/75"
           >
             <Users className="h-3.5 w-3.5" aria-hidden />
-            {peers.length + 1}
+            Participants ({peers.length + 1})
           </button>
           {showPeople && (
             <ul className="absolute left-0 top-full z-50 mt-1 min-w-44 space-y-1 rounded-lg border border-vcr-chrome/20 bg-black/85 p-2 text-xs text-vcr-chrome/85 shadow-xl">
