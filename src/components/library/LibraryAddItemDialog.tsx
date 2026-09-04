@@ -346,6 +346,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
                 </div>
               )}
             </div>
+            )}
 
           </div>
         </div>
