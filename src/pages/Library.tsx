@@ -176,6 +176,15 @@ function EmptyState({ canUpload, onUpload }: { canUpload: boolean; onUpload: () 
 export default function Library() {
   const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { add: addToShelf } = useMyResources();
+  /* Canonical Library item → personal shelf entry. A "reference" points at the
+     original; a "copy" becomes the user's own working copy with its own marks. */
+  const addResource = (item: any, kind: "reference" | "copy") =>
+    addToShelf(
+      { id: item.id, title: item.title, type: item.type, description: item.description, cover_image: item.cover_image },
+      kind
+    );
   const role = (activeRole || profile?.role) as string | undefined;
   const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
   const isTeacher = role === "teacher";
