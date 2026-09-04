@@ -251,6 +251,16 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
         </span>
       )}
 
+      {/* After a save, keep a visible path to playback/downloads right in the room. */}
+      {!recording && savedOnce && (
+        <Link
+          to="/class-recordings"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-vcr-chrome/20 bg-black/25 px-3 text-sm text-vcr-chrome/90 transition-colors hover:bg-black/40"
+        >
+          <PlayCircle className="h-4 w-4 text-emerald-300" aria-hidden /> View Class Recordings
+        </Link>
+      )}
+
       {isHost && live && (
         phase === 'recording' ? (
           <button
