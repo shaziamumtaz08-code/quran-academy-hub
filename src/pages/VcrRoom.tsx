@@ -145,12 +145,6 @@ export default function VcrRoom() {
     return () => { cancelled = true; };
   }, [studentId, canControl, user?.id]);
 
-  /* Session timer */
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
-    return () => window.clearInterval(t);
-  }, [startedAt]);
-
   /* Notes autosave (debounced) */
   const onNotes = (value: string) => {
     setNotes(value);
@@ -361,11 +355,6 @@ export default function VcrRoom() {
             )}
           >
             {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
-          </span>
-          <span className="ms-auto inline-flex items-center gap-2 font-mono text-2xl tabular-nums text-vcr-chrome">
-            <Timer className="h-5 w-5 text-vcr-gold" />
-            <span className="font-sans text-xs uppercase tracking-wide text-vcr-chrome/50">Session</span>
-            {clock(elapsed)}
           </span>
 
         </div>
