@@ -2,7 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   addToMyResources, deleteMyResource, listMyResources, listSharedWithMe,
-  listVersions, type ResourceKind, type UserResource,
+  listVersions, listFolders, createFolder, renameFolder, deleteFolder,
+  uploadPersonalResource, renameResource, moveResource,
+  type ResourceFolder, type ResourceKind, type UserResource,
 } from "@/lib/myResources";
 import { toast } from "sonner";
 
@@ -24,7 +26,14 @@ export function useMyResources() {
     enabled: !!uid,
   });
 
+  const folders = useQuery({
+    queryKey: ["my-resource-folders", uid],
+    queryFn: () => listFolders(uid!),
+    enabled: !!uid,
+  });
+
   const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["my-resource-folders"] });
     qc.invalidateQueries({ queryKey: ["my-resources"] });
     qc.invalidateQueries({ queryKey: ["my-resources-shared"] });
   };
@@ -59,12 +68,58 @@ export function useMyResources() {
     }
   };
 
+  const upload = async (title: string, file: File, folderId?: string | null) => {
+    if (!uid) return null;
+    try {
+      const row = await uploadPersonalResource({ userId: uid, title, file, folderId });
+      toast.success("Added to My Resources");
+      refresh();
+      return row;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not upload this file");
+      return null;
+    }
+  };
+
+  const rename = async (id: string, title: string) => {
+    try { await renameResource(id, title); refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "Could not rename"); }
+  };
+
+  const move = async (id: string, folderId: string | null) => {
+    try { await moveResource(id, folderId); refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "Could not move"); }
+  };
+
+  const addFolder = async (name: string, parentId?: string | null) => {
+    if (!uid) return null;
+    try { const f = await createFolder(uid, name, parentId); refresh(); return f; }
+    catch (e: any) { toast.error(e?.message ?? "Could not create folder"); return null; }
+  };
+
+  const editFolder = async (id: string, name: string) => {
+    try { await renameFolder(id, name); refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "Could not rename folder"); }
+  };
+
+  const removeFolder = async (id: string) => {
+    try { await deleteFolder(id); refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "Could not delete folder"); }
+  };
+
   return {
     mine: (mine.data ?? []) as UserResource[],
     sharedWithMe: (shared.data ?? []) as UserResource[],
+    folders: (folders.data ?? []) as ResourceFolder[],
     isLoading: mine.isLoading || shared.isLoading,
     add,
     remove,
+    upload,
+    rename,
+    move,
+    addFolder,
+    editFolder,
+    removeFolder,
     refresh,
   };
 }
