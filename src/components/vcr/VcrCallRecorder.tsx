@@ -184,6 +184,16 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
     else void finalise();
   };
 
+  /* Never hang on a request the student never answers. */
+  useEffect(() => {
+    if (phase !== 'awaiting-consent') return;
+    const t = window.setTimeout(() => {
+      setPhase('idle');
+      toast({ title: 'No answer', description: 'The student did not respond to the recording request.' });
+    }, 45000);
+    return () => window.clearTimeout(t);
+  }, [phase]);
+
   /* Auto-record: ask for consent once, as soon as the call is up. */
   const autoAskedRef = useRef(false);
   useEffect(() => {
@@ -229,18 +239,31 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
         ) : (
           <button
             type="button"
-            disabled={phase !== 'idle'}
-            onClick={() => { setPhase('awaiting-consent'); send('record-request'); }}
+            disabled={phase === 'saving'}
+            onClick={() => {
+              if (phase === 'awaiting-consent') { setPhase('idle'); return; }
+              setPhase('awaiting-consent');
+              send('record-request');
+            }}
+            title={phase === 'awaiting-consent' ? 'Tap to cancel the request' : undefined}
             className={cn('vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-60')}
           >
             {phase === 'idle' ? <Circle className="h-4 w-4 text-red-300" /> : <Loader2 className="h-4 w-4 animate-spin text-vcr-gold" />}
-            {phase === 'awaiting-consent' ? 'Waiting for consent…' : phase === 'saving' ? 'Saving…' : 'Record call'}
+            {phase === 'awaiting-consent' ? 'Waiting for consent… (tap to cancel)' : phase === 'saving' ? 'Saving…' : 'Record call'}
           </button>
         )
       )}
 
       {/* Student-side consent — recording never starts without this */}
-      <AlertDialog open={consentOpen && !isHost} onOpenChange={setConsentOpen}>
+      <AlertDialog
+        open={consentOpen && !isHost}
+        onOpenChange={(open) => {
+          // Escape / outside-dismiss must still answer the teacher, otherwise
+          // their button stays stuck on "Waiting for consent…".
+          if (!open && consentOpen) send('record-response', { accepted: false });
+          setConsentOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
