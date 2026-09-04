@@ -15,8 +15,11 @@ export interface VcrViewState {
   page: number;
   fontScale: number;
   highlight: { lineId?: string | null; wordId?: string | null } | null;
-  /** Which reader the teacher is on, so students mirror Mushaf vs Qaida. */
-  content?: 'mushaf' | 'qaida';
+  /** Which reader the teacher is on, so students mirror Mushaf vs Qaida vs a file. */
+  content?: 'mushaf' | 'qaida' | 'doc';
+  /** Library item open in the file reader, so students see the same document. */
+  libraryItemId?: string | null;
+
   /** Whiteboard overlay visible on the presenter's screen. */
   whiteboard?: boolean;
   /** 'annotate' draws over the page; 'board' is a separate blank board. */
