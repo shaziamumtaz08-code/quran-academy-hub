@@ -1,7 +1,7 @@
 import React from 'react';
-import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
-import { useVcrRingHost, useVcrRingListener } from '@/hooks/useVcrRing';
+import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
 import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
 import { cn } from '@/lib/utils';
 
