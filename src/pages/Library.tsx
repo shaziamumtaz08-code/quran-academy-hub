@@ -311,6 +311,14 @@ export default function Library() {
     () => publishedItems.filter((i) => favoriteIds.has(i.id)),
     [publishedItems, favoriteIds]
   );
+  /* My Library: everything I uploaded, saved as favorite, or that was shared
+     with me in class — one personal shelf. */
+  const myLibraryItems = useMemo(
+    () => publishedItems.filter((i) =>
+      (user?.id && i.uploaded_by === user.id) || favoriteIds.has(i.id) || sharedItemIds.has(i.id)
+    ),
+    [publishedItems, favoriteIds, sharedItemIds, user?.id]
+  );
   const recentItems = useMemo(
     () => recentIds.map((id) => itemById[id]).filter(Boolean),
     [recentIds, itemById]
@@ -355,6 +363,7 @@ export default function Library() {
     let base = publishedItems;
     if (view === "favorites") base = favoriteItems;
     else if (view === "recent") base = recentItems;
+    else if (view === "mine") base = myLibraryItems;
     if (activeCategory) base = base.filter((i) => i.category_id === activeCategory);
     if (activeType) base = base.filter((i) => (i.type || "file") === activeType);
     if (activeDateBucket) {
