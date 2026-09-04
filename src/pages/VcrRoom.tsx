@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
@@ -73,8 +73,6 @@ export default function VcrRoom() {
   const [items, setItems] = useState<SyllabusItem[]>([]);
   const [progress, setProgress] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
-  const [elapsed, setElapsed] = useState(0);
   const [attendance, setAttendance] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(true);
