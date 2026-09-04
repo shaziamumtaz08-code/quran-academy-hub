@@ -51,6 +51,7 @@ const nextDateOnWeekday = (day: string, from: Date = new Date()): string => {
   return format(base, 'yyyy-MM-dd');
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isOnWeekday = (date: Date, day: string) => {
   const target = DAY_INDEX[(day || '').toLowerCase()];
   return target === undefined ? true : date.getDay() === target;
