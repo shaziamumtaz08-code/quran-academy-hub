@@ -36,7 +36,9 @@ const EXT_TO_TYPE: Record<string, string> = {
 const getType = (n: string) => EXT_TO_TYPE[n.split(".").pop()?.toLowerCase() || ""] || "file";
 
 export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, defaultSyllabus = false, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, profile, activeRole, isSuperAdmin } = useAuth();
+  const role = (activeRole || (profile as any)?.role) as string | undefined;
+  const isStaff = !!isSuperAdmin || !!role && ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin","teacher"].includes(role);
   const [mode, setMode] = useState<"file" | "link">("file");
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
@@ -138,10 +140,12 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
         is_featured: isFeatured,
         visibility,
         uploaded_by: user?.id,
-        is_syllabus: isSyllabus,
-        syllabus_folder: isSyllabus ? (syllabusFolder.trim() || null) : null,
-        syllabus_order: isSyllabus && syllabusOrder ? parseInt(syllabusOrder) : 0,
-        syllabus_subject_id: isSyllabus && syllabusSubjectId ? syllabusSubjectId : null,
+        /* Non-staff uploads are always personal (private to the uploader). */
+        is_personal: !isStaff,
+        is_syllabus: isStaff && isSyllabus,
+        syllabus_folder: isStaff && isSyllabus ? (syllabusFolder.trim() || null) : null,
+        syllabus_order: isStaff && isSyllabus && syllabusOrder ? parseInt(syllabusOrder) : 0,
+        syllabus_subject_id: isStaff && isSyllabus && syllabusSubjectId ? syllabusSubjectId : null,
       };
 
       const { error } = await (supabase.from("library_items") as any).insert(payload);
