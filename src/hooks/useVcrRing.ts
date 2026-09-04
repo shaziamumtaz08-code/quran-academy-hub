@@ -48,6 +48,7 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
 
     const bump = (name?: string) => {
       if (name) setCallerName(name);
+      playPingChime();
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
       // Auto-clear if the heartbeat stops (teacher closed the tab).
