@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Upload } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Save, Square, Upload } from 'lucide-react';
+import {
+  getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
+  type UserResource,
+} from '@/lib/myResources';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
@@ -65,7 +69,7 @@ export default function VcrRoom() {
   /** The student viewing their own room: read-only mirror of the teacher's screen. */
   const isFollower = !canControl && !!user?.id && user.id === studentId;
 
-  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard } = useVcrViewSync({
+  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
     roomId: studentId,
     isPresenter: canControl,
     enabled: !!studentId,
@@ -335,6 +339,76 @@ export default function VcrRoom() {
     })();
   }, [isFollower, activeDocId, activeDoc]);
 
+  /* ── A personal resource from My Resources opened in this room ──────────
+     The canonical Library file is shown as-is; the marks live on the personal
+     copy only, so the original is never changed. */
+  const [searchParams] = useSearchParams();
+  const resourceId = searchParams.get('resource');
+  const [resource, setResource] = useState<UserResource | null>(null);
+  const [savingMarks, setSavingMarks] = useState(false);
+  const loadedMarksKey = useRef<string>('');
+  const canMarkResource = !!resource && resource.user_id === user?.id;
+
+  useEffect(() => {
+    if (!resourceId) { setResource(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getResource(resourceId);
+        if (cancelled || !r) return;
+        setResource(r);
+        const f = await resolveResourceFile(r);
+        if (cancelled) return;
+        if (f.itemId) {
+          const row = {
+            id: f.itemId, title: f.title, file_path: f.file_path, url: f.url,
+            type: f.type, pages_count: f.pages_count,
+          } as DocSource;
+          setDocs((prev) => (prev.some((d) => d.id === row.id) ? prev : [...prev, row]));
+          setDocId(f.itemId);
+        }
+        setContentMode('doc');
+      } catch (e: any) {
+        toast({ title: 'Could not open this resource', description: e?.message, variant: 'destructive' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [resourceId]);
+
+  /* Reopen the marks that were saved on this page last time. */
+  useEffect(() => {
+    if (!resource) return;
+    const key = `${resource.id}:${currentPage}`;
+    if (loadedMarksKey.current === key) return;
+    loadedMarksKey.current = key;
+    void (async () => {
+      try {
+        const saved = await getAnnotations(resource.id, currentPage);
+        loadStrokes(saved as any);
+        if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+      } catch { /* nothing saved yet */ }
+    })();
+  }, [resource?.id, currentPage, loadStrokes]);
+
+  const saveMarks = async (alsoVersion: boolean) => {
+    if (!resource || !user?.id) return;
+    setSavingMarks(true);
+    try {
+      await saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id });
+      if (alsoVersion) {
+        const v = await saveVersion({ resourceId: resource.id, userId: user.id, note: `Marked in class` });
+        setResource({ ...resource, current_version: v.version_no });
+        toast({ title: `Saved as version ${v.version_no}`, description: 'Find it in My Resources · Versions.' });
+      } else {
+        toast({ title: 'Marks saved', description: 'They will be here when you reopen this page.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Could not save your marks', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingMarks(false);
+    }
+  };
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
@@ -579,6 +653,45 @@ export default function VcrRoom() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
         <main className="relative min-w-0 flex-1 space-y-3">
+          {/* Personal working copy — mark it, save it, reopen it later */}
+          {resource && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
+              <span className="truncate font-medium text-vcr-chrome">{resource.title}</span>
+              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 text-xs">
+                {resource.kind === 'copy' ? 'My copy' : 'Linked to Library'}
+                {resource.current_version > 0 ? ` · v${resource.current_version}` : ''}
+              </span>
+              {canMarkResource ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setBoardMode('annotate'); setWhiteboardOn(true); }}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome"
+                  >
+                    <PenLine className="h-3.5 w-3.5" /> Mark this page
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(false)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome disabled:opacity-60"
+                  >
+                    <Save className="h-3.5 w-3.5" /> Save marks
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(true)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Save as new version
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-vcr-chrome/55">Shared with you · marks are read-only</span>
+              )}
+            </div>
+          )}
           <VcrBookmarkBar
             bookmarks={bookmarks}
             currentUnit={currentPage}

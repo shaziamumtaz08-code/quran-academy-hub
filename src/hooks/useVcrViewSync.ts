@@ -153,7 +153,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
     channelRef.current?.send({ type: 'broadcast', event: 'wb-clear', payload: {} });
   }, [isPresenter]);
 
-  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard };
+  /** Replace the whole board — used when reopening saved personal annotations. */
+  const loadStrokes = useCallback((next: VcrStroke[]) => {
+    strokesRef.current = next;
+    setStrokes(next);
+    if (isPresenter) {
+      channelRef.current?.send({ type: 'broadcast', event: 'wb-sync', payload: { strokes: next } });
+    }
+  }, [isPresenter]);
+
+  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes };
 }
 
 export default useVcrViewSync;

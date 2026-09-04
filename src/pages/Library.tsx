@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Library as LibraryIcon, Search, Upload, BookOpen, FileText, Newspaper,
   GraduationCap, ClipboardList, StickyNote, BookMarked, FolderOpen, Music, Video,
-  Link as LinkIcon, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
+  Link as LinkIcon, Link2, Copy, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
   Star, History, CheckSquare, X, Loader2, Folder, FolderClosed, Calendar,
   FileType2, Image as ImageIcon, ChevronRight,
 } from "lucide-react";
@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { LibraryItemDetail } from "@/components/library/LibraryItemDetail";
 import { LibraryAddItemDialog } from "@/components/library/LibraryAddItemDialog";
+import { useMyResources } from "@/hooks/useMyResources";
+import { useNavigate } from "react-router-dom";
 
 const ICON_MAP: Record<string, any> = {
   FolderOpen, BookOpen, FileText, Music, Video, Link: LinkIcon, BookMarked,
@@ -174,6 +176,15 @@ function EmptyState({ canUpload, onUpload }: { canUpload: boolean; onUpload: () 
 export default function Library() {
   const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { add: addToShelf } = useMyResources();
+  /* Canonical Library item → personal shelf entry. A "reference" points at the
+     original; a "copy" becomes the user's own working copy with its own marks. */
+  const addResource = (item: any, kind: "reference" | "copy") =>
+    addToShelf(
+      { id: item.id, title: item.title, type: item.type, description: item.description, cover_image: item.cover_image },
+      kind
+    );
   const role = (activeRole || profile?.role) as string | undefined;
   const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
   const isTeacher = role === "teacher";
@@ -531,6 +542,11 @@ export default function Library() {
               </TabsList>
             </Tabs>
 
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => navigate("/my-resources")}>
+              <BookMarked className="h-3.5 w-3.5" /> My Resources
+            </Button>
+
+
             {view === "browse" && (
               <Tabs value={browseMode} onValueChange={(v) => { setBrowseMode(v as BrowseMode); clearFilters(); }}>
                 <TabsList className="h-9 bg-muted/60">
@@ -794,7 +810,7 @@ export default function Library() {
                 {filtered.map((i) => (
                   <div key={i.id} className="relative group">
                     {renderCard(i)}
-                    {!selectMode && (isAdmin || i.uploaded_by === user?.id) && (
+                    {!selectMode && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -805,12 +821,20 @@ export default function Library() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem
-                            onClick={() => setDeleteItem(i)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                          <DropdownMenuItem onClick={() => void addResource(i, "reference")}>
+                            <Link2 className="h-3.5 w-3.5 mr-2" /> Save to My Resources
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => void addResource(i, "copy")}>
+                            <Copy className="h-3.5 w-3.5 mr-2" /> Make my own copy
+                          </DropdownMenuItem>
+                          {(isAdmin || i.uploaded_by === user?.id) && (
+                            <DropdownMenuItem
+                              onClick={() => setDeleteItem(i)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
