@@ -65,7 +65,7 @@ export default function VcrRoom() {
   /** The student viewing their own room: read-only mirror of the teacher's screen. */
   const isFollower = !canControl && !!user?.id && user.id === studentId;
 
-  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard } = useVcrViewSync({
+  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
     roomId: studentId,
     isPresenter: canControl,
     enabled: !!studentId,
