@@ -134,7 +134,6 @@ export default function VcrRoom() {
           .maybeSingle();
         if (s) {
           setSessionId((s as any).id);
-          setStartedAt(new Date((s as any).started_at).getTime());
         }
       }
       setLoading(false);
@@ -220,7 +219,6 @@ export default function VcrRoom() {
         .maybeSingle();
       if (s) {
         setSessionId((s as any).id);
-        setStartedAt(new Date((s as any).started_at).getTime());
         setNotes('');
       }
     }
