@@ -404,6 +404,14 @@ export default function StudentCourseView() {
     enabled: mySubmissions.length > 0,
   });
 
+  /* Open a returned checked copy. Stored privately, so it needs a short-lived link. */
+  const openReviewFile = async (path: string) => {
+    const { data, error } = await supabase.storage.from('course-materials').createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { toast('Could not open the checked copy'); return; }
+    window.open(data.signedUrl, '_blank');
+  };
+
+
   // ─── Announcements (Tab 4) ───
   const { data: announcements = [] } = useQuery({
     queryKey: ['student-announcements', courseId],
