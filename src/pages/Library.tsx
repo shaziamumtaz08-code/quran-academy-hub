@@ -37,7 +37,7 @@ type Category = {
   color: string | null; visibility_default: string; sort_order: number;
 };
 
-type View = "browse" | "favorites" | "recent";
+type View = "browse" | "favorites" | "recent" | "mine";
 type BrowseMode = "category" | "type" | "date";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
@@ -177,7 +177,9 @@ export default function Library() {
   const role = (activeRole || profile?.role) as string | undefined;
   const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
   const isTeacher = role === "teacher";
-  const canUpload = isAdmin || isTeacher;
+  /* Everyone gets a personal library space: any signed-in user can upload.
+     Non-staff uploads are stored as personal (private) items by the dialog. */
+  const canUpload = !!user;
 
   const [view, setView] = useState<View>("browse");
   const [browseMode, setBrowseMode] = useState<BrowseMode>("category");
@@ -246,6 +248,20 @@ export default function Library() {
     enabled: !!user?.id,
   });
 
+  /* Personal files shared with me (shown in my class by a teacher). RLS on
+     personal_item_shares already scopes this to the student, their parents,
+     the sharer, and admins. */
+  const { data: sharedItemIds = new Set<string>() } = useQuery({
+    queryKey: ["personal-item-shares", user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("personal_item_shares") as any)
+        .select("item_id");
+      if (error) throw error;
+      return new Set<string>((data || []).map((r: any) => r.item_id));
+    },
+    enabled: !!user?.id,
+  });
+
   const toggleFavorite = async (itemId: string) => {
     if (!user) return;
     const isFav = favoriteIds.has(itemId);
@@ -270,6 +286,9 @@ export default function Library() {
         if (isAdmin) return true;
         // Uploader always sees their own items
         if (user?.id && i.uploaded_by === user.id) return true;
+        // Personal files are private: only owner/admins, or someone the file
+        // was shared with in class.
+        if (i.is_personal) return sharedItemIds.has(i.id);
         const vis = i.visibility ?? "all";
         if (vis === "all") return true;
         if (vis === "admin_only") return false;
@@ -279,7 +298,7 @@ export default function Library() {
         // Default: not assigned to a role → hide from non-admins
         return false;
       }),
-    [items, isAdmin, isTeacher, role, user?.id]
+    [items, isAdmin, isTeacher, role, user?.id, sharedItemIds]
   );
 
   const itemById = useMemo(() => {
@@ -291,6 +310,14 @@ export default function Library() {
   const favoriteItems = useMemo(
     () => publishedItems.filter((i) => favoriteIds.has(i.id)),
     [publishedItems, favoriteIds]
+  );
+  /* My Library: everything I uploaded, saved as favorite, or that was shared
+     with me in class — one personal shelf. */
+  const myLibraryItems = useMemo(
+    () => publishedItems.filter((i) =>
+      (user?.id && i.uploaded_by === user.id) || favoriteIds.has(i.id) || sharedItemIds.has(i.id)
+    ),
+    [publishedItems, favoriteIds, sharedItemIds, user?.id]
   );
   const recentItems = useMemo(
     () => recentIds.map((id) => itemById[id]).filter(Boolean),
@@ -336,6 +363,7 @@ export default function Library() {
     let base = publishedItems;
     if (view === "favorites") base = favoriteItems;
     else if (view === "recent") base = recentItems;
+    else if (view === "mine") base = myLibraryItems;
     if (activeCategory) base = base.filter((i) => i.category_id === activeCategory);
     if (activeType) base = base.filter((i) => (i.type || "file") === activeType);
     if (activeDateBucket) {
@@ -361,7 +389,7 @@ export default function Library() {
     if (sortBy === "popular") sorted.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
     else if (sortBy === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
     return sorted;
-  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
+  }, [publishedItems, favoriteItems, recentItems, myLibraryItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
 
   const totalDownloads = useMemo(
     () => publishedItems.reduce((s, i) => s + (i.downloads_count || 0), 0),
@@ -497,6 +525,7 @@ export default function Library() {
             <Tabs value={view} onValueChange={(v) => { setView(v as View); clearFilters(); }}>
               <TabsList className="h-9">
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
+                <TabsTrigger value="mine" className="text-xs gap-1.5"><BookOpen className="h-3.5 w-3.5" /> My Library ({myLibraryItems.length})</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
               </TabsList>
@@ -737,6 +766,7 @@ export default function Library() {
               <div>
                 <h2 className="text-xl font-bold">
                   {view === "favorites" ? "Your Favorites"
+                    : view === "mine" ? "My Library"
                     : view === "recent" ? "Recently Viewed"
                     : activeCategory ? categories.find((c) => c.id === activeCategory)?.name
                     : activeType ? TYPE_META[activeType]?.label || activeType

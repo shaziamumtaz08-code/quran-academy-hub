@@ -10,6 +10,10 @@ export interface DocSource {
   url: string | null;
   type: string | null;
   pages_count: number | null;
+  syllabus_folder?: string | null;
+  syllabus_order?: number | null;
+  is_personal?: boolean;
+  uploaded_by?: string | null;
 }
 
 const isImageSource = (s: DocSource) =>

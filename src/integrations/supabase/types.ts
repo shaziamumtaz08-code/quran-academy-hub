@@ -5657,6 +5657,7 @@ export type Database = {
           file_size_bytes: number | null
           id: string
           is_featured: boolean
+          is_personal: boolean
           is_pinned: boolean
           is_syllabus: boolean
           isbn: string | null
@@ -5698,6 +5699,7 @@ export type Database = {
           file_size_bytes?: number | null
           id?: string
           is_featured?: boolean
+          is_personal?: boolean
           is_pinned?: boolean
           is_syllabus?: boolean
           isbn?: string | null
@@ -5739,6 +5741,7 @@ export type Database = {
           file_size_bytes?: number | null
           id?: string
           is_featured?: boolean
+          is_personal?: boolean
           is_pinned?: boolean
           is_syllabus?: boolean
           isbn?: string | null
@@ -7173,6 +7176,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      personal_item_shares: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          shared_by: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          shared_by: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          shared_by?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_item_shares_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phrase_mastery: {
         Row: {

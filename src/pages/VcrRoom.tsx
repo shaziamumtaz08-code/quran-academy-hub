@@ -264,21 +264,23 @@ export default function VcrRoom() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [libCategories, setLibCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
   const loadDocs = React.useCallback(async (selectLatest = false) => {
+    if (!user?.id) return;
+    /* Syllabus files plus the teacher's own personal uploads. */
     const { data, error } = await supabase
       .from('library_items' as any)
-      .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, created_at')
-      .eq('is_syllabus', true)
+      .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, created_at, is_personal, uploaded_by')
       .eq('status', 'published')
+      .or(`is_syllabus.eq.true,uploaded_by.eq.${user.id}`)
       .order('syllabus_folder', { nullsFirst: true })
       .order('syllabus_order');
     if (error) return;
-    const rows = ((data as any[]) ?? []) as (DocSource & { created_at?: string })[];
+    const rows = ((data as any[]) ?? []) as (DocSource & { created_at?: string; is_personal?: boolean; uploaded_by?: string })[];
     setDocs(rows);
     if (selectLatest && rows.length) {
       const latest = [...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
       setDocId(latest.id);
     }
-  }, []);
+  }, [user?.id]);
   useEffect(() => {
     void loadDocs();
   }, [loadDocs]);
@@ -300,6 +302,21 @@ export default function VcrRoom() {
     () => docs.find((d) => d.id === activeDocId) ?? null,
     [docs, activeDocId],
   );
+
+  /* Shown in class = shared with the student: when a teacher opens one of
+     their own personal files, record the share so the student (and linked
+     parents) can reopen it from their Library afterwards. */
+  useEffect(() => {
+    const doc = activeDoc as any;
+    if (!canControl || !user?.id || !studentId) return;
+    if (!doc?.is_personal || doc.uploaded_by !== user.id) return;
+    void (supabase.from('personal_item_shares') as any)
+      .upsert(
+        { item_id: doc.id, student_id: studentId, shared_by: user.id },
+        { onConflict: 'item_id,student_id' }
+      )
+      .then(({ error }: any) => { if (error) console.error('share failed', error); });
+  }, [canControl, user?.id, studentId, activeDoc]);
 
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
@@ -439,7 +456,9 @@ export default function VcrRoom() {
                 </option>
                 {docs.map((d: any) => (
                   <option key={d.id} value={d.id}>
-                    {d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}{d.title}
+                    {d.is_personal && d.uploaded_by === user?.id
+                      ? `My file · ${d.title}`
+                      : `${d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}${d.title}`}
                   </option>
                 ))}
               </select>
