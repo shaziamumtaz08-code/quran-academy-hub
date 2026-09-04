@@ -339,6 +339,76 @@ export default function VcrRoom() {
     })();
   }, [isFollower, activeDocId, activeDoc]);
 
+  /* ── A personal resource from My Resources opened in this room ──────────
+     The canonical Library file is shown as-is; the marks live on the personal
+     copy only, so the original is never changed. */
+  const [searchParams] = useSearchParams();
+  const resourceId = searchParams.get('resource');
+  const [resource, setResource] = useState<UserResource | null>(null);
+  const [savingMarks, setSavingMarks] = useState(false);
+  const loadedMarksKey = useRef<string>('');
+  const canMarkResource = !!resource && resource.user_id === user?.id;
+
+  useEffect(() => {
+    if (!resourceId) { setResource(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getResource(resourceId);
+        if (cancelled || !r) return;
+        setResource(r);
+        const f = await resolveResourceFile(r);
+        if (cancelled) return;
+        if (f.itemId) {
+          const row = {
+            id: f.itemId, title: f.title, file_path: f.file_path, url: f.url,
+            type: f.type, pages_count: f.pages_count,
+          } as DocSource;
+          setDocs((prev) => (prev.some((d) => d.id === row.id) ? prev : [...prev, row]));
+          setDocId(f.itemId);
+        }
+        setContentMode('doc');
+      } catch (e: any) {
+        toast({ title: 'Could not open this resource', description: e?.message, variant: 'destructive' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [resourceId]);
+
+  /* Reopen the marks that were saved on this page last time. */
+  useEffect(() => {
+    if (!resource) return;
+    const key = `${resource.id}:${currentPage}`;
+    if (loadedMarksKey.current === key) return;
+    loadedMarksKey.current = key;
+    void (async () => {
+      try {
+        const saved = await getAnnotations(resource.id, currentPage);
+        loadStrokes(saved as any);
+        if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+      } catch { /* nothing saved yet */ }
+    })();
+  }, [resource?.id, currentPage, loadStrokes]);
+
+  const saveMarks = async (alsoVersion: boolean) => {
+    if (!resource || !user?.id) return;
+    setSavingMarks(true);
+    try {
+      await saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id });
+      if (alsoVersion) {
+        const v = await saveVersion({ resourceId: resource.id, userId: user.id, note: `Marked in class` });
+        setResource({ ...resource, current_version: v.version_no });
+        toast({ title: `Saved as version ${v.version_no}`, description: 'Find it in My Resources · Versions.' });
+      } else {
+        toast({ title: 'Marks saved', description: 'They will be here when you reopen this page.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Could not save your marks', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingMarks(false);
+    }
+  };
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
