@@ -518,9 +518,11 @@ export default function VcrRoom() {
           </span>
 
         </div>
-        {/* Content switcher — Mushaf, Noorani Qaida or a Library file, staff only */}
+        {/* Row 1 — CLASS CONTENT: Mushaf, Noorani Qaida or a Library/syllabus file */}
         {canControl && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-4 py-2 sm:px-6">
+            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Class content</span>
+
             {(['mushaf', 'qaida', 'doc'] as const).map((c) => (
               <button
                 key={c}
