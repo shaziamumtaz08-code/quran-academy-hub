@@ -794,7 +794,7 @@ export default function Library() {
                 {filtered.map((i) => (
                   <div key={i.id} className="relative group">
                     {renderCard(i)}
-                    {!selectMode && (isAdmin || i.uploaded_by === user?.id) && (
+                    {!selectMode && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -805,12 +805,20 @@ export default function Library() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem
-                            onClick={() => setDeleteItem(i)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                          <DropdownMenuItem onClick={() => void addResource(i, "reference")}>
+                            <Link2 className="h-3.5 w-3.5 mr-2" /> Save to My Resources
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => void addResource(i, "copy")}>
+                            <Copy className="h-3.5 w-3.5 mr-2" /> Make my own copy
+                          </DropdownMenuItem>
+                          {(isAdmin || i.uploaded_by === user?.id) && (
+                            <DropdownMenuItem
+                              onClick={() => setDeleteItem(i)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
