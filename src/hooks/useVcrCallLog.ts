@@ -17,7 +17,9 @@ interface Options {
 }
 
 /**
- * Writes a row for EVERY in-app call, recorded or not.
+ * Writes a row only for calls that actually CONNECT, recorded or not.
+ * Ringing / cancelled / failed attempts leave no log row, and the logged
+ * duration counts connected time only.
  *
  * Ownership rule: the participant who was alone in the room when the call
  * started owns the log row (they are the initiator). The joiner writes nothing,
@@ -46,44 +48,41 @@ export function useVcrCallLog({
 
     if (live && !wasLive && roomId && selfId && !observer) {
       initiatorRef.current = !remoteJoined;
-      startedRef.current = Date.now();
       connectedRef.current = false;
-      if (initiatorRef.current) {
-        void (async () => {
-          const { data } = await supabase
-            .from('vcr_call_logs' as any)
-            .insert({
-              room_id: roomId,
-              student_id: studentId,
-              initiator_id: selfId,
-              initiator_role: role,
-              status: 'ringing',
-            })
-            .select('id')
-            .maybeSingle();
-          idRef.current = (data as any)?.id ?? null;
-        })();
-      }
+      idRef.current = null;
     }
 
-    // Connected for the first time.
-    if (status === 'connected' && !connectedRef.current && idRef.current) {
+    // Connected for the first time — this is when the log row is created.
+    // Calls that never connect (ringing, cancelled, failed) are not logged.
+    if (status === 'connected' && !connectedRef.current && roomId && selfId && !observer && initiatorRef.current) {
       connectedRef.current = true;
-      void supabase.from('vcr_call_logs' as any).update({
-        status: 'connected',
-        connected_at: new Date().toISOString(),
-        peer_id: remotePeerId ?? null,
-        updated_at: new Date().toISOString(),
-      }).eq('id', idRef.current);
+      startedRef.current = Date.now();
+      const connectedAt = new Date().toISOString();
+      void (async () => {
+        const { data } = await supabase
+          .from('vcr_call_logs' as any)
+          .insert({
+            room_id: roomId,
+            student_id: studentId,
+            initiator_id: selfId,
+            initiator_role: role,
+            peer_id: remotePeerId ?? null,
+            status: 'connected',
+            connected_at: connectedAt,
+          })
+          .select('id')
+          .maybeSingle();
+        idRef.current = (data as any)?.id ?? null;
+      })();
     }
 
-    // Call finished (or failed): close the row out.
+    // Call finished: close the row out. Duration counts connected time only.
     if (!live && wasLive && idRef.current) {
       const id = idRef.current;
       idRef.current = null;
       const seconds = Math.max(0, Math.round((Date.now() - startedRef.current) / 1000));
       void supabase.from('vcr_call_logs' as any).update({
-        status: status === 'failed' ? (connectedRef.current ? 'ended' : 'failed') : 'ended',
+        status: 'ended',
         ended_at: new Date().toISOString(),
         duration_seconds: seconds,
         recorded: !!recorded,
