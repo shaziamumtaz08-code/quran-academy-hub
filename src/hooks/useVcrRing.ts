@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { playPingChime } from '@/lib/pingChime';
 
 /**
  * Lightweight "a call is happening" presence signal for the Virtual Class Room.
