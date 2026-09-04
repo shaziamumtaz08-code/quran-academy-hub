@@ -58,7 +58,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
   const [status, setStatus] = useState("published");
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
-  const [isSyllabus, setIsSyllabus] = useState(false);
+  const [isSyllabus, setIsSyllabus] = useState(defaultSyllabus);
   const [syllabusFolder, setSyllabusFolder] = useState("");
   const [syllabusOrder, setSyllabusOrder] = useState("");
   const [syllabusSubjectId, setSyllabusSubjectId] = useState("");
@@ -80,7 +80,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     setLanguage("English"); setPages(""); setTags(""); setUrl("");
     setVisibility("all"); setStatus("published"); setAllowDownloads(true);
     setIsFeatured(false); setMode("file"); setResourceType("ebook");
-    setIsSyllabus(false); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
+    setIsSyllabus(defaultSyllabus); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
   };
 
   const handleSave = async () => {
