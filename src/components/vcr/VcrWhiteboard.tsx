@@ -174,14 +174,14 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
             />
           ))}
           <span className="mx-1 h-6 w-px bg-foreground/15" />
-          <button type="button" onClick={onUndo} aria-label="Undo stroke" title="Undo" className="rounded-full p-1.5 text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
-            <Undo2 className="h-4 w-4" />
+          <button type="button" onClick={onUndo} aria-label="Undo stroke" title="Undo" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
+            <Undo2 className="h-4 w-4" /> Undo
           </button>
-          <button type="button" onClick={onClear} aria-label="Clear board" title="Clear all" className="rounded-full p-1.5 text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
-            <Eraser className="h-4 w-4" />
+          <button type="button" onClick={onClear} aria-label="Clear board" title="Clear all" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
+            <Eraser className="h-4 w-4" /> Clear
           </button>
-          <button type="button" onClick={onClose} aria-label="Close" title="Close" className="rounded-full p-1.5 text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
-            <X className="h-4 w-4" />
+          <button type="button" onClick={onClose} aria-label="Close" title="Close" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
+            <X className="h-4 w-4" /> Close
           </button>
         </div>
       )}
