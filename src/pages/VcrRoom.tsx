@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, ClipboardList, ListOrdered, PenLine, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
@@ -58,6 +58,8 @@ export default function VcrRoom() {
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  /** Zoom-style automatic recording — consent is still asked every call. */
+  const [autoRecord, setAutoRecord] = useState<boolean>(() => localStorage.getItem('vcr-auto-record') === '1');
   const [turnSignal, setTurnSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const notesTimer = useRef<number | null>(null);
@@ -375,6 +377,20 @@ export default function VcrRoom() {
             >
               <PenLine className="h-4 w-4" /> {whiteboardOn ? 'Whiteboard on' : 'Whiteboard'}
             </button>
+            <button
+              type="button"
+              onClick={() => setAutoRecord((v) => { localStorage.setItem('vcr-auto-record', v ? '0' : '1'); return !v; })}
+              aria-pressed={autoRecord}
+              title="Ask the student for recording consent automatically when a call connects"
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
+                autoRecord
+                  ? 'border-red-400/60 bg-red-500/15 text-red-200'
+                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+              )}
+            >
+              <Circle className="h-3.5 w-3.5" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
+            </button>
           </div>
         )}
 
@@ -385,6 +401,8 @@ export default function VcrRoom() {
               roomId={studentId}
               peerId={user.id}
               isCaller={canControl}
+              role={canControl ? (roles[0] ?? 'staff') : 'student'}
+              autoRecord={autoRecord}
               callerName={(profile as any)?.full_name ?? 'Your teacher'}
               knockerName={student?.full_name ?? 'Your student'}
               studentId={studentId}

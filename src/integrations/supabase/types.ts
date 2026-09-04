@@ -12381,6 +12381,60 @@ export type Database = {
           },
         ]
       }
+      vcr_call_logs: {
+        Row: {
+          connected_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          initiator_id: string
+          initiator_role: string | null
+          peer_id: string | null
+          recorded: boolean
+          recording_id: string | null
+          room_id: string
+          started_at: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          connected_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiator_id: string
+          initiator_role?: string | null
+          peer_id?: string | null
+          recorded?: boolean
+          recording_id?: string | null
+          room_id: string
+          started_at?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          connected_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiator_id?: string
+          initiator_role?: string | null
+          peer_id?: string | null
+          recorded?: boolean
+          recording_id?: string | null
+          room_id?: string
+          started_at?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vcr_call_recordings: {
         Row: {
           consent_at: string | null

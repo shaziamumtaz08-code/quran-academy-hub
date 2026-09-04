@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
+import { useVcrCallLog } from '@/hooks/useVcrCallLog';
 import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
 import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
 import { cn } from '@/lib/utils';
@@ -9,8 +10,12 @@ interface Props {
   /** VCR session id when one exists, otherwise the student id — scopes signalling. */
   roomId: string;
   peerId: string;
-  /** Staff side places the call. */
+  /** Staff side — owns the recorder. Either side may place the call. */
   isCaller: boolean;
+  /** Role recorded on the call log. */
+  role?: string;
+  /** Ask for recording consent automatically when the call connects. */
+  autoRecord?: boolean;
   /** Shown to the student in the ring banner. */
   callerName?: string;
   /** Student's own name — announced to the teacher when they ring. */
@@ -47,17 +52,23 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName, studentId = null, teacherId = null }: Props) {
-  const { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams } = useVcrCall({ roomId, peerId, isCaller });
+export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null }: Props) {
+  const { status, muted, error, busy, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
+    useVcrCall({ roomId, peerId });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
-  /* Announce / observe the call so the other side knows one is running. */
-  useVcrRingHost(roomId, isCaller && live, callerName);
-  const { ringing } = useVcrRingListener(roomId, !isCaller && !live);
+  /* Log every call — recorded or not. */
+  const { markRecorded } = useVcrCallLog({
+    roomId, studentId, selfId: peerId, role, status, remoteJoined, remotePeerId,
+  });
 
-  /* Student → teacher "ring the bell" knock. */
-  const { knock, sentAt } = useVcrKnockSender(!isCaller ? roomId : null);
-  const { knockerName: knocking, dismiss: dismissKnock } = useVcrKnockListener(roomId, isCaller && !live);
+  /* Announce / observe the call — either side may be the one on the line. */
+  useVcrRingHost(roomId, live, callerName);
+  const { ringing } = useVcrRingListener(roomId, !live);
+
+  /* Bell: either side can ring the other when no call is up. */
+  const { knock, sentAt } = useVcrKnockSender(!live ? roomId : null);
+  const { knockerName: knocking, dismiss: dismissKnock } = useVcrKnockListener(roomId, !live);
   const knockCooldown = sentAt != null && Date.now() - sentAt < 15000;
 
   /* Call duration — starts on connect, stops (and resets) when the call ends. */
@@ -104,11 +115,11 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
       {ringing && !live && (
         <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-200">
           <span className="h-2 w-2 animate-ping rounded-full bg-emerald-300" aria-hidden />
-          Your teacher is on the call
+          {isCaller ? 'The student is on the call' : 'Your teacher is on the call'}
         </span>
       )}
 
-      {isCaller && knocking && !live && (
+      {knocking && !live && (
         <span className="inline-flex items-center gap-2 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 py-1 text-xs text-vcr-gold">
           <BellRing className="h-3.5 w-3.5 animate-pulse" aria-hidden />
           {knocking} is ringing you
@@ -134,10 +145,10 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
             )}
           >
             <PhoneCall className="h-4 w-4 text-vcr-gold" />
-            {isCaller ? 'Start In-App Call' : ringing ? 'Join call now' : 'Join In-App Call'}
+            {ringing ? 'Join call now' : 'Start In-App Call'}
             <span className="text-vcr-chrome/45">· audio</span>
           </button>
-          {!isCaller && !ringing && (
+          {!ringing && (
             <button
               type="button"
               onClick={() => void knock(knockerName)}
@@ -145,7 +156,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
               className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-50"
             >
               <BellRing className="h-4 w-4 text-vcr-gold" />
-              {knockCooldown ? 'Rang — waiting…' : 'Ring teacher'}
+              {knockCooldown ? 'Rang — waiting…' : isCaller ? 'Ring student' : 'Ring teacher'}
             </button>
           )}
         </>
@@ -179,6 +190,8 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
         studentId={studentId}
         teacherId={teacherId}
         getStreams={getStreams}
+        autoRecord={autoRecord}
+        onRecorded={markRecorded}
       />
 
       {status === 'failed' && (
@@ -195,6 +208,10 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
             <span>{error ?? 'The call could not connect. Please use the Zoom link instead.'}</span>
           </span>
         </>
+      )}
+
+      {busy && !live && (
+        <span className="text-xs text-amber-200">Two people are already on this call.</span>
       )}
 
       {status !== 'failed' && error && (

@@ -19,6 +19,10 @@ interface Props {
   studentId: string | null;
   teacherId: string | null;
   getStreams: () => { local: MediaStream | null; remote: MediaStream | null };
+  /** Zoom-style: ask for consent automatically as soon as the call connects. */
+  autoRecord?: boolean;
+  /** Called once a recording row exists, so the call log can be stamped. */
+  onRecorded?: (recordingId: string | null) => void;
 }
 
 type HostPhase = 'idle' | 'awaiting-consent' | 'recording' | 'saving';
@@ -30,7 +34,7 @@ type HostPhase = 'idle' | 'awaiting-consent' | 'recording' | 'saving';
  * both consents are stamped on the recording row. Both sides see a persistent
  * "Recording" indicator for as long as capture is running.
  */
-export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teacherId, getStreams }: Props) {
+export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teacherId, getStreams, autoRecord = false, onRecorded }: Props) {
   const [phase, setPhase] = useState<HostPhase>('idle');
   const [remoteRecording, setRemoteRecording] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
@@ -110,8 +114,8 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
       .insert({
         room_id: roomId,
         student_id: studentId,
-        teacher_id: teacherId,
-        created_by: teacherId,
+        teacher_id: peerId,
+        created_by: peerId,
         consent_teacher: true,
         consent_student: true,
         consent_at: new Date().toISOString(),
@@ -126,6 +130,7 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
       return;
     }
     recordIdRef.current = (data as any).id;
+    onRecorded?.((data as any).id ?? null);
 
     chunksRef.current = [];
     const recorder = new MediaRecorder(stream);
@@ -137,7 +142,7 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
 
     setPhase('recording');
     send('record-started');
-  }, [roomId, studentId, teacherId, send]);
+  }, [roomId, studentId, teacherId, peerId, send, onRecorded]);
 
   const finalise = useCallback(async () => {
     setPhase('saving');
@@ -178,6 +183,17 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
     if (r && r.state !== 'inactive') r.stop();
     else void finalise();
   };
+
+  /* Auto-record: ask for consent once, as soon as the call is up. */
+  const autoAskedRef = useRef(false);
+  useEffect(() => {
+    if (!isHost || !autoRecord) return;
+    if (!live) { autoAskedRef.current = false; return; }
+    if (autoAskedRef.current || phase !== 'idle') return;
+    autoAskedRef.current = true;
+    setPhase('awaiting-consent');
+    send('record-request', { auto: true });
+  }, [isHost, autoRecord, live, phase, send]);
 
   /* Never keep recording after the call drops. */
   useEffect(() => {
