@@ -298,7 +298,7 @@ export default function Library() {
         // Default: not assigned to a role → hide from non-admins
         return false;
       }),
-    [items, isAdmin, isTeacher, role, user?.id]
+    [items, isAdmin, isTeacher, role, user?.id, sharedItemIds]
   );
 
   const itemById = useMemo(() => {
