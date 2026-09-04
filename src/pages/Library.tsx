@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { LibraryItemDetail } from "@/components/library/LibraryItemDetail";
 import { LibraryAddItemDialog } from "@/components/library/LibraryAddItemDialog";
+import { LibrarySyllabusDialog } from "@/components/library/LibrarySyllabusDialog";
+
 import { useMyResources } from "@/hooks/useMyResources";
 import { useNavigate } from "react-router-dom";
 
@@ -39,7 +41,7 @@ type Category = {
   color: string | null; visibility_default: string; sort_order: number;
 };
 
-type View = "browse" | "favorites" | "recent" | "mine";
+type View = "browse" | "favorites" | "recent" | "mine" | "syllabus";
 type BrowseMode = "category" | "type" | "date";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
@@ -202,6 +204,8 @@ export default function Library() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<any>(null);
   const [deleteItem, setDeleteItem] = useState<any>(null);
+  const [syllabusItem, setSyllabusItem] = useState<any>(null);
+
 
   // Bulk select
   const [selectMode, setSelectMode] = useState(false);
@@ -334,6 +338,35 @@ export default function Library() {
     () => recentIds.map((id) => itemById[id]).filter(Boolean),
     [recentIds, itemById]
   );
+
+  /* Syllabus shelves: one folder per subject, resources kept in teaching order. */
+  const syllabusItems = useMemo(
+    () => publishedItems.filter((i) => i.is_syllabus && !i.is_personal),
+    [publishedItems]
+  );
+  const syllabusFolders = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const i of syllabusItems) {
+      const k = (i.syllabus_folder || "").trim() || "Unsorted";
+      m.set(k, [...(m.get(k) ?? []), i]);
+    }
+    return [...m.entries()]
+      .map(([folder, list]) => ({
+        folder,
+        items: [...list].sort(
+          (a, b) => (a.syllabus_order ?? 0) - (b.syllabus_order ?? 0) || a.title.localeCompare(b.title)
+        ),
+      }))
+      .sort((a, b) =>
+        a.folder === "Unsorted" ? 1 : b.folder === "Unsorted" ? -1 : a.folder.localeCompare(b.folder)
+      );
+  }, [syllabusItems]);
+  const folderNames = useMemo(
+    () => syllabusFolders.map((f) => f.folder).filter((f) => f !== "Unsorted"),
+    [syllabusFolders]
+  );
+
+
 
   const featured = useMemo(() => publishedItems.filter((i) => i.is_featured).slice(0, 4), [publishedItems]);
   const recent = useMemo(() => [...publishedItems].slice(0, 8), [publishedItems]);
@@ -538,7 +571,9 @@ export default function Library() {
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
                 <TabsTrigger value="mine" className="text-xs gap-1.5"><BookOpen className="h-3.5 w-3.5" /> My Library ({myLibraryItems.length})</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
+                <TabsTrigger value="syllabus" className="text-xs gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> Syllabus ({syllabusFolders.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
+
               </TabsList>
             </Tabs>
 
@@ -664,7 +699,48 @@ export default function Library() {
       <div className="max-w-7xl mx-auto px-4 lg:px-10 py-8 space-y-12">
         {isLoading ? (
           <div className="text-center py-20 text-muted-foreground">Loading library…</div>
+        ) : view === "syllabus" ? (
+          <section className="space-y-10">
+            <SectionHeader
+              icon={GraduationCap}
+              title="Syllabus folders"
+              subtitle="One folder per subject, in teaching order — the same list teachers see in class."
+            />
+            {syllabusFolders.length === 0 ? (
+              <EmptyState canUpload={canUpload} onUpload={() => setUploadOpen(true)} />
+            ) : (
+              syllabusFolders.map(({ folder, items: list }) => (
+                <div key={folder}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FolderClosed className="h-4 w-4 text-fuchsia-500" />
+                    <h3 className="font-semibold">{folder}</h3>
+                    <Badge variant="secondary" className="text-[10px]">{list.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {list.map((i, idx) => (
+                      <div key={i.id} className="relative group">
+                        <span className="absolute -top-1.5 -left-1.5 z-10 h-6 w-6 rounded-full bg-foreground text-background text-[11px] font-semibold grid place-items-center shadow">
+                          {idx + 1}
+                        </span>
+                        {renderCard(i)}
+                        {(isAdmin || i.uploaded_by === user?.id) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSyllabusItem(i); }}
+                            className="absolute top-2 right-12 z-10 p-1.5 rounded-md bg-background/90 backdrop-blur border border-border/60 opacity-0 group-hover:opacity-100 transition"
+                            title="Change subject folder or order"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
         ) : isLandingView ? (
+
           <>
             {/* BROWSE FOLDERS — first thing users see */}
             <section>
@@ -827,7 +903,13 @@ export default function Library() {
                           <DropdownMenuItem onClick={() => void addResource(i, "copy")}>
                             <Copy className="h-3.5 w-3.5 mr-2" /> Make my own copy
                           </DropdownMenuItem>
+                          {(isAdmin || i.uploaded_by === user?.id) && !i.is_personal && (
+                            <DropdownMenuItem onClick={() => setSyllabusItem(i)}>
+                              <GraduationCap className="h-3.5 w-3.5 mr-2" /> Syllabus placement
+                            </DropdownMenuItem>
+                          )}
                           {(isAdmin || i.uploaded_by === user?.id) && (
+
                             <DropdownMenuItem
                               onClick={() => setDeleteItem(i)}
                               className="text-destructive focus:text-destructive"
@@ -857,7 +939,16 @@ export default function Library() {
         onUpdated={refresh}
       />
 
+      <LibrarySyllabusDialog
+        item={syllabusItem}
+        open={!!syllabusItem}
+        onOpenChange={(o) => { if (!o) setSyllabusItem(null); }}
+        folders={folderNames}
+        onSaved={refresh}
+      />
+
       <LibraryAddItemDialog
+
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
