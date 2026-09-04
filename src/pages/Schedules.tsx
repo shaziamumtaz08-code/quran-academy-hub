@@ -51,6 +51,7 @@ const nextDateOnWeekday = (day: string, from: Date = new Date()): string => {
   return format(base, 'yyyy-MM-dd');
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isOnWeekday = (date: Date, day: string) => {
   const target = DAY_INDEX[(day || '').toLowerCase()];
   return target === undefined ? true : date.getDay() === target;
@@ -1061,13 +1062,9 @@ export default function Schedules() {
     }
 
     if (editingSchedule) {
-      const dayLabel = DAYS_LABELS[newSchedule.day] || 'the class day';
-      const fromOk = isOnWeekday(new Date(`${effectiveFrom}T12:00:00`), newSchedule.day);
-      const toOk = !effectiveTo || isOnWeekday(new Date(`${effectiveTo}T12:00:00`), newSchedule.day);
-      if (!fromOk || !toOk) {
-        toast({ title: 'Wrong weekday', description: `Effective dates must fall on a ${dayLabel}.`, variant: 'destructive' });
-        return;
-      }
+      // Effective dates are simply the window this timing applies to — they do
+      // not have to land on the class weekday.
+
       if (effectiveTo && effectiveTo < effectiveFrom) {
         toast({ title: 'Invalid range', description: 'The end date cannot be before the start date.', variant: 'destructive' });
         return;
@@ -1470,7 +1467,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day)} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined}  onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                           </div>
@@ -1486,7 +1483,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day) || date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                             {periodType === 'permanent' && effectiveTo && (
