@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { playPingChime } from '@/lib/pingChime';
 
 /**
  * Lightweight "a call is happening" presence signal for the Virtual Class Room.
@@ -47,6 +48,7 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
 
     const bump = (name?: string) => {
       if (name) setCallerName(name);
+      playPingChime();
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
       // Auto-clear if the heartbeat stops (teacher closed the tab).
@@ -70,4 +72,61 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
   }, [roomId, enabled]);
 
   return { ringing, callerName };
+}
+
+/** Student side: tap "Ring teacher" — a one-off knock with a bell on the teacher's screen. */
+export function useVcrKnockSender(roomId: string | null | undefined) {
+  const [sentAt, setSentAt] = useState<number | null>(null);
+
+  const knock = async (fromName?: string) => {
+    if (!roomId) return;
+    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    await new Promise<void>((resolve) => {
+      channel.subscribe((state) => {
+        if (state !== 'SUBSCRIBED') return;
+        void channel
+          .send({ type: 'broadcast', event: 'knock', payload: { fromName: fromName ?? 'Your student' } })
+          .then(() => {
+            setSentAt(Date.now());
+            resolve();
+          });
+      });
+    });
+    // Keep the channel briefly so the broadcast flush completes, then drop it.
+    window.setTimeout(() => supabase.removeChannel(channel), 1500);
+  };
+
+  return { knock, sentAt };
+}
+
+/** Teacher side: hear a student knocking on their room. */
+export function useVcrKnockListener(roomId: string | null | undefined, enabled = true) {
+  const [knockerName, setKnockerName] = useState<string | null>(null);
+  const expiry = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!roomId || !enabled) return;
+    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+
+    channel
+      .on('broadcast', { event: 'knock' }, ({ payload }) => {
+        setKnockerName(payload?.fromName ?? 'Your student');
+        playPingChime();
+        if (expiry.current) window.clearTimeout(expiry.current);
+        expiry.current = window.setTimeout(() => setKnockerName(null), 30000);
+      })
+      .subscribe();
+
+    return () => {
+      if (expiry.current) window.clearTimeout(expiry.current);
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, enabled]);
+
+  const dismiss = () => {
+    if (expiry.current) window.clearTimeout(expiry.current);
+    setKnockerName(null);
+  };
+
+  return { knockerName, dismiss };
 }

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
-import { useVcrRingHost, useVcrRingListener } from '@/hooks/useVcrRing';
+import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
 import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,8 @@ interface Props {
   isCaller: boolean;
   /** Shown to the student in the ring banner. */
   callerName?: string;
+  /** Student's own name — announced to the teacher when they ring. */
+  knockerName?: string;
   /** Participants, used to attribute a consented recording. */
   studentId?: string | null;
   teacherId?: string | null;
@@ -45,13 +47,18 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, callerName, studentId = null, teacherId = null }: Props) {
+export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName, studentId = null, teacherId = null }: Props) {
   const { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams } = useVcrCall({ roomId, peerId, isCaller });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Announce / observe the call so the other side knows one is running. */
   useVcrRingHost(roomId, isCaller && live, callerName);
   const { ringing } = useVcrRingListener(roomId, !isCaller && !live);
+
+  /* Student → teacher "ring the bell" knock. */
+  const { knock, sentAt } = useVcrKnockSender(!isCaller ? roomId : null);
+  const { knockerName: knocking, dismiss: dismissKnock } = useVcrKnockListener(roomId, isCaller && !live);
+  const knockCooldown = sentAt != null && Date.now() - sentAt < 15000;
 
   /* Call duration — starts on connect, stops (and resets) when the call ends. */
   const [duration, setDuration] = React.useState(0);
@@ -101,19 +108,47 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, studentId =
         </span>
       )}
 
+      {isCaller && knocking && !live && (
+        <span className="inline-flex items-center gap-2 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 py-1 text-xs text-vcr-gold">
+          <BellRing className="h-3.5 w-3.5 animate-pulse" aria-hidden />
+          {knocking} is ringing you
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={dismissKnock}
+            className="rounded-full p-0.5 opacity-70 transition-opacity hover:opacity-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      )}
+
       {!live ? (
-        <button
-          type="button"
-          onClick={() => void start()}
-          className={cn(
-            'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
-            ringing && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
+        <>
+          <button
+            type="button"
+            onClick={() => void start()}
+            className={cn(
+              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
+              ringing && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
+            )}
+          >
+            <PhoneCall className="h-4 w-4 text-vcr-gold" />
+            {isCaller ? 'Start In-App Call' : ringing ? 'Join call now' : 'Join In-App Call'}
+            <span className="text-vcr-chrome/45">· audio</span>
+          </button>
+          {!isCaller && !ringing && (
+            <button
+              type="button"
+              onClick={() => void knock(knockerName)}
+              disabled={knockCooldown}
+              className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-50"
+            >
+              <BellRing className="h-4 w-4 text-vcr-gold" />
+              {knockCooldown ? 'Rang — waiting…' : 'Ring teacher'}
+            </button>
           )}
-        >
-          <PhoneCall className="h-4 w-4 text-vcr-gold" />
-          {isCaller ? 'Start In-App Call' : ringing ? 'Join call now' : 'Join In-App Call'}
-          <span className="text-vcr-chrome/45">· audio</span>
-        </button>
+        </>
       ) : (
         <>
           <button

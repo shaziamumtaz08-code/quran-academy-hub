@@ -386,6 +386,7 @@ export default function VcrRoom() {
               peerId={user.id}
               isCaller={canControl}
               callerName={(profile as any)?.full_name ?? 'Your teacher'}
+              knockerName={student?.full_name ?? 'Your student'}
               studentId={studentId}
               teacherId={canControl ? user.id : null}
             />
