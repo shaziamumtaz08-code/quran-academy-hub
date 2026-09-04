@@ -389,7 +389,7 @@ export default function Library() {
     if (sortBy === "popular") sorted.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
     else if (sortBy === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
     return sorted;
-  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
+  }, [publishedItems, favoriteItems, recentItems, myLibraryItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
 
   const totalDownloads = useMemo(
     () => publishedItems.reduce((s, i) => s + (i.downloads_count || 0), 0),
@@ -525,6 +525,7 @@ export default function Library() {
             <Tabs value={view} onValueChange={(v) => { setView(v as View); clearFilters(); }}>
               <TabsList className="h-9">
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
+                <TabsTrigger value="mine" className="text-xs gap-1.5"><BookOpen className="h-3.5 w-3.5" /> My Library ({myLibraryItems.length})</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
               </TabsList>
