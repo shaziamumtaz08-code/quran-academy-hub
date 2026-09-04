@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
@@ -73,8 +73,6 @@ export default function VcrRoom() {
   const [items, setItems] = useState<SyllabusItem[]>([]);
   const [progress, setProgress] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
-  const [elapsed, setElapsed] = useState(0);
   const [attendance, setAttendance] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(true);
@@ -136,7 +134,6 @@ export default function VcrRoom() {
           .maybeSingle();
         if (s) {
           setSessionId((s as any).id);
-          setStartedAt(new Date((s as any).started_at).getTime());
         }
       }
       setLoading(false);
@@ -144,12 +141,6 @@ export default function VcrRoom() {
 
     return () => { cancelled = true; };
   }, [studentId, canControl, user?.id]);
-
-  /* Session timer */
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
-    return () => window.clearInterval(t);
-  }, [startedAt]);
 
   /* Notes autosave (debounced) */
   const onNotes = (value: string) => {
@@ -228,7 +219,6 @@ export default function VcrRoom() {
         .maybeSingle();
       if (s) {
         setSessionId((s as any).id);
-        setStartedAt(new Date((s as any).started_at).getTime());
         setNotes('');
       }
     }
@@ -361,11 +351,6 @@ export default function VcrRoom() {
             )}
           >
             {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
-          </span>
-          <span className="ms-auto inline-flex items-center gap-2 font-mono text-2xl tabular-nums text-vcr-chrome">
-            <Timer className="h-5 w-5 text-vcr-gold" />
-            <span className="font-sans text-xs uppercase tracking-wide text-vcr-chrome/50">Session</span>
-            {clock(elapsed)}
           </span>
 
         </div>
