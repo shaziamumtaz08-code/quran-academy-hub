@@ -14743,6 +14743,11 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      user_resource_owner: { Args: { _resource_id: string }; Returns: string }
+      user_resource_share_level: {
+        Args: { _resource_id: string; _user_id: string }
+        Returns: string
+      }
       vcr_stamp_observer_joined: { Args: { _room_id: string }; Returns: string }
       zoom_monitor_teacher_for_license: {
         Args: { _license_id: string }
