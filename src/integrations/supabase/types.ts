@@ -393,6 +393,53 @@ export type Database = {
           },
         ]
       }
+      assignment_submission_reviews: {
+        Row: {
+          annotations: Json
+          comment: string | null
+          created_at: string
+          file_path: string | null
+          id: string
+          returned_at: string | null
+          reviewer_id: string
+          submission_id: string
+          updated_at: string
+          version_no: number
+        }
+        Insert: {
+          annotations?: Json
+          comment?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          returned_at?: string | null
+          reviewer_id: string
+          submission_id: string
+          updated_at?: string
+          version_no?: number
+        }
+        Update: {
+          annotations?: Json
+          comment?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          returned_at?: string | null
+          reviewer_id?: string
+          submission_id?: string
+          updated_at?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submission_reviews_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "course_assignment_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_window_change_log: {
         Row: {
           affected_at_risk_flags: number
@@ -12428,6 +12475,44 @@ export type Database = {
           },
         ]
       }
+      user_resource_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_resource_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "user_resource_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_resource_shares: {
         Row: {
           can_edit: boolean
@@ -12514,10 +12599,14 @@ export type Database = {
           current_version: number
           description: string | null
           file_path: string | null
+          folder_id: string | null
           id: string
           kind: string
           metadata: Json
+          origin: string
+          received_from: string | null
           source_item_id: string | null
+          source_submission_id: string | null
           title: string
           type: string | null
           updated_at: string
@@ -12529,10 +12618,14 @@ export type Database = {
           current_version?: number
           description?: string | null
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           kind?: string
           metadata?: Json
+          origin?: string
+          received_from?: string | null
           source_item_id?: string | null
+          source_submission_id?: string | null
           title: string
           type?: string | null
           updated_at?: string
@@ -12544,10 +12637,14 @@ export type Database = {
           current_version?: number
           description?: string | null
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           kind?: string
           metadata?: Json
+          origin?: string
+          received_from?: string | null
           source_item_id?: string | null
+          source_submission_id?: string | null
           title?: string
           type?: string | null
           updated_at?: string
@@ -12555,10 +12652,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "user_resources_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "user_resource_folders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_resources_source_item_id_fkey"
             columns: ["source_item_id"]
             isOneToOne: false
             referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_resources_source_submission_id_fkey"
+            columns: ["source_submission_id"]
+            isOneToOne: false
+            referencedRelation: "course_assignment_submissions"
             referencedColumns: ["id"]
           },
         ]
