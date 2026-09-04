@@ -14455,6 +14455,7 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      vcr_stamp_observer_joined: { Args: { _room_id: string }; Returns: string }
       zoom_monitor_teacher_for_license: {
         Args: { _license_id: string }
         Returns: string
