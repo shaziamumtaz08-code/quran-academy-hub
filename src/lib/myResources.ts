@@ -277,3 +277,148 @@ export async function resolveResourceFile(resource: UserResource): Promise<{
     title: resource.title || row.title,
   };
 }
+
+/* ── Personal folders ─────────────────────────────────────────────────── */
+
+export interface ResourceFolder {
+  id: string;
+  user_id: string;
+  parent_id: string | null;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listFolders(userId: string): Promise<ResourceFolder[]> {
+  const { data, error } = await t("user_resource_folders")
+    .select("*")
+    .eq("user_id", userId)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ResourceFolder[];
+}
+
+export async function createFolder(userId: string, name: string, parentId?: string | null) {
+  const { data, error } = await t("user_resource_folders")
+    .insert({ user_id: userId, name, parent_id: parentId ?? null })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ResourceFolder;
+}
+
+export async function renameFolder(id: string, name: string) {
+  const { error } = await t("user_resource_folders").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteFolder(id: string) {
+  const { error } = await t("user_resource_folders").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Personal uploads (name + file only) ──────────────────────────────── */
+
+const guessType = (name: string) => {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["pdf"].includes(ext)) return "pdf";
+  if (["png", "jpg", "jpeg", "webp", "gif", "heic"].includes(ext)) return "image";
+  if (["mp3", "wav", "m4a", "ogg"].includes(ext)) return "audio";
+  if (["mp4", "webm", "mov"].includes(ext)) return "video";
+  return "file";
+};
+
+/**
+ * Upload a personal file into My Resources. Only a name and the file are
+ * required — no Library metadata (category, book credentials, …) applies here.
+ */
+export async function uploadPersonalResource(opts: {
+  userId: string;
+  title: string;
+  file: File;
+  folderId?: string | null;
+}): Promise<UserResource> {
+  const safe = opts.file.name.replace(/[^\w.\-]+/g, "_");
+  const path = `personal/${opts.userId}/${crypto.randomUUID()}-${safe}`;
+  const up = await supabase.storage.from("resources").upload(path, opts.file, {
+    contentType: opts.file.type || undefined,
+  });
+  if (up.error) throw up.error;
+
+  const { data, error } = await t("user_resources")
+    .insert({
+      user_id: opts.userId,
+      source_item_id: null,
+      kind: "copy",
+      origin: "own",
+      title: opts.title.trim() || opts.file.name,
+      type: guessType(opts.file.name),
+      file_path: path,
+      folder_id: opts.folderId ?? null,
+      metadata: { original_file_name: opts.file.name, size: opts.file.size },
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as UserResource;
+}
+
+export async function renameResource(id: string, title: string) {
+  const { error } = await t("user_resources").update({ title }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function moveResource(id: string, folderId: string | null) {
+  const { error } = await t("user_resources").update({ folder_id: folderId }).eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Put a copy of an entry onto someone else's shelf (a student, usually) while
+ * keeping provenance: who sent it and what it came from. Nothing is duplicated
+ * in storage — the recipient's entry points at the same file/Library original.
+ */
+export async function sendToUserShelf(opts: {
+  resource: UserResource;
+  recipientId: string;
+  senderId: string;
+  asCopy?: boolean;
+}): Promise<void> {
+  const { resource, recipientId, senderId } = opts;
+  const { error } = await t("user_resources").insert({
+    user_id: recipientId,
+    source_item_id: resource.source_item_id,
+    kind: opts.asCopy ? "copy" : "reference",
+    origin: "shared",
+    received_from: senderId,
+    title: resource.title,
+    description: resource.description,
+    type: resource.type,
+    cover_image: resource.cover_image,
+    file_path: resource.file_path,
+    metadata: { shared_from_resource_id: resource.id },
+  });
+  if (error && !String(error.message || "").includes("duplicate")) throw error;
+}
+
+/** Put a canonical Library item straight onto someone's shelf as a reference. */
+export async function sendLibraryItemToUser(opts: {
+  item: { id: string; title: string; type?: string | null; description?: string | null; cover_image?: string | null };
+  recipientId: string;
+  senderId: string;
+}) {
+  const { error } = await t("user_resources").insert({
+    user_id: opts.recipientId,
+    source_item_id: opts.item.id,
+    kind: "reference",
+    origin: "shared",
+    received_from: opts.senderId,
+    title: opts.item.title,
+    description: opts.item.description ?? null,
+    type: opts.item.type ?? null,
+    cover_image: opts.item.cover_image ?? null,
+  });
+  if (error && !String(error.message || "").includes("duplicate")) throw error;
+}

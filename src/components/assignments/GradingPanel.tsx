@@ -17,6 +17,7 @@ import {
   Download, Check, Loader2, ChevronLeft, ChevronRight, FileText, PenLine, Mic,
 } from 'lucide-react';
 import { SubmissionAnnotator, type Annotation } from './SubmissionAnnotator';
+import { listReviews, saveReview, returnReview, saveReviewToMyResources } from '@/lib/assignmentReviews';
 import { VoiceNoteRecorder } from '@/components/attendance/VoiceNoteRecorder';
 
 interface GradingPanelProps {
@@ -36,6 +37,42 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
   const [showAnnotator, setShowAnnotator] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
+
+  const { data: reviews = [], refetch: refetchReviews } = useQuery({
+    queryKey: ['submission-reviews', submissionId],
+    queryFn: () => listReviews(submissionId),
+    enabled: !!submissionId,
+  });
+
+  const saveReviewedVersion = async (opts: { returnNow: boolean; keepCopy?: boolean }) => {
+    if (!user) return;
+    setReviewBusy(true);
+    try {
+      await saveReview({
+        submissionId,
+        reviewerId: user.id,
+        annotations: annotations as any[],
+        comment: feedback || null,
+        returnNow: opts.returnNow,
+      });
+      if (opts.keepCopy) {
+        await saveReviewToMyResources({
+          userId: user.id,
+          title: `Reviewed — ${submission?.profile?.full_name ?? 'student'}`,
+          submissionId,
+          fileType: 'review',
+          annotations: annotations as any[],
+        });
+      }
+      toast.success(opts.returnNow ? 'Reviewed work returned to the student' : 'Reviewed version saved');
+      void refetchReviews();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Could not save the reviewed version');
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   // Fetch full submission with joins
   const { data: submission, isLoading } = useQuery({
@@ -193,6 +230,45 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
               onChange={setAnnotations}
             />
           )}
+
+          <div className="rounded-lg border border-border/60 p-3 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reviewed work</p>
+            <p className="text-[11px] text-muted-foreground">
+              The student's original stays exactly as submitted. Each save is kept as its own reviewed version.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={reviewBusy}
+                onClick={() => saveReviewedVersion({ returnNow: false })}>
+                Save reviewed version
+              </Button>
+              <Button size="sm" className="h-7 text-xs" disabled={reviewBusy}
+                onClick={() => saveReviewedVersion({ returnNow: true })}>
+                Save &amp; return to student
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={reviewBusy}
+                onClick={() => saveReviewedVersion({ returnNow: true, keepCopy: true })}>
+                Return &amp; keep a copy
+              </Button>
+            </div>
+            {reviews.length > 0 && (
+              <div className="space-y-1 pt-1">
+                {reviews.map((rv) => (
+                  <div key={rv.id} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      Version {rv.version_no} · {format(new Date(rv.created_at), 'MMM d, h:mm a')}
+                      {rv.returned_at ? ' · returned' : ' · not returned yet'}
+                    </span>
+                    {!rv.returned_at && (
+                      <Button size="sm" variant="link" className="h-6 text-xs px-1"
+                        onClick={async () => { await returnReview(rv.id); void refetchReviews(); toast.success('Returned to the student'); }}>
+                        Return
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

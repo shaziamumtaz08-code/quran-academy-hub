@@ -19,7 +19,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   BookMarked, Copy, History, Link2, Share2, Trash2, PlayCircle, Users, Loader2,
+  Upload, FolderPlus, Folder, FolderOpen, Pencil, ArrowRightLeft, Inbox,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +32,54 @@ function KindBadge({ kind }: { kind: string }) {
     <Badge variant="secondary" className="gap-1"><Copy className="h-3 w-3" /> My copy</Badge>
   ) : (
     <Badge variant="outline" className="gap-1"><Link2 className="h-3 w-3" /> Linked to Library</Badge>
+  );
+}
+
+function UploadDialog({ open, onClose, folderId }: { open: boolean; onClose: () => void; folderId: string | null }) {
+  const { upload } = useMyResources();
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (!open) { setTitle(""); setFile(null); } }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Upload className="h-4 w-4" /> Add a file</DialogTitle>
+          <DialogDescription>Just a name and the file — nothing else needed.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="res-title">Name</Label>
+            <Input id="res-title" value={title} placeholder="e.g. Surah Fatiha worksheet"
+              onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="res-file">File</Label>
+            <Input id="res-file" type="file" accept="*/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setFile(f);
+                if (f && !title.trim()) setTitle(f.name.replace(/\.[^.]+$/, ""));
+              }} />
+          </div>
+          <Button
+            className="w-full" disabled={!file || busy}
+            onClick={async () => {
+              if (!file) return;
+              setBusy(true);
+              const row = await upload(title, file, folderId);
+              setBusy(false);
+              if (row) onClose();
+            }}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to My Resources"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -181,17 +231,24 @@ function ShareDialog({ resource, onClose }: { resource: UserResource | null; onC
 export default function MyResources() {
   const { user, profile, activeRole } = useAuth();
   const navigate = useNavigate();
-  const { mine, sharedWithMe, isLoading, remove } = useMyResources();
+  const {
+    mine, sharedWithMe, folders, isLoading, remove,
+    rename, move, addFolder, editFolder, removeFolder,
+  } = useMyResources();
   const [tab, setTab] = useState<"mine" | "shared">("mine");
   const [versionsFor, setVersionsFor] = useState<UserResource | null>(null);
   const [shareFor, setShareFor] = useState<UserResource | null>(null);
   const [students, setStudents] = useState<Person[]>([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "copy" | "reference">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"updated" | "created" | "name">("updated");
 
   const role = (activeRole || (profile as any)?.role) as string | undefined;
   const isStaff = !!role && ["teacher", "admin", "admin_division", "admin_academic", "super_admin"].includes(role);
 
-  /* Teachers open a resource inside a student's class room; students open
-     their own room. */
   useEffect(() => {
     if (!isStaff) return;
     void (async () => {
@@ -214,17 +271,64 @@ export default function MyResources() {
     navigate(`/vcr/${target}?resource=${resource.id}`);
   };
 
-  const list = tab === "mine" ? mine : sharedWithMe;
+  const base = tab === "mine" ? mine : sharedWithMe;
+
+  const types = useMemo(
+    () => Array.from(new Set(base.map((r) => r.type).filter(Boolean))) as string[],
+    [base]
+  );
+
+  const list = useMemo(() => {
+    let rows = [...base];
+    if (tab === "mine") rows = rows.filter((r) => ((r as any).folder_id ?? null) === folderId);
+    if (kindFilter !== "all") rows = rows.filter((r) => r.kind === kindFilter);
+    if (typeFilter !== "all") rows = rows.filter((r) => (r.type ?? "file") === typeFilter);
+    const term = search.trim().toLowerCase();
+    if (term) rows = rows.filter((r) => r.title?.toLowerCase().includes(term));
+    rows.sort((a, b) =>
+      sortBy === "name"
+        ? (a.title || "").localeCompare(b.title || "")
+        : sortBy === "created"
+        ? +new Date(b.created_at) - +new Date(a.created_at)
+        : +new Date(b.updated_at) - +new Date(a.updated_at)
+    );
+    return rows;
+  }, [base, tab, folderId, kindFilter, typeFilter, search, sortBy]);
+
+  const childFolders = folders.filter((f) => (f.parent_id ?? null) === folderId);
+  const currentFolder = folders.find((f) => f.id === folderId) ?? null;
+
+  const originLabel = (r: UserResource) => {
+    const origin = (r as any).origin as string | undefined;
+    if (origin === "shared") return "Shared with you";
+    if (origin === "review") return "Reviewed work";
+    if (r.source_item_id) return "From the Library";
+    return "Your upload";
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8 space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookMarked className="h-6 w-6 text-accent" /> My Resources
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Your own shelf. Linked items always show the Library original; your own copies keep your marks and notes.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <BookMarked className="h-6 w-6 text-accent" /> My Resources
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Your own space. Library links always show the original; your own copies keep your marks and notes.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5"
+            onClick={async () => {
+              const name = window.prompt("Folder name");
+              if (name?.trim()) await addFolder(name.trim(), folderId);
+            }}>
+            <FolderPlus className="h-4 w-4" /> New folder
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+            <Upload className="h-4 w-4" /> Add a file
+          </Button>
+        </div>
       </header>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
@@ -234,18 +338,81 @@ export default function MyResources() {
         </TabsList>
       </Tabs>
 
+      {tab === "mine" && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <button className="text-muted-foreground hover:text-foreground" onClick={() => setFolderId(null)}>
+            All files
+          </button>
+          {currentFolder && (
+            <>
+              <span className="text-muted-foreground">/</span>
+              <span className="font-medium">{currentFolder.name}</span>
+              <Button size="sm" variant="ghost" className="h-7 px-2"
+                onClick={async () => {
+                  const name = window.prompt("Rename folder", currentFolder.name);
+                  if (name?.trim()) await editFolder(currentFolder.id, name.trim());
+                }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2"
+                onClick={async () => {
+                  if (!window.confirm("Delete this folder? Files inside move back to All files.")) return;
+                  await removeFolder(currentFolder.id);
+                  setFolderId(currentFolder.parent_id ?? null);
+                }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)}
+          className="h-9 w-full sm:w-64" />
+        <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as any)}
+          className="h-9 rounded-md border border-border/60 bg-background px-2 text-sm">
+          <option value="all">All kinds</option>
+          <option value="copy">My copies</option>
+          <option value="reference">Library links</option>
+        </select>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
+          className="h-9 rounded-md border border-border/60 bg-background px-2 text-sm">
+          <option value="all">All types</option>
+          {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}
+          className="h-9 rounded-md border border-border/60 bg-background px-2 text-sm">
+          <option value="updated">Recently updated</option>
+          <option value="created">Recently added</option>
+          <option value="name">Name (A–Z)</option>
+        </select>
+      </div>
+
+      {tab === "mine" && childFolders.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {childFolders.map((f) => (
+            <button key={f.id} onClick={() => setFolderId(f.id)}
+              className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2.5 text-left text-sm hover:bg-muted">
+              <Folder className="h-4 w-4 text-accent" /> <span className="truncate">{f.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground py-16 text-center">Loading…</p>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-border/60 bg-muted/20">
-          <BookMarked className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          {tab === "mine" ? <FolderOpen className="h-10 w-10 text-muted-foreground/40 mb-3" /> : <Inbox className="h-10 w-10 text-muted-foreground/40 mb-3" />}
           <p className="text-sm text-muted-foreground">
-            {tab === "mine" ? "Nothing here yet — add something from the Library." : "Nothing has been shared with you yet."}
+            {tab === "mine" ? "Nothing here yet — add a file or save one from the Library." : "Nothing has been shared with you yet."}
           </p>
           {tab === "mine" && (
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/library")}>
-              Browse the Library
-            </Button>
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" onClick={() => setUploadOpen(true)}>Add a file</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/library")}>Browse the Library</Button>
+            </div>
           )}
         </div>
       ) : (
@@ -260,6 +427,7 @@ export default function MyResources() {
                 <p className="text-xs text-muted-foreground">
                   {r.type || "file"}
                   {r.current_version > 0 ? ` · v${r.current_version}` : ""}
+                  {` · ${originLabel(r)}`}
                   {` · updated ${new Date(r.updated_at).toLocaleDateString()}`}
                 </p>
               </div>
@@ -278,12 +446,33 @@ export default function MyResources() {
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShareFor(r)}>
                       <Share2 className="h-3.5 w-3.5" /> Share
                     </Button>
+                    <Button size="sm" variant="ghost" title="Rename"
+                      onClick={async () => {
+                        const name = window.prompt("Rename", r.title);
+                        if (name?.trim()) await rename(r.id, name.trim());
+                      }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => void remove(r.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </>
                 )}
               </div>
+
+              {tab === "mine" && folders.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                  <select
+                    value={(r as any).folder_id ?? ""}
+                    onChange={(e) => void move(r.id, e.target.value || null)}
+                    className="h-8 flex-1 rounded-md border border-border/60 bg-background px-2 text-xs"
+                  >
+                    <option value="">All files (no folder)</option>
+                    {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  </select>
+                </div>
+              )}
 
               {isStaff && students.length > 1 && (
                 <select
@@ -300,6 +489,7 @@ export default function MyResources() {
         </div>
       )}
 
+      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} folderId={folderId} />
       <VersionsDialog resource={versionsFor} onClose={() => setVersionsFor(null)} />
       <ShareDialog resource={shareFor} onClose={() => setShareFor(null)} />
     </div>
