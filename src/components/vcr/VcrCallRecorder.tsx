@@ -190,10 +190,12 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
     recordIdRef.current = null;
     pathRef.current = null;
     setPhase('idle');
+    if (!upErr) setSavedOnce(true);
     send('record-stopped');
     toast(upErr
       ? { title: 'Recording not saved', description: upErr.message, variant: 'destructive' }
       : { title: 'Recording saved', description: `${seconds}s of call audio stored securely.` });
+
   }, [roomId, send]);
 
   const stop = () => {
