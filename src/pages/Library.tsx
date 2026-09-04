@@ -37,7 +37,7 @@ type Category = {
   color: string | null; visibility_default: string; sort_order: number;
 };
 
-type View = "browse" | "favorites" | "recent";
+type View = "browse" | "favorites" | "recent" | "mine";
 type BrowseMode = "category" | "type" | "date";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
@@ -177,7 +177,9 @@ export default function Library() {
   const role = (activeRole || profile?.role) as string | undefined;
   const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
   const isTeacher = role === "teacher";
-  const canUpload = isAdmin || isTeacher;
+  /* Everyone gets a personal library space: any signed-in user can upload.
+     Non-staff uploads are stored as personal (private) items by the dialog. */
+  const canUpload = !!user;
 
   const [view, setView] = useState<View>("browse");
   const [browseMode, setBrowseMode] = useState<BrowseMode>("category");
@@ -242,6 +244,20 @@ export default function Library() {
         if (ids.length >= 12) break;
       }
       return ids;
+    },
+    enabled: !!user?.id,
+  });
+
+  /* Personal files shared with me (shown in my class by a teacher). RLS on
+     personal_item_shares already scopes this to the student, their parents,
+     the sharer, and admins. */
+  const { data: sharedItemIds = new Set<string>() } = useQuery({
+    queryKey: ["personal-item-shares", user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("personal_item_shares") as any)
+        .select("item_id");
+      if (error) throw error;
+      return new Set<string>((data || []).map((r: any) => r.item_id));
     },
     enabled: !!user?.id,
   });
