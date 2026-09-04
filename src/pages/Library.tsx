@@ -903,7 +903,13 @@ export default function Library() {
                           <DropdownMenuItem onClick={() => void addResource(i, "copy")}>
                             <Copy className="h-3.5 w-3.5 mr-2" /> Make my own copy
                           </DropdownMenuItem>
+                          {(isAdmin || i.uploaded_by === user?.id) && !i.is_personal && (
+                            <DropdownMenuItem onClick={() => setSyllabusItem(i)}>
+                              <GraduationCap className="h-3.5 w-3.5 mr-2" /> Syllabus placement
+                            </DropdownMenuItem>
+                          )}
                           {(isAdmin || i.uploaded_by === user?.id) && (
+
                             <DropdownMenuItem
                               onClick={() => setDeleteItem(i)}
                               className="text-destructive focus:text-destructive"
