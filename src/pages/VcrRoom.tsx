@@ -456,7 +456,9 @@ export default function VcrRoom() {
                 </option>
                 {docs.map((d: any) => (
                   <option key={d.id} value={d.id}>
-                    {d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}{d.title}
+                    {d.is_personal && d.uploaded_by === user?.id
+                      ? `My file · ${d.title}`
+                      : `${d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}${d.title}`}
                   </option>
                 ))}
               </select>
