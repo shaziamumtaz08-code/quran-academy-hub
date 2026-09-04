@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Upload } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Save, Square, Upload } from 'lucide-react';
+import {
+  getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
+  type UserResource,
+} from '@/lib/myResources';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
