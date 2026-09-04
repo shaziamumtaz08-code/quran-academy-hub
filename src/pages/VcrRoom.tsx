@@ -545,13 +545,36 @@ export default function VcrRoom() {
                 <option value="">
                   {docs.length ? 'Choose syllabus file…' : 'No syllabus files in the Library yet'}
                 </option>
-                {docs.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {d.is_personal && d.uploaded_by === user?.id
-                      ? `My file · ${d.title}`
-                      : `${d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}${d.title}`}
-                  </option>
-                ))}
+                {(() => {
+                  const mine = (docs as any[]).filter((d) => d.is_personal && d.uploaded_by === user?.id);
+                  const shared = (docs as any[]).filter((d) => !(d.is_personal && d.uploaded_by === user?.id));
+                  const groups = new Map<string, any[]>();
+                  for (const d of shared) {
+                    const k = d.syllabus_folder || 'Other resources';
+                    groups.set(k, [...(groups.get(k) ?? []), d]);
+                  }
+                  const sortDocs = (a: any, b: any) =>
+                    (a.syllabus_order ?? 0) - (b.syllabus_order ?? 0) || String(a.title).localeCompare(String(b.title));
+                  return (
+                    <>
+                      {[...groups.entries()]
+                        .sort(([a], [b]) => (a === 'Other resources' ? 1 : b === 'Other resources' ? -1 : a.localeCompare(b)))
+                        .map(([folder, items]) => (
+                          <optgroup key={folder} label={folder}>
+                            {items.sort(sortDocs).map((d) => (
+                              <option key={d.id} value={d.id}>{d.title}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      {mine.length > 0 && (
+                        <optgroup label="My files">
+                          {mine.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+                        </optgroup>
+                      )}
+                    </>
+                  );
+                })()}
+
               </select>
             )}
             {content === 'doc' && (
