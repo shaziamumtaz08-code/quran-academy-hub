@@ -1066,6 +1066,32 @@ export default function StudentCourseView() {
                     {sub?.status === 'needs_revision' && sub.feedback && (
                       <p className="text-xs text-orange-600 border-t pt-1">Feedback: {sub.feedback}</p>
                     )}
+                    {sub && (() => {
+                      const reviews = myReviews.filter(r => r.submission_id === sub.id);
+                      if (!reviews.length) return null;
+                      return (
+                        <div className="border-t pt-2 space-y-2">
+                          <p className="text-xs font-semibold">Checked work returned by your teacher</p>
+                          {(sub.file_name || sub.file_url) && (
+                            <p className="text-[10px] text-muted-foreground">Your original work is kept as you sent it{sub.file_name ? `: ${sub.file_name}` : ''}.</p>
+                          )}
+                          {reviews.map(r => (
+                            <div key={r.id} className="rounded-md bg-muted/50 p-2 space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-medium">Checked copy {r.version_no}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {r.returned_at ? format(new Date(r.returned_at), 'MMM d, h:mm a') : ''}
+                                </span>
+                              </div>
+                              {r.comment && <p className="text-xs text-muted-foreground">{r.comment}</p>}
+                              {Array.isArray(r.annotations) && r.annotations.length > 0 && (
+                                <p className="text-[10px] text-muted-foreground">{r.annotations.length} mark{r.annotations.length === 1 ? '' : 's'} added by your teacher.</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     {canSubmit && (
                       <Button size="sm" variant="outline" className="w-full" onClick={() => { setSubmitAssignment(a); setSubmissionText(''); setSubmissionFile(null); setSubmitDialogOpen(true); }}>
                         <Upload className="h-3.5 w-3.5 mr-1" /> {sub?.status === 'needs_revision' ? 'Resubmit' : 'Submit'}
