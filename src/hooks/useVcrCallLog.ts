@@ -39,22 +39,9 @@ export function useVcrCallLog({
     // Call is starting: only the side that was alone opens the log.
     if (live && !wasLive && roomId && selfId && observer) {
       // Observer: stamp the call that is already running.
-      void (async () => {
-        const { data } = await supabase
-          .from('vcr_call_logs' as any)
-          .select('id')
-          .eq('room_id', roomId)
-          .is('ended_at', null)
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const openId = (data as any)?.id;
-        if (openId) {
-          await supabase.from('vcr_call_logs' as any)
-            .update({ observer_id: selfId, observer_joined: true, updated_at: new Date().toISOString() })
-            .eq('id', openId);
-        }
-      })();
+      // Observers have no direct UPDATE rights on call logs; a security-definer
+      // RPC stamps only observer_id / observer_joined after checking their scope.
+      void supabase.rpc('vcr_stamp_observer_joined' as any, { _room_id: roomId });
     }
 
     if (live && !wasLive && roomId && selfId && !observer) {

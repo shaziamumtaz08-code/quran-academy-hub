@@ -130,7 +130,7 @@ serve(async (req) => {
     const { data: recs, error: rErr } = await admin
       .from("vcr_call_recordings")
       .select("id, storage_path, started_at")
-      .eq("status", "completed")
+      .in("status", ["completed", "saved"])
       .not("storage_path", "is", null)
       .order("started_at", { ascending: false })
       .limit(200);

@@ -45,6 +45,7 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
   const audioCtxRef = useRef<AudioContext | null>(null);
   const startedAtRef = useRef<number>(0);
   const recordIdRef = useRef<string | null>(null);
+  const pathRef = useRef<string | null>(null);
 
   const send = useCallback((event: string, payload: Record<string, unknown> = {}) => {
     channelRef.current?.send({ type: 'broadcast', event, payload: { ...payload, from: peerId } });
@@ -110,13 +111,28 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
       return;
     }
 
+    // The teaching staff member owns the recording — never attribute it to
+    // whoever happens to be holding the recorder seat.
+    if (!teacherId) {
+      setPhase('idle');
+      toast({ title: 'Recording unavailable', description: 'Only the class teacher can record this call.', variant: 'destructive' });
+      return;
+    }
+
+    // The id and storage path are fixed up front so the upload policy can match
+    // the pending row exactly.
+    const recordingId = crypto.randomUUID();
+    const path = `${roomId}/${recordingId}.webm`;
+
     const { data, error } = await supabase
       .from('vcr_call_recordings' as any)
       .insert({
+        id: recordingId,
         room_id: roomId,
         student_id: studentId,
-        teacher_id: peerId,
-        created_by: peerId,
+        teacher_id: teacherId,
+        created_by: teacherId,
+        storage_path: path,
         consent_teacher: true,
         consent_student: true,
         consent_at: new Date().toISOString(),
@@ -130,8 +146,9 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
       toast({ title: 'Could not start recording', description: error?.message ?? 'Please try again.', variant: 'destructive' });
       return;
     }
-    recordIdRef.current = (data as any).id;
-    onRecorded?.((data as any).id ?? null);
+    recordIdRef.current = recordingId;
+    pathRef.current = path;
+    onRecorded?.(recordingId);
 
     chunksRef.current = [];
     const recorder = new MediaRecorder(stream);
@@ -154,7 +171,7 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
     audioCtxRef.current = null;
 
     const seconds = Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
-    const path = `${roomId}/${id ?? Date.now()}.webm`;
+    const path = pathRef.current ?? `${roomId}/${id ?? Date.now()}.webm`;
 
     const { error: upErr } = await supabase.storage
       .from('vcr-call-recordings')
@@ -165,12 +182,13 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
         storage_path: upErr ? null : path,
         ended_at: new Date().toISOString(),
         duration_seconds: seconds,
-        status: upErr ? 'failed' : 'saved',
+        status: upErr ? 'failed' : 'completed',
         updated_at: new Date().toISOString(),
       }).eq('id', id);
     }
 
     recordIdRef.current = null;
+    pathRef.current = null;
     setPhase('idle');
     send('record-stopped');
     toast(upErr

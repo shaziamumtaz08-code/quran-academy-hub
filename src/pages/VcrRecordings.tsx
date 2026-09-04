@@ -172,7 +172,8 @@ export default function VcrRecordings() {
       ) : (
         <div className="space-y-2">
           {rows.map((r) => {
-            const ready = r.status === 'completed' && !!r.storage_path;
+            // 'saved' is the legacy success status kept for older rows.
+            const ready = (r.status === 'completed' || r.status === 'saved') && !!r.storage_path;
             return (
               <Card key={r.id} className="p-4 flex items-center gap-3 flex-wrap">
                 <div className="min-w-0 flex-1">
