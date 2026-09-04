@@ -13,7 +13,7 @@ import type { ReactNode } from 'react';
  *  - qaida  → qaida page (later phase)
  *  - pdf    → pdf page (later phase)
  */
-export type VcrContentType = 'mushaf' | 'qaida' | 'pdf';
+export type VcrContentType = 'mushaf' | 'qaida' | 'pdf' | 'image';
 
 export interface VcrRenderContext {
   fontScale: number;

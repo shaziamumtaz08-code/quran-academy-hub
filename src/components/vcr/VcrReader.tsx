@@ -24,8 +24,11 @@ interface Props {
   /** Presenter-side: fires whenever the local view position changes. */
   onViewChange?: (state: VcrFollowState) => void;
   onUnitChange?: (unit: number) => void;
+  /** Bump-to-jump: set to a page number (e.g. from a bookmark) to open it. */
+  jumpRequest?: { unit: number; nonce: number } | null;
   className?: string;
 }
+
 
 /**
  * Content-agnostic reader shell for the Virtual Class Room.
@@ -42,7 +45,9 @@ export function VcrReader({
   followState = null,
   onViewChange,
   onUnitChange,
+  jumpRequest = null,
   className,
+
 }: Props) {
   const [unit, setUnit] = useState(initialUnit);
   const [turning, setTurning] = useState(false);
@@ -113,6 +118,15 @@ export function VcrReader({
     }, 210);
   };
   const go = (delta: number) => goTo(unit + delta);
+
+  /* Bookmark jump requested from outside the reader. */
+  useEffect(() => {
+    if (!jumpRequest || isFollower) return;
+    goTo(jumpRequest.unit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpRequest?.nonce]);
+
+
 
   /* Student opened the room before the teacher started driving it. */
   if (isFollower && !followState) {

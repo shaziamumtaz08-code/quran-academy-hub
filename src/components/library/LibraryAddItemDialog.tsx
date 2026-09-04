@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,21 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
   const [status, setStatus] = useState("published");
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [isSyllabus, setIsSyllabus] = useState(false);
+  const [syllabusFolder, setSyllabusFolder] = useState("");
+  const [syllabusOrder, setSyllabusOrder] = useState("");
+  const [syllabusSubjectId, setSyllabusSubjectId] = useState("");
+  const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      const { data } = await supabase.from("subjects").select("id, name").order("name");
+      setSubjects(((data as any[]) ?? []) as { id: string; name: string }[]);
+    })();
+  }, [open]);
+
 
   const reset = () => {
     setFile(null); setCover(null); setTitle(""); setDescription("");
@@ -64,6 +78,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     setLanguage("English"); setPages(""); setTags(""); setUrl("");
     setVisibility("all"); setStatus("published"); setAllowDownloads(true);
     setIsFeatured(false); setMode("file"); setResourceType("ebook");
+    setIsSyllabus(false); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
   };
 
   const handleSave = async () => {
@@ -121,6 +136,10 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
         is_featured: isFeatured,
         visibility,
         uploaded_by: user?.id,
+        is_syllabus: isSyllabus,
+        syllabus_folder: isSyllabus ? (syllabusFolder.trim() || null) : null,
+        syllabus_order: isSyllabus && syllabusOrder ? parseInt(syllabusOrder) : 0,
+        syllabus_subject_id: isSyllabus && syllabusSubjectId ? syllabusSubjectId : null,
       };
 
       const { error } = await (supabase.from("library_items") as any).insert(payload);
@@ -273,6 +292,49 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
               <Label htmlFor="featured" className="cursor-pointer">Mark as Featured</Label>
               <Switch id="featured" checked={isFeatured} onCheckedChange={setIsFeatured} />
             </div>
+
+            <div className="rounded-md border border-border/60 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="is-syllabus" className="cursor-pointer">Use as syllabus material</Label>
+                  <p className="text-xs text-muted-foreground">Shows up in the classroom reader for lessons.</p>
+                </div>
+                <Switch id="is-syllabus" checked={isSyllabus} onCheckedChange={setIsSyllabus} />
+              </div>
+              {isSyllabus && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label className="text-xs">Syllabus folder</Label>
+                    <Input
+                      value={syllabusFolder}
+                      onChange={(e) => setSyllabusFolder(e.target.value)}
+                      placeholder="e.g. Nazra · Grade 1"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Order</Label>
+                    <Input
+                      type="number"
+                      value={syllabusOrder}
+                      onChange={(e) => setSyllabusOrder(e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="sm:col-span-3 space-y-1.5">
+                    <Label className="text-xs">Subject (optional)</Label>
+                    <Select value={syllabusSubjectId} onValueChange={setSyllabusSubjectId}>
+                      <SelectTrigger><SelectValue placeholder="Choose a subject" /></SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
 

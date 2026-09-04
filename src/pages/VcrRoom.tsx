@@ -9,7 +9,11 @@ import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
+import { useDocAdapter, type DocSource } from '@/components/vcr/adapters/useDocAdapter';
+import { VcrBookmarkBar } from '@/components/vcr/VcrBookmarkBar';
+import { useVcrBookmarks } from '@/hooks/useVcrBookmarks';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+
 import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 
@@ -248,13 +252,40 @@ export default function VcrRoom() {
   }, [progress?.content_type, currentItem?.level, currentItem?.title]);
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
+  const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | 'doc' | null>(null);
   const [whiteboardOn, setWhiteboardOn] = useState(false);
   const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
+
+  /* Library is the single source of syllabus material: books, worksheets,
+     PDFs and images that were marked for the syllabus folders. */
+  const [docs, setDocs] = useState<DocSource[]>([]);
+  const [docId, setDocId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('library_items' as any)
+        .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order')
+        .eq('is_syllabus', true)
+        .eq('status', 'published')
+        .order('syllabus_folder', { nullsFirst: true })
+        .order('syllabus_order');
+      if (cancelled || error) return;
+      setDocs(((data as any[]) ?? []) as DocSource[]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
     ? (remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
+  const activeDocId = isFollower ? (remoteState?.libraryItemId ?? null) : docId;
+  const activeDoc = useMemo(
+    () => docs.find((d) => d.id === activeDocId) ?? null,
+    [docs, activeDocId],
+  );
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
@@ -265,22 +296,22 @@ export default function VcrRoom() {
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
     },
-    [publish, content, whiteboardOn, boardMode]
+    [publish, content, docId, whiteboardOn, boardMode]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
     },
-    [publish, content, whiteboardOn, boardMode]
+    [publish, content, docId, whiteboardOn, boardMode]
   );
 
   /* Announce whiteboard open/close immediately, not just on the next page turn. */
   useEffect(() => {
     if (!canControl) return;
-    publish({ ...lastView.current, highlight: null, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
-  }, [whiteboardOn, boardMode, canControl, content, publish]);
+    publish({ ...lastView.current, highlight: null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+  }, [whiteboardOn, boardMode, canControl, content, docId, publish]);
 
 
 
@@ -291,7 +322,17 @@ export default function VcrRoom() {
     studentId: studentId || null,
     onSelectWord: publishWord,
   });
-  const adapter = content === 'qaida' ? qaidaAdapter : mushafAdapter;
+  const docAdapter = useDocAdapter({ item: content === 'doc' ? activeDoc : null, resumePage: null });
+  const adapter = content === 'doc' ? docAdapter : content === 'qaida' ? qaidaAdapter : mushafAdapter;
+
+  /* Bookmarks — identical behaviour across Mushaf, Qaida and Library files. */
+  const { bookmarks, add: addBookmark, remove: removeBookmark } = useVcrBookmarks({
+    studentId: studentId || null,
+    contentType: adapter.contentType,
+    libraryItemId: adapter.libraryItemId ?? null,
+  });
+  const [jumpRequest, setJumpRequest] = useState<{ unit: number; nonce: number } | null>(null);
+
 
   if (loading) {
     return (
@@ -354,10 +395,10 @@ export default function VcrRoom() {
           </span>
 
         </div>
-        {/* Content switcher — Mushaf or Noorani Qaida, staff only */}
+        {/* Content switcher — Mushaf, Noorani Qaida or a Library file, staff only */}
         {canControl && (
-          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-4 pb-2 sm:px-6">
-            {(['mushaf', 'qaida'] as const).map((c) => (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
+            {(['mushaf', 'qaida', 'doc'] as const).map((c) => (
               <button
                 key={c}
                 type="button"
@@ -369,9 +410,26 @@ export default function VcrRoom() {
                     : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
                 )}
               >
-                {c === 'mushaf' ? 'Mushaf' : 'Noorani Qaida'}
+                {c === 'mushaf' ? 'Mushaf' : c === 'qaida' ? 'Noorani Qaida' : 'Book / PDF'}
               </button>
             ))}
+            {content === 'doc' && (
+              <select
+                value={docId ?? ''}
+                onChange={(e) => setDocId(e.target.value || null)}
+                className="h-9 max-w-[22rem] rounded-full border border-vcr-chrome/20 bg-black/25 px-3 text-sm text-vcr-chrome focus:border-vcr-gold/60 focus:outline-none"
+              >
+                <option value="">
+                  {docs.length ? 'Choose syllabus file…' : 'No syllabus files in the Library yet'}
+                </option>
+                {docs.map((d: any) => (
+                  <option key={d.id} value={d.id}>
+                    {d.syllabus_folder ? `${d.syllabus_folder} · ` : ''}{d.title}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -459,18 +517,29 @@ export default function VcrRoom() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
-        <main className="relative min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1 space-y-3">
+          <VcrBookmarkBar
+            bookmarks={bookmarks}
+            currentUnit={currentPage}
+            unitNoun={adapter.unitNoun}
+            canAdd={!isFollower}
+            onAdd={(u) => void addBookmark(u)}
+            onOpen={(u) => setJumpRequest({ unit: u, nonce: Date.now() })}
+            onRemove={(id) => void removeBookmark(id)}
+          />
           <VcrReader
-            key={content}
+            key={`${content}:${activeDocId ?? 'none'}`}
             adapter={adapter}
-            initialUnit={resumePage}
+            initialUnit={content === 'doc' ? 1 : resumePage}
             canControl={canControl}
             turnSignal={turnSignal}
             isFollower={isFollower}
             followState={remoteState}
             onViewChange={publishView}
             onUnitChange={(p) => setCurrentPage(p)}
+            jumpRequest={jumpRequest}
           />
+
 
           {/* Shared whiteboard layer — teacher draws, student mirrors live */}
           {whiteboardVisible && (
