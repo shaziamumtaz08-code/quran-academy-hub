@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X } from 'lucide-react';
+import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X, Users, Eye } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
 import { useVcrCallLog } from '@/hooks/useVcrCallLog';
 import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
@@ -23,6 +23,10 @@ interface Props {
   /** Participants, used to attribute a consented recording. */
   studentId?: string | null;
   teacherId?: string | null;
+  /** Own name, shown to the others in the participant list. */
+  displayName?: string;
+  /** Join silently as an observer (examiner/admin) — starts muted, can unmute. */
+  observer?: boolean;
 }
 
 const STATUS_LABEL: Record<CallStatus, string> = {
@@ -52,14 +56,16 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null }: Props) {
-  const { status, muted, error, busy, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
-    useVcrCall({ roomId, peerId });
+export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false }: Props) {
+  const { status, muted, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
+    useVcrCall({ roomId, peerId, displayName, observer });
+  const [showPeople, setShowPeople] = React.useState(false);
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Log every call — recorded or not. */
   const { markRecorded } = useVcrCallLog({
-    roomId, studentId, selfId: peerId, role, status, remoteJoined, remotePeerId,
+    roomId, studentId, selfId: peerId, role: observer ? `${role} (observer)` : role,
+    status, remoteJoined, remotePeerId, observer,
   });
 
   /* Announce / observe the call — either side may be the one on the line. */
@@ -112,6 +118,33 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         </span>
       )}
 
+      {live && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowPeople((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border border-vcr-chrome/15 bg-black/25 px-3 py-1 text-xs text-vcr-chrome/75"
+          >
+            <Users className="h-3.5 w-3.5" aria-hidden />
+            {peers.length + 1}
+          </button>
+          {showPeople && (
+            <ul className="absolute left-0 top-full z-50 mt-1 min-w-44 space-y-1 rounded-lg border border-vcr-chrome/20 bg-black/85 p-2 text-xs text-vcr-chrome/85 shadow-xl">
+              <li className="flex items-center gap-2">
+                {observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
+                {displayName} (you){observer ? ' · observer' : ''}
+              </li>
+              {peers.map((p) => (
+                <li key={p.id} className="flex items-center gap-2">
+                  {p.observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
+                  {p.name}{p.observer ? ' · observer' : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {ringing && !live && (
         <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-200">
           <span className="h-2 w-2 animate-ping rounded-full bg-emerald-300" aria-hidden />
@@ -145,10 +178,10 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
             )}
           >
             <PhoneCall className="h-4 w-4 text-vcr-gold" />
-            {ringing ? 'Join call now' : 'Start In-App Call'}
+            {observer ? (ringing ? 'Sit in on the call' : 'Sit in (observer)') : ringing ? 'Join call now' : 'Start In-App Call'}
             <span className="text-vcr-chrome/45">· audio</span>
           </button>
-          {!ringing && (
+          {!ringing && !observer && (
             <button
               type="button"
               onClick={() => void knock(knockerName)}
@@ -185,7 +218,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
       <VcrCallRecorder
         roomId={roomId}
         peerId={peerId}
-        isHost={isCaller}
+        isHost={isCaller && !observer}
         live={status === 'connected' || status === 'reconnecting'}
         studentId={studentId}
         teacherId={teacherId}
@@ -211,7 +244,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
       )}
 
       {busy && !live && (
-        <span className="text-xs text-amber-200">Two people are already on this call.</span>
+        <span className="text-xs text-amber-200">This call is already full (three people).</span>
       )}
 
       {status !== 'failed' && error && (
