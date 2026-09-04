@@ -1061,13 +1061,9 @@ export default function Schedules() {
     }
 
     if (editingSchedule) {
-      const dayLabel = DAYS_LABELS[newSchedule.day] || 'the class day';
-      const fromOk = isOnWeekday(new Date(`${effectiveFrom}T12:00:00`), newSchedule.day);
-      const toOk = !effectiveTo || isOnWeekday(new Date(`${effectiveTo}T12:00:00`), newSchedule.day);
-      if (!fromOk || !toOk) {
-        toast({ title: 'Wrong weekday', description: `Effective dates must fall on a ${dayLabel}.`, variant: 'destructive' });
-        return;
-      }
+      // Effective dates are simply the window this timing applies to — they do
+      // not have to land on the class weekday.
+
       if (effectiveTo && effectiveTo < effectiveFrom) {
         toast({ title: 'Invalid range', description: 'The end date cannot be before the start date.', variant: 'destructive' });
         return;
