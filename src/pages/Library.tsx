@@ -286,6 +286,9 @@ export default function Library() {
         if (isAdmin) return true;
         // Uploader always sees their own items
         if (user?.id && i.uploaded_by === user.id) return true;
+        // Personal files are private: only owner/admins, or someone the file
+        // was shared with in class.
+        if (i.is_personal) return sharedItemIds.has(i.id);
         const vis = i.visibility ?? "all";
         if (vis === "all") return true;
         if (vis === "admin_only") return false;
