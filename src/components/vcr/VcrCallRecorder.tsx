@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Circle, Loader2, ShieldCheck, Square } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Circle, Loader2, PlayCircle, ShieldCheck, Square } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -38,6 +39,8 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
   const [phase, setPhase] = useState<HostPhase>('idle');
   const [remoteRecording, setRemoteRecording] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  /** Flipped on after a recording is successfully saved, so the room can link to playback. */
+  const [savedOnce, setSavedOnce] = useState(false);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
