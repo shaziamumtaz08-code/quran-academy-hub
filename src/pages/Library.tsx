@@ -939,7 +939,16 @@ export default function Library() {
         onUpdated={refresh}
       />
 
+      <LibrarySyllabusDialog
+        item={syllabusItem}
+        open={!!syllabusItem}
+        onOpenChange={(o) => { if (!o) setSyllabusItem(null); }}
+        folders={folderNames}
+        onSaved={refresh}
+      />
+
       <LibraryAddItemDialog
+
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
