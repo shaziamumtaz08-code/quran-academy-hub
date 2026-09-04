@@ -318,6 +318,23 @@ export default function VcrRoom() {
       .then(({ error }: any) => { if (error) console.error('share failed', error); });
   }, [canControl, user?.id, studentId, activeDoc]);
 
+  /* Follower fallback: the teacher may open one of their own personal files,
+     which is not in the student's syllabus list. Fetch it by id — the share
+     recorded above (plus RLS) makes it readable for this student. */
+  useEffect(() => {
+    if (!isFollower || !activeDocId || activeDoc) return;
+    void (async () => {
+      const { data } = await supabase
+        .from('library_items' as any)
+        .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, is_personal, uploaded_by')
+        .eq('id', activeDocId)
+        .maybeSingle();
+      if (data) {
+        setDocs((prev) => (prev.some((d) => d.id === (data as any).id) ? prev : [...prev, data as any]));
+      }
+    })();
+  }, [isFollower, activeDocId, activeDoc]);
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
