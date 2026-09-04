@@ -653,6 +653,45 @@ export default function VcrRoom() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Reading card — the lit centre of the room */}
         <main className="relative min-w-0 flex-1 space-y-3">
+          {/* Personal working copy — mark it, save it, reopen it later */}
+          {resource && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
+              <span className="truncate font-medium text-vcr-chrome">{resource.title}</span>
+              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 text-xs">
+                {resource.kind === 'copy' ? 'My copy' : 'Linked to Library'}
+                {resource.current_version > 0 ? ` · v${resource.current_version}` : ''}
+              </span>
+              {canMarkResource ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setBoardMode('annotate'); setWhiteboardOn(true); }}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome"
+                  >
+                    <PenLine className="h-3.5 w-3.5" /> Mark this page
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(false)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome disabled:opacity-60"
+                  >
+                    <Save className="h-3.5 w-3.5" /> Save marks
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(true)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Save as new version
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-vcr-chrome/55">Shared with you · marks are read-only</span>
+              )}
+            </div>
+          )}
           <VcrBookmarkBar
             bookmarks={bookmarks}
             currentUnit={currentPage}
