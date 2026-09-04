@@ -542,6 +542,11 @@ export default function Library() {
               </TabsList>
             </Tabs>
 
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => navigate("/my-resources")}>
+              <BookMarked className="h-3.5 w-3.5" /> My Resources
+            </Button>
+
+
             {view === "browse" && (
               <Tabs value={browseMode} onValueChange={(v) => { setBrowseMode(v as BrowseMode); clearFilters(); }}>
                 <TabsList className="h-9 bg-muted/60">
