@@ -39,7 +39,7 @@ type Category = {
   color: string | null; visibility_default: string; sort_order: number;
 };
 
-type View = "browse" | "favorites" | "recent" | "mine";
+type View = "browse" | "favorites" | "recent" | "mine" | "syllabus";
 type BrowseMode = "category" | "type" | "date";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
