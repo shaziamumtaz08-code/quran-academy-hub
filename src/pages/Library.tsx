@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { LibraryItemDetail } from "@/components/library/LibraryItemDetail";
 import { LibraryAddItemDialog } from "@/components/library/LibraryAddItemDialog";
+import { LibrarySyllabusDialog } from "@/components/library/LibrarySyllabusDialog";
+
 import { useMyResources } from "@/hooks/useMyResources";
 import { useNavigate } from "react-router-dom";
 
