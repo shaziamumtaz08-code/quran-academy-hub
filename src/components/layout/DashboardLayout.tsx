@@ -29,6 +29,7 @@ import {
   Wallet,
 
   MonitorPlay,
+  Mic,
   ClipboardCheck,
 
   ListChecks,
@@ -276,6 +277,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Library", href: "/library", icon: FolderOpen },
+          { label: "Class Recordings", href: "/recordings", icon: Mic },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Help Centre", href: "/tutorials", icon: LifeBuoy },
           { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
@@ -301,6 +303,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
+      { label: "My Recordings", href: "/recordings", icon: Mic },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
       {
         label: "Communication",
