@@ -339,6 +339,35 @@ export default function Library() {
     [recentIds, itemById]
   );
 
+  /* Syllabus shelves: one folder per subject, resources kept in teaching order. */
+  const syllabusItems = useMemo(
+    () => publishedItems.filter((i) => i.is_syllabus && !i.is_personal),
+    [publishedItems]
+  );
+  const syllabusFolders = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const i of syllabusItems) {
+      const k = (i.syllabus_folder || "").trim() || "Unsorted";
+      m.set(k, [...(m.get(k) ?? []), i]);
+    }
+    return [...m.entries()]
+      .map(([folder, list]) => ({
+        folder,
+        items: [...list].sort(
+          (a, b) => (a.syllabus_order ?? 0) - (b.syllabus_order ?? 0) || a.title.localeCompare(b.title)
+        ),
+      }))
+      .sort((a, b) =>
+        a.folder === "Unsorted" ? 1 : b.folder === "Unsorted" ? -1 : a.folder.localeCompare(b.folder)
+      );
+  }, [syllabusItems]);
+  const folderNames = useMemo(
+    () => syllabusFolders.map((f) => f.folder).filter((f) => f !== "Unsorted"),
+    [syllabusFolders]
+  );
+
+
+
   const featured = useMemo(() => publishedItems.filter((i) => i.is_featured).slice(0, 4), [publishedItems]);
   const recent = useMemo(() => [...publishedItems].slice(0, 8), [publishedItems]);
   const popular = useMemo(
