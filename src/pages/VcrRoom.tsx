@@ -43,15 +43,20 @@ export default function VcrRoom() {
   const isTeacher = roles.includes('teacher');
   const wantsObserver = !isTeacher && (roles.includes('examiner') || canControl);
   const [mayObserve, setMayObserve] = useState<boolean | null>(null);
+  const [observeError, setObserveError] = useState<string | null>(null);
   useEffect(() => {
-    if (!wantsObserver || !studentId) { setMayObserve(null); return; }
+    if (!wantsObserver || !studentId) { setMayObserve(null); setObserveError(null); return; }
     let cancelled = false;
     void (async () => {
-      const { data } = await supabase.rpc('can_observe_vcr' as any, { _student_id: studentId });
-      if (!cancelled) setMayObserve(!!data);
+      const { data, error } = await supabase.rpc('can_observe_vcr' as any, { _student_id: studentId });
+      if (cancelled) return;
+      if (error) { console.error('can_observe_vcr failed', error); setObserveError(error.message); setMayObserve(false); return; }
+      setObserveError(null);
+      setMayObserve(!!data);
     })();
     return () => { cancelled = true; };
   }, [wantsObserver, studentId]);
+
   /** The student viewing their own room: read-only mirror of the teacher's screen. */
   const isFollower = !canControl && !!user?.id && user.id === studentId;
 
