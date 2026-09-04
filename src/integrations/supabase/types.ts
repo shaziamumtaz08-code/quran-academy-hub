@@ -5658,6 +5658,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_pinned: boolean
+          is_syllabus: boolean
           isbn: string | null
           language: string | null
           metadata: Json
@@ -5668,6 +5669,9 @@ export type Database = {
           share_token_expires_at: string | null
           source_asset_id: string | null
           status: string
+          syllabus_folder: string | null
+          syllabus_order: number
+          syllabus_subject_id: string | null
           tags: string[]
           thumbnail: string | null
           title: string
@@ -5695,6 +5699,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_pinned?: boolean
+          is_syllabus?: boolean
           isbn?: string | null
           language?: string | null
           metadata?: Json
@@ -5705,6 +5710,9 @@ export type Database = {
           share_token_expires_at?: string | null
           source_asset_id?: string | null
           status?: string
+          syllabus_folder?: string | null
+          syllabus_order?: number
+          syllabus_subject_id?: string | null
           tags?: string[]
           thumbnail?: string | null
           title: string
@@ -5732,6 +5740,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_pinned?: boolean
+          is_syllabus?: boolean
           isbn?: string | null
           language?: string | null
           metadata?: Json
@@ -5742,6 +5751,9 @@ export type Database = {
           share_token_expires_at?: string | null
           source_asset_id?: string | null
           status?: string
+          syllabus_folder?: string | null
+          syllabus_order?: number
+          syllabus_subject_id?: string | null
           tags?: string[]
           thumbnail?: string | null
           title?: string
@@ -5766,6 +5778,13 @@ export type Database = {
             columns: ["source_asset_id"]
             isOneToOne: false
             referencedRelation: "course_library_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_items_syllabus_subject_id_fkey"
+            columns: ["syllabus_subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -12377,6 +12396,59 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vcr_bookmarks: {
+        Row: {
+          color: string | null
+          content_type: string
+          created_at: string
+          created_by: string
+          id: string
+          label: string | null
+          library_item_id: string | null
+          reference: Json
+          scope: string
+          student_id: string
+          unit: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          content_type: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string | null
+          library_item_id?: string | null
+          reference?: Json
+          scope?: string
+          student_id: string
+          unit?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string | null
+          library_item_id?: string | null
+          reference?: Json
+          scope?: string
+          student_id?: string
+          unit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vcr_bookmarks_library_item_id_fkey"
+            columns: ["library_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
             referencedColumns: ["id"]
           },
         ]
