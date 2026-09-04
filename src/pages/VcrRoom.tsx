@@ -439,24 +439,36 @@ export default function VcrRoom() {
         )}
 
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
-        {user?.id && (!wantsObserver || mayObserve) && (
+        {user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
-            <VcrCallPanel
-              roomId={studentId}
-              peerId={user.id}
-              isCaller={canControl}
-              role={canControl ? (roles[0] ?? 'staff') : 'student'}
-              autoRecord={autoRecord}
-              callerName={(profile as any)?.full_name ?? 'Your teacher'}
-              knockerName={student?.full_name ?? 'Your student'}
-              studentId={studentId}
-              teacherId={canControl && !wantsObserver ? user.id : null}
-              displayName={(profile as any)?.full_name ?? 'Participant'}
-              observer={wantsObserver}
-            />
-
+            {wantsObserver && mayObserve === null && (
+              <span className="text-sm text-vcr-chrome/60">Checking your sit-in access…</span>
+            )}
+            {wantsObserver && mayObserve === false && (
+              <span className="text-sm text-vcr-chrome/60">
+                {observeError
+                  ? `Sit-in unavailable: ${observeError}`
+                  : 'You do not have sit-in access for this student yet. Ask a super admin to grant it in Class Call Observers.'}
+              </span>
+            )}
+            {(!wantsObserver || mayObserve === true) && (
+              <VcrCallPanel
+                roomId={studentId}
+                peerId={user.id}
+                isCaller={canControl}
+                role={canControl ? (roles[0] ?? 'staff') : 'student'}
+                autoRecord={autoRecord}
+                callerName={(profile as any)?.full_name ?? 'Your teacher'}
+                knockerName={student?.full_name ?? 'Your student'}
+                studentId={studentId}
+                teacherId={canControl && !wantsObserver ? user.id : null}
+                displayName={(profile as any)?.full_name ?? 'Participant'}
+                observer={wantsObserver}
+              />
+            )}
           </div>
         )}
+
 
       </header>
 
