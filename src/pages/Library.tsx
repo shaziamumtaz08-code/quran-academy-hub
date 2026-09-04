@@ -571,7 +571,9 @@ export default function Library() {
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
                 <TabsTrigger value="mine" className="text-xs gap-1.5"><BookOpen className="h-3.5 w-3.5" /> My Library ({myLibraryItems.length})</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
+                <TabsTrigger value="syllabus" className="text-xs gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> Syllabus ({syllabusFolders.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
+
               </TabsList>
             </Tabs>
 
