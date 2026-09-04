@@ -82,6 +82,7 @@ const VIEW_LABELS: Record<string, string> = {
   divisions: 'Divisions',
   holidays: 'Holidays',
   'payouts-config': 'Payouts Config',
+  observers: 'Class Call Observers',
   classroom: 'Classroom',
   'finance-setup': 'Finance Setup',
   'teaching-config': 'Teaching Config',
