@@ -108,6 +108,21 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
         </span>
       )}
 
+      {isCaller && knocking && !live && (
+        <span className="inline-flex items-center gap-2 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 py-1 text-xs text-vcr-gold">
+          <BellRing className="h-3.5 w-3.5 animate-pulse" aria-hidden />
+          {knocking} is ringing you
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={dismissKnock}
+            className="rounded-full p-0.5 opacity-70 transition-opacity hover:opacity-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      )}
+
       {!live ? (
         <button
           type="button"
