@@ -392,6 +392,17 @@ export default function StudentCourseView() {
     enabled: !!user?.id && assignments.length > 0,
   });
 
+  // Reviewed (checked) copies the teacher returned — the student's original stays untouched
+  const { data: myReviews = [] } = useQuery({
+    queryKey: ['student-submission-reviews', courseId, user?.id, mySubmissions.map(s => s.id).join(',')],
+    queryFn: async () => {
+      const ids = mySubmissions.map(s => s.id);
+      const all = await listReviewsForSubmissions(ids);
+      return all.filter(r => !!r.returned_at);
+    },
+    enabled: mySubmissions.length > 0,
+  });
+
   // ─── Announcements (Tab 4) ───
   const { data: announcements = [] } = useQuery({
     queryKey: ['student-announcements', courseId],
