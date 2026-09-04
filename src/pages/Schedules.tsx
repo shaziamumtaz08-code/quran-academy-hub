@@ -1466,7 +1466,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day)} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined}  onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                           </div>
@@ -1482,7 +1482,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => !isOnWeekday(date, newSchedule.day) || date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                             {periodType === 'permanent' && effectiveTo && (
