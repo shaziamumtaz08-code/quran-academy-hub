@@ -444,6 +444,16 @@ export default function VcrRoom() {
                 ))}
               </select>
             )}
+            {content === 'doc' && (
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                title="Upload a PDF or image to the Library and show it here"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
+              >
+                <Upload className="h-4 w-4" /> Add file
+              </button>
+            )}
 
             <button
               type="button"
