@@ -12390,6 +12390,176 @@ export type Database = {
           },
         ]
       }
+      user_resource_annotations: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          page: number
+          resource_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          page?: number
+          resource_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          page?: number
+          resource_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_resource_annotations_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "user_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_resource_shares: {
+        Row: {
+          can_edit: boolean
+          created_at: string
+          id: string
+          note: string | null
+          resource_id: string
+          shared_by: string
+          shared_with: string
+        }
+        Insert: {
+          can_edit?: boolean
+          created_at?: string
+          id?: string
+          note?: string | null
+          resource_id: string
+          shared_by: string
+          shared_with: string
+        }
+        Update: {
+          can_edit?: boolean
+          created_at?: string
+          id?: string
+          note?: string | null
+          resource_id?: string
+          shared_by?: string
+          shared_with?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_resource_shares_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "user_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_resource_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          file_path: string | null
+          id: string
+          note: string | null
+          resource_id: string
+          version_no: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          file_path?: string | null
+          id?: string
+          note?: string | null
+          resource_id: string
+          version_no: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          file_path?: string | null
+          id?: string
+          note?: string | null
+          resource_id?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_resource_versions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "user_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_resources: {
+        Row: {
+          cover_image: string | null
+          created_at: string
+          current_version: number
+          description: string | null
+          file_path: string | null
+          id: string
+          kind: string
+          metadata: Json
+          source_item_id: string | null
+          title: string
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_image?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          source_item_id?: string | null
+          title: string
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_image?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          source_item_id?: string | null
+          title?: string
+          type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_resources_source_item_id_fkey"
+            columns: ["source_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -13969,6 +14139,10 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_read_user_resource: {
+        Args: { _resource_id: string }
+        Returns: boolean
+      }
       can_view_content_kit: { Args: { _kit_id: string }; Returns: boolean }
       can_view_course_content: {
         Args: { _course_id: string }
@@ -13995,6 +14169,10 @@ export type Database = {
             }
             Returns: boolean
           }
+      can_write_user_resource: {
+        Args: { _resource_id: string }
+        Returns: boolean
+      }
       close_billing_plan: {
         Args: {
           _close_date: string
