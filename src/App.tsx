@@ -580,7 +580,7 @@ function AppRoutes() {
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
       <Route path="/class-room" element={<ProtectedRoute><ClassRoom /></ProtectedRoute>} />
       <Route path="/vcr/:studentId" element={<ProtectedRoute><VcrRoom /></ProtectedRoute>} />
-      <Route path="/recordings" element={<ProtectedRoute><VcrRecordings /></ProtectedRoute>} />
+      <Route path="/class-recordings" element={<ProtectedRoute><DashboardLayout><VcrRecordings /></DashboardLayout></ProtectedRoute>} />
       <Route path="/syllabus/:studentId" element={<ProtectedRoute><StudentSyllabus /></ProtectedRoute>} />
       <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />

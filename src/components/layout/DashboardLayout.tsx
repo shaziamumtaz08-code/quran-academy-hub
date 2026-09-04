@@ -34,6 +34,7 @@ import {
 
   ListChecks,
   Building2,
+  BookMarked,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { useDivision } from "@/contexts/DivisionContext";
@@ -212,6 +213,9 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Library", href: "/library", icon: FolderOpen },
+          { label: "My Resources", href: "/my-resources", icon: BookMarked },
+          { label: "Zoom Recordings", href: "/recordings", icon: Video },
+          { label: "Class Call Recordings", href: "/class-recordings", icon: Mic },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Help Centre", href: "/tutorials", icon: LifeBuoy },
 
@@ -277,7 +281,9 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Library", href: "/library", icon: FolderOpen },
-          { label: "Class Recordings", href: "/recordings", icon: Mic },
+          { label: "My Resources", href: "/my-resources", icon: BookMarked },
+          { label: "Zoom Recordings", href: "/recordings", icon: Video },
+          { label: "Class Call Recordings", href: "/class-recordings", icon: Mic },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Help Centre", href: "/tutorials", icon: LifeBuoy },
           { label: "Tasks & Tickets", href: "/work-hub", icon: Briefcase },
@@ -303,7 +309,9 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
-      { label: "My Recordings", href: "/recordings", icon: Mic },
+      { label: "My Resources", href: "/my-resources", icon: BookMarked },
+      { label: "Zoom Recordings", href: "/recordings", icon: Video },
+      { label: "Class Call Recordings", href: "/class-recordings", icon: Mic },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
       {
         label: "Communication",
@@ -330,6 +338,8 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
       { label: "Reports", href: "/student-reports", icon: FileText },
       { label: "Fees", href: "/finance?view=payments", icon: Landmark },
       { label: "Library", href: "/library", icon: FolderOpen },
+      { label: "My Resources", href: "/my-resources", icon: BookMarked },
+      { label: "Class Call Recordings", href: "/class-recordings", icon: Mic },
       { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
       {
         label: "Communication",
@@ -354,6 +364,8 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Exam Center", href: "/report-card-templates", icon: Award },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Library", href: "/library", icon: FolderOpen },
+          { label: "My Resources", href: "/my-resources", icon: BookMarked },
+          { label: "Class Call Recordings", href: "/class-recordings", icon: Mic },
           { label: "Policies & SOPs", href: "/policies", icon: ScrollText },
           { label: "Announcements", href: "/announcements", icon: MessageSquare },
           { label: "Help Centre", href: "/tutorials", icon: LifeBuoy },
