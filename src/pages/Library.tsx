@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Library as LibraryIcon, Search, Upload, BookOpen, FileText, Newspaper,
   GraduationCap, ClipboardList, StickyNote, BookMarked, FolderOpen, Music, Video,
-  Link as LinkIcon, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
+  Link as LinkIcon, Link2, Copy, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
   Star, History, CheckSquare, X, Loader2, Folder, FolderClosed, Calendar,
   FileType2, Image as ImageIcon, ChevronRight,
 } from "lucide-react";
