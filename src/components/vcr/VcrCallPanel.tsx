@@ -124,18 +124,31 @@ export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName
       )}
 
       {!live ? (
-        <button
-          type="button"
-          onClick={() => void start()}
-          className={cn(
-            'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
-            ringing && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
+        <>
+          <button
+            type="button"
+            onClick={() => void start()}
+            className={cn(
+              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
+              ringing && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
+            )}
+          >
+            <PhoneCall className="h-4 w-4 text-vcr-gold" />
+            {isCaller ? 'Start In-App Call' : ringing ? 'Join call now' : 'Join In-App Call'}
+            <span className="text-vcr-chrome/45">· audio</span>
+          </button>
+          {!isCaller && !ringing && (
+            <button
+              type="button"
+              onClick={() => void knock(knockerName)}
+              disabled={knockCooldown}
+              className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-50"
+            >
+              <BellRing className="h-4 w-4 text-vcr-gold" />
+              {knockCooldown ? 'Rang — waiting…' : 'Ring teacher'}
+            </button>
           )}
-        >
-          <PhoneCall className="h-4 w-4 text-vcr-gold" />
-          {isCaller ? 'Start In-App Call' : ringing ? 'Join call now' : 'Join In-App Call'}
-          <span className="text-vcr-chrome/45">· audio</span>
-        </button>
+        </>
       ) : (
         <>
           <button
