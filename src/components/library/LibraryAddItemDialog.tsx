@@ -19,6 +19,8 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   categories: Category[];
   defaultCategoryId?: string | null;
+  /** Pre-tick "Add to syllabus folder" (e.g. when uploading from the VCR room). */
+  defaultSyllabus?: boolean;
   onSaved: () => void;
 }
 
@@ -33,7 +35,7 @@ const EXT_TO_TYPE: Record<string, string> = {
 };
 const getType = (n: string) => EXT_TO_TYPE[n.split(".").pop()?.toLowerCase() || ""] || "file";
 
-export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, onSaved }: Props) {
+export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, defaultSyllabus = false, onSaved }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<"file" | "link">("file");
   const [file, setFile] = useState<File | null>(null);
@@ -56,7 +58,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
   const [status, setStatus] = useState("published");
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
-  const [isSyllabus, setIsSyllabus] = useState(false);
+  const [isSyllabus, setIsSyllabus] = useState(defaultSyllabus);
   const [syllabusFolder, setSyllabusFolder] = useState("");
   const [syllabusOrder, setSyllabusOrder] = useState("");
   const [syllabusSubjectId, setSyllabusSubjectId] = useState("");
@@ -78,7 +80,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     setLanguage("English"); setPages(""); setTags(""); setUrl("");
     setVisibility("all"); setStatus("published"); setAllowDownloads(true);
     setIsFeatured(false); setMode("file"); setResourceType("ebook");
-    setIsSyllabus(false); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
+    setIsSyllabus(defaultSyllabus); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
   };
 
   const handleSave = async () => {

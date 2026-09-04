@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Upload } from 'lucide-react';
+import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
@@ -260,21 +261,35 @@ export default function VcrRoom() {
      PDFs and images that were marked for the syllabus folders. */
   const [docs, setDocs] = useState<DocSource[]>([]);
   const [docId, setDocId] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase
-        .from('library_items' as any)
-        .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order')
-        .eq('is_syllabus', true)
-        .eq('status', 'published')
-        .order('syllabus_folder', { nullsFirst: true })
-        .order('syllabus_order');
-      if (cancelled || error) return;
-      setDocs(((data as any[]) ?? []) as DocSource[]);
-    })();
-    return () => { cancelled = true; };
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [libCategories, setLibCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const loadDocs = React.useCallback(async (selectLatest = false) => {
+    const { data, error } = await supabase
+      .from('library_items' as any)
+      .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, created_at')
+      .eq('is_syllabus', true)
+      .eq('status', 'published')
+      .order('syllabus_folder', { nullsFirst: true })
+      .order('syllabus_order');
+    if (error) return;
+    const rows = ((data as any[]) ?? []) as (DocSource & { created_at?: string })[];
+    setDocs(rows);
+    if (selectLatest && rows.length) {
+      const latest = [...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+      setDocId(latest.id);
+    }
   }, []);
+  useEffect(() => {
+    void loadDocs();
+  }, [loadDocs]);
+  /* Categories for the in-room upload dialog (staff only). */
+  useEffect(() => {
+    if (!canControl) return;
+    void (async () => {
+      const { data } = await supabase.from('library_categories' as any).select('id, name, slug').order('name');
+      setLibCategories(((data as any[]) ?? []) as { id: string; name: string; slug: string }[]);
+    })();
+  }, [canControl]);
 
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
@@ -428,6 +443,16 @@ export default function VcrRoom() {
                   </option>
                 ))}
               </select>
+            )}
+            {content === 'doc' && (
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                title="Upload a PDF or image to the Library and show it here"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
+              >
+                <Upload className="h-4 w-4" /> Add file
+              </button>
             )}
 
             <button
@@ -620,6 +645,16 @@ export default function VcrRoom() {
           }}
         />
       )}
+
+      {/* In-room Library upload: the file lands in the Library syllabus list
+          and is selected for viewing straight away. */}
+      <LibraryAddItemDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        categories={libCategories}
+        defaultSyllabus
+        onSaved={() => { void loadDocs(true); setContentMode('doc'); }}
+      />
     </div>
   );
 }
