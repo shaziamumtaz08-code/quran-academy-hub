@@ -50,6 +50,7 @@ const ProgressTimeline = lazyWithRetry(() => import("./pages/ProgressTimeline"))
 const UserManagement = lazyWithRetry(() => import("./pages/UserManagement"));
 const Library = lazyWithRetry(() => import("./pages/Library"));
 const LibraryShare = lazyWithRetry(() => import("./pages/LibraryShare"));
+const MyResources = lazyWithRetry(() => import("./pages/MyResources"));
 const WalkthroughShare = lazyWithRetry(() => import("./pages/WalkthroughShare"));
 const OAuthConsent = lazyWithRetry(() => import("./pages/OAuthConsent"));
 
