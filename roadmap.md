@@ -2,8 +2,9 @@
 
 ## Open
 - [ ] End-to-end walk: upload as teacher → share with student → open in class → mark → save version → reopen with marks.
-- [ ] Library syllabus folders: folder-per-subject view with ordered resources; VCR picker grouped by folder.
-- [ ] Library-as-single-source: allow editing syllabus folder/subject on existing library items (currently set at upload).
+- [x] Library syllabus folders: folder-per-subject view with ordered resources; VCR picker grouped by folder.
+- [x] Library-as-single-source: editing syllabus folder/subject/order on existing library items.
+
 
 - [ ] Security: sensitive profile columns (bank/gov ID/medical) still readable cross-role — needs a decided migration.
 - [ ] Activate Zoom Meeting SDK app and copy Client ID/Secret into LMS In-app player credentials.
