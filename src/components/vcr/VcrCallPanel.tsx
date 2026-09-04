@@ -13,6 +13,8 @@ interface Props {
   isCaller: boolean;
   /** Shown to the student in the ring banner. */
   callerName?: string;
+  /** Student's own name — announced to the teacher when they ring. */
+  knockerName?: string;
   /** Participants, used to attribute a consented recording. */
   studentId?: string | null;
   teacherId?: string | null;
