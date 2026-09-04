@@ -47,13 +47,18 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, callerName, studentId = null, teacherId = null }: Props) {
+export function VcrCallPanel({ roomId, peerId, isCaller, callerName, knockerName, studentId = null, teacherId = null }: Props) {
   const { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams } = useVcrCall({ roomId, peerId, isCaller });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Announce / observe the call so the other side knows one is running. */
   useVcrRingHost(roomId, isCaller && live, callerName);
   const { ringing } = useVcrRingListener(roomId, !isCaller && !live);
+
+  /* Student → teacher "ring the bell" knock. */
+  const { knock, sentAt } = useVcrKnockSender(!isCaller ? roomId : null);
+  const { knockerName: knocking, dismiss: dismissKnock } = useVcrKnockListener(roomId, isCaller && !live);
+  const knockCooldown = sentAt != null && Date.now() - sentAt < 15000;
 
   /* Call duration — starts on connect, stops (and resets) when the call ends. */
   const [duration, setDuration] = React.useState(0);
