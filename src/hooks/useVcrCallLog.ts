@@ -12,6 +12,8 @@ interface Options {
   remoteJoined: boolean;
   remotePeerId?: string | null;
   recorded?: boolean;
+  /** Observers never own the log row — they stamp the open one instead. */
+  observer?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ interface Options {
  * so a 1:1 call produces exactly one row.
  */
 export function useVcrCallLog({
-  roomId, studentId, selfId, role, status, remoteJoined, remotePeerId, recorded,
+  roomId, studentId, selfId, role, status, remoteJoined, remotePeerId, recorded, observer = false,
 }: Options) {
   const idRef = useRef<string | null>(null);
   const startedRef = useRef<number>(0);
@@ -35,7 +37,27 @@ export function useVcrCallLog({
     const wasLive = prevStatus.current === 'connecting' || prevStatus.current === 'connected' || prevStatus.current === 'reconnecting';
 
     // Call is starting: only the side that was alone opens the log.
-    if (live && !wasLive && roomId && selfId) {
+    if (live && !wasLive && roomId && selfId && observer) {
+      // Observer: stamp the call that is already running.
+      void (async () => {
+        const { data } = await supabase
+          .from('vcr_call_logs' as any)
+          .select('id')
+          .eq('room_id', roomId)
+          .is('ended_at', null)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const openId = (data as any)?.id;
+        if (openId) {
+          await supabase.from('vcr_call_logs' as any)
+            .update({ observer_id: selfId, observer_joined: true, updated_at: new Date().toISOString() })
+            .eq('id', openId);
+        }
+      })();
+    }
+
+    if (live && !wasLive && roomId && selfId && !observer) {
       initiatorRef.current = !remoteJoined;
       startedRef.current = Date.now();
       connectedRef.current = false;
@@ -83,7 +105,7 @@ export function useVcrCallLog({
     }
 
     prevStatus.current = status;
-  }, [status, roomId, selfId, studentId, role, remoteJoined, remotePeerId, recorded]);
+  }, [status, roomId, selfId, studentId, role, remoteJoined, remotePeerId, recorded, observer]);
 
   /** Lets the recorder stamp the call log once a recording actually happens. */
   const markRecorded = (recordingId?: string | null) => {

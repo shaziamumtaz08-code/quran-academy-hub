@@ -69,7 +69,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
   });
 
   /* Announce / observe the call — either side may be the one on the line. */
-  useVcrRingHost(roomId, live, callerName);
+  useVcrRingHost(roomId, live && !observer, callerName);
   const { ringing } = useVcrRingListener(roomId, !live);
 
   /* Bell: either side can ring the other when no call is up. */
