@@ -36,6 +36,22 @@ export default function VcrRoom() {
 
   const roles: string[] = (profile as any)?.roles || (activeRole ? [activeRole] : []);
   const canControl = roles.some((r) => STAFF_ROLES.includes(r));
+  /**
+   * Observer seat: examiners, and admins who are not the teaching staff on this
+   * room, sit in muted. Teachers always join as a normal participant.
+   */
+  const isTeacher = roles.includes('teacher');
+  const wantsObserver = !isTeacher && (roles.includes('examiner') || canControl);
+  const [mayObserve, setMayObserve] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!wantsObserver || !studentId) { setMayObserve(null); return; }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.rpc('can_observe_vcr' as any, { _student_id: studentId });
+      if (!cancelled) setMayObserve(!!data);
+    })();
+    return () => { cancelled = true; };
+  }, [wantsObserver, studentId]);
   /** The student viewing their own room: read-only mirror of the teacher's screen. */
   const isFollower = !canControl && !!user?.id && user.id === studentId;
 
@@ -395,7 +411,7 @@ export default function VcrRoom() {
         )}
 
         {/* In-app audio call — additive, sits alongside the existing Zoom option */}
-        {user?.id && (
+        {user?.id && (!wantsObserver || mayObserve) && (
           <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
             <VcrCallPanel
               roomId={studentId}
@@ -406,7 +422,9 @@ export default function VcrRoom() {
               callerName={(profile as any)?.full_name ?? 'Your teacher'}
               knockerName={student?.full_name ?? 'Your student'}
               studentId={studentId}
-              teacherId={canControl ? user.id : null}
+              teacherId={canControl && !wantsObserver ? user.id : null}
+              displayName={(profile as any)?.full_name ?? 'Participant'}
+              observer={wantsObserver}
             />
 
           </div>
