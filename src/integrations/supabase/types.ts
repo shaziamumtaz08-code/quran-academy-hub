@@ -12390,6 +12390,8 @@ export type Database = {
           id: string
           initiator_id: string
           initiator_role: string | null
+          observer_id: string | null
+          observer_joined: boolean
           peer_id: string | null
           recorded: boolean
           recording_id: string | null
@@ -12407,6 +12409,8 @@ export type Database = {
           id?: string
           initiator_id: string
           initiator_role?: string | null
+          observer_id?: string | null
+          observer_joined?: boolean
           peer_id?: string | null
           recorded?: boolean
           recording_id?: string | null
@@ -12424,6 +12428,8 @@ export type Database = {
           id?: string
           initiator_id?: string
           initiator_role?: string | null
+          observer_id?: string | null
+          observer_joined?: boolean
           peer_id?: string | null
           recorded?: boolean
           recording_id?: string | null
@@ -12485,6 +12491,39 @@ export type Database = {
           storage_path?: string | null
           student_id?: string | null
           teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vcr_observer_scopes: {
+        Row: {
+          all_students: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          observer_id: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          all_students?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          observer_id: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          all_students?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          observer_id?: string
+          student_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -13814,6 +13853,7 @@ export type Database = {
         Args: { _session_plan_id: string }
         Returns: boolean
       }
+      can_observe_vcr: { Args: { _student_id: string }; Returns: boolean }
       can_read_tutorial_capture: {
         Args: { _object_name: string }
         Returns: boolean

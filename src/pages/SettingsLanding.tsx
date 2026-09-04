@@ -10,6 +10,8 @@ const OrganizationSettings = lazyWithRetry(() => import('./OrganizationSettings'
 const SchemaExplorer = lazyWithRetry(() => import('./SchemaExplorer'));
 const FinanceSetup = lazyWithRetry(() => import('./FinanceSetup'));
 const IntegrityAudit = lazyWithRetry(() => import('./IntegrityAudit'));
+const ObserverAccessPanel = lazyWithRetry(() =>
+  import('@/components/settings/ObserverAccessPanel').then((m) => ({ default: m.ObserverAccessPanel })));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -23,6 +25,7 @@ const views = [
   'schema',
   'finance-setup',
   'integrity',
+  'observers',
 ] as const;
 
 export default function SettingsLanding() {
@@ -45,6 +48,7 @@ export default function SettingsLanding() {
     schema: isSuperAdmin ? <Suspense fallback={<Loading />}><SchemaExplorer /></Suspense> : <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Schema Explorer is available to super administrators only.</div>,
     'finance-setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
     integrity: <Suspense fallback={<Loading />}><IntegrityAudit /></Suspense>,
+    observers: <Suspense fallback={<Loading />}><ObserverAccessPanel /></Suspense>,
   }), [isSuperAdmin]);
 
   if (!activeView) return <Navigate to="/settings?view=organization" replace />;

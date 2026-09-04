@@ -224,6 +224,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Divisions", href: "/settings?view=divisions" },
               { label: "Holidays", href: "/settings?view=holidays" },
               { label: "Payouts Config", href: "/settings?view=payouts-config" },
+              { label: "Class Call Observers", href: "/settings?view=observers" },
               { label: "Classroom", href: "/settings?view=classroom" },
               { label: "Finance Setup", href: "/settings?view=finance-setup" },
               { label: "Integrity Audit", href: "/settings?view=integrity" },

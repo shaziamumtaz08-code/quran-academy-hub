@@ -18,7 +18,7 @@ interface Props {
   live: boolean;
   studentId: string | null;
   teacherId: string | null;
-  getStreams: () => { local: MediaStream | null; remote: MediaStream | null };
+  getStreams: () => { local: MediaStream | null; remotes: MediaStream[] };
   /** Zoom-style: ask for consent automatically as soon as the call connects. */
   autoRecord?: boolean;
   /** Called once a recording row exists, so the call log can be stamped. */
@@ -87,14 +87,15 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, peerId, isHost]);
 
-  /** Mix both sides into one track so the saved file has teacher + student. */
+  /** Mix every participant into one track so the saved file has the whole call. */
   const mixedStream = () => {
-    const { local, remote } = getStreams();
-    if (!local && !remote) return null;
+    const { local, remotes } = getStreams();
+    const sources = [local, ...remotes];
+    if (!sources.some(Boolean)) return null;
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
     const dest = ctx.createMediaStreamDestination();
-    [local, remote].forEach((s) => {
+    sources.forEach((s) => {
       if (!s || s.getAudioTracks().length === 0) return;
       ctx.createMediaStreamSource(s).connect(dest);
     });
