@@ -19,6 +19,8 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   categories: Category[];
   defaultCategoryId?: string | null;
+  /** Pre-tick "Add to syllabus folder" (e.g. when uploading from the VCR room). */
+  defaultSyllabus?: boolean;
   onSaved: () => void;
 }
 
@@ -33,7 +35,7 @@ const EXT_TO_TYPE: Record<string, string> = {
 };
 const getType = (n: string) => EXT_TO_TYPE[n.split(".").pop()?.toLowerCase() || ""] || "file";
 
-export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, onSaved }: Props) {
+export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, defaultSyllabus = false, onSaved }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<"file" | "link">("file");
   const [file, setFile] = useState<File | null>(null);
