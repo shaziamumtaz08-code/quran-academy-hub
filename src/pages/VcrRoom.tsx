@@ -264,21 +264,23 @@ export default function VcrRoom() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [libCategories, setLibCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
   const loadDocs = React.useCallback(async (selectLatest = false) => {
+    if (!user?.id) return;
+    /* Syllabus files plus the teacher's own personal uploads. */
     const { data, error } = await supabase
       .from('library_items' as any)
-      .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, created_at')
-      .eq('is_syllabus', true)
+      .select('id, title, file_path, url, type, pages_count, syllabus_folder, syllabus_order, created_at, is_personal, uploaded_by')
       .eq('status', 'published')
+      .or(`is_syllabus.eq.true,uploaded_by.eq.${user.id}`)
       .order('syllabus_folder', { nullsFirst: true })
       .order('syllabus_order');
     if (error) return;
-    const rows = ((data as any[]) ?? []) as (DocSource & { created_at?: string })[];
+    const rows = ((data as any[]) ?? []) as (DocSource & { created_at?: string; is_personal?: boolean; uploaded_by?: string })[];
     setDocs(rows);
     if (selectLatest && rows.length) {
       const latest = [...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
       setDocId(latest.id);
     }
-  }, []);
+  }, [user?.id]);
   useEffect(() => {
     void loadDocs();
   }, [loadDocs]);
