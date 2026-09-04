@@ -12474,6 +12474,7 @@ export type Database = {
           id: string
           note: string | null
           resource_id: string
+          snapshot: Json
           version_no: number
         }
         Insert: {
@@ -12483,6 +12484,7 @@ export type Database = {
           id?: string
           note?: string | null
           resource_id: string
+          snapshot?: Json
           version_no: number
         }
         Update: {
@@ -12492,6 +12494,7 @@ export type Database = {
           id?: string
           note?: string | null
           resource_id?: string
+          snapshot?: Json
           version_no?: number
         }
         Relationships: [
