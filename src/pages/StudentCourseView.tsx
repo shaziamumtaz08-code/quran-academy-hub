@@ -34,6 +34,7 @@ import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 import { ClassmatesDirectory } from '@/components/courses/ClassmatesDirectory';
 import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { listReviewsForSubmissions } from '@/lib/assignmentReviews';
 
 // ─── Helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
