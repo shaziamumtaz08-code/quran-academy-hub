@@ -21,11 +21,11 @@ interface Options {
   roomId: string;
   /** Unique id for this participant (auth user id). */
   peerId: string;
-  /** Staff create the offer, students answer. */
-  isCaller: boolean;
+  /** Legacy hint only — either side may place the call; the offerer is negotiated. */
+  isCaller?: boolean;
 }
 
-export function useVcrCall({ roomId, peerId, isCaller }: Options) {
+export function useVcrCall({ roomId, peerId }: Options) {
   const [status, setStatus] = useState<CallStatus>('idle');
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +41,12 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
   const activeRef = useRef(false);
   const remoteJoinedRef = useRef(false);
   const offeringRef = useRef(false);
+  /** The one other peer we are talking to; a third joiner is politely refused. */
+  const remotePeerRef = useRef<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /** Deterministic, role-free: the higher peer id creates the offer. */
+  const amOfferer = () => !!remotePeerRef.current && peerId > remotePeerRef.current;
 
 
   const clearTimer = () => {
@@ -54,6 +60,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     remoteJoinedRef.current = false;
     clearTimer();
     pendingIce.current = [];
+    remotePeerRef.current = null;
 
 
     pcRef.current?.getSenders().forEach((s) => s.track?.stop());
@@ -154,6 +161,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
   const start = useCallback(async () => {
     if (!roomId || !peerId || activeRef.current) return;
     setError(null);
+    setBusy(false);
     setStatus('connecting');
     activeRef.current = true;
 
@@ -181,6 +189,17 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
     // Whoever is already in the room answers a newcomer's `join` with `present`,
     // so the handshake works regardless of which side opened the page first.
+    /** Accept exactly one counterpart; anyone else is told the line is busy. */
+    const claimPeer = (from?: string) => {
+      if (!from) return false;
+      if (!remotePeerRef.current) remotePeerRef.current = from;
+      if (remotePeerRef.current !== from) {
+        channelRef.current?.send({ type: 'broadcast', event: 'busy', payload: { from: peerId, to: from } });
+        return false;
+      }
+      return true;
+    };
+
     const noteRemote = () => {
       if (remoteJoinedRef.current) return;
       remoteJoinedRef.current = true;
@@ -190,7 +209,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
 
     const makeOffer = async () => {
       const pc = pcRef.current;
-      if (!isCaller || !pc || offeringRef.current) return;
+      if (!amOfferer() || !pc || offeringRef.current) return;
       if (pc.signalingState !== 'stable' || pc.currentRemoteDescription) return;
       offeringRef.current = true;
       try {
@@ -205,6 +224,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     channel
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         if (payload?.from === peerId) return;
+        if (!claimPeer(payload?.from)) return;
         noteRemote();
         // Tell the newcomer we're already here (covers "caller joined second").
         send('present', {});
@@ -212,11 +232,13 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
       })
       .on('broadcast', { event: 'present' }, async ({ payload }) => {
         if (payload?.from === peerId) return;
+        if (!claimPeer(payload?.from)) return;
         noteRemote();
         await makeOffer();
       })
       .on('broadcast', { event: 'offer' }, async ({ payload }) => {
-        if (payload?.from === peerId || isCaller || !pcRef.current) return;
+        if (payload?.from === peerId || !pcRef.current) return;
+        if (!claimPeer(payload?.from) || amOfferer()) return;
         noteRemote();
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(pcRef.current);
@@ -225,7 +247,8 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
         send('answer', { sdp: answer });
       })
       .on('broadcast', { event: 'answer' }, async ({ payload }) => {
-        if (payload?.from === peerId || !isCaller || !pcRef.current) return;
+        if (payload?.from === peerId || !pcRef.current) return;
+        if (!claimPeer(payload?.from) || !amOfferer()) return;
         if (pcRef.current.currentRemoteDescription) return;
         noteRemote();
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
@@ -238,6 +261,12 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
           return;
         }
         await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {});
+      })
+      .on('broadcast', { event: 'busy' }, ({ payload }) => {
+        if (payload?.to !== peerId) return;
+        setBusy(true);
+        setError('This class already has two people on the call. Ask one of them to leave, then try again.');
+        teardown('failed');
       })
       .on('broadcast', { event: 'hangup' }, ({ payload }) => {
         if (payload?.from === peerId) return;
@@ -255,7 +284,7 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     // No failure timer until the other side is actually present — whoever opens
     // first simply waits indefinitely instead of being told the call failed.
     clearTimer();
-  }, [roomId, peerId, isCaller, buildPeerConnection, teardown, armConnectTimer]);
+  }, [roomId, peerId, buildPeerConnection, teardown, armConnectTimer]);
 
 
   // Keep a ref copy so the timeout message can read the latest value.
@@ -287,5 +316,5 @@ export function useVcrCall({ roomId, peerId, isCaller }: Options) {
     []
   );
 
-  return { status, muted, error, remoteJoined, start, end, toggleMute, retry, getStreams };
+  return { status, muted, error, busy, remoteJoined, remotePeerId: remotePeerRef.current, start, end, toggleMute, retry, getStreams };
 }
