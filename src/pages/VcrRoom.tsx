@@ -303,6 +303,21 @@ export default function VcrRoom() {
     [docs, activeDocId],
   );
 
+  /* Shown in class = shared with the student: when a teacher opens one of
+     their own personal files, record the share so the student (and linked
+     parents) can reopen it from their Library afterwards. */
+  useEffect(() => {
+    const doc = activeDoc as any;
+    if (!canControl || !user?.id || !studentId) return;
+    if (!doc?.is_personal || doc.uploaded_by !== user.id) return;
+    void (supabase.from('personal_item_shares') as any)
+      .upsert(
+        { item_id: doc.id, student_id: studentId, shared_by: user.id },
+        { onConflict: 'item_id,student_id' }
+      )
+      .then(({ error }: any) => { if (error) console.error('share failed', error); });
+  }, [canControl, user?.id, studentId, activeDoc]);
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
