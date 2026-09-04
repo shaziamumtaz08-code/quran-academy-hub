@@ -645,6 +645,15 @@ export default function VcrRoom() {
           }}
         />
       )}
+
+      {/* In-room Library upload: the file lands in the Library syllabus list
+          and is selected for viewing straight away. */}
+      <LibraryAddItemDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        categories={libCategories}
+        onSaved={() => { void loadDocs(true); setContentMode('doc'); }}
+      />
     </div>
   );
 }
