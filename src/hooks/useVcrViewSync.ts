@@ -19,6 +19,8 @@ export interface VcrViewState {
   content?: 'mushaf' | 'qaida';
   /** Whiteboard overlay visible on the presenter's screen. */
   whiteboard?: boolean;
+  /** 'annotate' draws over the page; 'board' is a separate blank board. */
+  whiteboardMode?: 'annotate' | 'board';
 }
 
 /** A freehand stroke in normalised (0..1) coordinates so it maps to any screen size. */

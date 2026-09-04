@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Square, Timer } from 'lucide-react';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
@@ -255,12 +255,14 @@ export default function VcrRoom() {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | null>(null);
   const [whiteboardOn, setWhiteboardOn] = useState(false);
+  const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
   /* Students mirror whichever reader the teacher is driving. */
   const content = isFollower
     ? (remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
+  const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
@@ -268,22 +270,22 @@ export default function VcrRoom() {
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content, whiteboard: whiteboardOn });
+      publish({ ...state, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
     },
-    [publish, content, whiteboardOn]
+    [publish, content, whiteboardOn, boardMode]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, whiteboard: whiteboardOn });
+      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
     },
-    [publish, content, whiteboardOn]
+    [publish, content, whiteboardOn, boardMode]
   );
 
   /* Announce whiteboard open/close immediately, not just on the next page turn. */
   useEffect(() => {
     if (!canControl) return;
-    publish({ ...lastView.current, highlight: null, content, whiteboard: whiteboardOn });
-  }, [whiteboardOn, canControl, content, publish]);
+    publish({ ...lastView.current, highlight: null, content, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+  }, [whiteboardOn, boardMode, canControl, content, publish]);
 
 
 
@@ -382,16 +384,37 @@ export default function VcrRoom() {
             ))}
             <button
               type="button"
-              onClick={() => setWhiteboardOn((v) => !v)}
-              aria-pressed={whiteboardOn}
+              onClick={() => {
+                setBoardMode('board');
+                setWhiteboardOn((v) => !(v && boardMode === 'board'));
+              }}
+              aria-pressed={whiteboardOn && boardMode === 'board'}
+              title="Open a separate blank whiteboard"
               className={cn(
                 'ms-auto inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
-                whiteboardOn
+                whiteboardOn && boardMode === 'board'
                   ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
                   : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
               )}
             >
-              <PenLine className="h-4 w-4" /> {whiteboardOn ? 'Whiteboard on' : 'Whiteboard'}
+              <Square className="h-4 w-4" /> Whiteboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setBoardMode('annotate');
+                setWhiteboardOn((v) => !(v && boardMode === 'annotate'));
+              }}
+              aria-pressed={whiteboardOn && boardMode === 'annotate'}
+              title="Draw on top of the page"
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
+                whiteboardOn && boardMode === 'annotate'
+                  ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
+                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
+              )}
+            >
+              <PenLine className="h-4 w-4" /> Annotate
             </button>
             <button
               type="button"
@@ -451,6 +474,7 @@ export default function VcrRoom() {
           {whiteboardVisible && (
             <VcrWhiteboard
               strokes={strokes}
+              mode={whiteboardMode}
               canDraw={canControl}
               onStroke={pushStroke}
               onUndo={undoStroke}
