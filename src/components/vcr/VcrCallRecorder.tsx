@@ -18,7 +18,7 @@ interface Props {
   live: boolean;
   studentId: string | null;
   teacherId: string | null;
-  getStreams: () => { local: MediaStream | null; remote: MediaStream | null };
+  getStreams: () => { local: MediaStream | null; remotes: MediaStream[] };
   /** Zoom-style: ask for consent automatically as soon as the call connects. */
   autoRecord?: boolean;
   /** Called once a recording row exists, so the call log can be stamped. */
