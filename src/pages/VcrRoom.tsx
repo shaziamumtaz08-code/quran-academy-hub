@@ -652,6 +652,7 @@ export default function VcrRoom() {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         categories={libCategories}
+        defaultSyllabus
         onSaved={() => { void loadDocs(true); setContentMode('doc'); }}
       />
     </div>
