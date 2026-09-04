@@ -299,6 +299,12 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
               <Switch id="featured" checked={isFeatured} onCheckedChange={setIsFeatured} />
             </div>
 
+            {!isStaff && (
+              <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                This file goes to your personal space — only you (and anyone you share it with in class) can see it.
+              </p>
+            )}
+            {isStaff && (
             <div className="rounded-md border border-border/60 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
