@@ -766,6 +766,7 @@ export default function Library() {
               <div>
                 <h2 className="text-xl font-bold">
                   {view === "favorites" ? "Your Favorites"
+                    : view === "mine" ? "My Library"
                     : view === "recent" ? "Recently Viewed"
                     : activeCategory ? categories.find((c) => c.id === activeCategory)?.name
                     : activeType ? TYPE_META[activeType]?.label || activeType
