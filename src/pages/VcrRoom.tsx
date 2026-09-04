@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Save, Square, Upload } from 'lucide-react';
+import { ArrowLeft, BookMarked, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save, Square, Upload } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
