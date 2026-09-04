@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, Save, Square, Upload } from 'lucide-react';
+import { ArrowLeft, BookMarked, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save, Square, Upload } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -590,6 +590,20 @@ export default function VcrRoom() {
               </button>
             )}
 
+            <span className="ms-auto hidden text-xs text-vcr-chrome/40 lg:inline">
+              {content === 'mushaf'
+                ? 'Mushaf — the built-in Qur’an pages'
+                : content === 'qaida'
+                  ? 'Noorani Qaida — the built-in Qaida lessons'
+                  : 'Book / PDF — files from the Library and syllabus folders'}
+            </span>
+          </div>
+        )}
+
+        {/* Row 2 — TOOLS: board, annotation, recording preference and shortcuts */}
+        {canControl && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-4 py-2 sm:px-6">
+            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Tools</span>
             <button
               type="button"
               onClick={() => {
@@ -599,7 +613,7 @@ export default function VcrRoom() {
               aria-pressed={whiteboardOn && boardMode === 'board'}
               title="Open a separate blank whiteboard"
               className={cn(
-                'ms-auto inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
+                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
                 whiteboardOn && boardMode === 'board'
                   ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
                   : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
@@ -638,12 +652,32 @@ export default function VcrRoom() {
             >
               <Circle className="h-3.5 w-3.5" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
             </button>
+
+            <div className="ms-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/my-resources')}
+                title="Your own files and working copies"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
+              >
+                <BookMarked className="h-4 w-4" /> My Resources
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/class-recordings')}
+                title="Saved recordings of in-app class calls"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
+              >
+                <PlayCircle className="h-4 w-4" /> Class recordings
+              </button>
+            </div>
           </div>
         )}
 
-        {/* In-app audio call — additive, sits alongside the existing Zoom option */}
+        {/* Row 3 — CALL: in-app audio, additive to the existing Zoom option */}
         {user?.id && (
-          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-4 pb-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-3 border-t border-vcr-chrome/10 px-4 py-2 pb-3 sm:px-6">
+            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Call</span>
             {wantsObserver && mayObserve === null && (
               <span className="text-sm text-vcr-chrome/60">Checking your sit-in access…</span>
             )}
@@ -669,8 +703,18 @@ export default function VcrRoom() {
                 observer={wantsObserver}
               />
             )}
+            {!canControl && (
+              <button
+                type="button"
+                onClick={() => navigate('/class-recordings')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
+              >
+                <PlayCircle className="h-4 w-4" /> My class recordings
+              </button>
+            )}
           </div>
         )}
+
 
 
       </header>

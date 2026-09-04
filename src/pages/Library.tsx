@@ -580,6 +580,16 @@ export default function Library() {
             <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => navigate("/my-resources")}>
               <BookMarked className="h-3.5 w-3.5" /> My Resources
             </Button>
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground">Library</span> holds the academy's shared originals — these never change.{" "}
+            <span className="font-medium text-foreground">Syllabus</span> arranges those originals into a folder per subject, in teaching order.{" "}
+            <span className="font-medium text-foreground">My Resources</span> is your own space: saved links to Library items, plus your own copies you can mark up.
+          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+
 
 
             {view === "browse" && (

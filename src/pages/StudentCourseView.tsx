@@ -404,6 +404,14 @@ export default function StudentCourseView() {
     enabled: mySubmissions.length > 0,
   });
 
+  /* Open a returned checked copy. Stored privately, so it needs a short-lived link. */
+  const openReviewFile = async (path: string) => {
+    const { data, error } = await supabase.storage.from('course-materials').createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { toast('Could not open the checked copy'); return; }
+    window.open(data.signedUrl, '_blank');
+  };
+
+
   // ─── Announcements (Tab 4) ───
   const { data: announcements = [] } = useQuery({
     queryKey: ['student-announcements', courseId],
@@ -1072,9 +1080,17 @@ export default function StudentCourseView() {
                       return (
                         <div className="border-t pt-2 space-y-2">
                           <p className="text-xs font-semibold">Checked work returned by your teacher</p>
-                          {(sub.file_name || sub.file_url) && (
-                            <p className="text-[10px] text-muted-foreground">Your original work is kept as you sent it{sub.file_name ? `: ${sub.file_name}` : ''}.</p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[10px] text-muted-foreground">
+                              Your original work is kept exactly as you sent it{sub.file_name ? `: ${sub.file_name}` : ''}.
+                            </p>
+                            {sub.file_url && (
+                              <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                onClick={() => window.open(sub.file_url as string, '_blank')}>
+                                <FileText className="h-3 w-3 mr-1" /> View what I sent
+                              </Button>
+                            )}
+                          </div>
                           {reviews.map(r => (
                             <div key={r.id} className="rounded-md bg-muted/50 p-2 space-y-1">
                               <div className="flex items-center justify-between gap-2">
@@ -1087,11 +1103,18 @@ export default function StudentCourseView() {
                               {Array.isArray(r.annotations) && r.annotations.length > 0 && (
                                 <p className="text-[10px] text-muted-foreground">{r.annotations.length} mark{r.annotations.length === 1 ? '' : 's'} added by your teacher.</p>
                               )}
+                              {r.file_path && (
+                                <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                  onClick={() => openReviewFile(r.file_path as string)}>
+                                  <FileText className="h-3 w-3 mr-1" /> Open checked copy
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
                       );
                     })()}
+
                     {canSubmit && (
                       <Button size="sm" variant="outline" className="w-full" onClick={() => { setSubmitAssignment(a); setSubmissionText(''); setSubmissionFile(null); setSubmitDialogOpen(true); }}>
                         <Upload className="h-3.5 w-3.5 mr-1" /> {sub?.status === 'needs_revision' ? 'Resubmit' : 'Submit'}
