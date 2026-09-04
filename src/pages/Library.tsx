@@ -204,6 +204,8 @@ export default function Library() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<any>(null);
   const [deleteItem, setDeleteItem] = useState<any>(null);
+  const [syllabusItem, setSyllabusItem] = useState<any>(null);
+
 
   // Bulk select
   const [selectMode, setSelectMode] = useState(false);
