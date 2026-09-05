@@ -10,6 +10,10 @@ import { playPingChime } from '@/lib/pingChime';
  * opening a peer connection.
  */
 const topic = (roomId: string) => `vcr-ring:${roomId}`;
+/* Knocking must use its own topic — two channels on the same topic over one
+ * socket can both fail to reach SUBSCRIBED (same failure mode as vcr-audio vs
+ * vcr-view-sync), which would silently kill either the ring or the knock. */
+const knockTopic = (roomId: string) => `vcr-knock:${roomId}`;
 
 /** Teacher side: announce that a call is live while `active` is true. */
 export function useVcrRingHost(roomId: string, active: boolean, callerName?: string) {
@@ -41,6 +45,7 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
   const [ringing, setRinging] = useState(false);
   const [callerName, setCallerName] = useState<string>('Your teacher');
   const expiry = useRef<number | null>(null);
+  const ringingRef = useRef(false);
 
   useEffect(() => {
     if (!roomId || !enabled) return;
@@ -48,17 +53,24 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
 
     const bump = (name?: string) => {
       if (name) setCallerName(name);
-      playPingChime();
+      // Chime only on the transition into ringing — the host re-announces
+      // every 8s, and chiming on each heartbeat would beep nonstop.
+      if (!ringingRef.current) playPingChime();
+      ringingRef.current = true;
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
       // Auto-clear if the heartbeat stops (teacher closed the tab).
-      expiry.current = window.setTimeout(() => setRinging(false), 20000);
+      expiry.current = window.setTimeout(() => {
+        ringingRef.current = false;
+        setRinging(false);
+      }, 20000);
     };
 
     channel
       .on('broadcast', { event: 'ring' }, ({ payload }) => bump(payload?.callerName))
       .on('broadcast', { event: 'ring-end' }, () => {
         if (expiry.current) window.clearTimeout(expiry.current);
+        ringingRef.current = false;
         setRinging(false);
       })
       .subscribe((state) => {
@@ -80,7 +92,7 @@ export function useVcrKnockSender(roomId: string | null | undefined) {
 
   const knock = async (fromName?: string) => {
     if (!roomId) return;
-    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    const channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
     await new Promise<void>((resolve) => {
       channel.subscribe((state) => {
         if (state !== 'SUBSCRIBED') return;
@@ -106,7 +118,7 @@ export function useVcrKnockListener(roomId: string | null | undefined, enabled =
 
   useEffect(() => {
     if (!roomId || !enabled) return;
-    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    const channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
 
     channel
       .on('broadcast', { event: 'knock' }, ({ payload }) => {
