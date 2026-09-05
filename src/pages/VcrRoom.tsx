@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save, Square, Upload } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -367,9 +367,14 @@ export default function VcrRoom() {
   const [savingReview, setSavingReview] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
 
+  /* Opening an assignment link without an explicit resource: load the copy the
+     student handed in, so the teacher can mark it straight away. */
+  const effectiveResourceId = resourceId ?? submission?.synced_resource_id ?? null;
+
   /* May I edit a copy someone shared with me (e.g. a handed-in assignment)? */
   useEffect(() => {
     setSharedEditable(false);
+    const resourceId = effectiveResourceId;
     if (!resourceId || !user?.id) return;
     void (async () => {
       const { data } = await supabase
@@ -380,7 +385,7 @@ export default function VcrRoom() {
         .maybeSingle();
       setSharedEditable(!!(data as any)?.can_edit);
     })();
-  }, [resourceId, user?.id]);
+  }, [effectiveResourceId, user?.id]);
 
   useEffect(() => {
     if (!submissionIdParam) { setSubmission(null); return; }
@@ -394,6 +399,7 @@ export default function VcrRoom() {
 
 
   useEffect(() => {
+    const resourceId = effectiveResourceId;
     if (!resourceId) { setResource(null); return; }
     let cancelled = false;
     void (async () => {
@@ -417,7 +423,7 @@ export default function VcrRoom() {
       }
     })();
     return () => { cancelled = true; };
-  }, [resourceId]);
+  }, [effectiveResourceId]);
 
   /* Reopen the marks that were saved on this page last time. */
   useEffect(() => {
@@ -674,161 +680,8 @@ export default function VcrRoom() {
 
 
         </div>
-        {/* Row 1 — CLASS CONTENT: Mushaf, Noorani Qaida or a Library/syllabus file */}
-        {canControl && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-4 py-2 sm:px-6">
-            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Class content</span>
-
-            {(['mushaf', 'qaida', 'doc'] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setContentMode(c)}
-                className={cn(
-                  'h-9 rounded-full border px-4 text-sm transition-colors',
-                  content === c
-                    ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
-                    : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
-                )}
-              >
-                {c === 'mushaf' ? 'Mushaf' : c === 'qaida' ? 'Noorani Qaida' : 'Book / PDF'}
-              </button>
-            ))}
-            {content === 'doc' && (
-              <select
-                value={docId ?? ''}
-                onChange={(e) => setDocId(e.target.value || null)}
-                className="h-9 max-w-[22rem] rounded-full border border-vcr-chrome/20 bg-black/25 px-3 text-sm text-vcr-chrome focus:border-vcr-gold/60 focus:outline-none"
-              >
-                <option value="">
-                  {docs.length ? 'Choose syllabus file…' : 'No syllabus files in the Library yet'}
-                </option>
-                {(() => {
-                  const mine = (docs as any[]).filter((d) => d.is_personal && d.uploaded_by === user?.id);
-                  const shared = (docs as any[]).filter((d) => !(d.is_personal && d.uploaded_by === user?.id));
-                  const groups = new Map<string, any[]>();
-                  for (const d of shared) {
-                    const k = d.syllabus_folder || 'Other resources';
-                    groups.set(k, [...(groups.get(k) ?? []), d]);
-                  }
-                  const sortDocs = (a: any, b: any) =>
-                    (a.syllabus_order ?? 0) - (b.syllabus_order ?? 0) || String(a.title).localeCompare(String(b.title));
-                  return (
-                    <>
-                      {[...groups.entries()]
-                        .sort(([a], [b]) => (a === 'Other resources' ? 1 : b === 'Other resources' ? -1 : a.localeCompare(b)))
-                        .map(([folder, items]) => (
-                          <optgroup key={folder} label={folder}>
-                            {items.sort(sortDocs).map((d) => (
-                              <option key={d.id} value={d.id}>{d.title}</option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      {mine.length > 0 && (
-                        <optgroup label="My files">
-                          {mine.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
-                        </optgroup>
-                      )}
-                    </>
-                  );
-                })()}
-
-              </select>
-            )}
-            {content === 'doc' && (
-              <button
-                type="button"
-                onClick={() => setUploadOpen(true)}
-                title="Upload a PDF or image to the Library and show it here"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
-              >
-                <Upload className="h-4 w-4" /> Add file
-              </button>
-            )}
-
-            <span className="ms-auto hidden text-xs text-vcr-chrome/40 lg:inline">
-              {content === 'mushaf'
-                ? 'Mushaf — the built-in Qur’an pages'
-                : content === 'qaida'
-                  ? 'Noorani Qaida — the built-in Qaida lessons'
-                  : 'Book / PDF — files from the Library and syllabus folders'}
-            </span>
-          </div>
-        )}
-
-        {/* Row 2 — TOOLS: board, annotation, recording preference and shortcuts */}
-        {canControl && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-4 py-2 sm:px-6">
-            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Tools</span>
-            <button
-              type="button"
-              onClick={() => {
-                setBoardMode('board');
-                setWhiteboardOn((v) => !(v && boardMode === 'board'));
-              }}
-              aria-pressed={whiteboardOn && boardMode === 'board'}
-              title="Open a separate blank whiteboard"
-              className={cn(
-                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
-                whiteboardOn && boardMode === 'board'
-                  ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
-                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
-              )}
-            >
-              <Square className="h-4 w-4" /> Whiteboard
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setBoardMode('annotate');
-                setWhiteboardOn((v) => !(v && boardMode === 'annotate'));
-              }}
-              aria-pressed={whiteboardOn && boardMode === 'annotate'}
-              title="Draw on top of the page"
-              className={cn(
-                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
-                whiteboardOn && boardMode === 'annotate'
-                  ? 'border-vcr-gold bg-vcr-gold/15 text-vcr-gold'
-                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
-              )}
-            >
-              <PenLine className="h-4 w-4" /> Annotate
-            </button>
-            <button
-              type="button"
-              onClick={() => setAutoRecord((v) => { localStorage.setItem('vcr-auto-record', v ? '0' : '1'); return !v; })}
-              aria-pressed={autoRecord}
-              title="Ask the student for recording consent automatically when a call connects"
-              className={cn(
-                'inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors',
-                autoRecord
-                  ? 'border-red-400/60 bg-red-500/15 text-red-200'
-                  : 'border-vcr-chrome/20 text-vcr-chrome/65 hover:text-vcr-chrome'
-              )}
-            >
-              <Circle className="h-3.5 w-3.5" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
-            </button>
-
-            <div className="ms-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => navigate('/my-resources')}
-                title="Your own files and working copies"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
-              >
-                <BookMarked className="h-4 w-4" /> My Resources
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/class-recordings')}
-                title="Saved recordings of in-app class calls"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
-              >
-                <PlayCircle className="h-4 w-4" /> Class recordings
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Content and tools now live in the VCR app rail and the reader strip
+            below, so the header stays clean and never duplicates them. */}
 
         {/* Row 3 — CALL: in-app audio, additive to the existing Zoom option */}
         {user?.id && (
@@ -920,7 +773,44 @@ export default function VcrRoom() {
             )}
           </div>
 
+          {/* Compact page tools — annotation and recording preference only.
+              Opening content lives in the app rail. */}
+          {canControl && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-vcr-chrome/60">
+              <button
+                type="button"
+                onClick={() => { setBoardMode('annotate'); setWhiteboardOn((v) => !(v && boardMode === 'annotate')); }}
+                aria-pressed={whiteboardOn && boardMode === 'annotate'}
+                title="Draw on top of this page"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
+                  whiteboardOn && boardMode === 'annotate'
+                    ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
+                    : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                )}
+              >
+                <PenLine className="h-3.5 w-3.5" /> Annotate this page
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoRecord((v) => { localStorage.setItem('vcr-auto-record', v ? '0' : '1'); return !v; })}
+                aria-pressed={autoRecord}
+                title="Ask for recording consent automatically when a call connects"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
+                  autoRecord ? 'border-red-400/60 bg-red-500/15 text-red-200' : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                )}
+              >
+                <Circle className="h-3 w-3" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
+              </button>
+              <span className="truncate text-vcr-chrome/40">
+                {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
+              </span>
+            </div>
+          )}
+
           {/* Whatever app the rail is pointing at */}
+
           {railPanelApp && (
             <div className="rounded-2xl border border-vcr-chrome/12 bg-black/20 p-3">
               <div className="mb-2 flex items-center gap-2">

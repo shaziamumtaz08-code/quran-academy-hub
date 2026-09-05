@@ -113,19 +113,13 @@ export async function getAssignmentTeachers(assignmentId: string): Promise<strin
   return [...ids];
 }
 
-async function notifyTeachers(opts: { teacherIds: string[]; title: string; message: string; metadata: any }) {
-  if (!opts.teacherIds.length) return;
-  await t("notification_queue").insert(
-    opts.teacherIds.map((id) => ({
-      recipient_id: id,
-      recipient_type: "teacher",
-      notification_type: "assignment_submission",
-      title: opts.title,
-      message: opts.message,
-      metadata: opts.metadata,
-      status: "pending",
-    })),
-  );
+/**
+ * Alerts go through a guarded database function: a student may only raise the
+ * "submitted" alert for her own submission, and only staff may raise
+ * "reviewed". The client never writes to the notification queue directly.
+ */
+async function notifyAssignmentEvent(submissionId: string, kind: "submitted" | "reviewed") {
+  await (supabase.rpc as any)("notify_assignment_event", { _submission_id: submissionId, _kind: kind });
 }
 
 /**
@@ -236,15 +230,9 @@ export async function submitSyncedToAssignment(opts: {
       })),
       { onConflict: "resource_id,shared_with" },
     );
-    const { data: assignment } = await t("course_assignments").select("title").eq("id", assignmentId).maybeSingle();
-    const { data: profile } = await t("profiles").select("full_name").eq("id", studentId).maybeSingle();
-    await notifyTeachers({
-      teacherIds,
-      title: "New assignment submission",
-      message: `${profile?.full_name ?? "A student"} submitted a synced copy for "${assignment?.title ?? "an assignment"}".`,
-      metadata: { assignment_id: assignmentId, submission_id: submission.id, student_id: studentId, mode: "synced" },
-    });
   }
+
+  await notifyAssignmentEvent(submission.id, "submitted").catch(() => {});
 
   return { submission, resourceId };
 }
@@ -298,17 +286,6 @@ export async function saveSyncedReview(opts: {
       .update({ status: "reviewed", graded_by: opts.reviewerId, graded_at: new Date().toISOString() })
       .eq("id", opts.submissionId);
 
-    const submission = await getSubmissionById(opts.submissionId);
-    if (submission) {
-      await t("notification_queue").insert({
-        recipient_id: submission.student_id,
-        recipient_type: "student",
-        notification_type: "assignment_reviewed",
-        title: "Your work has been checked",
-        message: "Your teacher returned the checked copy of your assignment.",
-        metadata: { submission_id: opts.submissionId, assignment_id: submission.assignment_id },
-        status: "pending",
-      });
-    }
+    await notifyAssignmentEvent(opts.submissionId, "reviewed").catch(() => {});
   }
 }

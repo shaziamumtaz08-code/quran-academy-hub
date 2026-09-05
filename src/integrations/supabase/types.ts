@@ -14793,6 +14793,10 @@ export type Database = {
         Args: { p_country: string; raw_phone: string }
         Returns: string
       }
+      notify_assignment_event: {
+        Args: { _kind: string; _submission_id: string }
+        Returns: undefined
+      }
       preview_plan_revision: {
         Args: { _effective_from: string; _student_id: string }
         Returns: Json
