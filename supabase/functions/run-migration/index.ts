@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
             email_confirm: true,
             user_metadata: {
               full_name: parentName,
-              force_password_reset: true,
+              force_password_reset: false,
               created_via: "identity_migration",
             },
           });

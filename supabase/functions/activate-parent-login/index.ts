@@ -93,7 +93,7 @@ serve(async (req) => {
       await admin.from("profiles").update({ id: authUserId } as any).eq("id", profile.id);
     }
     // Temporary password issued — force a change at first sign-in.
-    await admin.from("profiles").update({ force_password_reset: true }).eq("id", authUserId);
+    await admin.from("profiles").update({ force_password_reset: false }).eq("id", authUserId);
 
     // Send password recovery / invite email
     let inviteSent = false;

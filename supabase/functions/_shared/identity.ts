@@ -196,7 +196,7 @@ export async function resolvePerson(
 
         if ((opts.profile && Object.keys(opts.profile).length) || (usedDefaultPassword && ensured.authCreated)) {
           const patch: Record<string, unknown> = { ...(opts.profile || {}) };
-          if (usedDefaultPassword && ensured.authCreated) patch.force_password_reset = true;
+          if (usedDefaultPassword && ensured.authCreated) patch.force_password_reset = false;
           Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
           if (Object.keys(patch).length) {
             await admin.from("profiles").update(patch).eq("id", ensured.profileId);
@@ -280,7 +280,7 @@ export async function resolvePerson(
     email: loginEmail,
     whatsapp_number: opts.phone || null,
     ...(opts.profile || {}),
-    ...(usedDefaultPassword ? { force_password_reset: true } : {}),
+    ...(usedDefaultPassword ? { force_password_reset: false } : {}),
   };
   Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 

@@ -345,7 +345,7 @@ serve(async (req) => {
             city,
             timezone: resolvedTimezone,
             registration_id: regId,
-            force_password_reset: usedDefaultPassword,
+            force_password_reset: false,
             date_of_birth: dateOfBirth,
             nationality,
             first_language: firstLanguage,
@@ -381,7 +381,7 @@ serve(async (req) => {
         city,
         timezone: resolvedTimezone,
         registration_id: registrationId,
-        force_password_reset: usedDefaultPassword,
+        force_password_reset: false,
         date_of_birth: dateOfBirth,
         nationality,
         first_language: firstLanguage,
@@ -440,7 +440,7 @@ serve(async (req) => {
               email: parentEmail,
               full_name: parentName || "Parent",
               registration_id: pRegId,
-              force_password_reset: true,
+              force_password_reset: false,
             }, { onConflict: "id" });
             await adminClient.from("user_roles").upsert(
               { user_id: parentAuth.user.id, role: "parent" },
