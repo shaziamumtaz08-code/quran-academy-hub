@@ -733,43 +733,59 @@ export default function VcrRoom() {
           <h1 className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-vcr-chrome sm:text-xl">
             {student?.full_name ?? 'Student'}
           </h1>
-          <span
-            className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[11px]',
-              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/60'
-            )}
-          >
-            {attendance ? `Attendance: ${attendance}` : 'Not marked'}
-          </span>
+          {attendance && (
+            <span className="shrink-0 rounded-full bg-vcr-emerald px-2 py-0.5 text-[11px] text-vcr-chrome">
+              {attendance}
+            </span>
+          )}
 
           <div className="ms-auto flex items-center gap-1.5">
-            {/* Sharing state — a small chip, never a card */}
-            <button
-              type="button"
-              onClick={() => void patchRoom({ sync_enabled: !synced })}
-              aria-pressed={synced}
-              title={synced ? 'Everyone in the room sees this workspace' : 'Only you can see what you open'}
-              className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
-                synced ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
-              )}
+            {/* One clear control: whose workspace am I looking at? */}
+            <div
+              role="tablist"
+              aria-label="Viewing mode"
+              className="flex items-center gap-0.5 rounded-full border border-vcr-chrome/15 bg-white/5 p-0.5"
             >
-              {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{synced ? 'Synced' : 'Private'}</span>
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!synced}
+                onClick={() => { if (synced) void patchRoom({ sync_enabled: false }); }}
+                title="Only you can see what you open here"
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
+                  !synced ? 'bg-vcr-chrome/90 font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                )}
+              >
+                <Lock className="h-3.5 w-3.5" /> My Copy
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={synced}
+                onClick={() => { if (!synced) void patchRoom({ sync_enabled: true }); }}
+                title="The other person in this class sees and works on the same workspace"
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
+                  synced ? 'bg-vcr-gold font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                )}
+              >
+                <Share2 className="h-3.5 w-3.5" /> Synced
+              </button>
+            </div>
             {user?.id && (
               <button
                 type="button"
                 onClick={() => setCallOpen((v) => !v)}
                 aria-pressed={callOpen}
                 title="Voice call"
+                aria-label="Voice call"
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  'inline-flex h-8 w-8 items-center justify-center rounded-full border',
                   callOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
                 )}
               >
                 <PhoneCall className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Call</span>
               </button>
             )}
             {canControl && (
@@ -778,16 +794,17 @@ export default function VcrRoom() {
                 onClick={() => setToolsOpen((v) => !v)}
                 aria-pressed={toolsOpen}
                 title="Lesson tools: notes, mark complete, attendance"
+                aria-label="Lesson tools"
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  'inline-flex h-8 w-8 items-center justify-center rounded-full border',
                   toolsOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
                 )}
               >
                 <ClipboardList className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Lesson tools</span>
               </button>
             )}
           </div>
+
         </div>
 
         {/* Voice call — compact, only when asked for */}
