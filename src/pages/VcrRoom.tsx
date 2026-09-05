@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save } from 'lucide-react';
+import { ArrowLeft, Bookmark, CheckCircle2, Circle, ClipboardList, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Save, Share2, X } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -36,6 +36,7 @@ import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
 
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { goBackToClassRoom } from '@/lib/classRoomBack';
 
