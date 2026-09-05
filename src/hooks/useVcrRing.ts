@@ -45,6 +45,7 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
   const [ringing, setRinging] = useState(false);
   const [callerName, setCallerName] = useState<string>('Your teacher');
   const expiry = useRef<number | null>(null);
+  const ringingRef = useRef(false);
 
   useEffect(() => {
     if (!roomId || !enabled) return;
@@ -52,17 +53,24 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
 
     const bump = (name?: string) => {
       if (name) setCallerName(name);
-      playPingChime();
+      // Chime only on the transition into ringing — the host re-announces
+      // every 8s, and chiming on each heartbeat would beep nonstop.
+      if (!ringingRef.current) playPingChime();
+      ringingRef.current = true;
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
       // Auto-clear if the heartbeat stops (teacher closed the tab).
-      expiry.current = window.setTimeout(() => setRinging(false), 20000);
+      expiry.current = window.setTimeout(() => {
+        ringingRef.current = false;
+        setRinging(false);
+      }, 20000);
     };
 
     channel
       .on('broadcast', { event: 'ring' }, ({ payload }) => bump(payload?.callerName))
       .on('broadcast', { event: 'ring-end' }, () => {
         if (expiry.current) window.clearTimeout(expiry.current);
+        ringingRef.current = false;
         setRinging(false);
       })
       .subscribe((state) => {
