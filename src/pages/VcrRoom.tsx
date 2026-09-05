@@ -453,6 +453,54 @@ export default function VcrRoom() {
     }
   };
 
+  /* Teacher marking an assignment-linked synced copy: marks auto-save onto the
+     assignment copy (never onto the student's own resource). */
+  useEffect(() => {
+    if (!submission?.synced_resource_id || !resource || !user?.id) return;
+    if (resource.id !== submission.synced_resource_id || !canMarkResource) return;
+    const id = window.setTimeout(() => {
+      void saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id }).catch(() => {});
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [strokes, currentPage, submission?.synced_resource_id, resource?.id, canMarkResource, user?.id]);
+
+  const saveReview = async (returnNow: boolean) => {
+    if (!submission || !submission.synced_resource_id || !user?.id) return;
+    setSavingReview(true);
+    try {
+      await saveAnnotations({ resourceId: submission.synced_resource_id, page: currentPage, strokes, userId: user.id });
+      await saveSyncedReview({
+        submissionId: submission.id,
+        resourceId: submission.synced_resource_id,
+        reviewerId: user.id,
+        comment: reviewComment.trim() || null,
+        returnNow,
+      });
+      const fresh = await getSubmissionById(submission.id);
+      setSubmission(fresh);
+      toast({
+        title: returnNow ? 'Returned to the student' : 'Review saved',
+        description: returnNow ? 'She can now see your checked copy.' : 'Your marks are kept as a new version.',
+      });
+    } catch (e: any) {
+      toast({ title: 'Could not save the review', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  /** What the student would hand in from this room right now. */
+  const syncedSource: SyncedSource | null = resource
+    ? { kind: 'resource', resource }
+    : content === 'doc' && activeDocId
+      ? { kind: 'doc', docId: activeDocId, title: activeDoc?.title ?? 'Class document' }
+      : content === 'qaida' || content === 'mushaf'
+        ? { kind: 'content', content, title: content === 'qaida' ? 'Noorani Qaida' : 'Mushaf' }
+        : null;
+  const canSubmitToAssignment = !canControl && !!user?.id && user.id === studentId && !!syncedSource;
+
+
+
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
