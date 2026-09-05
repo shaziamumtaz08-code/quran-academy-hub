@@ -921,6 +921,24 @@ export default function VcrRoom() {
             </div>
           )}
 
+          {/* Qaida / Mushaf markings: autosaved, with a clear manual save too */}
+          {isLessonContent && canControl && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-xs text-vcr-chrome/70">
+              <span className="text-vcr-chrome/55">
+                Markings on this {content === 'qaida' ? 'Qaida' : 'Mushaf'} page are saved for this student and reopen next time.
+              </span>
+              <button
+                type="button"
+                disabled={savingMarks}
+                onClick={() => void saveLessonMarks()}
+                className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 transition-colors hover:text-vcr-chrome disabled:opacity-60"
+              >
+                <Save className="h-3.5 w-3.5" /> Save markings now
+              </button>
+            </div>
+          )}
+
+
           {/* Hand this shared work in as an assignment */}
           {canSubmitToAssignment && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
