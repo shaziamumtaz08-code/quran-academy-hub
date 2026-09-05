@@ -612,10 +612,15 @@ export default function VcrRoom() {
 
 
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
+  const isMobile = useIsMobile();
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
   const [railExpanded, setRailExpanded] = useState<boolean>(
     () => localStorage.getItem('vcr-rail-expanded') !== '0',
   );
+  useEffect(() => { if (isMobile) setRailExpanded(false); }, [isMobile]);
+  const [callOpen, setCallOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
   const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
   const synced = !!roomState?.sync_enabled;
@@ -623,6 +628,7 @@ export default function VcrRoom() {
   const railPanelApp = railKey && !['whiteboard', 'call', 'recordings'].includes(railKey)
     ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
     : null;
+
 
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
