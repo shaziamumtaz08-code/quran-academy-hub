@@ -79,8 +79,17 @@ export default function VcrRoom() {
     return () => { cancelled = true; };
   }, [wantsObserver, studentId]);
 
-  /** The student viewing their own room: read-only mirror of the teacher's screen. */
-  const isFollower = !canControl && !!user?.id && user.id === studentId;
+  /**
+   * The shared classroom workspace. Loaded up front because whether the
+   * student mirrors the teacher depends on it: sharing OFF (the default) means
+   * she reads and reviews her own syllabus freely, with or without a teacher.
+   */
+  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
+  const synced = !!roomState?.sync_enabled;
+
+  /** Mirror the teacher's screen only while the shared workspace is on. */
+  const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
+
 
   const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
     roomId: studentId,
