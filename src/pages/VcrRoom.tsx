@@ -31,6 +31,7 @@ import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 import { VcrAppRail, type VcrRailKey } from '@/components/vcr/VcrAppRail';
 import { VcrAppPanel, type VcrOpenTarget } from '@/components/vcr/VcrAppPanel';
 import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
+import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
 import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
