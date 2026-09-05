@@ -9,6 +9,11 @@ import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
 } from '@/lib/myResources';
+import {
+  getSubmissionById, markUnderReview, saveSyncedReview, SUBMISSION_STATUS_LABEL,
+  type AssignmentSubmission,
+} from '@/lib/syncedSubmissions';
+import { SubmitToAssignmentDialog, type SyncedSource } from '@/components/assignments/SubmitToAssignmentDialog';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
