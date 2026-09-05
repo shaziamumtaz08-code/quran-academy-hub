@@ -349,10 +349,44 @@ export default function VcrRoom() {
      copy only, so the original is never changed. */
   const [searchParams] = useSearchParams();
   const resourceId = searchParams.get('resource');
+  const submissionIdParam = searchParams.get('submission');
   const [resource, setResource] = useState<UserResource | null>(null);
   const [savingMarks, setSavingMarks] = useState(false);
   const loadedMarksKey = useRef<string>('');
-  const canMarkResource = !!resource && resource.user_id === user?.id;
+  const [sharedEditable, setSharedEditable] = useState(false);
+  const canMarkResource = !!resource && (resource.user_id === user?.id || sharedEditable);
+
+  /* Assignment-linked synced submission (teacher marking view). */
+  const [submission, setSubmission] = useState<AssignmentSubmission | null>(null);
+  const [reviewComment, setReviewComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
+  const [submitOpen, setSubmitOpen] = useState(false);
+
+  /* May I edit a copy someone shared with me (e.g. a handed-in assignment)? */
+  useEffect(() => {
+    setSharedEditable(false);
+    if (!resourceId || !user?.id) return;
+    void (async () => {
+      const { data } = await supabase
+        .from('user_resource_shares' as any)
+        .select('can_edit')
+        .eq('resource_id', resourceId)
+        .eq('shared_with', user.id)
+        .maybeSingle();
+      setSharedEditable(!!(data as any)?.can_edit);
+    })();
+  }, [resourceId, user?.id]);
+
+  useEffect(() => {
+    if (!submissionIdParam) { setSubmission(null); return; }
+    void getSubmissionById(submissionIdParam)
+      .then(async (s) => {
+        setSubmission(s);
+        if (s && canControl) await markUnderReview(s.id).catch(() => {});
+      })
+      .catch(() => setSubmission(null));
+  }, [submissionIdParam, canControl]);
+
 
   useEffect(() => {
     if (!resourceId) { setResource(null); return; }
