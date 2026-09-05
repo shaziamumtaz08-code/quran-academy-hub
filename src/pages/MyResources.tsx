@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { SubmitToAssignmentDialog } from "@/components/assignments/SubmitToAssignmentDialog";
 import { Label } from "@/components/ui/label";
 import {
   BookMarked, Copy, History, Link2, Share2, Trash2, PlayCircle, Users, Loader2,
@@ -238,6 +239,7 @@ export default function MyResources() {
   const [tab, setTab] = useState<"mine" | "shared">("mine");
   const [versionsFor, setVersionsFor] = useState<UserResource | null>(null);
   const [shareFor, setShareFor] = useState<UserResource | null>(null);
+  const [submitFor, setSubmitFor] = useState<UserResource | null>(null);
   const [students, setStudents] = useState<Person[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [folderId, setFolderId] = useState<string | null>(null);
@@ -498,6 +500,15 @@ export default function MyResources() {
       <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} folderId={folderId} />
       <VersionsDialog resource={versionsFor} onClose={() => setVersionsFor(null)} />
       <ShareDialog resource={shareFor} onClose={() => setShareFor(null)} />
+    </div>
+
+      <SubmitToAssignmentDialog
+        open={!!submitFor}
+        onOpenChange={(v) => { if (!v) setSubmitFor(null); }}
+        studentId={user?.id ?? ""}
+        source={submitFor ? { kind: "resource", resource: submitFor } : null}
+        origin="my_resources"
+      />
     </div>
   );
 }
