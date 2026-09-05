@@ -630,8 +630,7 @@ export default function VcrRoom() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
-  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
-  const synced = !!roomState?.sync_enabled;
+  const [recordingsOpen, setRecordingsOpen] = useState(false);
 
   const railPanelApp = railKey && !['whiteboard', 'call', 'recordings'].includes(railKey)
     ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
@@ -641,10 +640,12 @@ export default function VcrRoom() {
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     setLauncherOpen(false);
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
-    if (key === 'recordings') { navigate('/class-recordings'); return; }
+    /* Recordings stay inside the classroom — never a trip to another page. */
+    if (key === 'recordings') { setRecordingsOpen(true); setRailKey('recordings'); return; }
     if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
     setRailKey((prev) => (prev === key ? null : key));
-  }, [navigate]);
+  }, []);
+
 
 
   /** Put a target on my own screen, or on the shared classroom workspace. */
