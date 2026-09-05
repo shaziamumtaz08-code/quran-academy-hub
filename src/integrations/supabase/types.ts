@@ -12919,6 +12919,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vcr_room_state: {
+        Row: {
+          app: string | null
+          created_at: string
+          payload: Json
+          presenter_id: string | null
+          presenter_name: string | null
+          presenter_role: string | null
+          student_id: string
+          sync_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          app?: string | null
+          created_at?: string
+          payload?: Json
+          presenter_id?: string | null
+          presenter_name?: string | null
+          presenter_role?: string | null
+          student_id: string
+          sync_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          app?: string | null
+          created_at?: string
+          payload?: Json
+          presenter_id?: string | null
+          presenter_name?: string | null
+          presenter_role?: string | null
+          student_id?: string
+          sync_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       vcr_sessions: {
         Row: {
           content_type: string
