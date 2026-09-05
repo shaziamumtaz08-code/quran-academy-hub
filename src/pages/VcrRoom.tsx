@@ -440,7 +440,28 @@ export default function VcrRoom() {
     })();
   }, [resource?.id, currentPage, loadStrokes]);
 
+  const saveLessonMarks = async () => {
+    if (!studentId || !user?.id) return;
+    setSavingMarks(true);
+    try {
+      await saveLessonAnnotations({
+        studentId,
+        contentType: content,
+        unit: currentPage,
+        strokes,
+        userId: user.id,
+        reference: { libraryItemId: docId ?? null },
+      });
+      toast({ title: 'Markings saved', description: 'They will be here when this page is opened again.' });
+    } catch (e: any) {
+      toast({ title: 'Could not save the markings', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingMarks(false);
+    }
+  };
+
   const saveMarks = async (alsoVersion: boolean) => {
+
     if (!resource || !user?.id) return;
     setSavingMarks(true);
     try {
