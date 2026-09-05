@@ -580,9 +580,9 @@ function AppRoutes() {
       <Route path="/quiz/:token" element={<PublicQuiz />} />
       <Route path="/quiz-invite/:token" element={<QuizInviteAccept />} />
 
-      <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
-      <Route path="/class-room" element={<ProtectedRoute><ClassRoom /></ProtectedRoute>} />
-      <Route path="/vcr/:studentId" element={<ProtectedRoute><VcrRoom /></ProtectedRoute>} />
+      <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><DashboardLayout><VirtualClassroom /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/class-room" element={<ProtectedRoute><DashboardLayout><ClassRoom /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/vcr/:studentId" element={<ProtectedRoute><DashboardLayout><VcrRoom /></DashboardLayout></ProtectedRoute>} />
       <Route path="/class-recordings" element={<ProtectedRoute><DashboardLayout><VcrRecordings /></DashboardLayout></ProtectedRoute>} />
       <Route path="/syllabus/:studentId" element={<ProtectedRoute><StudentSyllabus /></ProtectedRoute>} />
       <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />

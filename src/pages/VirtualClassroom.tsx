@@ -214,7 +214,7 @@ export default function VirtualClassroom() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#0f172a]" style={{ minWidth: 1024 }}>
+      <div className="flex w-full flex-col overflow-hidden bg-[#0f172a]" style={{ height: 'calc(100vh - 3.5rem)' }}>
 
         {/* ═══ TOP BAR ═══ */}
         <div className="h-[52px] shrink-0 flex items-center justify-between px-4" style={{ background: '#1a2744' }}>
