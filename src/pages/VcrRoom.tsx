@@ -456,6 +456,77 @@ export default function VcrRoom() {
   });
   const [jumpRequest, setJumpRequest] = useState<{ unit: number; nonce: number } | null>(null);
 
+  /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
+  const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
+  const [railExpanded, setRailExpanded] = useState<boolean>(
+    () => localStorage.getItem('vcr-rail-expanded') !== '0',
+  );
+  const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
+  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
+  const synced = !!roomState?.sync_enabled;
+
+  const railPanelApp = railKey && !['whiteboard', 'call', 'recordings'].includes(railKey)
+    ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
+    : null;
+
+  const onRailSelect = React.useCallback((key: VcrRailKey) => {
+    if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
+    if (key === 'recordings') { navigate('/class-recordings'); return; }
+    setRailKey((prev) => (prev === key ? null : key));
+  }, [navigate]);
+
+  /** Put a target on my own screen, or on the shared classroom workspace. */
+  const openTarget = React.useCallback(
+    (t: VcrOpenTarget, share: boolean) => {
+      if (t.kind === 'link') {
+        if (!t.url) return;
+        setEmbed({ title: t.title, url: t.url, synced: share });
+      } else if (t.kind === 'content') {
+        setEmbed(null);
+        setContentMode(t.content === 'qaida' ? 'qaida' : 'mushaf');
+      } else if (t.kind === 'doc' && t.docId) {
+        setEmbed(null);
+        setDocId(t.docId);
+        setContentMode('doc');
+      } else if (t.kind === 'resource' && t.resourceId) {
+        navigate(`/vcr/${studentId}?resource=${t.resourceId}`);
+        return;
+      }
+      if (share) {
+        void patchRoom({
+          sync_enabled: true,
+          presenter_id: user?.id ?? null,
+          presenter_name: (profile as any)?.full_name ?? null,
+          presenter_role: canControl ? 'staff' : 'student',
+          app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
+          payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
+        });
+      }
+    },
+    [navigate, studentId, patchRoom, user?.id, profile, canControl],
+  );
+
+  /** Teacher takes presentation priority away from the student. */
+  const takeOver = React.useCallback(async () => {
+    await patchRoom({
+      presenter_id: user?.id ?? null,
+      presenter_name: (profile as any)?.full_name ?? null,
+      presenter_role: 'staff',
+    });
+  }, [patchRoom, user?.id, profile]);
+
+  /* Followers mirror whatever is on the shared workspace while sharing is on. */
+  useEffect(() => {
+    if (!synced || !roomState) return;
+    if (roomState.presenter_id && roomState.presenter_id === user?.id) return;
+    const p = roomState.payload ?? {};
+    if (roomState.app === 'mushaf' || roomState.app === 'qaida') { setEmbed(null); setContentMode(roomState.app); }
+    else if (roomState.app === 'doc' && p.docId) { setEmbed(null); setDocId(p.docId); setContentMode('doc'); }
+    else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
+  }, [synced, roomState, user?.id]);
+
+
+
 
   if (loading) {
     return (
