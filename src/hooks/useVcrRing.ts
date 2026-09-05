@@ -10,6 +10,10 @@ import { playPingChime } from '@/lib/pingChime';
  * opening a peer connection.
  */
 const topic = (roomId: string) => `vcr-ring:${roomId}`;
+/* Knocking must use its own topic — two channels on the same topic over one
+ * socket can both fail to reach SUBSCRIBED (same failure mode as vcr-audio vs
+ * vcr-view-sync), which would silently kill either the ring or the knock. */
+const knockTopic = (roomId: string) => `vcr-knock:${roomId}`;
 
 /** Teacher side: announce that a call is live while `active` is true. */
 export function useVcrRingHost(roomId: string, active: boolean, callerName?: string) {
@@ -80,7 +84,7 @@ export function useVcrKnockSender(roomId: string | null | undefined) {
 
   const knock = async (fromName?: string) => {
     if (!roomId) return;
-    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    const channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
     await new Promise<void>((resolve) => {
       channel.subscribe((state) => {
         if (state !== 'SUBSCRIBED') return;
@@ -106,7 +110,7 @@ export function useVcrKnockListener(roomId: string | null | undefined, enabled =
 
   useEffect(() => {
     if (!roomId || !enabled) return;
-    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    const channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
 
     channel
       .on('broadcast', { event: 'knock' }, ({ payload }) => {
