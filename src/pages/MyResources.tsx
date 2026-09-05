@@ -441,6 +441,12 @@ export default function MyResources() {
                     <History className="h-3.5 w-3.5" /> Versions
                   </Button>
                 )}
+                {!isStaff && tab === "mine" && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSubmitFor(r)}>
+                    <Share2 className="h-3.5 w-3.5" /> Submit to assignment
+                  </Button>
+                )}
+
                 {tab === "mine" && (
                   <>
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShareFor(r)}>
