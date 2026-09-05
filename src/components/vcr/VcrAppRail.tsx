@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   BookMarked, Folder, Grid2X2, HardDrive, Library,
-  Link2, PhoneCall, PlayCircle, Square, X, Youtube,
+  Link2, PhoneCall, PlayCircle, Presentation, X, Youtube,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +15,7 @@ const ITEMS: { key: VcrRailKey; label: string; icon: React.ElementType }[] = [
   { key: 'drive', label: 'Google Drive', icon: HardDrive },
   { key: 'youtube', label: 'YouTube', icon: Youtube },
   { key: 'url', label: 'Web link', icon: Link2 },
-  { key: 'whiteboard', label: 'Whiteboard', icon: Square },
+  { key: 'whiteboard', label: 'Whiteboard', icon: Presentation },
   { key: 'call', label: 'Voice call', icon: PhoneCall },
   { key: 'recordings', label: 'Recordings', icon: PlayCircle },
   { key: 'myspace', label: 'My Drive', icon: Folder },
