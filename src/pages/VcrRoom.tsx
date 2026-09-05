@@ -630,6 +630,7 @@ export default function VcrRoom() {
 
 
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
+    setLauncherOpen(false);
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
     if (key === 'recordings') { navigate('/class-recordings'); return; }
     if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
