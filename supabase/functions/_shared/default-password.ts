@@ -32,7 +32,13 @@ export function passwordNameFor(fullName: string): string {
   return pick.charAt(0).toUpperCase() + pick.slice(1).toLowerCase();
 }
 
-/** Default password handed to a new user: Lastname@1234! */
-export function defaultPasswordFor(fullName: string): string {
-  return `${passwordNameFor(fullName)}@1234!`;
+/**
+ * Academy-wide default password.
+ * Currently a single fixed value for every user, by admin instruction.
+ * (Previous scheme was `${passwordNameFor(fullName)}@1234!`.)
+ */
+export const ACADEMY_DEFAULT_PASSWORD = "Test1234";
+
+export function defaultPasswordFor(_fullName: string): string {
+  return ACADEMY_DEFAULT_PASSWORD;
 }
