@@ -31,14 +31,15 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
       // 1. Assignment row
       const { data: a, error: aErr } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, student_id, subject_id, division_id, branch_id, status, created_at, start_date, effective_from_date, effective_to_date, status_effective_date, status_change_reason, duration_minutes, salary_linked, is_temporary, temp_start_date, temp_end_date, transfer_type, parent_assignment_id, original_assignment_id, substitute_end_date, requires_schedule, requires_planning, requires_attendance, fee_package_id')
+        .select('id, teacher_id, student_id, subject_id, division_id, branch_id, status, created_at, start_date, effective_from_date, effective_to_date, status_effective_date, status_change_reason, duration_minutes, is_temporary, temp_start_date, temp_end_date, transfer_type, parent_assignment_id, original_assignment_id, substitute_end_date, requires_schedule, requires_planning, requires_attendance, fee_package_id')
         .eq('id', assignmentId)
         .maybeSingle();
       if (aErr) throw aErr;
       if (!a) throw new Error('Assignment not found');
-      const payout = (await fetchAssignmentPayouts([assignmentId])).get(assignmentId) || { payout_amount: null, payout_type: null };
+      const payout = (await fetchAssignmentPayouts([assignmentId])).get(assignmentId) || { payout_amount: null, payout_type: null, salary_linked: null };
       (a as any).payout_amount = payout.payout_amount;
       (a as any).payout_type = payout.payout_type;
+      (a as any).salary_linked = payout.salary_linked;
 
       // Lineage: every assignment row for this student + subject. A teacher transfer
       // closes one row and opens another, so the earlier periods live on sibling rows.
