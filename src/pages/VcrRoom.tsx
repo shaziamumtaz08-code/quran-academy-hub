@@ -1167,6 +1167,22 @@ export default function VcrRoom() {
         defaultSyllabus
         onSaved={() => { void loadDocs(true); setContentMode('doc'); }}
       />
+
+      <SubmitToAssignmentDialog
+        open={submitOpen}
+        onOpenChange={setSubmitOpen}
+        studentId={studentId}
+        source={syncedSource}
+        syncedState={{
+          page: currentPage,
+          content,
+          docId: activeDocId ?? null,
+          resourceId: resource?.id ?? null,
+          synced: !!roomState?.sync_enabled,
+        }}
+        origin="vcr"
+      />
     </div>
+
   );
 }
