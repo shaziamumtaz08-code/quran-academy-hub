@@ -615,10 +615,8 @@ export default function VcrRoom() {
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
   const isMobile = useIsMobile();
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
-  const [railExpanded, setRailExpanded] = useState<boolean>(
-    () => localStorage.getItem('vcr-rail-expanded') !== '0',
-  );
-  useEffect(() => { if (isMobile) setRailExpanded(false); }, [isMobile]);
+  const [launcherOpen, setLauncherOpen] = useState(false);
+  useEffect(() => { if (isMobile) setLauncherOpen(false); }, [isMobile]);
   const [callOpen, setCallOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
@@ -632,6 +630,7 @@ export default function VcrRoom() {
 
 
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
+    setLauncherOpen(false);
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
     if (key === 'recordings') { navigate('/class-recordings'); return; }
     if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
@@ -838,10 +837,12 @@ export default function VcrRoom() {
         {/* The VCR's own app rail — separate from the LMS main sidebar */}
         <VcrAppRail
           active={railKey}
-          expanded={railExpanded && !isMobile}
-          onToggle={() => setRailExpanded((v) => { localStorage.setItem('vcr-rail-expanded', v ? '0' : '1'); return !v; })}
+          open={launcherOpen}
+          onToggle={() => setLauncherOpen((v) => !v)}
           onSelect={onRailSelect}
+          isMobile={isMobile}
         />
+
 
         {/* The workspace — the material is the page */}
         <main className="relative min-w-0 flex-1">
@@ -1026,17 +1027,28 @@ export default function VcrRoom() {
 
           {/* App launcher content — floats over the workspace, never pushes it */}
           {railPanelApp && (
-            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-vcr-chrome/15 bg-[#0C1B1E]/95 p-3 shadow-2xl backdrop-blur sm:max-w-lg">
+            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:max-w-lg">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/45">
-                  {railPanelApp === 'myspace' ? 'My Drive / My Resources' : railPanelApp}
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+                  {railPanelApp === 'myspace'
+                    ? 'My Drive'
+                    : railPanelApp === 'drive'
+                      ? 'Google Drive'
+                      : railPanelApp === 'youtube'
+                        ? 'YouTube'
+                        : railPanelApp === 'url'
+                          ? 'Web link'
+                          : railPanelApp === 'syllabus'
+                            ? 'Syllabus'
+                            : 'Library'}
                 </span>
                 <button
                   type="button"
                   onClick={() => setRailKey(null)}
                   aria-label="Close"
-                  className="ms-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-vcr-chrome/50 hover:bg-white/5 hover:text-vcr-chrome"
+                  className="ms-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
                 >
+
                   <X className="h-4 w-4" />
                 </button>
               </div>
