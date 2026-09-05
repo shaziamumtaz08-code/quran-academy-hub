@@ -393,7 +393,12 @@ export default function VcrRoom() {
   }, [submissionIdParam, canControl]);
 
 
+  /* Opening an assignment link without an explicit resource: load the copy the
+     student handed in, so the teacher can mark it straight away. */
+  const effectiveResourceId = resourceId ?? submission?.synced_resource_id ?? null;
+
   useEffect(() => {
+    const resourceId = effectiveResourceId;
     if (!resourceId) { setResource(null); return; }
     let cancelled = false;
     void (async () => {
@@ -417,7 +422,7 @@ export default function VcrRoom() {
       }
     })();
     return () => { cancelled = true; };
-  }, [resourceId]);
+  }, [effectiveResourceId]);
 
   /* Reopen the marks that were saved on this page last time. */
   useEffect(() => {
