@@ -42,19 +42,20 @@ function OpenActions({ target, onOpenPrivate, onOpenSynced }: {
         type="button"
         onClick={() => onOpenPrivate(target)}
         title="Open just for me — nothing is shared"
-        className="inline-flex h-7 items-center gap-1 rounded-full border border-slate-900/15 px-2.5 text-[11px] text-slate-700 hover:bg-slate-900/5 hover:text-slate-900"
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-slate-900/15 bg-white px-2.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
-        <Copy className="h-3 w-3" /> My Copy
+        <Copy className="h-3 w-3" /> Open
       </button>
       <button
         type="button"
         onClick={() => onOpenSynced(target)}
-        title="Put it on the shared classroom workspace"
-        className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-gold/60 bg-vcr-gold/20 px-2.5 text-[11px] text-slate-900"
+        title="Put it on the shared classroom workspace so the other person sees it too"
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-gold/60 bg-vcr-gold/20 px-2.5 text-[11px] font-medium text-slate-900 hover:bg-vcr-gold/30"
       >
-        <Share2 className="h-3 w-3" /> Synced Copy
+        <Share2 className="h-3 w-3" /> Share
       </button>
     </div>
+
   );
 }
 
