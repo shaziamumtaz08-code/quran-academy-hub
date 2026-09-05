@@ -655,6 +655,10 @@ export default function VcrRoom() {
         navigate(`/vcr/${studentId}?resource=${t.resourceId}`);
         return;
       }
+      /* The launcher is a launcher: once it has opened something, get out
+         of the way so the material owns the workspace. */
+      setRailKey(null);
+
       if (share) {
         void patchRoom({
           sync_enabled: true,
