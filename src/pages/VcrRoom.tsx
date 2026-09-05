@@ -9,6 +9,8 @@ import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
 } from '@/lib/myResources';
+import { getLessonAnnotations, saveLessonAnnotations } from '@/lib/lessonAnnotations';
+
 import {
   getSubmissionById, markUnderReview, saveSyncedReview, SUBMISSION_STATUS_LABEL,
   type AssignmentSubmission,
@@ -440,7 +442,28 @@ export default function VcrRoom() {
     })();
   }, [resource?.id, currentPage, loadStrokes]);
 
+  const saveLessonMarks = async () => {
+    if (!studentId || !user?.id) return;
+    setSavingMarks(true);
+    try {
+      await saveLessonAnnotations({
+        studentId,
+        contentType: content,
+        unit: currentPage,
+        strokes,
+        userId: user.id,
+        reference: { libraryItemId: docId ?? null },
+      });
+      toast({ title: 'Markings saved', description: 'They will be here when this page is opened again.' });
+    } catch (e: any) {
+      toast({ title: 'Could not save the markings', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingMarks(false);
+    }
+  };
+
   const saveMarks = async (alsoVersion: boolean) => {
+
     if (!resource || !user?.id) return;
     setSavingMarks(true);
     try {
@@ -553,6 +576,40 @@ export default function VcrRoom() {
     libraryItemId: adapter.libraryItemId ?? null,
   });
   const [jumpRequest, setJumpRequest] = useState<{ unit: number; nonce: number } | null>(null);
+
+  /* Qaida and Mushaf have no file behind them, so their markings are kept
+     against the lesson itself — reopened next time, and attributed to whoever
+     saved them. Library files keep using the personal-copy marks above. */
+  const isLessonContent = !resource && (content === 'qaida' || content === 'mushaf');
+  const loadedLessonMarksKey = useRef<string>('');
+  useEffect(() => {
+    if (!isLessonContent || !studentId) return;
+    const key = `${content}:${studentId}:${currentPage}`;
+    if (loadedLessonMarksKey.current === key) return;
+    loadedLessonMarksKey.current = key;
+    void (async () => {
+      const saved = await getLessonAnnotations(studentId, content, currentPage);
+      loadStrokes(saved as any);
+      if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+    })();
+  }, [isLessonContent, studentId, content, currentPage, loadStrokes]);
+
+  useEffect(() => {
+    if (!isLessonContent || !studentId || !user?.id || !canControl) return;
+    if (loadedLessonMarksKey.current !== `${content}:${studentId}:${currentPage}`) return;
+    const id = window.setTimeout(() => {
+      void saveLessonAnnotations({
+        studentId,
+        contentType: content,
+        unit: currentPage,
+        strokes,
+        userId: user.id,
+        reference: { libraryItemId: docId ?? null },
+      }).catch(() => {});
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canControl, docId]);
+
 
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
@@ -886,6 +943,24 @@ export default function VcrRoom() {
               )}
             </div>
           )}
+
+          {/* Qaida / Mushaf markings: autosaved, with a clear manual save too */}
+          {isLessonContent && canControl && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-xs text-vcr-chrome/70">
+              <span className="text-vcr-chrome/55">
+                Markings on this {content === 'qaida' ? 'Qaida' : 'Mushaf'} page are saved for this student and reopen next time.
+              </span>
+              <button
+                type="button"
+                disabled={savingMarks}
+                onClick={() => void saveLessonMarks()}
+                className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 transition-colors hover:text-vcr-chrome disabled:opacity-60"
+              >
+                <Save className="h-3.5 w-3.5" /> Save markings now
+              </button>
+            </div>
+          )}
+
 
           {/* Hand this shared work in as an assignment */}
           {canSubmitToAssignment && (
