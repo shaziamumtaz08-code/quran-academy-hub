@@ -12905,6 +12905,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vcr_lesson_annotations: {
+        Row: {
+          content_type: string
+          created_at: string
+          data: Json
+          id: string
+          reference: Json | null
+          student_id: string
+          unit: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          data?: Json
+          id?: string
+          reference?: Json | null
+          student_id: string
+          unit: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          reference?: Json | null
+          student_id?: string
+          unit?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       vcr_observer_scopes: {
         Row: {
           all_students: boolean
