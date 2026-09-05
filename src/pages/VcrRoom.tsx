@@ -31,6 +31,7 @@ import { useVcrViewSync } from '@/hooks/useVcrViewSync';
 import { VcrAppRail, type VcrRailKey } from '@/components/vcr/VcrAppRail';
 import { VcrAppPanel, type VcrOpenTarget } from '@/components/vcr/VcrAppPanel';
 import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
+import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
 import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
@@ -79,8 +80,17 @@ export default function VcrRoom() {
     return () => { cancelled = true; };
   }, [wantsObserver, studentId]);
 
-  /** The student viewing their own room: read-only mirror of the teacher's screen. */
-  const isFollower = !canControl && !!user?.id && user.id === studentId;
+  /**
+   * The shared classroom workspace. Loaded up front because whether the
+   * student mirrors the teacher depends on it: sharing OFF (the default) means
+   * she reads and reviews her own syllabus freely, with or without a teacher.
+   */
+  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
+  const synced = !!roomState?.sync_enabled;
+
+  /** Mirror the teacher's screen only while the shared workspace is on. */
+  const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
+
 
   const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
     roomId: studentId,
@@ -621,8 +631,7 @@ export default function VcrRoom() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
-  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
-  const synced = !!roomState?.sync_enabled;
+  const [recordingsOpen, setRecordingsOpen] = useState(false);
 
   const railPanelApp = railKey && !['whiteboard', 'call', 'recordings'].includes(railKey)
     ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
@@ -632,10 +641,12 @@ export default function VcrRoom() {
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     setLauncherOpen(false);
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
-    if (key === 'recordings') { navigate('/class-recordings'); return; }
+    /* Recordings stay inside the classroom — never a trip to another page. */
+    if (key === 'recordings') { setRecordingsOpen(true); setRailKey('recordings'); return; }
     if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
     setRailKey((prev) => (prev === key ? null : key));
-  }, [navigate]);
+  }, []);
+
 
 
   /** Put a target on my own screen, or on the shared classroom workspace. */
@@ -723,43 +734,59 @@ export default function VcrRoom() {
           <h1 className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-vcr-chrome sm:text-xl">
             {student?.full_name ?? 'Student'}
           </h1>
-          <span
-            className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[11px]',
-              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/60'
-            )}
-          >
-            {attendance ? `Attendance: ${attendance}` : 'Not marked'}
-          </span>
+          {attendance && (
+            <span className="shrink-0 rounded-full bg-vcr-emerald px-2 py-0.5 text-[11px] text-vcr-chrome">
+              {attendance}
+            </span>
+          )}
 
           <div className="ms-auto flex items-center gap-1.5">
-            {/* Sharing state — a small chip, never a card */}
-            <button
-              type="button"
-              onClick={() => void patchRoom({ sync_enabled: !synced })}
-              aria-pressed={synced}
-              title={synced ? 'Everyone in the room sees this workspace' : 'Only you can see what you open'}
-              className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
-                synced ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
-              )}
+            {/* One clear control: whose workspace am I looking at? */}
+            <div
+              role="tablist"
+              aria-label="Viewing mode"
+              className="flex items-center gap-0.5 rounded-full border border-vcr-chrome/15 bg-white/5 p-0.5"
             >
-              {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{synced ? 'Synced' : 'Private'}</span>
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!synced}
+                onClick={() => { if (synced) void patchRoom({ sync_enabled: false }); }}
+                title="Only you can see what you open here"
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
+                  !synced ? 'bg-vcr-chrome/90 font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                )}
+              >
+                <Lock className="h-3.5 w-3.5" /> My Copy
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={synced}
+                onClick={() => { if (!synced) void patchRoom({ sync_enabled: true }); }}
+                title="The other person in this class sees and works on the same workspace"
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
+                  synced ? 'bg-vcr-gold font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                )}
+              >
+                <Share2 className="h-3.5 w-3.5" /> Synced
+              </button>
+            </div>
             {user?.id && (
               <button
                 type="button"
                 onClick={() => setCallOpen((v) => !v)}
                 aria-pressed={callOpen}
                 title="Voice call"
+                aria-label="Voice call"
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  'inline-flex h-8 w-8 items-center justify-center rounded-full border',
                   callOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
                 )}
               >
                 <PhoneCall className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Call</span>
               </button>
             )}
             {canControl && (
@@ -768,16 +795,17 @@ export default function VcrRoom() {
                 onClick={() => setToolsOpen((v) => !v)}
                 aria-pressed={toolsOpen}
                 title="Lesson tools: notes, mark complete, attendance"
+                aria-label="Lesson tools"
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  'inline-flex h-8 w-8 items-center justify-center rounded-full border',
                   toolsOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
                 )}
               >
                 <ClipboardList className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Lesson tools</span>
               </button>
             )}
           </div>
+
         </div>
 
         {/* Voice call — compact, only when asked for */}
@@ -824,7 +852,7 @@ export default function VcrRoom() {
             )}
             <button
               type="button"
-              onClick={() => navigate('/class-recordings')}
+              onClick={() => setRecordingsOpen(true)}
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-2.5 text-[11px] text-vcr-chrome/60 hover:text-vcr-chrome"
             >
               <PlayCircle className="h-3.5 w-3.5" /> Recordings
@@ -1064,6 +1092,18 @@ export default function VcrRoom() {
               />
             </div>
           )}
+
+          {/* Class recordings — inside the classroom, closes back to the lesson */}
+          {recordingsOpen && studentId && (
+            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:max-w-lg">
+              <VcrRecordingsPanel
+                roomId={studentId}
+                canDownload={canControl}
+                onClose={() => { setRecordingsOpen(false); setRailKey(null); }}
+              />
+            </div>
+          )}
+
 
           {/* Lesson tools — a contextual drawer, not a permanent column */}
           {canControl && toolsOpen && (
