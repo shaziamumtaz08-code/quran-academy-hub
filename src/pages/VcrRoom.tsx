@@ -615,10 +615,8 @@ export default function VcrRoom() {
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
   const isMobile = useIsMobile();
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
-  const [railExpanded, setRailExpanded] = useState<boolean>(
-    () => localStorage.getItem('vcr-rail-expanded') !== '0',
-  );
-  useEffect(() => { if (isMobile) setRailExpanded(false); }, [isMobile]);
+  const [launcherOpen, setLauncherOpen] = useState(false);
+  useEffect(() => { if (isMobile) setLauncherOpen(false); }, [isMobile]);
   const [callOpen, setCallOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
