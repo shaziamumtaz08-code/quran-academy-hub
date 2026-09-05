@@ -554,6 +554,40 @@ export default function VcrRoom() {
   });
   const [jumpRequest, setJumpRequest] = useState<{ unit: number; nonce: number } | null>(null);
 
+  /* Qaida and Mushaf have no file behind them, so their markings are kept
+     against the lesson itself — reopened next time, and attributed to whoever
+     saved them. Library files keep using the personal-copy marks above. */
+  const isLessonContent = !resource && (content === 'qaida' || content === 'mushaf');
+  const loadedLessonMarksKey = useRef<string>('');
+  useEffect(() => {
+    if (!isLessonContent || !studentId) return;
+    const key = `${content}:${studentId}:${currentPage}`;
+    if (loadedLessonMarksKey.current === key) return;
+    loadedLessonMarksKey.current = key;
+    void (async () => {
+      const saved = await getLessonAnnotations(studentId, content, currentPage);
+      loadStrokes(saved as any);
+      if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+    })();
+  }, [isLessonContent, studentId, content, currentPage, loadStrokes]);
+
+  useEffect(() => {
+    if (!isLessonContent || !studentId || !user?.id || !canControl) return;
+    if (loadedLessonMarksKey.current !== `${content}:${studentId}:${currentPage}`) return;
+    const id = window.setTimeout(() => {
+      void saveLessonAnnotations({
+        studentId,
+        contentType: content,
+        unit: currentPage,
+        strokes,
+        userId: user.id,
+        reference: { libraryItemId: docId ?? null },
+      }).catch(() => {});
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canControl, docId]);
+
+
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
   const [railExpanded, setRailExpanded] = useState<boolean>(
