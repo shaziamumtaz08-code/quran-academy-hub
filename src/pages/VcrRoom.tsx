@@ -9,6 +9,11 @@ import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
 } from '@/lib/myResources';
+import {
+  getSubmissionById, markUnderReview, saveSyncedReview, SUBMISSION_STATUS_LABEL,
+  type AssignmentSubmission,
+} from '@/lib/syncedSubmissions';
+import { SubmitToAssignmentDialog, type SyncedSource } from '@/components/assignments/SubmitToAssignmentDialog';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
@@ -349,10 +354,44 @@ export default function VcrRoom() {
      copy only, so the original is never changed. */
   const [searchParams] = useSearchParams();
   const resourceId = searchParams.get('resource');
+  const submissionIdParam = searchParams.get('submission');
   const [resource, setResource] = useState<UserResource | null>(null);
   const [savingMarks, setSavingMarks] = useState(false);
   const loadedMarksKey = useRef<string>('');
-  const canMarkResource = !!resource && resource.user_id === user?.id;
+  const [sharedEditable, setSharedEditable] = useState(false);
+  const canMarkResource = !!resource && (resource.user_id === user?.id || sharedEditable);
+
+  /* Assignment-linked synced submission (teacher marking view). */
+  const [submission, setSubmission] = useState<AssignmentSubmission | null>(null);
+  const [reviewComment, setReviewComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
+  const [submitOpen, setSubmitOpen] = useState(false);
+
+  /* May I edit a copy someone shared with me (e.g. a handed-in assignment)? */
+  useEffect(() => {
+    setSharedEditable(false);
+    if (!resourceId || !user?.id) return;
+    void (async () => {
+      const { data } = await supabase
+        .from('user_resource_shares' as any)
+        .select('can_edit')
+        .eq('resource_id', resourceId)
+        .eq('shared_with', user.id)
+        .maybeSingle();
+      setSharedEditable(!!(data as any)?.can_edit);
+    })();
+  }, [resourceId, user?.id]);
+
+  useEffect(() => {
+    if (!submissionIdParam) { setSubmission(null); return; }
+    void getSubmissionById(submissionIdParam)
+      .then(async (s) => {
+        setSubmission(s);
+        if (s && canControl) await markUnderReview(s.id).catch(() => {});
+      })
+      .catch(() => setSubmission(null));
+  }, [submissionIdParam, canControl]);
+
 
   useEffect(() => {
     if (!resourceId) { setResource(null); return; }
@@ -413,6 +452,54 @@ export default function VcrRoom() {
       setSavingMarks(false);
     }
   };
+
+  /* Teacher marking an assignment-linked synced copy: marks auto-save onto the
+     assignment copy (never onto the student's own resource). */
+  useEffect(() => {
+    if (!submission?.synced_resource_id || !resource || !user?.id) return;
+    if (resource.id !== submission.synced_resource_id || !canMarkResource) return;
+    const id = window.setTimeout(() => {
+      void saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id }).catch(() => {});
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [strokes, currentPage, submission?.synced_resource_id, resource?.id, canMarkResource, user?.id]);
+
+  const saveReview = async (returnNow: boolean) => {
+    if (!submission || !submission.synced_resource_id || !user?.id) return;
+    setSavingReview(true);
+    try {
+      await saveAnnotations({ resourceId: submission.synced_resource_id, page: currentPage, strokes, userId: user.id });
+      await saveSyncedReview({
+        submissionId: submission.id,
+        resourceId: submission.synced_resource_id,
+        reviewerId: user.id,
+        comment: reviewComment.trim() || null,
+        returnNow,
+      });
+      const fresh = await getSubmissionById(submission.id);
+      setSubmission(fresh);
+      toast({
+        title: returnNow ? 'Returned to the student' : 'Review saved',
+        description: returnNow ? 'She can now see your checked copy.' : 'Your marks are kept as a new version.',
+      });
+    } catch (e: any) {
+      toast({ title: 'Could not save the review', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  /** What the student would hand in from this room right now. */
+  const syncedSource: SyncedSource | null = resource
+    ? { kind: 'resource', resource }
+    : content === 'doc' && activeDocId
+      ? { kind: 'doc', docId: activeDocId, title: activeDoc?.title ?? 'Class document' }
+      : content === 'qaida' || content === 'mushaf'
+        ? { kind: 'content', content, title: content === 'qaida' ? 'Noorani Qaida' : 'Mushaf' }
+        : null;
+  const canSubmitToAssignment = !canControl && !!user?.id && user.id === studentId && !!syncedSource;
+
+
 
   /* Followers show the board whenever the teacher has it open. */
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
