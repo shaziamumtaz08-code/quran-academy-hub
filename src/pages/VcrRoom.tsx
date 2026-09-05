@@ -1092,6 +1092,18 @@ export default function VcrRoom() {
             </div>
           )}
 
+          {/* Class recordings — inside the classroom, closes back to the lesson */}
+          {recordingsOpen && studentId && (
+            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:max-w-lg">
+              <VcrRecordingsPanel
+                roomId={studentId}
+                canDownload={canControl}
+                onClose={() => { setRecordingsOpen(false); setRailKey(null); }}
+              />
+            </div>
+          )}
+
+
           {/* Lesson tools — a contextual drawer, not a permanent column */}
           {canControl && toolsOpen && (
             <aside className="absolute inset-y-0 end-0 z-30 w-full max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-vcr-chrome/15 bg-[#0C1B1E]/95 p-4 shadow-2xl backdrop-blur">
