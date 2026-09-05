@@ -268,12 +268,14 @@ export default function FinancialStatements() {
           .filter((p: any) => !p.is_archived)
           .map((p: any) => `${p.teacher_id}|${p.salary_month}`),
       );
+      // salary_linked is payout-protected — merge it via the gated RPC.
+      const assignsWithPay = await withAssignmentPayouts(((assigns || []) as any[]));
       let missing = 0;
       months.forEach((m) => {
         const monthStart = `${m}-01`;
         const monthEnd = format(endOfMonth(parseISO(monthStart)), "yyyy-MM-dd");
         const teachers = new Set<string>();
-        (assigns || []).forEach((a: any) => {
+        assignsWithPay.forEach((a: any) => {
           if (a.salary_linked === false) return;
           if (assignmentMonthWindow(a, monthStart, monthEnd)) teachers.add(a.teacher_id);
         });
