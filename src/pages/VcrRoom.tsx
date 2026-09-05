@@ -719,9 +719,88 @@ export default function VcrRoom() {
 
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:flex-row">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
+        {/* The VCR's own app rail — separate from the LMS main sidebar */}
+        <VcrAppRail
+          active={railKey}
+          expanded={railExpanded}
+          onToggle={() => setRailExpanded((v) => { localStorage.setItem('vcr-rail-expanded', v ? '0' : '1'); return !v; })}
+          onSelect={onRailSelect}
+        />
+
         {/* Reading card — the lit centre of the room */}
         <main className="relative min-w-0 flex-1 space-y-3">
+          {/* Sharing / sync state */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/12 bg-black/20 px-3 py-2 text-xs text-vcr-chrome/70">
+            <button
+              type="button"
+              onClick={() => void patchRoom({ sync_enabled: !synced })}
+              aria-pressed={synced}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
+                synced ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/70',
+              )}
+            >
+              {synced ? 'Sharing is ON' : 'Sharing is OFF (private)'}
+            </button>
+            <span className="truncate">
+              {roomState?.presenter_id
+                ? `Presenting: ${roomState.presenter_name ?? 'Someone in the class'}`
+                : 'Nobody is presenting yet'}
+            </span>
+            {roomState?.app && (
+              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5">
+                On the shared workspace: {roomState.payload?.title ?? roomState.app}
+              </span>
+            )}
+            {canControl && roomState?.presenter_id && roomState.presenter_id !== user?.id && (
+              <button
+                type="button"
+                onClick={() => void takeOver()}
+                className="ms-auto inline-flex h-8 items-center rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-vcr-gold"
+              >
+                Take over presenting
+              </button>
+            )}
+          </div>
+
+          {/* Whatever app the rail is pointing at */}
+          {railPanelApp && (
+            <div className="rounded-2xl border border-vcr-chrome/12 bg-black/20 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/45">
+                  {railPanelApp === 'myspace' ? 'My Drive / My Resources' : railPanelApp}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setRailKey(null)}
+                  className="ms-auto text-xs text-vcr-chrome/50 hover:text-vcr-chrome"
+                >
+                  Hide
+                </button>
+              </div>
+              <VcrAppPanel
+                app={railPanelApp}
+                docs={docs as any}
+                docsLoading={loading}
+                docsError={null}
+                userId={user?.id ?? null}
+                onOpenPrivate={(t) => openTarget(t, false)}
+                onOpenSynced={(t) => openTarget(t, true)}
+                onUpload={canControl ? () => setUploadOpen(true) : undefined}
+              />
+            </div>
+          )}
+
+          {embed && (
+            <VcrEmbedViewer
+              title={embed.title}
+              src={embed.url}
+              synced={!!embed.synced}
+              onClose={() => setEmbed(null)}
+            />
+          )}
+
           {/* Personal working copy — mark it, save it, reopen it later */}
           {resource && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
