@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface AssignmentPayout {
   payout_amount: number | null;
   payout_type: string | null;
+  salary_linked: boolean | null;
 }
 
 /**
@@ -24,7 +25,11 @@ export async function fetchAssignmentPayouts(
     try {
       const { data } = await (supabase as any).rpc('get_assignment_payouts', { _assignment_ids: chunk });
       (data || []).forEach((row: any) =>
-        out.set(row.assignment_id, { payout_amount: row.payout_amount, payout_type: row.payout_type }),
+        out.set(row.assignment_id, {
+          payout_amount: row.payout_amount,
+          payout_type: row.payout_type,
+          salary_linked: row.salary_linked ?? null,
+        }),
       );
     } catch {
       /* not permitted — leave empty */
@@ -40,5 +45,6 @@ export async function withAssignmentPayouts<T extends { id: string }>(rows: T[])
     ...r,
     payout_amount: map.get(r.id)?.payout_amount ?? null,
     payout_type: map.get(r.id)?.payout_type ?? null,
+    salary_linked: map.get(r.id)?.salary_linked ?? null,
   }));
 }
