@@ -335,13 +335,24 @@ function SubmissionsDrawer({ open, onOpenChange, assignmentId, courseId }: {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="submitted">Submitted</SelectItem>
+                              <SelectItem value="under_review">Under review</SelectItem>
                               <SelectItem value="late">Late</SelectItem>
+                              <SelectItem value="reviewed">Reviewed &amp; returned</SelectItem>
                               <SelectItem value="graded">Graded</SelectItem>
                               <SelectItem value="missing">Missing</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
+
+                      {sub.submission_mode === 'synced' && sub.synced_resource_id && (
+                        <a
+                          href={`/vcr/${sub.student_id}?resource=${sub.synced_resource_id}&submission=${sub.id}`}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Paperclip className="h-3 w-3" /> Open the synced copy to mark it
+                        </a>
+                      )}
 
                       {sub.response_text && (
                         <div className="text-xs bg-muted/30 p-2 rounded">{sub.response_text}</div>
@@ -352,6 +363,7 @@ function SubmissionsDrawer({ open, onOpenChange, assignmentId, courseId }: {
                           <Paperclip className="h-3 w-3" /> {sub.file_name || 'Submitted file'}
                         </a>
                       )}
+
 
                       {sub.feedback && (
                         <div className="text-xs p-2 bg-primary/5 rounded border border-primary/10">

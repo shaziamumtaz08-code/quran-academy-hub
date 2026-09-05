@@ -385,7 +385,7 @@ export default function StudentCourseView() {
       const assignmentIds = assignments.map(a => a.id);
       if (!assignmentIds.length) return [];
       const { data } = await supabase.from('course_assignment_submissions')
-        .select('id, assignment_id, status, submitted_at, feedback, score, response_text, file_url, file_name')
+        .select('id, assignment_id, status, submitted_at, feedback, score, response_text, file_url, file_name, submission_mode, synced_resource_id')
         .eq('student_id', user!.id)
         .in('assignment_id', assignmentIds);
       return data || [];
@@ -1065,6 +1065,18 @@ export default function StudentCourseView() {
                     {sub?.status === 'submitted' && sub.submitted_at && (
                       <p className="text-[10px] text-muted-foreground">Submitted {format(new Date(sub.submitted_at), 'MMM d, h:mm a')}</p>
                     )}
+                    {sub?.status === 'under_review' && (
+                      <p className="text-[10px] text-muted-foreground">Your teacher is checking this now.</p>
+                    )}
+                    {(sub as any)?.submission_mode === 'synced' && (sub as any)?.synced_resource_id && (
+                      <a
+                        href={`/vcr/${user?.id}?resource=${(sub as any).synced_resource_id}&submission=${sub!.id}`}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <FileText className="h-3 w-3" /> Open the copy I handed in
+                      </a>
+                    )}
+
                     {sub?.status === 'graded' && (
                       <div className="text-xs space-y-1">
                         {(sub as any).score != null && <p className="font-semibold text-emerald-600">Score: {(sub as any).score}</p>}

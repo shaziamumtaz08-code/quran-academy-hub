@@ -1003,6 +1003,58 @@ export default function VcrRoom() {
               )}
             </div>
           )}
+
+          {/* Hand this shared work in as an assignment */}
+          {canSubmitToAssignment && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
+              <span className="text-xs">Finished this piece of work?</span>
+              <button
+                type="button"
+                onClick={() => setSubmitOpen(true)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold"
+              >
+                <ClipboardList className="h-3.5 w-3.5" /> Submit to assignment
+              </button>
+              <span className="text-[11px] text-vcr-chrome/50">Hands in a synced copy · your own copy stays private</span>
+            </div>
+          )}
+
+          {/* Assignment-linked synced submission — teacher marking bar */}
+          {submission && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-gold/30 bg-vcr-gold/5 px-3 py-2 text-sm text-vcr-chrome/80">
+              <span className="font-medium text-vcr-chrome">Assignment submission</span>
+              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 text-xs">
+                {SUBMISSION_STATUS_LABEL[submission.status] ?? submission.status}
+              </span>
+              {canControl && canMarkResource && (
+                <>
+                  <input
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Comment for the student (optional)"
+                    className="h-8 min-w-[12rem] flex-1 rounded-full border border-vcr-chrome/20 bg-black/30 px-3 text-xs text-vcr-chrome placeholder:text-vcr-chrome/40"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingReview}
+                    onClick={() => void saveReview(false)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs disabled:opacity-60"
+                  >
+                    <Save className="h-3.5 w-3.5" /> Save review
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingReview}
+                    onClick={() => void saveReview(true)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Save &amp; return to student
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <VcrBookmarkBar
             bookmarks={bookmarks}
             currentUnit={currentPage}
@@ -1115,6 +1167,22 @@ export default function VcrRoom() {
         defaultSyllabus
         onSaved={() => { void loadDocs(true); setContentMode('doc'); }}
       />
+
+      <SubmitToAssignmentDialog
+        open={submitOpen}
+        onOpenChange={setSubmitOpen}
+        studentId={studentId}
+        source={syncedSource}
+        syncedState={{
+          page: currentPage,
+          content,
+          docId: activeDocId ?? null,
+          resourceId: resource?.id ?? null,
+          synced: !!roomState?.sync_enabled,
+        }}
+        origin="vcr"
+      />
     </div>
+
   );
 }
