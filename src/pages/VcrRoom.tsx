@@ -663,22 +663,15 @@ export default function VcrRoom() {
           <h1 className="font-display text-2xl font-semibold tracking-tight text-vcr-chrome sm:text-3xl">
             {student?.full_name ?? 'Student'}
           </h1>
-          <span className="rounded-full border border-vcr-gold/40 bg-vcr-gold/10 px-3 py-1 text-base text-vcr-gold">
-            {currentItem ? `${currentItem.level} · ${currentItem.title}` : 'No syllabus item set'}
-          </span>
-          {progress?.current_page_or_ayah && (
-            <span className="font-mono text-sm tabular-nums text-vcr-chrome/70" dir="auto">
-              Resume: {progress.current_page_or_ayah}
-            </span>
-          )}
           <span
             className={cn(
-              'rounded-full px-3 py-1 text-sm',
-              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/80'
+              'rounded-full px-2.5 py-0.5 text-xs',
+              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/70'
             )}
           >
             {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
           </span>
+
 
         </div>
         {/* Row 1 — CLASS CONTENT: Mushaf, Noorani Qaida or a Library/syllabus file */}
