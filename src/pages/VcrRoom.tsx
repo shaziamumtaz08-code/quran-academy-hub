@@ -767,7 +767,44 @@ export default function VcrRoom() {
             )}
           </div>
 
+          {/* Compact page tools — annotation and recording preference only.
+              Opening content lives in the app rail. */}
+          {canControl && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-vcr-chrome/60">
+              <button
+                type="button"
+                onClick={() => { setBoardMode('annotate'); setWhiteboardOn((v) => !(v && boardMode === 'annotate')); }}
+                aria-pressed={whiteboardOn && boardMode === 'annotate'}
+                title="Draw on top of this page"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
+                  whiteboardOn && boardMode === 'annotate'
+                    ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
+                    : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                )}
+              >
+                <PenLine className="h-3.5 w-3.5" /> Annotate this page
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoRecord((v) => { localStorage.setItem('vcr-auto-record', v ? '0' : '1'); return !v; })}
+                aria-pressed={autoRecord}
+                title="Ask for recording consent automatically when a call connects"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
+                  autoRecord ? 'border-red-400/60 bg-red-500/15 text-red-200' : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                )}
+              >
+                <Circle className="h-3 w-3" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
+              </button>
+              <span className="truncate text-vcr-chrome/40">
+                {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
+              </span>
+            </div>
+          )}
+
           {/* Whatever app the rail is pointing at */}
+
           {railPanelApp && (
             <div className="rounded-2xl border border-vcr-chrome/12 bg-black/20 p-3">
               <div className="mb-2 flex items-center gap-2">
