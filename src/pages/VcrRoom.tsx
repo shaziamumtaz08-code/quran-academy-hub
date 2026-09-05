@@ -21,6 +21,11 @@ import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
 
 import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
+import { VcrAppRail, type VcrRailKey } from '@/components/vcr/VcrAppRail';
+import { VcrAppPanel, type VcrOpenTarget } from '@/components/vcr/VcrAppPanel';
+import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
+import { useVcrRoomState } from '@/hooks/useVcrRoomState';
+
 
 
 
