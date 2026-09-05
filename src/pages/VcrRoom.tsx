@@ -633,8 +633,10 @@ export default function VcrRoom() {
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
     if (key === 'recordings') { navigate('/class-recordings'); return; }
+    if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
     setRailKey((prev) => (prev === key ? null : key));
   }, [navigate]);
+
 
   /** Put a target on my own screen, or on the shared classroom workspace. */
   const openTarget = React.useCallback(
