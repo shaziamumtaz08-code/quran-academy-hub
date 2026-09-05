@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         continue;
       }
       const { error: upErr } = await admin
-        .from("profiles").update({ force_password_reset: true }).eq("id", p.id);
+        .from("profiles").update({ force_password_reset: false }).eq("id", p.id);
       row.fixed = !upErr;
       if (upErr) row.error = upErr.message;
       results.push(row);

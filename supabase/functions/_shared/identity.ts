@@ -280,7 +280,7 @@ export async function resolvePerson(
     email: loginEmail,
     whatsapp_number: opts.phone || null,
     ...(opts.profile || {}),
-    ...(usedDefaultPassword ? { force_password_reset: true } : {}),
+    ...(usedDefaultPassword ? { force_password_reset: false } : {}),
   };
   Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
