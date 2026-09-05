@@ -1741,7 +1741,11 @@ export type Database = {
           score: number | null
           status: string
           student_id: string
+          submission_mode: string
           submitted_at: string
+          synced_origin: string | null
+          synced_resource_id: string | null
+          synced_state: Json
           updated_at: string
         }
         Insert: {
@@ -1759,7 +1763,11 @@ export type Database = {
           score?: number | null
           status?: string
           student_id: string
+          submission_mode?: string
           submitted_at?: string
+          synced_origin?: string | null
+          synced_resource_id?: string | null
+          synced_state?: Json
           updated_at?: string
         }
         Update: {
@@ -1777,7 +1785,11 @@ export type Database = {
           score?: number | null
           status?: string
           student_id?: string
+          submission_mode?: string
           submitted_at?: string
+          synced_origin?: string | null
+          synced_resource_id?: string | null
+          synced_state?: Json
           updated_at?: string
         }
         Relationships: [
@@ -1786,6 +1798,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "course_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_assignment_submissions_synced_resource_id_fkey"
+            columns: ["synced_resource_id"]
+            isOneToOne: false
+            referencedRelation: "user_resources"
             referencedColumns: ["id"]
           },
         ]
