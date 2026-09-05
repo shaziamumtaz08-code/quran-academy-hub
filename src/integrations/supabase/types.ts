@@ -14418,6 +14418,7 @@ export type Database = {
           assignment_id: string
           payout_amount: number
           payout_type: string
+          salary_linked: boolean
         }[]
       }
       get_course_quiz_questions_for_student: {
