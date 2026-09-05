@@ -9,6 +9,8 @@ import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
 } from '@/lib/myResources';
+import { getLessonAnnotations, saveLessonAnnotations } from '@/lib/lessonAnnotations';
+
 import {
   getSubmissionById, markUnderReview, saveSyncedReview, SUBMISSION_STATUS_LABEL,
   type AssignmentSubmission,
