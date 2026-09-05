@@ -837,10 +837,12 @@ export default function VcrRoom() {
         {/* The VCR's own app rail — separate from the LMS main sidebar */}
         <VcrAppRail
           active={railKey}
-          expanded={railExpanded && !isMobile}
-          onToggle={() => setRailExpanded((v) => { localStorage.setItem('vcr-rail-expanded', v ? '0' : '1'); return !v; })}
+          open={launcherOpen}
+          onToggle={() => setLauncherOpen((v) => !v)}
           onSelect={onRailSelect}
+          isMobile={isMobile}
         />
+
 
         {/* The workspace — the material is the page */}
         <main className="relative min-w-0 flex-1">
