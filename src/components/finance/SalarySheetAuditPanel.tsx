@@ -78,7 +78,7 @@ export function SalarySheetAuditPanel({ onOpenMonth }: Props) {
           .select('id, teacher_id, salary_month, status, net_salary, base_salary, calculation_json, is_archived, voided_at'),
         supabase
           .from('student_teacher_assignments')
-          .select('id, teacher_id, student_id, status, salary_linked, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)')
+          .select('id, teacher_id, student_id, status, effective_from_date, effective_to_date, status_effective_date, start_date, profiles!student_teacher_assignments_student_id_fkey(full_name)')
           .in('status', [...SALARY_ASSIGNMENT_STATUSES]),
       ]);
 
