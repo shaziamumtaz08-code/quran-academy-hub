@@ -500,7 +500,6 @@ export default function MyResources() {
       <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} folderId={folderId} />
       <VersionsDialog resource={versionsFor} onClose={() => setVersionsFor(null)} />
       <ShareDialog resource={shareFor} onClose={() => setShareFor(null)} />
-    </div>
 
       <SubmitToAssignmentDialog
         open={!!submitFor}
@@ -512,3 +511,4 @@ export default function MyResources() {
     </div>
   );
 }
+
