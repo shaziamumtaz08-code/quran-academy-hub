@@ -367,9 +367,14 @@ export default function VcrRoom() {
   const [savingReview, setSavingReview] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
 
+  /* Opening an assignment link without an explicit resource: load the copy the
+     student handed in, so the teacher can mark it straight away. */
+  const effectiveResourceId = resourceId ?? submission?.synced_resource_id ?? null;
+
   /* May I edit a copy someone shared with me (e.g. a handed-in assignment)? */
   useEffect(() => {
     setSharedEditable(false);
+    const resourceId = effectiveResourceId;
     if (!resourceId || !user?.id) return;
     void (async () => {
       const { data } = await supabase
@@ -380,7 +385,7 @@ export default function VcrRoom() {
         .maybeSingle();
       setSharedEditable(!!(data as any)?.can_edit);
     })();
-  }, [resourceId, user?.id]);
+  }, [effectiveResourceId, user?.id]);
 
   useEffect(() => {
     if (!submissionIdParam) { setSubmission(null); return; }
@@ -392,10 +397,6 @@ export default function VcrRoom() {
       .catch(() => setSubmission(null));
   }, [submissionIdParam, canControl]);
 
-
-  /* Opening an assignment link without an explicit resource: load the copy the
-     student handed in, so the teacher can mark it straight away. */
-  const effectiveResourceId = resourceId ?? submission?.synced_resource_id ?? null;
 
   useEffect(() => {
     const resourceId = effectiveResourceId;
