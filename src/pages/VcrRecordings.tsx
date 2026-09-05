@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Play, Pause, Download, ShieldCheck, Clock, CloudUpload } from 'lucide-react';
+import { Loader2, Play, Pause, Download, ShieldCheck, Clock, CloudUpload, RefreshCw } from 'lucide-react';
 
 interface RecordingRow {
   id: string;
@@ -139,17 +139,23 @@ export default function VcrRecordings() {
     <div className="mx-auto w-full max-w-4xl px-4 py-6 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Class Recordings</h1>
+          <h1 className="text-xl font-semibold text-foreground">In-App Class Call Recordings</h1>
           <p className="text-sm text-muted-foreground">
-            Audio recordings from in-app class calls. Only people on the call (and admins) can see them.
+            Saved VCR audio calls appear here after recording stops and finishes saving. Only people on the call (and admins) can see them.
           </p>
         </div>
-        {isAdmin && (
-          <Button variant="outline" size="sm" onClick={backupToDrive} disabled={backingUp}>
-            {backingUp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CloudUpload className="h-4 w-4 mr-2" />}
-            Backup to Google Drive
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Refresh recordings
           </Button>
-        )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={backupToDrive} disabled={backingUp}>
+              {backingUp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CloudUpload className="h-4 w-4 mr-2" />}
+              Backup to Google Drive
+            </Button>
+          )}
+        </div>
       </div>
 
       {audioUrl && (
@@ -193,11 +199,12 @@ export default function VcrRecordings() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="outline" disabled={!ready || busyId === r.id} onClick={() => togglePlay(r)}>
-                    {busyId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : playingId === r.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    {busyId === r.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : playingId === r.id ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                    {playingId === r.id ? 'Pause recording' : 'Play recording'}
                   </Button>
                   {(isStaff || isAdmin) && (
-                    <Button size="sm" variant="ghost" disabled={!ready || busyId === r.id} onClick={() => download(r)} title="Download">
-                      <Download className="h-4 w-4" />
+                    <Button size="sm" variant="ghost" disabled={!ready || busyId === r.id} onClick={() => download(r)}>
+                      <Download className="h-4 w-4 mr-2" /> Download recording
                     </Button>
                   )}
                 </div>
