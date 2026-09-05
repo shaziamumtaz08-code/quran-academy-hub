@@ -385,7 +385,7 @@ export default function StudentCourseView() {
       const assignmentIds = assignments.map(a => a.id);
       if (!assignmentIds.length) return [];
       const { data } = await supabase.from('course_assignment_submissions')
-        .select('id, assignment_id, status, submitted_at, feedback, score, response_text, file_url, file_name')
+        .select('id, assignment_id, status, submitted_at, feedback, score, response_text, file_url, file_name, submission_mode, synced_resource_id')
         .eq('student_id', user!.id)
         .in('assignment_id', assignmentIds);
       return data || [];
