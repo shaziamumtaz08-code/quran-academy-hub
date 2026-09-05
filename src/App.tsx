@@ -200,7 +200,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       return false;
     }
   })();
-  if (profile?.force_password_reset && !isImpersonationTab) {
+// Password-change prompt is intentionally disabled: every account uses the
+  // shared academy password until an admin asks for the change flow back.
+  const FORCE_PASSWORD_GATE_ENABLED = false;
+  if (FORCE_PASSWORD_GATE_ENABLED && profile?.force_password_reset && !isImpersonationTab) {
     return <ForcePasswordChange />;
   }
 
