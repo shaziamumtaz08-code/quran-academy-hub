@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, Circle, ClipboardList, ListOrdered, PenLine, PlayCircle, Save } from 'lucide-react';
+import { ArrowLeft, Bookmark, CheckCircle2, Circle, ClipboardList, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Save, Share2, X } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -36,6 +36,7 @@ import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
 
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { goBackToClassRoom } from '@/lib/classRoomBack';
 
@@ -612,10 +613,15 @@ export default function VcrRoom() {
 
 
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
+  const isMobile = useIsMobile();
   const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
   const [railExpanded, setRailExpanded] = useState<boolean>(
     () => localStorage.getItem('vcr-rail-expanded') !== '0',
   );
+  useEffect(() => { if (isMobile) setRailExpanded(false); }, [isMobile]);
+  const [callOpen, setCallOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
   const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
   const synced = !!roomState?.sync_enabled;
@@ -624,11 +630,14 @@ export default function VcrRoom() {
     ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
     : null;
 
+
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
     if (key === 'recordings') { navigate('/class-recordings'); return; }
+    if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
     setRailKey((prev) => (prev === key ? null : key));
   }, [navigate]);
+
 
   /** Put a target on my own screen, or on the shared classroom workspace. */
   const openTarget = React.useCallback(
@@ -647,6 +656,10 @@ export default function VcrRoom() {
         navigate(`/vcr/${studentId}?resource=${t.resourceId}`);
         return;
       }
+      /* The launcher is a launcher: once it has opened something, get out
+         of the way so the material owns the workspace. */
+      setRailKey(null);
+
       if (share) {
         void patchRoom({
           sync_enabled: true,
@@ -694,64 +707,91 @@ export default function VcrRoom() {
 
   return (
     <div className={cn('flex min-h-screen flex-col text-vcr-chrome', content === 'qaida' ? 'qaida-room' : 'vcr-canvas')}>
-      {/* Header — stays legible when screen-shared */}
+      {/* Header — one compact line: who the class is with, plus room state */}
       <header className="sticky top-0 z-20 border-b border-vcr-chrome/10 bg-[#0C1B1E]/90 backdrop-blur">
-        <nav
-          aria-label="Breadcrumb"
-          className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 px-4 pt-3 text-xs text-vcr-chrome/55 sm:px-6"
-        >
-          <button type="button" onClick={() => navigate('/dashboard')} className="transition-colors hover:text-vcr-chrome">Home</button>
-          <span aria-hidden>›</span>
-          {canControl && (
-            <>
-              <button type="button" onClick={() => navigate('/class-room')} className="transition-colors hover:text-vcr-chrome">Class Room</button>
-              <span aria-hidden>›</span>
-              <span className="truncate text-vcr-chrome/80">{student?.full_name ?? 'Student'}</span>
-              <span aria-hidden>›</span>
-            </>
-          )}
-          <span className="font-medium text-vcr-chrome">Virtual Class Room</span>
-        </nav>
-        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 px-3 py-2 sm:px-5">
           {canControl && (
             <button
               type="button"
               onClick={() => goBackToClassRoom(navigate)}
-
-              className="vcr-btn inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm"
+              title="Back to Class Room"
+              aria-label="Back to Class Room"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-vcr-chrome/60 hover:bg-white/5 hover:text-vcr-chrome"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Class Room
+              <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-vcr-chrome sm:text-3xl">
+          <h1 className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-vcr-chrome sm:text-xl">
             {student?.full_name ?? 'Student'}
           </h1>
           <span
             className={cn(
-              'rounded-full px-2.5 py-0.5 text-xs',
-              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/70'
+              'shrink-0 rounded-full px-2 py-0.5 text-[11px]',
+              attendance ? 'bg-vcr-emerald text-vcr-chrome' : 'bg-vcr-oxide/25 text-vcr-chrome/60'
             )}
           >
-            {attendance ? `Attendance: ${attendance}` : 'Attendance: not marked'}
+            {attendance ? `Attendance: ${attendance}` : 'Not marked'}
           </span>
 
-
+          <div className="ms-auto flex items-center gap-1.5">
+            {/* Sharing state — a small chip, never a card */}
+            <button
+              type="button"
+              onClick={() => void patchRoom({ sync_enabled: !synced })}
+              aria-pressed={synced}
+              title={synced ? 'Everyone in the room sees this workspace' : 'Only you can see what you open'}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                synced ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
+              )}
+            >
+              {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{synced ? 'Synced' : 'Private'}</span>
+            </button>
+            {user?.id && (
+              <button
+                type="button"
+                onClick={() => setCallOpen((v) => !v)}
+                aria-pressed={callOpen}
+                title="Voice call"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  callOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
+                )}
+              >
+                <PhoneCall className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Call</span>
+              </button>
+            )}
+            {canControl && (
+              <button
+                type="button"
+                onClick={() => setToolsOpen((v) => !v)}
+                aria-pressed={toolsOpen}
+                title="Lesson tools: notes, mark complete, attendance"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs',
+                  toolsOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
+                )}
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Lesson tools</span>
+              </button>
+            )}
+          </div>
         </div>
-        {/* Content and tools now live in the VCR app rail and the reader strip
-            below, so the header stays clean and never duplicates them. */}
 
-        {/* Row 3 — CALL: in-app audio, additive to the existing Zoom option */}
-        {user?.id && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-3 border-t border-vcr-chrome/10 px-4 py-2 pb-3 sm:px-6">
-            <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/40">Call</span>
+        {/* Voice call — compact, only when asked for */}
+        {callOpen && user?.id && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-3 py-2 sm:px-5">
             {wantsObserver && mayObserve === null && (
-              <span className="text-sm text-vcr-chrome/60">Checking your sit-in access…</span>
+              <span className="text-xs text-vcr-chrome/60">Checking your sit-in access…</span>
             )}
             {wantsObserver && mayObserve === false && (
-              <span className="text-sm text-vcr-chrome/60">
+              <span className="text-xs text-vcr-chrome/60">
                 {observeError
                   ? `Sit-in unavailable: ${observeError}`
-                  : 'You do not have sit-in access for this student yet. Ask a super admin to grant it in Class Call Observers.'}
+                  : 'You do not have sit-in access for this student yet.'}
               </span>
             )}
             {(!wantsObserver || mayObserve === true) && (
@@ -769,107 +809,224 @@ export default function VcrRoom() {
                 observer={wantsObserver}
               />
             )}
-            {!canControl && (
-              <button
-                type="button"
-                onClick={() => navigate('/class-recordings')}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-4 text-sm text-vcr-chrome/65 transition-colors hover:text-vcr-chrome"
-              >
-                <PlayCircle className="h-4 w-4" /> My class recordings
-              </button>
-            )}
-          </div>
-        )}
-
-
-
-      </header>
-
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
-        {/* The VCR's own app rail — separate from the LMS main sidebar */}
-        <VcrAppRail
-          active={railKey}
-          expanded={railExpanded}
-          onToggle={() => setRailExpanded((v) => { localStorage.setItem('vcr-rail-expanded', v ? '0' : '1'); return !v; })}
-          onSelect={onRailSelect}
-        />
-
-        {/* Reading card — the lit centre of the room */}
-        <main className="relative min-w-0 flex-1 space-y-3">
-          {/* Sharing / sync state */}
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/12 bg-black/20 px-3 py-2 text-xs text-vcr-chrome/70">
-            <button
-              type="button"
-              onClick={() => void patchRoom({ sync_enabled: !synced })}
-              aria-pressed={synced}
-              className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
-                synced ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/70',
-              )}
-            >
-              {synced ? 'Sharing is ON' : 'Sharing is OFF (private)'}
-            </button>
-            <span className="truncate">
-              {roomState?.presenter_id
-                ? `Presenting: ${roomState.presenter_name ?? 'Someone in the class'}`
-                : 'Nobody is presenting yet'}
-            </span>
-            {roomState?.app && (
-              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5">
-                On the shared workspace: {roomState.payload?.title ?? roomState.app}
-              </span>
-            )}
-            {canControl && roomState?.presenter_id && roomState.presenter_id !== user?.id && (
-              <button
-                type="button"
-                onClick={() => void takeOver()}
-                className="ms-auto inline-flex h-8 items-center rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-vcr-gold"
-              >
-                Take over presenting
-              </button>
-            )}
-          </div>
-
-          {/* Compact page tools — annotation and recording preference only.
-              Opening content lives in the app rail. */}
-          {canControl && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-vcr-chrome/60">
-              <button
-                type="button"
-                onClick={() => { setBoardMode('annotate'); setWhiteboardOn((v) => !(v && boardMode === 'annotate')); }}
-                aria-pressed={whiteboardOn && boardMode === 'annotate'}
-                title="Draw on top of this page"
-                className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
-                  whiteboardOn && boardMode === 'annotate'
-                    ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
-                    : 'border-vcr-chrome/20 hover:text-vcr-chrome',
-                )}
-              >
-                <PenLine className="h-3.5 w-3.5" /> Annotate this page
-              </button>
+            {canControl && (
               <button
                 type="button"
                 onClick={() => setAutoRecord((v) => { localStorage.setItem('vcr-auto-record', v ? '0' : '1'); return !v; })}
                 aria-pressed={autoRecord}
                 title="Ask for recording consent automatically when a call connects"
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3',
-                  autoRecord ? 'border-red-400/60 bg-red-500/15 text-red-200' : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px]',
+                  autoRecord ? 'border-red-400/60 bg-red-500/15 text-red-200' : 'border-vcr-chrome/20 text-vcr-chrome/60',
                 )}
               >
                 <Circle className="h-3 w-3" /> {autoRecord ? 'Auto-record on' : 'Auto-record off'}
               </button>
-              <span className="truncate text-vcr-chrome/40">
-                {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/class-recordings')}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-2.5 text-[11px] text-vcr-chrome/60 hover:text-vcr-chrome"
+            >
+              <PlayCircle className="h-3.5 w-3.5" /> Recordings
+            </button>
+          </div>
+        )}
+      </header>
+
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
+        {/* The VCR's own app rail — separate from the LMS main sidebar */}
+        <VcrAppRail
+          active={railKey}
+          expanded={railExpanded && !isMobile}
+          onToggle={() => setRailExpanded((v) => { localStorage.setItem('vcr-rail-expanded', v ? '0' : '1'); return !v; })}
+          onSelect={onRailSelect}
+        />
+
+        {/* The workspace — the material is the page */}
+        <main className="relative min-w-0 flex-1">
+          {/* One slim toolbar over the material */}
+          <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
+            <span className="truncate font-medium text-vcr-chrome/75">
+              {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
+            </span>
+            {roomState?.presenter_id && (
+              <span className="truncate text-vcr-chrome/45">
+                · presenting: {roomState.presenter_name ?? 'someone in the class'}
               </span>
+            )}
+            {canControl && roomState?.presenter_id && roomState.presenter_id !== user?.id && (
+              <button
+                type="button"
+                onClick={() => void takeOver()}
+                className="rounded-full border border-vcr-gold/50 px-2 py-0.5 text-vcr-gold"
+              >
+                Take over
+              </button>
+            )}
+
+            <span className="ms-auto flex items-center gap-1.5">
+              {canControl && (
+                <button
+                  type="button"
+                  onClick={() => { setBoardMode('annotate'); setWhiteboardOn((v) => !(v && boardMode === 'annotate')); }}
+                  aria-pressed={whiteboardOn && boardMode === 'annotate'}
+                  title="Draw on top of this page"
+                  className={cn(
+                    'inline-flex h-7 items-center gap-1 rounded-full border px-2',
+                    whiteboardOn && boardMode === 'annotate'
+                      ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
+                      : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                  )}
+                >
+                  <PenLine className="h-3.5 w-3.5" /> Annotate
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setBookmarksOpen((v) => !v)}
+                aria-pressed={bookmarksOpen}
+                title="Bookmarks"
+                className={cn(
+                  'inline-flex h-7 items-center gap-1 rounded-full border px-2',
+                  bookmarksOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                )}
+              >
+                <Bookmark className="h-3.5 w-3.5" /> {bookmarks.length || ''}
+              </button>
+              {canSubmitToAssignment && (
+                <button
+                  type="button"
+                  onClick={() => setSubmitOpen(true)}
+                  title="Hand this work in — your own copy stays private"
+                  className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-2 text-vcr-gold"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" /> Submit
+                </button>
+              )}
+            </span>
+          </div>
+
+          {/* Bookmarks — a small panel, only when opened */}
+          {bookmarksOpen && (
+            <div className="mb-2">
+              <VcrBookmarkBar
+                bookmarks={bookmarks}
+                currentUnit={currentPage}
+                unitNoun={adapter.unitNoun}
+                canAdd={!isFollower}
+                onAdd={(u) => void addBookmark(u)}
+                onOpen={(u) => { setJumpRequest({ unit: u, nonce: Date.now() }); setBookmarksOpen(false); }}
+                onRemove={(id) => void removeBookmark(id)}
+              />
             </div>
           )}
 
-          {/* Whatever app the rail is pointing at */}
+          {/* Personal working copy — one slim line, marks autosave */}
+          {resource && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-vcr-chrome/60">
+              <span className="truncate text-vcr-chrome/80">{resource.title}</span>
+              <span className="text-vcr-chrome/40">
+                {resource.kind === 'copy' ? 'My copy' : 'Linked to Library'}
+                {resource.current_version > 0 ? ` · v${resource.current_version}` : ''}
+              </span>
+              {canMarkResource ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(false)}
+                    className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 hover:text-vcr-chrome disabled:opacity-60"
+                  >
+                    Save marks
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingMarks}
+                    onClick={() => void saveMarks(true)}
+                    className="rounded-full border border-vcr-gold/50 px-2 py-0.5 text-vcr-gold disabled:opacity-60"
+                  >
+                    Save as new version
+                  </button>
+                </>
+              ) : (
+                <span className="text-vcr-chrome/45">Shared with you · read-only</span>
+              )}
+            </div>
+          )}
 
+          {/* Assignment-linked synced submission — teacher marking strip */}
+          {submission && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-vcr-gold/25 bg-vcr-gold/5 px-2.5 py-1.5 text-[11px] text-vcr-chrome/75">
+              <span className="font-medium text-vcr-chrome">Assignment</span>
+              <span className="text-vcr-chrome/55">{SUBMISSION_STATUS_LABEL[submission.status] ?? submission.status}</span>
+              {canControl && canMarkResource && (
+                <>
+                  <input
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Comment for the student (optional)"
+                    className="h-7 min-w-[10rem] flex-1 rounded-full border border-vcr-chrome/20 bg-black/30 px-2.5 text-[11px] text-vcr-chrome placeholder:text-vcr-chrome/40"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingReview}
+                    onClick={() => void saveReview(false)}
+                    className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 disabled:opacity-60"
+                  >
+                    Save review
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingReview}
+                    onClick={() => void saveReview(true)}
+                    className="rounded-full border border-vcr-gold/50 px-2 py-0.5 text-vcr-gold disabled:opacity-60"
+                  >
+                    Save &amp; return
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {embed ? (
+            <VcrEmbedViewer
+              title={embed.title}
+              src={embed.url}
+              synced={!!embed.synced}
+              onClose={() => setEmbed(null)}
+            />
+          ) : (
+            <VcrReader
+              key={`${content}:${activeDocId ?? 'none'}`}
+              adapter={adapter}
+              initialUnit={content === 'doc' ? 1 : resumePage}
+              canControl={canControl}
+              turnSignal={turnSignal}
+              isFollower={isFollower}
+              followState={remoteState}
+              onViewChange={publishView}
+              onUnitChange={(p) => setCurrentPage(p)}
+              jumpRequest={jumpRequest}
+            />
+          )}
+
+          {/* Shared whiteboard layer — teacher draws, student mirrors live */}
+          {whiteboardVisible && (
+            <VcrWhiteboard
+              strokes={strokes}
+              mode={whiteboardMode}
+              canDraw={canControl}
+              onStroke={pushStroke}
+              onUndo={undoStroke}
+              onClear={clearBoard}
+              onClose={() => setWhiteboardOn(false)}
+            />
+          )}
+
+          {/* App launcher content — floats over the workspace, never pushes it */}
           {railPanelApp && (
-            <div className="rounded-2xl border border-vcr-chrome/12 bg-black/20 p-3">
+            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-vcr-chrome/15 bg-[#0C1B1E]/95 p-3 shadow-2xl backdrop-blur sm:max-w-lg">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-vcr-chrome/45">
                   {railPanelApp === 'myspace' ? 'My Drive / My Resources' : railPanelApp}
@@ -877,9 +1034,10 @@ export default function VcrRoom() {
                 <button
                   type="button"
                   onClick={() => setRailKey(null)}
-                  className="ms-auto text-xs text-vcr-chrome/50 hover:text-vcr-chrome"
+                  aria-label="Close"
+                  className="ms-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-vcr-chrome/50 hover:bg-white/5 hover:text-vcr-chrome"
                 >
-                  Hide
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               <VcrAppPanel
@@ -895,210 +1053,74 @@ export default function VcrRoom() {
             </div>
           )}
 
-          {embed && (
-            <VcrEmbedViewer
-              title={embed.title}
-              src={embed.url}
-              synced={!!embed.synced}
-              onClose={() => setEmbed(null)}
-            />
-          )}
+          {/* Lesson tools — a contextual drawer, not a permanent column */}
+          {canControl && toolsOpen && (
+            <aside className="absolute inset-y-0 end-0 z-30 w-full max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-vcr-chrome/15 bg-[#0C1B1E]/95 p-4 shadow-2xl backdrop-blur">
+              <div className="flex items-center gap-2">
+                <span className="font-display text-base text-vcr-chrome">Lesson tools</span>
+                <button
+                  type="button"
+                  onClick={() => setToolsOpen(false)}
+                  aria-label="Close lesson tools"
+                  className="ms-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-vcr-chrome/50 hover:bg-white/5 hover:text-vcr-chrome"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-          {/* Personal working copy — mark it, save it, reopen it later */}
-          {resource && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
-              <span className="truncate font-medium text-vcr-chrome">{resource.title}</span>
-              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 text-xs">
-                {resource.kind === 'copy' ? 'My copy' : 'Linked to Library'}
-                {resource.current_version > 0 ? ` · v${resource.current_version}` : ''}
-              </span>
-              {canMarkResource ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setBoardMode('annotate'); setWhiteboardOn(true); }}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome"
-                  >
-                    <PenLine className="h-3.5 w-3.5" /> Mark this page
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingMarks}
-                    onClick={() => void saveMarks(false)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs transition-colors hover:text-vcr-chrome disabled:opacity-60"
-                  >
-                    <Save className="h-3.5 w-3.5" /> Save marks
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingMarks}
-                    onClick={() => void saveMarks(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold disabled:opacity-60"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Save as new version
-                  </button>
-                </>
-              ) : (
-                <span className="text-xs text-vcr-chrome/55">Shared with you · marks are read-only</span>
-              )}
-            </div>
-          )}
+              <textarea
+                value={notes}
+                onChange={(e) => onNotes(e.target.value)}
+                rows={6}
+                placeholder="Private notes — what to practise before the next class…"
+                className="w-full resize-y rounded-xl border border-vcr-chrome/15 bg-[#0A1618] p-3 text-sm text-vcr-chrome placeholder:text-vcr-chrome/35 focus:border-vcr-gold/60 focus:outline-none"
+              />
+              <p className="font-mono text-[11px] text-vcr-chrome/40">
+                {notesSaved ? 'Saved · never shown to the student or parent' : 'Saving…'}
+              </p>
 
-          {/* Qaida / Mushaf markings: autosaved, with a clear manual save too */}
-          {isLessonContent && canControl && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-xs text-vcr-chrome/70">
-              <span className="text-vcr-chrome/55">
-                Markings on this {content === 'qaida' ? 'Qaida' : 'Mushaf'} page are saved for this student and reopen next time.
-              </span>
+              <p className="flex items-center gap-2 text-xs text-vcr-chrome/60">
+                <ListOrdered className="h-3.5 w-3.5 text-vcr-gold" />
+                Next: {nextItem ? `${nextItem.level} · ${nextItem.title}` : 'End of syllabus'}
+              </p>
+
               <button
                 type="button"
-                disabled={savingMarks}
-                onClick={() => void saveLessonMarks()}
-                className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 transition-colors hover:text-vcr-chrome disabled:opacity-60"
+                onClick={markComplete}
+                disabled={saving}
+                className="vcr-btn-gold inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-60"
               >
-                <Save className="h-3.5 w-3.5" /> Save markings now
+                <CheckCircle2 className="h-4 w-4" /> Mark page/lesson complete
               </button>
-            </div>
-          )}
-
-
-          {/* Hand this shared work in as an assignment */}
-          {canSubmitToAssignment && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-chrome/15 bg-black/20 px-3 py-2 text-sm text-vcr-chrome/75">
-              <span className="text-xs">Finished this piece of work?</span>
               <button
                 type="button"
-                onClick={() => setSubmitOpen(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold"
+                onClick={() => setAttendanceOpen(true)}
+                className="vcr-btn inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm"
               >
-                <ClipboardList className="h-3.5 w-3.5" /> Submit to assignment
+                <ClipboardList className="h-4 w-4" /> Mark attendance from this page
               </button>
-              <span className="text-[11px] text-vcr-chrome/50">Hands in a synced copy · your own copy stays private</span>
-            </div>
-          )}
-
-          {/* Assignment-linked synced submission — teacher marking bar */}
-          {submission && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-vcr-gold/30 bg-vcr-gold/5 px-3 py-2 text-sm text-vcr-chrome/80">
-              <span className="font-medium text-vcr-chrome">Assignment submission</span>
-              <span className="rounded-full border border-vcr-chrome/20 px-2 py-0.5 text-xs">
-                {SUBMISSION_STATUS_LABEL[submission.status] ?? submission.status}
-              </span>
-              {canControl && canMarkResource && (
-                <>
-                  <input
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Comment for the student (optional)"
-                    className="h-8 min-w-[12rem] flex-1 rounded-full border border-vcr-chrome/20 bg-black/30 px-3 text-xs text-vcr-chrome placeholder:text-vcr-chrome/40"
-                  />
-                  <button
-                    type="button"
-                    disabled={savingReview}
-                    onClick={() => void saveReview(false)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-3 text-xs disabled:opacity-60"
-                  >
-                    <Save className="h-3.5 w-3.5" /> Save review
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingReview}
-                    onClick={() => void saveReview(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold disabled:opacity-60"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Save &amp; return to student
-                  </button>
-                </>
+              {isLessonContent && (
+                <button
+                  type="button"
+                  disabled={savingMarks}
+                  onClick={() => void saveLessonMarks()}
+                  className="vcr-btn inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm disabled:opacity-60"
+                >
+                  <Save className="h-4 w-4" /> Save markings now
+                </button>
               )}
-            </div>
-          )}
-
-          <VcrBookmarkBar
-            bookmarks={bookmarks}
-            currentUnit={currentPage}
-            unitNoun={adapter.unitNoun}
-            canAdd={!isFollower}
-            onAdd={(u) => void addBookmark(u)}
-            onOpen={(u) => setJumpRequest({ unit: u, nonce: Date.now() })}
-            onRemove={(id) => void removeBookmark(id)}
-          />
-          <VcrReader
-            key={`${content}:${activeDocId ?? 'none'}`}
-            adapter={adapter}
-            initialUnit={content === 'doc' ? 1 : resumePage}
-            canControl={canControl}
-            turnSignal={turnSignal}
-            isFollower={isFollower}
-            followState={remoteState}
-            onViewChange={publishView}
-            onUnitChange={(p) => setCurrentPage(p)}
-            jumpRequest={jumpRequest}
-          />
-
-
-          {/* Shared whiteboard layer — teacher draws, student mirrors live */}
-          {whiteboardVisible && (
-            <VcrWhiteboard
-              strokes={strokes}
-              mode={whiteboardMode}
-              canDraw={canControl}
-              onStroke={pushStroke}
-              onUndo={undoStroke}
-              onClear={clearBoard}
-              onClose={() => setWhiteboardOn(false)}
-            />
+              <button
+                type="button"
+                onClick={() => navigate(`/syllabus/${studentId}`)}
+                className="vcr-btn inline-flex h-10 w-full items-center justify-center rounded-xl text-sm"
+              >
+                Open syllabus
+              </button>
+            </aside>
           )}
         </main>
-
-
-        {/* Receded side panel */}
-        {canControl && (
-          <aside className="vcr-panel w-full shrink-0 space-y-4 rounded-2xl p-4 lg:w-[22rem]">
-            <div className="flex items-center gap-2 font-display text-lg text-vcr-chrome">
-              <ClipboardList className="h-5 w-5 text-vcr-gold" /> Private teacher notes
-            </div>
-            <p className="text-sm text-vcr-chrome/60">Autosaved. Never shown to the student or parent.</p>
-            <textarea
-              value={notes}
-              onChange={(e) => onNotes(e.target.value)}
-              rows={8}
-              placeholder="What to practise before the next class…"
-              className="w-full resize-y rounded-xl border border-vcr-chrome/15 bg-[#0A1618] p-3 text-base text-vcr-chrome placeholder:text-vcr-chrome/35 focus:border-vcr-gold/60 focus:outline-none"
-            />
-            <p className="font-mono text-xs text-vcr-chrome/45">{notesSaved ? 'Saved' : 'Saving…'}</p>
-
-            <div className="space-y-2 rounded-xl border border-vcr-chrome/10 bg-black/20 p-3 text-sm text-vcr-chrome/70">
-              <div className="flex items-center gap-2 text-vcr-chrome">
-                <ListOrdered className="h-4 w-4 text-vcr-gold" /> Next in syllabus
-              </div>
-              <p>{nextItem ? `${nextItem.level} · ${nextItem.title}` : 'End of syllabus'}</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={markComplete}
-              disabled={saving}
-              className="vcr-btn-gold inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold disabled:opacity-60"
-            >
-              <CheckCircle2 className="h-5 w-5" /> Mark page/lesson complete
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendanceOpen(true)}
-              className="vcr-btn inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base"
-            >
-              <ClipboardList className="h-4 w-4" /> Mark attendance from this page
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/syllabus/${studentId}`)}
-              className="vcr-btn inline-flex h-12 w-full items-center justify-center rounded-xl text-base"
-            >
-              Open syllabus
-            </button>
-          </aside>
-        )}
       </div>
+
 
       {/* Tap-to-mark attendance without leaving the live class */}
       {canControl && studentId && (
