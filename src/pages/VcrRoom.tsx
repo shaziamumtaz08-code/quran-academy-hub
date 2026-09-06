@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Bookmark, CheckCircle2, Circle, ClipboardList, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Save, Share2, X } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
