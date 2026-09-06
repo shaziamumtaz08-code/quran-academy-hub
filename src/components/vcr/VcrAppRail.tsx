@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  BookMarked, Folder, Grid2X2, HardDrive, Library,
+  BookMarked, Chrome, Folder, Grid2X2, HardDrive, Library,
   Link2, PhoneCall, PlayCircle, Presentation, X, Youtube,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type VcrRailKey =
-  | 'drive' | 'youtube' | 'url' | 'whiteboard' | 'call'
+  | 'drive' | 'youtube' | 'google' | 'url' | 'whiteboard' | 'call'
   | 'recordings' | 'syllabus' | 'myspace' | 'library';
 
 /** Syllabus first — it is the source of Qaida, Mushaf and every set book. */
@@ -14,13 +14,15 @@ const ITEMS: { key: VcrRailKey; label: string; icon: React.ElementType }[] = [
   { key: 'syllabus', label: 'Syllabus', icon: BookMarked },
   { key: 'drive', label: 'Google Drive', icon: HardDrive },
   { key: 'youtube', label: 'YouTube', icon: Youtube },
-  { key: 'url', label: 'Web link', icon: Link2 },
+  { key: 'google', label: 'Google', icon: Chrome },
+  { key: 'url', label: 'Web', icon: Link2 },
   { key: 'whiteboard', label: 'Whiteboard', icon: Presentation },
   { key: 'call', label: 'Voice call', icon: PhoneCall },
   { key: 'recordings', label: 'Recordings', icon: PlayCircle },
   { key: 'myspace', label: 'My Drive', icon: Folder },
   { key: 'library', label: 'Library', icon: Library },
 ];
+
 
 interface Props {
   active: VcrRailKey | null;
