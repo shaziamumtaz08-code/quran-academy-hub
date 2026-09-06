@@ -56,7 +56,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
       className={cn(
         'vcr-launcher z-50 overflow-hidden rounded-2xl border border-slate-900/10 bg-white/95 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl',
         isMobile
-          ? 'fixed inset-x-3 bottom-3 z-[61]'
+          ? 'fixed inset-x-3 bottom-3 z-[120]'
           : 'absolute start-[3.5rem] top-0 w-[19rem]',
       )}
     >
