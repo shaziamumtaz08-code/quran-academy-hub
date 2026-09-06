@@ -128,25 +128,24 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
         aria-label="Class apps"
         className="flex w-[3rem] flex-col items-center gap-1 rounded-2xl border border-vcr-chrome/10 bg-white/5 p-1.5"
       >
-        {ITEMS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onSelect(key)}
-            title={label}
-            aria-label={label}
-            aria-current={active === key ? 'true' : undefined}
-            className={cn(
-              'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-              active === key
-                ? 'bg-vcr-gold/18 text-vcr-gold'
-                : 'text-vcr-chrome/55 hover:bg-white/10 hover:text-vcr-chrome',
-            )}
-          >
-            <Icon className="h-[17px] w-[17px]" />
-          </button>
-        ))}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label="Class apps"
+          title="Class apps"
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+            open
+              ? 'bg-vcr-gold/20 text-vcr-gold'
+              : 'text-vcr-chrome/60 hover:bg-white/10 hover:text-vcr-chrome',
+          )}
+        >
+          <Grid2X2 className="h-[18px] w-[18px]" />
+        </button>
       </nav>
+      {open && launcher}
     </div>
   );
 }
+
