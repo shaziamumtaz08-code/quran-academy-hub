@@ -702,8 +702,11 @@ export default function VcrRoom() {
     const p = roomState.payload ?? {};
     if (roomState.app === 'mushaf' || roomState.app === 'qaida') { setEmbed(null); setContentMode(roomState.app); }
     else if (roomState.app === 'doc' && p.docId) { setEmbed(null); setDocId(p.docId); setContentMode('doc'); }
+    else if (p.resourceId) {
+      if (p.resourceId !== resource) navigate(`/vcr/${studentId}?resource=${p.resourceId}`, { replace: true });
+    }
     else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
-  }, [synced, roomState, user?.id]);
+  }, [synced, roomState, user?.id, resource, studentId, navigate]);
 
 
 
