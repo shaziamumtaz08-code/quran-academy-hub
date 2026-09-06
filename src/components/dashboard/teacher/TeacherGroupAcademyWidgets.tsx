@@ -38,8 +38,8 @@ export function TeacherGroupAcademyWidgets() {
         if (classIds.length) {
           const { data: ls } = await (supabase as any)
             .from('live_sessions')
-            .select('id, class_id, scheduled_start, scheduled_end, status')
-            .in('class_id', classIds)
+            .select('id, group_id, scheduled_start, actual_end, status')
+            .in('group_id', classIds)
             .gte('scheduled_start', start.toISOString())
             .lte('scheduled_start', end.toISOString())
             .order('scheduled_start', { ascending: true })
