@@ -759,7 +759,7 @@ export default function VcrRoom() {
       }
       /* The launcher is a launcher: once it has opened something, get out
          of the way so the material owns the workspace. */
-      setRailKey(null);
+      setActiveTab('lesson');
 
       if (share) {
         void patchRoom({
