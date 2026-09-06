@@ -946,7 +946,7 @@ export default function VcrRoom() {
             )}
             <button
               type="button"
-              onClick={() => setRecordingsOpen(true)}
+              onClick={() => openTab({ id: 'recordings', kind: 'recordings', title: 'Recordings', icon: PlayCircle })}
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-2.5 text-[11px] text-vcr-chrome/60 hover:text-vcr-chrome"
             >
               <PlayCircle className="h-3.5 w-3.5" /> Recordings
