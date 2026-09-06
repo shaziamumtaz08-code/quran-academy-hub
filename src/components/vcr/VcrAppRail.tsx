@@ -54,7 +54,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
       className={cn(
         'vcr-launcher z-50 overflow-hidden rounded-2xl border border-slate-900/10 bg-white/95 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl',
         isMobile
-          ? 'fixed inset-x-3 bottom-3'
+          ? 'fixed inset-x-3 bottom-3 z-[61]'
           : 'absolute start-[3.5rem] top-0 w-[19rem]',
       )}
     >
@@ -101,14 +101,14 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
           aria-expanded={open}
           aria-label="Class apps"
           className={cn(
-            'fixed bottom-4 end-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border border-vcr-gold/45 bg-vcr-gold/90 text-[#0C1B1E] shadow-lg',
+            'fixed bottom-20 end-4 z-[60] inline-flex h-12 w-12 items-center justify-center rounded-full border border-vcr-gold/45 bg-vcr-gold/90 text-[#0C1B1E] shadow-lg',
           )}
         >
           <Grid2X2 className="h-5 w-5" />
         </button>
         {open && (
           <>
-            <div className="fixed inset-0 z-40 bg-slate-900/25" onClick={onToggle} aria-hidden />
+            <div className="fixed inset-0 z-[59] bg-slate-900/25" onClick={onToggle} aria-hidden />
             {launcher}
           </>
         )}
@@ -122,22 +122,6 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
         aria-label="Class apps"
         className="flex w-[3rem] flex-col items-center gap-1 rounded-2xl border border-vcr-chrome/10 bg-white/5 p-1.5"
       >
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          title="Class apps"
-          aria-label="Class apps"
-          className={cn(
-            'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-            open
-              ? 'bg-vcr-gold/20 text-vcr-gold ring-1 ring-vcr-gold/40'
-              : 'text-vcr-chrome/70 hover:bg-white/10 hover:text-vcr-chrome',
-          )}
-        >
-          <Grid2X2 className="h-[18px] w-[18px]" />
-        </button>
-        <span className="my-0.5 h-px w-6 bg-vcr-chrome/10" aria-hidden />
         {ITEMS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -157,7 +141,6 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
           </button>
         ))}
       </nav>
-      {open && launcher}
     </div>
   );
 }
