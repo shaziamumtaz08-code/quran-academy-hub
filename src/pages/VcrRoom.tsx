@@ -34,6 +34,11 @@ import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
 import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
 import { VcrTabStrip, type VcrTab } from '@/components/vcr/VcrTabStrip';
 import { VcrWebTab } from '@/components/vcr/VcrWebTab';
+
+/** The real Library and My Drive screens, mounted inside classroom tabs. */
+const LibraryPage = React.lazy(() => import('@/pages/Library'));
+const MyResourcesPage = React.lazy(() => import('@/pages/MyResources'));
+
 import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
