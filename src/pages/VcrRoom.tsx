@@ -703,10 +703,10 @@ export default function VcrRoom() {
     if (roomState.app === 'mushaf' || roomState.app === 'qaida') { setEmbed(null); setContentMode(roomState.app); }
     else if (roomState.app === 'doc' && p.docId) { setEmbed(null); setDocId(p.docId); setContentMode('doc'); }
     else if (p.resourceId) {
-      if (p.resourceId !== resource) navigate(`/vcr/${studentId}?resource=${p.resourceId}`, { replace: true });
+      if (p.resourceId !== resourceId) navigate(`/vcr/${studentId}?resource=${p.resourceId}`, { replace: true });
     }
     else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
-  }, [synced, roomState, user?.id, resource, studentId, navigate]);
+  }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
 
 
 
