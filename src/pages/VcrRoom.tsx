@@ -34,6 +34,11 @@ import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
 import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
 import { VcrTabStrip, type VcrTab } from '@/components/vcr/VcrTabStrip';
 import { VcrWebTab } from '@/components/vcr/VcrWebTab';
+
+/** The real Library and My Drive screens, mounted inside classroom tabs. */
+const LibraryPage = React.lazy(() => import('@/pages/Library'));
+const MyResourcesPage = React.lazy(() => import('@/pages/MyResources'));
+
 import { useVcrRoomState } from '@/hooks/useVcrRoomState';
 
 
@@ -1151,29 +1156,38 @@ export default function VcrRoom() {
             />
           )}
 
-          {/* Native app tabs — Syllabus, Library, My Drive */}
+          {/* Native app tabs — Syllabus (class material), Library, My Drive */}
           {tabs
             .filter((t) => t.kind === 'syllabus' || t.kind === 'library' || t.kind === 'myspace')
             .map((t) => (
               <div
                 key={t.id}
                 className={cn(
-                  'max-h-[78vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.45)]',
+                  'max-h-[78vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white p-3 text-slate-900 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.45)] sm:p-4',
                   activeTab !== t.id && 'hidden',
                 )}
               >
-                <VcrAppPanel
-                  app={t.kind === 'myspace' ? 'myspace' : t.kind === 'library' ? 'library' : 'syllabus'}
-                  docs={docs as any}
-                  docsLoading={loading}
-                  docsError={null}
-                  userId={user?.id ?? null}
-                  onOpenPrivate={(target) => { openTarget(target, false); setActiveTab('lesson'); }}
-                  onOpenSynced={(target) => { openTarget(target, true); setActiveTab('lesson'); }}
-                  onUpload={canControl ? () => setUploadOpen(true) : undefined}
-                />
+                {t.kind === 'syllabus' ? (
+                  <VcrAppPanel
+                    app="syllabus"
+                    docs={docs as any}
+                    docsLoading={loading}
+                    docsError={null}
+                    userId={user?.id ?? null}
+                    onOpenPrivate={(target) => { openTarget(target, false); setActiveTab('lesson'); }}
+                    onOpenSynced={(target) => { openTarget(target, true); setActiveTab('lesson'); }}
+                    onUpload={canControl ? () => setUploadOpen(true) : undefined}
+                  />
+                ) : (
+                  <React.Suspense
+                    fallback={<p className="p-6 text-sm text-slate-500">Loading…</p>}
+                  >
+                    {t.kind === 'library' ? <LibraryPage /> : <MyResourcesPage />}
+                  </React.Suspense>
+                )}
               </div>
             ))}
+
 
           {/* Web tabs — Google Drive, YouTube, Google, any web address */}
           {tabs
