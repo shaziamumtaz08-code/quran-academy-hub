@@ -958,7 +958,7 @@ export default function VcrRoom() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The VCR's own app rail — separate from the LMS main sidebar */}
         <VcrAppRail
-          active={railKey}
+          active={railActive}
           open={launcherOpen}
           onToggle={() => setLauncherOpen((v) => !v)}
           onSelect={onRailSelect}
