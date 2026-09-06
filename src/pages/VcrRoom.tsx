@@ -102,6 +102,8 @@ export default function VcrRoom() {
 
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<{ id: string; full_name: string } | null>(null);
+  /** The student's enrolled subject — decides which reader opens by default. */
+  const [subjectName, setSubjectName] = useState<string | null>(null);
   const [items, setItems] = useState<SyllabusItem[]>([]);
   const [progress, setProgress] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -142,6 +144,16 @@ export default function VcrRoom() {
       if (cancelled) return;
 
       setStudent((p.data as any) ?? null);
+      void (async () => {
+        const { data: asg } = await (supabase as any)
+          .from('student_teacher_assignments')
+          .select('subject_id, subjects(name)')
+          .eq('student_id', studentId)
+          .eq('status', 'active')
+          .limit(1);
+        const nm = (asg as any[])?.[0]?.subjects?.name ?? null;
+        if (!cancelled) setSubjectName(nm);
+      })();
       const list = ((syl.data as any[]) ?? []) as SyllabusItem[];
       setItems(list);
       setAttendance(((att.data as any[]) ?? [])[0]?.status ?? null);
@@ -273,11 +285,18 @@ export default function VcrRoom() {
 
   /* Which content the reader shows. Seeded from progress / syllabus wording,
      and switchable by staff for the rest of the session. */
-  const suggestedContent: 'mushaf' | 'qaida' = useMemo(() => {
+  const suggestedContent: 'mushaf' | 'qaida' | 'doc' = useMemo(() => {
     if (progress?.content_type === 'qaida') return 'qaida';
+    if (progress?.content_type === 'mushaf') return 'mushaf';
+    const subject = (subjectName ?? '').toLowerCase();
+    /* Qaida students land on the Noorani Qaida; Nazra, Hifz and Tafseer
+       students land on the Mushaf; every other subject opens its own book. */
+    if (/qaida|qa'ida|noorani/.test(subject)) return 'qaida';
+    if (/nazra|nazira|hifz|hifdh|tafseer|tafsir|quran|qur'an/.test(subject)) return 'mushaf';
+    if (subject) return 'doc';
     const text = `${currentItem?.level ?? ''} ${currentItem?.title ?? ''}`.toLowerCase();
     return /qaida|qa'ida|noorani/.test(text) ? 'qaida' : 'mushaf';
-  }, [progress?.content_type, currentItem?.level, currentItem?.title]);
+  }, [progress?.content_type, subjectName, currentItem?.level, currentItem?.title]);
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | 'doc' | null>(null);
