@@ -40,8 +40,8 @@ export default function GroupClassScheduleView({ mode }: Props) {
       if (classIds.length) {
         const { data: ls } = await (supabase as any)
           .from('live_sessions')
-          .select('id, class_id, scheduled_start')
-          .in('class_id', classIds)
+          .select('id, group_id, scheduled_start')
+          .in('group_id', classIds)
           .gte('scheduled_start', new Date().toISOString())
           .order('scheduled_start', { ascending: true })
           .limit(200);
@@ -57,7 +57,7 @@ export default function GroupClassScheduleView({ mode }: Props) {
           schedule_days: Array.isArray(cls?.schedule_days) ? cls.schedule_days : [],
           schedule_time: cls?.schedule_time || null,
           duration_minutes: cls?.session_duration || null,
-          next_session: liveSessions.find((l) => l.class_id === r.class_id)?.scheduled_start || null,
+          next_session: liveSessions.find((l) => l.group_id === r.class_id)?.scheduled_start || null,
         };
       });
     },

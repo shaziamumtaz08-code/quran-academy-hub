@@ -185,7 +185,7 @@ export function GroupStudentDashboard() {
     queryFn: async () => {
       const { data: rows } = await supabase
         .from('live_sessions')
-        .select('id, actual_start, scheduled_start, recording_link, course_id')
+        .select('id, actual_start, scheduled_start, recording_link, group_id')
         .eq('student_id', studentId!)
         .not('recording_link', 'is', null)
         .order('actual_start', { ascending: false, nullsFirst: false })

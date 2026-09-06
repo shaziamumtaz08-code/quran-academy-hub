@@ -91,8 +91,8 @@ export default function TeacherSchedulesView({ readOnly: _readOnly, rangeFilter 
       try {
         const { data: ls } = await (supabase as any)
           .from('live_sessions')
-          .select('id, class_id, course_id, scheduled_start, scheduled_end, status')
-          .in('class_id', classIds)
+          .select('id, group_id, scheduled_start, actual_end, status')
+          .in('group_id', classIds)
           .order('scheduled_start', { ascending: true })
           .limit(200);
         liveSessions = ls || [];
@@ -102,7 +102,7 @@ export default function TeacherSchedulesView({ readOnly: _readOnly, rangeFilter 
 
       return staff.map((s: any) => {
         const cls = s.course_classes;
-        const upcoming = liveSessions.filter((l) => l.class_id === s.class_id);
+        const upcoming = liveSessions.filter((l) => l.group_id === s.class_id);
         return {
           id: s.class_id,
           class_name: cls?.name || 'Unnamed Class',
