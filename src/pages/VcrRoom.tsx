@@ -759,7 +759,7 @@ export default function VcrRoom() {
       }
       /* The launcher is a launcher: once it has opened something, get out
          of the way so the material owns the workspace. */
-      setRailKey(null);
+      setActiveTab('lesson');
 
       if (share) {
         void patchRoom({
@@ -946,7 +946,7 @@ export default function VcrRoom() {
             )}
             <button
               type="button"
-              onClick={() => setRecordingsOpen(true)}
+              onClick={() => openTab({ id: 'recordings', kind: 'recordings', title: 'Recordings', icon: PlayCircle })}
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-chrome/20 px-2.5 text-[11px] text-vcr-chrome/60 hover:text-vcr-chrome"
             >
               <PlayCircle className="h-3.5 w-3.5" /> Recordings
@@ -958,7 +958,7 @@ export default function VcrRoom() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The VCR's own app rail — separate from the LMS main sidebar */}
         <VcrAppRail
-          active={railKey}
+          active={railActive}
           open={launcherOpen}
           onToggle={() => setLauncherOpen((v) => !v)}
           onSelect={onRailSelect}
@@ -968,6 +968,9 @@ export default function VcrRoom() {
 
         {/* The workspace — the material is the page */}
         <main className="relative min-w-0 flex-1">
+          <VcrTabStrip tabs={tabs} activeId={activeTab} onSelect={setActiveTab} onClose={closeTab} />
+
+          <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
             <span className="truncate font-medium text-vcr-chrome/75">
@@ -1133,9 +1136,10 @@ export default function VcrRoom() {
               jumpRequest={jumpRequest}
             />
           )}
+          </div>
 
           {/* Shared whiteboard layer — teacher draws, student mirrors live */}
-          {whiteboardVisible && (
+          {whiteboardVisible && (activeTab === 'lesson' || activeTab === 'whiteboard') && (
             <VcrWhiteboard
               strokes={strokes}
               mode={whiteboardMode}
@@ -1143,60 +1147,64 @@ export default function VcrRoom() {
               onStroke={pushStroke}
               onUndo={undoStroke}
               onClear={clearBoard}
-              onClose={() => setWhiteboardOn(false)}
+              onClose={() => closeTab('whiteboard')}
             />
           )}
 
-          {/* App launcher content — floats over the workspace, never pushes it */}
-          {railPanelApp && (
-            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:max-w-lg">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                  {railPanelApp === 'myspace'
-                    ? 'My Drive'
-                    : railPanelApp === 'drive'
-                      ? 'Google Drive'
-                      : railPanelApp === 'youtube'
-                        ? 'YouTube'
-                        : railPanelApp === 'url'
-                          ? 'Web link'
-                          : railPanelApp === 'syllabus'
-                            ? 'Syllabus'
-                            : 'Library'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setRailKey(null)}
-                  aria-label="Close"
-                  className="ms-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
-                >
-
-                  <X className="h-4 w-4" />
-                </button>
+          {/* Native app tabs — Syllabus, Library, My Drive */}
+          {tabs
+            .filter((t) => t.kind === 'syllabus' || t.kind === 'library' || t.kind === 'myspace')
+            .map((t) => (
+              <div
+                key={t.id}
+                className={cn(
+                  'max-h-[78vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.45)]',
+                  activeTab !== t.id && 'hidden',
+                )}
+              >
+                <VcrAppPanel
+                  app={t.kind === 'myspace' ? 'myspace' : t.kind === 'library' ? 'library' : 'syllabus'}
+                  docs={docs as any}
+                  docsLoading={loading}
+                  docsError={null}
+                  userId={user?.id ?? null}
+                  onOpenPrivate={(target) => { openTarget(target, false); setActiveTab('lesson'); }}
+                  onOpenSynced={(target) => { openTarget(target, true); setActiveTab('lesson'); }}
+                  onUpload={canControl ? () => setUploadOpen(true) : undefined}
+                />
               </div>
-              <VcrAppPanel
-                app={railPanelApp}
-                docs={docs as any}
-                docsLoading={loading}
-                docsError={null}
-                userId={user?.id ?? null}
-                onOpenPrivate={(t) => openTarget(t, false)}
-                onOpenSynced={(t) => openTarget(t, true)}
-                onUpload={canControl ? () => setUploadOpen(true) : undefined}
-              />
-            </div>
-          )}
+            ))}
 
-          {/* Class recordings — inside the classroom, closes back to the lesson */}
-          {recordingsOpen && studentId && (
-            <div className="absolute inset-x-0 top-0 z-30 max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:max-w-lg">
+          {/* Web tabs — Google Drive, YouTube, Google, any web address */}
+          {tabs
+            .filter((t) => t.kind === 'web')
+            .map((t) => (
+              <div key={t.id} className={cn(activeTab !== t.id && 'hidden')}>
+                <VcrWebTab
+                  app={t.app ?? 'url'}
+                  initialUrl={t.url}
+                  onTitle={(title) => setTabTitle(t.id, title)}
+                  onShare={canControl ? (url, title) => openTarget({ kind: 'link', title, url, app: t.app ?? 'url' } as any, true) : undefined}
+                />
+              </div>
+            ))}
+
+          {/* Class recordings — inside the classroom, as its own tab */}
+          {studentId && tabs.some((t) => t.kind === 'recordings') && (
+            <div
+              className={cn(
+                'max-h-[78vh] overflow-y-auto rounded-2xl border border-slate-900/10 bg-white/95 p-3 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.45)]',
+                activeTab !== 'recordings' && 'hidden',
+              )}
+            >
               <VcrRecordingsPanel
                 roomId={studentId}
                 canDownload={canControl}
-                onClose={() => { setRecordingsOpen(false); setRailKey(null); }}
+                onClose={() => closeTab('recordings')}
               />
             </div>
           )}
+
 
 
           {/* Lesson tools — a contextual drawer, not a permanent column */}
