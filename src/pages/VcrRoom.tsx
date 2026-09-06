@@ -344,6 +344,17 @@ export default function VcrRoom() {
     ? (remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
   const activeDocId = isFollower ? (remoteState?.libraryItemId ?? null) : docId;
+  /* A non-Qaida / non-Quran subject opens its own book: the first syllabus
+     file filed under that subject, else the first syllabus file we have. */
+  useEffect(() => {
+    if (docId || contentMode || suggestedContent !== 'doc' || !docs.length) return;
+    const subject = (subjectName ?? '').toLowerCase();
+    const match = docs.find((d: any) =>
+      String(d.syllabus_folder ?? '').toLowerCase().includes(subject) ||
+      String(d.title ?? '').toLowerCase().includes(subject));
+    setDocId((match ?? docs[0]).id);
+  }, [docId, contentMode, suggestedContent, docs, subjectName]);
+
   const activeDoc = useMemo(
     () => docs.find((d) => d.id === activeDocId) ?? null,
     [docs, activeDocId],
