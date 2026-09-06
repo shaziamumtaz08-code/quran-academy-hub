@@ -656,30 +656,87 @@ export default function VcrRoom() {
   }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canMarkLesson, docId]);
 
 
-  /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
+  /* ── VCR tabs: a browser-like workspace inside the classroom ───────────── */
   const isMobile = useIsMobile();
-  const [railKey, setRailKey] = useState<VcrRailKey | null>(null);
   const [launcherOpen, setLauncherOpen] = useState(false);
   useEffect(() => { if (isMobile) setLauncherOpen(false); }, [isMobile]);
   const [callOpen, setCallOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
-  const [recordingsOpen, setRecordingsOpen] = useState(false);
 
-  const railPanelApp = railKey && !['whiteboard', 'call', 'recordings'].includes(railKey)
-    ? (railKey as Exclude<VcrRailKey, 'whiteboard' | 'call' | 'recordings'>)
-    : null;
+  const lessonTitle = content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'Lesson';
+  const [tabs, setTabs] = useState<VcrTab[]>([
+    { id: 'lesson', kind: 'lesson', title: 'Lesson', icon: BookMarked, pinned: true },
+  ]);
+  const [activeTab, setActiveTab] = useState('lesson');
 
+  /* The lesson tab always names whatever the reader is showing. */
+  useEffect(() => {
+    setTabs((prev) => prev.map((t) => (t.id === 'lesson' ? { ...t, title: lessonTitle } : t)));
+  }, [lessonTitle]);
+
+  const openTab = React.useCallback((tab: VcrTab) => {
+    setTabs((prev) => (prev.some((t) => t.id === tab.id) ? prev.map((t) => (t.id === tab.id ? { ...t, ...tab } : t)) : [...prev, tab]));
+    setActiveTab(tab.id);
+  }, []);
+
+  const closeTab = React.useCallback((id: string) => {
+    if (id === 'whiteboard') setWhiteboardOn(false);
+    setTabs((prev) => prev.filter((t) => t.id !== id));
+    setActiveTab((cur) => (cur === id ? 'lesson' : cur));
+  }, []);
+
+  const setTabTitle = React.useCallback((id: string, title: string) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+  }, []);
+
+  /** Highlight the launcher entry matching whatever tab is in front. */
+  const railActive: VcrRailKey | null = useMemo(() => {
+    const t = tabs.find((x) => x.id === activeTab);
+    if (!t) return null;
+    if (t.kind === 'web') return (t.app ?? 'url') as VcrRailKey;
+    if (t.kind === 'lesson') return 'syllabus';
+    return t.kind as VcrRailKey;
+  }, [tabs, activeTab]);
 
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     setLauncherOpen(false);
-    if (key === 'whiteboard') { setBoardMode('board'); setWhiteboardOn((v) => !v); setRailKey('whiteboard'); return; }
-    /* Recordings stay inside the classroom — never a trip to another page. */
-    if (key === 'recordings') { setRecordingsOpen(true); setRailKey('recordings'); return; }
-    if (key === 'call') { setCallOpen((v) => !v); setRailKey('call'); return; }
-    setRailKey((prev) => (prev === key ? null : key));
-  }, []);
+    switch (key) {
+      case 'whiteboard':
+        setBoardMode('board');
+        setWhiteboardOn(true);
+        openTab({ id: 'whiteboard', kind: 'whiteboard', title: 'Whiteboard', icon: Presentation });
+        return;
+      case 'recordings':
+        openTab({ id: 'recordings', kind: 'recordings', title: 'Recordings', icon: PlayCircle });
+        return;
+      case 'call':
+        setCallOpen(true);
+        return;
+      case 'syllabus':
+        openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked });
+        return;
+      case 'library':
+        openTab({ id: 'library', kind: 'library', title: 'Library', icon: Library });
+        return;
+      case 'myspace':
+        openTab({ id: 'myspace', kind: 'myspace', title: 'My Drive', icon: Folder });
+        return;
+      case 'drive':
+        openTab({ id: 'web:drive', kind: 'web', app: 'drive', title: 'Google Drive', icon: HardDrive });
+        return;
+      case 'youtube':
+        openTab({ id: 'web:youtube', kind: 'web', app: 'youtube', title: 'YouTube', icon: Youtube });
+        return;
+      case 'google':
+        openTab({ id: 'web:google', kind: 'web', app: 'google', title: 'Google', icon: Chrome });
+        return;
+      default:
+        openTab({ id: `web:url:${Date.now()}`, kind: 'web', app: 'url', title: 'Web', icon: Link2 });
+    }
+  }, [openTab]);
+
 
 
 
