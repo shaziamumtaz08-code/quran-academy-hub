@@ -592,6 +592,8 @@ export default function VcrRoom() {
      against the lesson itself — reopened next time, and attributed to whoever
      saved them. Library files keep using the personal-copy marks above. */
   const isLessonContent = !resource && (content === 'qaida' || content === 'mushaf');
+  /* The student may mark her own lesson pages too, even before the teacher joins. */
+  const canMarkLesson = canControl || (!!user?.id && user.id === studentId);
   const loadedLessonMarksKey = useRef<string>('');
   useEffect(() => {
     if (!isLessonContent || !studentId) return;
@@ -606,7 +608,7 @@ export default function VcrRoom() {
   }, [isLessonContent, studentId, content, currentPage, loadStrokes]);
 
   useEffect(() => {
-    if (!isLessonContent || !studentId || !user?.id || !canControl) return;
+    if (!isLessonContent || !studentId || !user?.id || !canMarkLesson) return;
     if (loadedLessonMarksKey.current !== `${content}:${studentId}:${currentPage}`) return;
     const id = window.setTimeout(() => {
       void saveLessonAnnotations({
@@ -619,7 +621,7 @@ export default function VcrRoom() {
       }).catch(() => {});
     }, 1500);
     return () => window.clearTimeout(id);
-  }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canControl, docId]);
+  }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canMarkLesson, docId]);
 
 
   /* ── VCR app rail + shared classroom workspace ─────────────────────────── */
@@ -663,8 +665,8 @@ export default function VcrRoom() {
         setDocId(t.docId);
         setContentMode('doc');
       } else if (t.kind === 'resource' && t.resourceId) {
+        setEmbed(null);
         navigate(`/vcr/${studentId}?resource=${t.resourceId}`);
-        return;
       }
       /* The launcher is a launcher: once it has opened something, get out
          of the way so the material owns the workspace. */
@@ -1045,7 +1047,7 @@ export default function VcrRoom() {
             <VcrWhiteboard
               strokes={strokes}
               mode={whiteboardMode}
-              canDraw={canControl}
+              canDraw={canMarkLesson}
               onStroke={pushStroke}
               onUndo={undoStroke}
               onClear={clearBoard}
