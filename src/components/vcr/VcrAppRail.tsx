@@ -95,7 +95,10 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
   );
 
   if (isMobile) {
-    return (
+    /* Portal to <body> so the launcher escapes any transformed/overflow
+       ancestors inside the LMS layout — otherwise `fixed` positioning and
+       taps can be trapped behind the lesson canvas. */
+    return createPortal(
       <>
         <button
           type="button"
@@ -103,18 +106,19 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
           aria-expanded={open}
           aria-label="Class apps"
           className={cn(
-            'fixed bottom-20 end-4 z-[60] inline-flex h-12 w-12 items-center justify-center rounded-full border border-vcr-gold/45 bg-vcr-gold/90 text-[#0C1B1E] shadow-lg',
+            'fixed bottom-24 end-4 z-[100] inline-flex h-12 w-12 items-center justify-center rounded-full border border-vcr-gold/45 bg-vcr-gold/90 text-[#0C1B1E] shadow-lg active:scale-95 transition-transform',
           )}
         >
           <Grid2X2 className="h-5 w-5" />
         </button>
         {open && (
           <>
-            <div className="fixed inset-0 z-[59] bg-slate-900/25" onClick={onToggle} aria-hidden />
+            <div className="fixed inset-0 z-[110] bg-slate-900/25" onClick={onToggle} aria-hidden />
             {launcher}
           </>
         )}
-      </>
+      </>,
+      document.body,
     );
   }
 
