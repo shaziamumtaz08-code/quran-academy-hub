@@ -12,12 +12,11 @@ export type VcrRailKey =
 /** Syllabus first — it is the source of Qaida, Mushaf and every set book. */
 const ITEMS: { key: VcrRailKey; label: string; icon: React.ElementType }[] = [
   { key: 'syllabus', label: 'Syllabus', icon: BookMarked },
+  { key: 'whiteboard', label: 'Whiteboard', icon: Presentation },
   { key: 'drive', label: 'Google Drive', icon: HardDrive },
   { key: 'youtube', label: 'YouTube', icon: Youtube },
   { key: 'google', label: 'Google', icon: Chrome },
-  { key: 'url', label: 'Web', icon: Link2 },
-  { key: 'whiteboard', label: 'Whiteboard', icon: Presentation },
-  { key: 'call', label: 'Voice call', icon: PhoneCall },
+  { key: 'url', label: 'URL / Web', icon: Link2 },
   { key: 'recordings', label: 'Recordings', icon: PlayCircle },
   { key: 'myspace', label: 'My Drive', icon: Folder },
   { key: 'library', label: 'Library', icon: Library },
