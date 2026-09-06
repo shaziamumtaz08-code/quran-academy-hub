@@ -968,6 +968,9 @@ export default function VcrRoom() {
 
         {/* The workspace — the material is the page */}
         <main className="relative min-w-0 flex-1">
+          <VcrTabStrip tabs={tabs} activeId={activeTab} onSelect={setActiveTab} onClose={closeTab} />
+
+          <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
             <span className="truncate font-medium text-vcr-chrome/75">
