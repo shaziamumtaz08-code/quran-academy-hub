@@ -30,11 +30,11 @@ type TabAccess = 'none' | 'view' | 'write';
 type TabKey = 'personal' | 'contact' | 'identity' | 'guardian' | 'academic' | 'documents' | 'payments' | 'activity' | 'password';
 
 const TAB_ACCESS: Record<TabKey, Partial<Record<AppRole, TabAccess>>> = {
-  personal:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'view' },
-  contact:   { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
-  identity:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  personal:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write', admin_academic: 'write' },
+  contact:   { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write', admin_academic: 'write' },
+  identity:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write', admin_academic: 'write' },
   guardian:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write' },
-  academic:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'write' },
+  academic:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write', admin_academic: 'write' },
   documents: { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
   payments:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_fees: 'write' },
   activity:  { super_admin: 'write', admin: 'write', admin_division: 'write' },
@@ -86,7 +86,7 @@ export function ProfileEditorPanel({ userId }: Props) {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
+        .select('id, full_name, email, avatar_url, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
         .eq('id', userId)
         .maybeSingle();
       if (error) throw error;
@@ -235,7 +235,6 @@ export function ProfileEditorPanel({ userId }: Props) {
         special_needs: form.special_needs,
         learning_goals: form.learning_goals,
         email: form.email,
-        phone: form.phone,
         country: form.country,
         city: form.city,
         timezone: form.timezone,
@@ -274,6 +273,10 @@ export function ProfileEditorPanel({ userId }: Props) {
       toast({ title: 'Profile saved' });
       qc.invalidateQueries({ queryKey: ['holistic-profile', userId] });
       qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['users-with-roles'] });
+      qc.invalidateQueries({ queryKey: ['student-profile-page', userId] });
+      qc.invalidateQueries({ queryKey: ['teacher-profile-page', userId] });
+      qc.invalidateQueries({ queryKey: ['parent-profile-page', userId] });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
@@ -490,7 +493,6 @@ export function ProfileEditorPanel({ userId }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Field label="Email"><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
                 <Field label="WhatsApp"><Input value={form.whatsapp_number || ''} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} /></Field>
-                <Field label="Phone (alternate)"><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
                 <Field label="Country / City / Timezone">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <LocationFields

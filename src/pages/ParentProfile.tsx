@@ -35,7 +35,10 @@ export default function ParentProfile() {
   const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const parentId = paramId ?? me?.id;
   const queryClient = useQueryClient();
-  const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const canAdmin = !!(
+    isSuperAdmin || hasRole('admin') || hasRole('super_admin') || hasRole('admin_division') ||
+    hasRole('admin_admissions') || hasRole('admin_academic')
+  );
   const [searchParams] = useSearchParams();
   const [advancedOpen, setAdvancedOpen] = useState(searchParams.get('edit') === '1');
   const canEditPhoto = !!(parentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));

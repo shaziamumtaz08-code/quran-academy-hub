@@ -213,11 +213,11 @@ export default function StudentRegistration() {
 
       const { error } = await (supabase.from('family_registrations') as any).insert(rows);
       if (error) throw error;
-      await recordPolicyAcceptance({
+      void recordPolicyAcceptance({
         audience: 'student',
         name: home.fatherName.trim() || home.motherName.trim(),
         email: home.guardianEmail.trim(),
-      });
+      }).catch(() => undefined);
     },
     onSuccess: () => setSubmitted(true),
     onError: (error: any) => toast({ title: 'Could not submit', description: error.message, variant: 'destructive' }),

@@ -107,6 +107,8 @@ export default function ParentRegistration() {
         lead_id: leadId,
         source_url: window.location.href,
         status: 'pending',
+        registration_type: 'parent',
+        submission_source: 'public',
         children: children.map(child => ({
           name: child.name.trim(),
           email: (child.useParentEmail ? parent.email : child.email).trim(),
