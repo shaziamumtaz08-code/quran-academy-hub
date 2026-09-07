@@ -10,6 +10,7 @@ import {
   transliterate,
 } from '@/lib/qaidaHarakat';
 import type { QaidaWordStatus } from '@/hooks/useQaidaWordProgress';
+import { TajweedText } from '@/components/qaida/TajweedText';
 
 export interface QaidaFlashcardWord {
   id: string;
@@ -103,14 +104,15 @@ export function QaidaFlashcard({ word, status, onGrade, className }: Props) {
                 'linear-gradient(160deg, hsl(var(--qaida-accent) / 0.10), hsl(var(--card)) 65%)',
             }}
           >
-            <span className="font-uthmani text-6xl leading-none text-foreground sm:text-7xl" dir="rtl">
-              {word.word_text}
-            </span>
+            <TajweedText
+              text={word.word_text}
+              className="text-6xl leading-none text-foreground sm:text-7xl"
+            />
             <span className="flex flex-wrap items-center justify-center gap-1.5" dir="rtl">
               {letters.map((ch, i) => (
                 <span
                   key={i}
-                  className="rounded-lg px-2 py-0.5 font-uthmani text-2xl"
+                  className="rounded-lg px-2 py-0.5 font-qaida text-2xl"
                   style={{ background: 'hsl(var(--qaida-accent) / 0.12)', color: 'hsl(var(--qaida-accent))' }}
                 >
                   {ch}
@@ -135,7 +137,7 @@ export function QaidaFlashcard({ word, status, onGrade, className }: Props) {
             {example ? (
               <span className="space-y-1">
                 <span className="block text-xs uppercase tracking-wide text-muted-foreground">Example</span>
-                <span className="block font-uthmani text-4xl text-foreground" dir="rtl">{example.word}</span>
+                <TajweedText text={example.word} className="block text-4xl text-foreground" />
                 {example.meaning && (
                   <span className="block text-sm text-muted-foreground">{example.meaning}</span>
                 )}
