@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+import { TimezoneSelect } from '@/components/ui/location-fields';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -195,7 +196,7 @@ export default function ParentRegistration() {
               <div><Label>City</Label><SearchableCitySelect className="mt-1" countryCode={parent.countryCode} value={parent.city} onValueChange={city => patchParent({ city })} /></div>
               <div className="sm:col-span-2"><Label>Address</Label><Input className="mt-1" value={parent.address} onChange={event => patchParent({ address: event.target.value })} /></div>
               <div><Label>Occupation</Label><Input className="mt-1" value={parent.occupation} onChange={event => patchParent({ occupation: event.target.value })} /></div>
-              <div><Label>Timezone</Label><Input className="mt-1" value={parent.timezone} onChange={event => patchParent({ timezone: event.target.value })} /></div>
+              <div><Label>Timezone</Label><TimezoneSelect className="mt-1" countryCode={parent.countryCode} value={parent.timezone} onValueChange={timezone => patchParent({ timezone })} /></div>
             </div>
           </>}
 
