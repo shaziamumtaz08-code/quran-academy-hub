@@ -490,9 +490,21 @@ export function ProfileEditorPanel({ userId }: Props) {
                 <Field label="Email"><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
                 <Field label="WhatsApp"><Input value={form.whatsapp_number || ''} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} /></Field>
                 <Field label="Phone (alternate)"><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
-                <Field label="Country"><Input value={form.country || ''} onChange={(e) => setForm({ ...form, country: e.target.value })} /></Field>
-                <Field label="City"><Input value={form.city || ''} onChange={(e) => setForm({ ...form, city: e.target.value })} /></Field>
-                <Field label="Timezone"><Input value={form.timezone || ''} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></Field>
+                <Field label="Country / City / Timezone">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <LocationFields
+                      labels={false}
+                      value={{
+                        countryCode: form.country_code || '',
+                        country: form.country || '',
+                        city: form.city || '',
+                        timezone: form.timezone || '',
+                      }}
+                      onChange={(patch) => setForm((prev: typeof form) => ({ ...prev, ...patch, country_code: patch.countryCode ?? prev.country_code }))}
+                    />
+                  </div>
+                </Field>
+
                 <Field label="Preferred Contact Method">
                   <Select value={form.preferred_contact_method || ''} onValueChange={(v) => setForm({ ...form, preferred_contact_method: v })}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
