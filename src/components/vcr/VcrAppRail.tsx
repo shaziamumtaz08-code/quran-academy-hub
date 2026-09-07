@@ -70,7 +70,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false,
   }, [open, onToggle]);
 
   return (
-    <div className="relative z-40 shrink-0 self-start">
+    <div className={cn('relative z-40 shrink-0 self-start', className)}>
       <nav
         aria-label="Class apps"
         className={cn(
