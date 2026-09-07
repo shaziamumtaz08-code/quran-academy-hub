@@ -17,10 +17,13 @@ interface Options {
   /** Resume by Juz when the syllabus item is a Juz. */
   resumeJuz?: number | null;
   libraryItemId?: string | null;
+  /** Teacher-side: pointing at a line is mirrored to the student. */
+  canControl?: boolean;
+  onPointLine?: (lineId: string | null) => void;
 }
 
 /** Mushaf implementation of the VCR adapter contract. */
-export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryItemId = null }: Options): VcrAdapter {
+export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryItemId = null, canControl = false, onPointLine }: Options): VcrAdapter {
   const [editionId, setEditionId] = useState<string | null>(null);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
   const [unit, setUnit] = useState(1);
@@ -52,8 +55,10 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
         fontScale: ctx.fontScale,
         highlight: ctx.highlight,
         onInfo: setInfo,
+        canPoint: canControl,
+        onPointLine,
       }),
-    [editionId]
+    [editionId, canControl, onPointLine]
   );
 
   return useMemo<VcrAdapter>(() => {
