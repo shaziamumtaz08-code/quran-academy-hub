@@ -92,11 +92,18 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       })
       .on('broadcast', { event: 'wb-sync' }, ({ payload }) => {
         if (isPresenter) return;
-        setStrokes(((payload as any)?.strokes ?? []) as VcrStroke[]);
+        const incoming = ((payload as any)?.strokes ?? []) as VcrStroke[];
+        const layer = (payload as any)?.layer as string | undefined;
+        setStrokes((prev) => (layer
+          ? [...prev.filter((s) => (s.layer ?? 'whiteboard') !== layer), ...incoming]
+          : incoming));
       })
-      .on('broadcast', { event: 'wb-clear' }, () => {
-        if (!isPresenter) setStrokes([]);
+      .on('broadcast', { event: 'wb-clear' }, ({ payload }) => {
+        if (isPresenter) return;
+        const layer = (payload as any)?.layer as string | undefined;
+        setStrokes((prev) => (layer ? prev.filter((s) => (s.layer ?? 'whiteboard') !== layer) : []));
       })
+
       .on('broadcast', { event: 'view-request' }, () => {
         // A student joined — re-announce current state.
         if (!isPresenter) return;
