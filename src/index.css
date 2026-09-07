@@ -27,6 +27,23 @@
   unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/*
+ * Indopak Nastaleeq (Hanafi, v4.2.2, with waqf lazmi) — the Indo-Pak Qur'anic
+ * script family used by Quran.com and QuranWBW. Obtained free of charge from
+ * the Quranic Universal Library (QUL) by Tarteel AI:
+ * https://qul.tarteel.ai/resources/font/242
+ * Self-hosted on this project's own asset CDN; not hotlinked.
+ * Credit: Tarteel AI / QUL. See CREDITS.md.
+ */
+@font-face {
+  font-family: 'Indopak Quran';
+  src: url('/__l5e/assets-v1/f333f5a5-1b0a-4bb5-a153-418e5a7d4532/IndopakNastaleeqHanafi.ttf') format('truetype');
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+
+
 
 
 @layer base {
