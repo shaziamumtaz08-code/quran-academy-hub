@@ -20,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
-import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared } from '@/lib/timezones';
+import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared, normalizeTimezone } from '@/lib/timezones';
 import { Calendar as DateCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { resolveScheduleForDate, type SchedulePeriod, type SchedulePeriodType } from '@/lib/schedulePeriods';
