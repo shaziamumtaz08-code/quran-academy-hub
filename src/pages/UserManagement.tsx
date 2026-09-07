@@ -2155,8 +2155,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openProfilePage(user)}
-                                title="Open full profile"
+                                onClick={() => openProfilePage(user, true)}
+                                title="Edit profile"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
