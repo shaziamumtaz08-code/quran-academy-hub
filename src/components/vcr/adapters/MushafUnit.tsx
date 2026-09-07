@@ -9,6 +9,9 @@ interface Props extends VcrRenderContext {
   editionId: string | null;
   page: number;
   onInfo?: (info: MushafPageInfo | null) => void;
+  /** Teacher can point at a line; the student's screen follows the pointer. */
+  canPoint?: boolean;
+  onPointLine?: (lineId: string | null) => void;
 }
 
 /**
@@ -17,10 +20,16 @@ interface Props extends VcrRenderContext {
  * Typography: the same self-hosted QUL Indo-Pak Nastaleeq Hanafi face used by
  * Noorani Qaida, and the same tajweed rule colouring, so both readers match.
  * Surface: pastel watercolour wash + frosted-glass line tiles (no parchment).
+ * The teacher can tap a line to point at it while teaching; the same line
+ * lights up on the student's screen.
  */
-export function MushafUnit({ editionId, page, fontScale, highlight, onInfo }: Props) {
+export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canPoint = false, onPointLine }: Props) {
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pointed, setPointed] = useState<string | null>(null);
+
+  useEffect(() => { setPointed(null); }, [page]);
+
 
   useEffect(() => {
     if (!editionId) return;
