@@ -401,7 +401,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     // No failure timer until someone else is present — whoever opens first
     // simply waits instead of being told the call failed.
     clearTimer();
-  }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer]);
+  }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer, attachLevel]);
 
   const end = useCallback(() => {
     teardown('ended');
@@ -411,8 +411,12 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     const track = localStreamRef.current?.getAudioTracks()[0];
     if (!track) return;
     track.enabled = !track.enabled;
+    mutedRef.current = !track.enabled;
     setMuted(!track.enabled);
-  }, []);
+    if (!track.enabled) setSpeaking(false);
+    // Tell the others straight away, so nobody talks into a muted mic.
+    send('mic', { muted: !track.enabled });
+  }, [send]);
 
   const retry = useCallback(async () => {
     teardown('idle');
