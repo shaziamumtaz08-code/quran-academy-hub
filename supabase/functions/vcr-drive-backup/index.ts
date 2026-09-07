@@ -170,12 +170,15 @@ serve(async (req) => {
     const errors: string[] = [];
 
     for (const rec of recs || []) {
-      const name = `vcr-${rec.started_at.slice(0, 10)}-${rec.id}.webm`;
+      const name = `vcr-${String(rec.started_at ?? "").slice(0, 10)}-${rec.id}.webm`;
       try {
         if (await findInDrive(gToken, FOLDER_ID, name)) { skipped++; continue; }
         const { data: file, error: dErr } = await admin.storage.from(BUCKET).download(rec.storage_path);
         if (dErr || !file) { errors.push(`${rec.id}: download failed`); continue; }
-        await uploadToDrive(gToken, FOLDER_ID, name, file);
+        const fileId = await uploadToDrive(gToken, FOLDER_ID, name, file);
+        await admin.from("vcr_call_recordings")
+          .update({ drive_file_id: fileId, drive_backed_up_at: new Date().toISOString() })
+          .eq("id", rec.id);
         uploaded++;
       } catch (e: any) {
         errors.push(`${rec.id}: ${e.message}`);
