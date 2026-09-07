@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, ShieldCheck, Users, Webhook } from 'lucide-react';
+import { Check, Copy, ShieldCheck, Users, Webhook } from 'lucide-react';
 import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
 import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
@@ -27,8 +27,8 @@ const zoomSlug = (a: ZoomAccountRow) => {
 
 /**
  * Account-scoped credentials screen: pick ONE Zoom account at the top, then
- * manage its webhook endpoint + Secret Token, Meeting SDK credentials, and
- * Server-to-Server OAuth credentials — all against that same selection.
+ * manage its webhook endpoint + Secret Token and Server-to-Server OAuth
+ * credentials — all against that same selection.
  */
 export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: ZoomAccountRow[] }) {
   const { toast } = useToast();
@@ -54,7 +54,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_accounts')
-        .select('id, webhook_app_slug, webhook_secret_token, zoom_meeting_sdk_client_id, zoom_account_id_cred, zoom_client_id, credential_status, credential_error, zoom_user_id');
+        .select('id, webhook_app_slug, webhook_secret_token, zoom_account_id_cred, zoom_client_id, credential_status, credential_error, zoom_user_id');
       if (error) throw error;
       return Object.fromEntries(
         (data || []).map((r: any) => [
@@ -62,9 +62,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
           {
             slug: r.webhook_app_slug as string | null,
             hasWebhookToken: !!r.webhook_secret_token,
-            hasSdkCreds: !!r.zoom_meeting_sdk_client_id,
             hasS2S: !!(r.zoom_account_id_cred && r.zoom_client_id),
-             sdkClientId: (r.zoom_meeting_sdk_client_id as string | null) || null,
              s2sAccountId: (r.zoom_account_id_cred as string | null) || null,
              s2sClientId: (r.zoom_client_id as string | null) || null,
             s2sStatus: (r.credential_status as string | null) || null,
@@ -75,9 +73,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
       ) as Record<string, {
         slug: string | null;
         hasWebhookToken: boolean;
-        hasSdkCreds: boolean;
         hasS2S: boolean;
-         sdkClientId: string | null;
          s2sAccountId: string | null;
          s2sClientId: string | null;
         s2sStatus: string | null;
@@ -87,8 +83,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     },
   });
 
-  // Which classes this Zoom seat hosts — this link is what lets a class use the
-  // in-app player (the signature function resolves credentials through it).
+  // Which classes this Zoom seat hosts.
   const { data: classRows } = useQuery({
     queryKey: ['zoom-linkable-classes'],
     queryFn: async () => {
@@ -156,10 +151,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   const [webhookToken, setWebhookToken] = React.useState('');
   const [savingToken, setSavingToken] = React.useState(false);
 
-  const [sdkClientId, setSdkClientId] = React.useState('');
-  const [sdkClientSecret, setSdkClientSecret] = React.useState('');
-  const [savingCreds, setSavingCreds] = React.useState(false);
-
   // Server-to-Server OAuth app credentials (the ones webhooks / attendance need)
   const [s2sAccountId, setS2sAccountId] = React.useState('');
   const [s2sClientId, setS2sClientId] = React.useState('');
@@ -171,14 +162,12 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
   // write-only. This makes saved configuration visible without exposing keys.
   React.useEffect(() => {
     setWebhookToken('');
-    setSdkClientId(status?.sdkClientId || '');
-    setSdkClientSecret('');
     setCopied(false);
     setS2sAccountId(status?.s2sAccountId || '');
     setS2sClientId(status?.s2sClientId || '');
     setS2sClientSecret('');
     setValidateResult(null);
-  }, [accountId, status?.sdkClientId, status?.s2sAccountId, status?.s2sClientId]);
+  }, [accountId, status?.s2sAccountId, status?.s2sClientId]);
 
   // Live badge state for the S2S block: local validation result wins, then the
   // persisted credential_status on the row.
@@ -272,28 +261,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     }
   };
 
-  const saveCreds = async () => {
-    if (!account) return;
-
-    setSavingCreds(true);
-    try {
-      const { error } = await (supabase as any).rpc('admin_set_zoom_meeting_sdk_creds', {
-        _account_id: account.id,
-        _client_id: sdkClientId,
-        _client_secret: sdkClientSecret,
-      });
-      if (error) throw error;
-      setSdkClientId('');
-      setSdkClientSecret('');
-      queryClient.invalidateQueries({ queryKey: ['zoom-account-cred-status'] });
-      toast({ title: 'Meeting SDK credentials saved', description: 'Classes linked to this account can now use the in-app player.' });
-    } catch (e: any) {
-      toast({ title: 'Could not save credentials', description: e.message, variant: 'destructive' });
-    } finally {
-      setSavingCreds(false);
-    }
-  };
-
   return (
     <div className="zoom-ws zw-card zw-inset-top space-y-6 p-6">
       {/* Single account selector */}
@@ -319,9 +286,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             <span className="zw-chip" data-tone={status.hasWebhookToken ? 'ok' : 'quiet'}>
               <span className="zw-dot" /> Webhook token {status.hasWebhookToken ? 'saved' : 'not set'}
             </span>
-            <span className="zw-chip" data-tone={status.hasSdkCreds ? 'ok' : 'quiet'}>
-              <span className="zw-dot" /> Meeting SDK {status.hasSdkCreds ? 'saved' : 'not set'}
-            </span>
           </div>
         )}
       </div>
@@ -330,14 +294,14 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <div className="zw-motif" />
           <p className="zw-body max-w-sm">
-            Select a Zoom account above — its webhook, in-app player credentials, and S2S OAuth credentials all appear here.
+            Select a Zoom account above — its webhook and S2S OAuth credentials appear here.
           </p>
         </div>
       )}
 
       {account && (
         <>
-          {/* Classes hosted by this account — the link the in-app player needs */}
+          {/* Classes hosted by this account */}
           <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
             <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
@@ -349,7 +313,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
             {linkedClasses.length === 0 ? (
               <p className="zw-meta">
-                No class is hosted by this seat yet — link one below so it can use the in-app player.
+                No class is hosted by this seat yet — link one below.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -476,8 +440,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             )}
             <p className="zw-meta">
               These three come from this account’s <strong>Server-to-Server OAuth</strong> app in the Zoom Marketplace.
-              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault)
-              and not the Meeting SDK app below.
+              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault).
             </p>
           </div>
 
@@ -517,33 +480,6 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             </div>
             <p className="zw-meta">
               Paste this URL as the <strong>Event Notification Endpoint</strong> in this account’s Zoom app, then save its Secret Token above <em>before</em> pressing “Validate” in Zoom.
-            </p>
-          </div>
-
-          {/* Meeting SDK credentials */}
-          <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
-            <div className="flex flex-wrap items-center gap-2">
-              <KeyRound className="h-4 w-4" style={{ color: 'hsl(var(--zw-brass))' }} />
-              <h3 className="zw-h2">In-app player credentials</h3>
-              {status?.hasSdkCreds && (
-                <span className="zw-chip" data-tone="ok"><span className="zw-dot" /> Stored — saving replaces</span>
-              )}
-            </div>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <div className="min-w-0 flex-1">
-                <p className="zw-eyebrow mb-1.5">Meeting SDK Client ID</p>
-                <Input key={`sdk-client-${account.id}`} name="zoom-sdk-client-id" autoComplete="off" data-lpignore="true" value={sdkClientId} onChange={(e) => setSdkClientId(e.target.value)} placeholder="Client ID from the Zoom “Meeting SDK” app" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="zw-eyebrow mb-1.5">Meeting SDK Client Secret</p>
-                <Input key={`sdk-secret-${account.id}`} type="password" name="zoom-sdk-client-secret" autoComplete="new-password" data-lpignore="true" value={sdkClientSecret} onChange={(e) => setSdkClientSecret(e.target.value)} placeholder={status?.hasSdkCreds ? 'Stored securely — type only to replace' : 'Client Secret'} />
-              </div>
-              <button type="button" className="zw-btn-primary" disabled={!sdkClientId || !sdkClientSecret || savingCreds} onClick={saveCreds}>
-                {savingCreds ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            <p className="zw-meta">
-              These come from a separate <strong>Meeting SDK</strong> app in the Zoom Marketplace (not the Server-to-Server OAuth app). Accounts without them keep using the embedded frame.
             </p>
           </div>
         </>
