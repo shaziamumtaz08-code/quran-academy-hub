@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+import { TimezoneSelect } from '@/components/ui/location-fields';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
@@ -284,7 +285,7 @@ export default function StudentRegistration() {
             />
           </Field>
           <Field label="Timezone" hint="Class times will be shown in this timezone.">
-            <Input value={home.timezone} onChange={e => set({ timezone: e.target.value })} placeholder="Select a country first" className="h-11" />
+            <TimezoneSelect countryCode={home.countryCode} value={home.timezone} onValueChange={timezone => set({ timezone })} className="h-11" />
           </Field>
           <Field label="Residential address" required wide>
             <Textarea value={home.address} onChange={e => set({ address: e.target.value })} rows={2} placeholder="Street, area, postal code" />

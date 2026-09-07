@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+import { TimezoneSelect } from '@/components/ui/location-fields';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TermsAcceptance, recordPolicyAcceptance } from '@/components/policies/TermsAcceptance';
@@ -236,7 +237,7 @@ export default function TeacherRegistration() {
             />
           </Field>
           <Field label="Timezone" hint="Class allocations respect this timezone.">
-            <Input value={form.timezone} onChange={e => set({ timezone: e.target.value })} placeholder="Select a country first" className="h-11" />
+            <TimezoneSelect countryCode={form.countryCode} value={form.timezone} onValueChange={timezone => set({ timezone })} className="h-11" />
           </Field>
           <Field label="Residential address">
             <Input value={form.address} onChange={e => set({ address: e.target.value })} className="h-11" />
