@@ -97,7 +97,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
 
         {open && (
           <TooltipProvider delayDuration={120}>
-            <ul className="flex max-h-[calc(100dvh-12rem)] w-full flex-col items-center gap-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]">
+            <ul className="flex max-h-[calc(100dvh-12rem)] w-full flex-col items-center gap-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {ITEMS.map(({ key, label, icon: Icon, accent }) => {
                 const styles = ACCENT_STYLES[accent];
                 const selected = active === key;
