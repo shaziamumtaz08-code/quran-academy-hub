@@ -246,7 +246,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       pcsRef.current.set(remoteId, pc);
       return pc;
     },
-    [send, refreshStatus]
+    [send, refreshStatus, attachLevel]
   );
 
   const drainIce = async (remoteId: string, pc: RTCPeerConnection) => {
@@ -273,27 +273,39 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       return;
     }
     localStreamRef.current = stream;
+    attachLevel('self', stream);
 
     // Observers arrive silently — they can unmute to speak.
     if (observerRef.current) {
       stream.getAudioTracks().forEach((t) => (t.enabled = false));
+      mutedRef.current = true;
       setMuted(true);
+    } else {
+      mutedRef.current = false;
+      setMuted(false);
     }
 
     // NOTE: must NOT share a topic with useVcrViewSync (`vcr-call:*`).
     const channel = supabase.channel(`vcr-audio:${roomId}`, { config: { broadcast: { self: false } } });
     channelRef.current = channel;
 
-    const me = () => ({ name: displayName, observer: observerRef.current });
+    const me = () => ({ name: displayName, observer: observerRef.current, muted: mutedRef.current });
 
     /** Track a peer; refuse a fourth participant. */
-    const claimPeer = (from?: string, name?: string, isObserver?: boolean) => {
+    const claimPeer = (from?: string, name?: string, isObserver?: boolean, isMuted?: boolean) => {
       if (!from || from === peerId) return false;
       if (!peersRef.current.has(from) && peersRef.current.size >= MAX_OTHERS) {
         channelRef.current?.send({ type: 'broadcast', event: 'busy', payload: { from: peerId, to: from } });
         return false;
       }
-      peersRef.current.set(from, { id: from, name: name || 'Participant', observer: !!isObserver });
+      const prev = peersRef.current.get(from);
+      peersRef.current.set(from, {
+        id: from,
+        name: name || prev?.name || 'Participant',
+        observer: isObserver ?? prev?.observer ?? false,
+        muted: isMuted ?? prev?.muted ?? false,
+        speaking: prev?.speaking ?? false,
+      });
       syncPeers();
       armConnectTimer();
       return true;
