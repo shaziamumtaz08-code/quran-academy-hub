@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Eraser, Undo2, X } from 'lucide-react';
+import { Circle, Eraser, Pencil, Square, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { VcrStroke } from '@/hooks/useVcrViewSync';
 
@@ -10,12 +10,22 @@ const PENS = [
   { label: 'Blue', color: '#2563eb' },
 ];
 
+type Shape = 'free' | 'box' | 'circle';
+
+const TOOLS: { shape: Shape; label: string; Icon: typeof Pencil }[] = [
+  { shape: 'free', label: 'Draw', Icon: Pencil },
+  { shape: 'box', label: 'Box', Icon: Square },
+  { shape: 'circle', label: 'Circle', Icon: Circle },
+];
+
 interface Props {
   strokes: VcrStroke[];
   /** 'annotate' = transparent layer over the page, 'board' = separate blank board. */
   mode?: 'annotate' | 'board';
   /** Only the presenter can draw; students see a live mirror. */
   canDraw: boolean;
+  /** Which working area these marks belong to (page or whiteboard). */
+  layer?: string;
   onStroke?: (stroke: VcrStroke) => void;
   onUndo?: () => void;
   onClear?: () => void;
@@ -24,16 +34,19 @@ interface Props {
 }
 
 /**
- * Transparent drawing layer sitting over the reader. Coordinates are stored
- * normalised (0..1) so a stroke drawn on the teacher's screen lands in the same
- * place on the student's, whatever the viewport size.
+ * Drawing layer for one working area. Coordinates are stored normalised (0..1)
+ * so a mark drawn on the teacher's screen lands in the same place on the
+ * student's, whatever the viewport size. Every layer (each Mushaf/Qaida page
+ * and the whiteboard) keeps its own marks — they are never shared.
  */
-export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, onUndo, onClear, onClose, className }: Props) {
+export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onStroke, onUndo, onClear, onClose, className }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef<VcrStroke | null>(null);
   const [pen, setPen] = useState(PENS[0].color);
+  const [tool, setTool] = useState<Shape>('free');
   const [size, setSize] = useState({ w: 0, h: 0 });
+
 
   /* Keep the bitmap in step with the layout box */
   useEffect(() => {
