@@ -127,12 +127,18 @@ export function getTimezoneAbbr(value: string | null | undefined): string {
       timeZoneName: 'short',
     }).formatToParts(new Date());
     const name = parts.find(p => p.type === 'timeZoneName')?.value;
-    if (name && !/^GMT[+-]/.test(name)) return name;
-    if (name) return name.replace('GMT', 'UTC');
+    if (name && !/^GMT[+-]?/.test(name)) return name;
   } catch {
     /* fall through */
   }
-  return getTimezoneByValue(zone)?.abbr || zone.split('/').pop() || 'UTC';
+  const known = getTimezoneByValue(zone);
+  if (known) {
+    // DST-aware suffix for zones whose current offset differs from standard time
+    const live = getTimezoneOffset(zone);
+    if (live !== known.offset) return known.abbr.replace(/^(\w)(\w*)T$/, '$1$2ST').replace('CET', 'CEST').replace('GMT', 'BST').replace('WET', 'WEST');
+    return known.abbr;
+  }
+  return zone.split('/').pop() || 'UTC';
 }
 
 /**
