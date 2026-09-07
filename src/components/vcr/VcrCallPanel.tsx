@@ -204,10 +204,15 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
             type="button"
             onClick={toggleMute}
             aria-pressed={muted}
-            className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm"
+            className={cn(
+              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
+              muted
+                ? 'border-amber-400/50 bg-amber-500/15 text-amber-100'
+                : speaking && 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
+            )}
           >
             {muted ? <MicOff className="h-4 w-4 text-amber-300" /> : <Mic className="h-4 w-4 text-vcr-gold" />}
-            {muted ? 'Unmute' : 'Mute'}
+            {muted ? 'Your mic is off — tap to unmute' : 'Your mic is on — tap to mute'}
           </button>
           <button
             type="button"
