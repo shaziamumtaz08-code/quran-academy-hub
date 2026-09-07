@@ -475,6 +475,29 @@ export default function VcrRoom() {
     return () => { cancelled = true; };
   }, [effectiveResourceId]);
 
+  /* Followers show the board whenever the teacher has it open. */
+  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
+  const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
+
+  /* Every working area keeps its own marks: each Mushaf / Qaida / document
+     page has its own layer, and the whiteboard is a separate canvas that never
+     shares anything with the pages. */
+  const pageLayer = resource
+    ? `resource:${resource.id}:${currentPage}`
+    : content === 'doc'
+      ? `doc:${activeDocId ?? 'none'}:${currentPage}`
+      : `${content}:${currentPage}`;
+  const annotationLayer = whiteboardMode === 'board' ? 'whiteboard' : pageLayer;
+  const layerOf = (s: any) => s.layer ?? 'whiteboard';
+  const pageStrokes = React.useMemo(
+    () => strokes.filter((s) => layerOf(s) === pageLayer),
+    [strokes, pageLayer],
+  );
+  const activeStrokes = React.useMemo(
+    () => strokes.filter((s) => layerOf(s) === annotationLayer),
+    [strokes, annotationLayer],
+  );
+
   /* Reopen the marks that were saved on this page last time. */
   useEffect(() => {
     if (!resource) return;
@@ -576,29 +599,6 @@ export default function VcrRoom() {
   const canSubmitToAssignment = !canControl && !!user?.id && user.id === studentId && !!syncedSource;
 
 
-
-  /* Followers show the board whenever the teacher has it open. */
-  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
-  const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
-
-  /* Every working area keeps its own marks: each Mushaf / Qaida / document
-     page has its own layer, and the whiteboard is a separate canvas that never
-     shares anything with the pages. */
-  const pageLayer = resource
-    ? `resource:${resource.id}:${currentPage}`
-    : content === 'doc'
-      ? `doc:${activeDocId ?? 'none'}:${currentPage}`
-      : `${content}:${currentPage}`;
-  const annotationLayer = whiteboardMode === 'board' ? 'whiteboard' : pageLayer;
-  const layerOf = (s: any) => s.layer ?? 'whiteboard';
-  const pageStrokes = React.useMemo(
-    () => strokes.filter((s) => layerOf(s) === pageLayer),
-    [strokes, pageLayer],
-  );
-  const activeStrokes = React.useMemo(
-    () => strokes.filter((s) => layerOf(s) === annotationLayer),
-    [strokes, annotationLayer],
-  );
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
