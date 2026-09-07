@@ -19,6 +19,10 @@ export interface CallPeer {
   id: string;
   name: string;
   observer: boolean;
+  /** Whether that person's microphone is currently off. */
+  muted: boolean;
+  /** True while that person is actually talking. */
+  speaking: boolean;
 }
 
 const CONNECT_TIMEOUT_MS = 25_000;
