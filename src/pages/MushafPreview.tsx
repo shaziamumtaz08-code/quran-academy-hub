@@ -24,7 +24,7 @@ export default function MushafPreview() {
     <div className="mx-auto w-full max-w-5xl space-y-4 p-3 sm:p-5">
       <header className="flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold/10 text-gold">
-          <BookOpen className="h-4.5 w-4.5 h-5 w-5" />
+          <BookOpen className="h-5 w-5" />
         </span>
         <div>
           <h1 className="text-xl font-bold text-lms-navy">Mushaf</h1>

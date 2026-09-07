@@ -30,6 +30,7 @@ export function TeacherQuickLinks() {
     { icon: Globe,          label: 'My network',      tone: 'gray',   onClick: () => navigate(`/connections/teacher/${user?.id}`) },
     { icon: CalendarOff,    label: 'Request leave',   tone: 'amber',  onClick: () => navigate('/work-hub?tab=leave') },
     { icon: BookOpen,       label: 'Library',         tone: 'blue',   onClick: () => navigate('/library') },
+    { icon: BookOpen,       label: 'Mushaf',          tone: 'teal',   onClick: () => navigate('/mushaf') },
     { icon: ClipboardList,  label: 'Fill plan',       tone: 'teal',   onClick: () => navigate('/monthly-planning') },
   ];
 
