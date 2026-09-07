@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, RotateCw, Search, ShieldAlert } from 'lucide-react';
+import { ExternalLink, RotateCw, Search, ShieldAlert, Video } from 'lucide-react';
 import { toEmbedUrl } from '@/hooks/useVcrRoomState';
 import { cn } from '@/lib/utils';
 
@@ -14,31 +14,35 @@ interface Props {
   onShare?: (url: string, title: string) => void;
 }
 
-/** Sites that refuse to be framed — we never show them a broken black frame. */
-const NEVER_EMBEDS = [
-  /(^|\.)google\.com$/i,
-  /(^|\.)accounts\.google\.com$/i,
-  /(^|\.)youtube\.com$/i,
-  /(^|\.)zoom\.us$/i,
-];
-
 function hostOf(url: string) {
   try { return new URL(url).hostname; } catch { return ''; }
 }
 
-function canTryEmbed(url: string) {
+/**
+ * Only two things can genuinely live inside the classroom: a single YouTube
+ * video and a single Google Drive file. Everything else — Google search,
+ * YouTube browsing, the Drive file browser, Zoom, arbitrary web addresses —
+ * is blocked by the site itself, so we never even attempt a frame.
+ */
+function embedTarget(url: string): string | null {
+  if (!url) return null;
   const h = hostOf(url);
-  if (!h) return false;
-  if (/^drive\.google\.com$/i.test(h)) return /\/(preview|embeddedfolderview)/.test(url);
-  if (/^www\.youtube\.com$/i.test(h)) return url.includes('/embed/');
-  return !NEVER_EMBEDS.some((re) => re.test(h));
+  if (/(^|\.)youtube\.com$/i.test(h) || /(^|\.)youtu\.be$/i.test(h)) {
+    const embed = url.includes('/embed/') ? url : toEmbedUrl(url, 'youtube');
+    return embed && embed.includes('/embed/') ? embed : null;
+  }
+  if (/(^|\.)google\.com$/i.test(h) && /^drive\./i.test(h)) {
+    const embed = /\/preview(\?|$)/.test(url) ? url : toEmbedUrl(url, 'drive');
+    return embed && /\/preview(\?|$)/.test(embed) ? embed : null;
+  }
+  return null;
 }
 
 function normalise(raw: string, app: WebApp): string {
   const v = raw.trim();
   if (!v) return '';
-  if (app === 'youtube') return toEmbedUrl(v, 'youtube') ?? `https://www.youtube.com/results?search_query=${encodeURIComponent(v)}`;
-  if (app === 'drive') return toEmbedUrl(v, 'drive') ?? (/^https?:\/\//i.test(v) ? v : `https://drive.google.com/drive/my-drive`);
+  if (app === 'youtube') return /^https?:\/\//i.test(v) ? v : `https://www.youtube.com/results?search_query=${encodeURIComponent(v)}`;
+  if (app === 'drive') return /^https?:\/\//i.test(v) ? v : 'https://drive.google.com/drive/my-drive';
   if (app === 'google' && !/^https?:\/\//i.test(v) && !v.includes('.')) {
     return `https://www.google.com/search?q=${encodeURIComponent(v)}`;
   }
@@ -59,11 +63,11 @@ const START: Record<WebApp, string> = {
 };
 
 const PLACEHOLDER: Record<WebApp, string> = {
-  drive: 'Paste a Google Drive file or folder link',
-  youtube: 'Search YouTube, or paste a video link',
+  drive: 'Paste a Google Drive file link to show it here',
+  youtube: 'Paste a YouTube video link to play it here',
   google: 'Search Google, or type a web address',
   url: 'Type a web address',
-  zoom: 'Paste a Zoom meeting link or ID',
+  zoom: 'Paste the class Zoom link or meeting ID',
 };
 
 /**
@@ -74,12 +78,9 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
   const [input, setInput] = useState(initialUrl ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
   const [reload, setReload] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
-  const timer = useRef<number | null>(null);
 
-  const embeddable = useMemo(() => !!url && canTryEmbed(url), [url]);
   const target = url || START[app];
+  const embedSrc = useMemo(() => (app === 'zoom' ? null : embedTarget(url)), [url, app]);
 
   const onTitleRef = useRef(onTitle);
   onTitleRef.current = onTitle;
@@ -94,15 +95,6 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
     onTitleRef.current?.(url ? hostOf(url) || 'Web' : defaultTitle);
   }, [url, app]);
 
-  useEffect(() => {
-    if (!embeddable) return;
-    setLoaded(false);
-    setTimedOut(false);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setTimedOut(true), 4000);
-    return () => { if (timer.current) window.clearTimeout(timer.current); };
-  }, [url, reload, embeddable]);
-
   const go = (value: string) => {
     const next = normalise(value, app);
     if (!next) return;
@@ -110,19 +102,19 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
     setInput(next);
   };
 
-  const blocked = !embeddable || (timedOut && !loaded);
-
   return (
     <section className="flex h-full min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white shadow-[0_18px_50px_-24px_rgba(15,23,42,0.55)]">
       <header className="flex items-center gap-2 border-b border-slate-900/8 bg-gradient-to-r from-slate-50 via-white to-slate-50 px-2.5 py-2">
-        <button
-          type="button"
-          onClick={() => setReload((n) => n + 1)}
-          aria-label="Reload"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
-        >
-          <RotateCw className="h-3.5 w-3.5" />
-        </button>
+        {embedSrc && (
+          <button
+            type="button"
+            onClick={() => setReload((n) => n + 1)}
+            aria-label="Reload"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+          </button>
+        )}
         <form
           onSubmit={(e) => { e.preventDefault(); go(input); }}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-slate-900/12 bg-white px-3 shadow-inner"
@@ -135,7 +127,7 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
             className="h-8 min-w-0 flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
           />
         </form>
-        {onShare && url && (
+        {onShare && embedSrc && (
           <button
             type="button"
             onClick={() => onShare(url, hostOf(url))}
@@ -155,51 +147,77 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
       </header>
 
       <div className="relative flex-1 bg-white">
-        {url && embeddable && (
+        {embedSrc ? (
           <iframe
-            key={`${url}:${reload}`}
-            title={hostOf(url) || 'Web page'}
-            src={url}
-            onLoad={() => setLoaded(true)}
-            className={cn('h-full min-h-[58vh] w-full', blocked && 'invisible')}
+            key={`${embedSrc}:${reload}`}
+            title={hostOf(embedSrc) || 'Web page'}
+            src={embedSrc}
+            className={cn('h-full min-h-[58vh] w-full')}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
             referrerPolicy="no-referrer"
           />
-        )}
-        {(!url || blocked) && (
+        ) : (
           <div className="flex h-full min-h-[58vh] flex-col items-center justify-center gap-3 px-6 text-center">
-            {!url ? (
+            {app === 'zoom' ? (
+              <>
+                <Video className="h-7 w-7 text-indigo-500" />
+                <p className="max-w-md text-sm text-slate-700">
+                  Zoom always opens in its own tab. Paste the class link above if it is not
+                  filled in yet, then press Join.
+                </p>
+                {url && <p className="max-w-md break-all text-xs text-slate-500">{url}</p>}
+                <a
+                  href={url || 'https://zoom.us/'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-500"
+                >
+                  <Video className="h-4 w-4" /> Join
+                </a>
+              </>
+            ) : !url ? (
               <>
                 <Search className="h-6 w-6 text-slate-300" />
                 <p className="max-w-sm text-sm text-slate-600">
                   {app === 'youtube'
-                    ? 'Search for a video above, or paste a YouTube link to play it here in class.'
+                    ? 'Paste the link of one video and it will play right here in class. Browsing YouTube opens in your own browser tab.'
                     : app === 'drive'
-                      ? 'Paste a Google Drive file or folder link above to open it here in class.'
-                      : app === 'zoom'
-                        ? 'Paste a Zoom meeting link or meeting ID above to join from here.'
-                        : 'Type what you are looking for, or a web address, above.'}
+                      ? 'Paste the link of one Google Drive file and it will show right here in class. The full Drive browser opens in your own browser tab.'
+                      : 'Type what you are looking for, or a web address. It will open in your own browser tab.'}
                 </p>
+                <a
+                  href={START[app] || 'https://www.google.com/'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  <ExternalLink className="h-4 w-4" /> Open in new tab
+                </a>
               </>
             ) : (
               <>
                 <ShieldAlert className="h-6 w-6 text-amber-500" />
                 <p className="max-w-md text-sm text-slate-700">
                   <span className="font-medium">{hostOf(url)}</span> does not allow itself to be shown inside
-                  another page, so it cannot appear here.
+                  another page, so it opens in your own browser tab instead.
                 </p>
-                <p className="max-w-md text-xs text-slate-500 break-all">{url}</p>
+                <p className="max-w-md break-all text-xs text-slate-500">{url}</p>
                 <a
                   href={url}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 items-center gap-2 rounded-full bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
                 >
-                  <ExternalLink className="h-4 w-4" /> Open in your browser
+                  <ExternalLink className="h-4 w-4" /> Open in new tab
                 </a>
                 {app === 'youtube' && (
                   <p className="max-w-md text-xs text-slate-500">
-                    Paste the link of the video you want and it will play right here.
+                    Paste the link of a single video and it will play right here.
+                  </p>
+                )}
+                {app === 'drive' && (
+                  <p className="max-w-md text-xs text-slate-500">
+                    Paste the link of a single file and it will show right here.
                   </p>
                 )}
               </>
