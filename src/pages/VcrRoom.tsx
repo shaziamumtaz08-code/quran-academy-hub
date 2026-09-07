@@ -32,7 +32,7 @@ import { VcrAppRail, type VcrRailKey } from '@/components/vcr/VcrAppRail';
 import { VcrAppPanel, type VcrOpenTarget } from '@/components/vcr/VcrAppPanel';
 import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
 import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
-import { VcrTabStrip, type VcrTab } from '@/components/vcr/VcrTabStrip';
+import { type VcrTab } from '@/components/vcr/VcrTabStrip';
 
 /** The real Library and My Drive screens, mounted inside classroom tabs. */
 const LibraryPage = React.lazy(() => import('@/pages/Library'));
@@ -691,13 +691,6 @@ export default function VcrRoom() {
     setActiveTab((cur) => (cur === id ? 'lesson' : cur));
   }, []);
 
-  const setTabTitle = React.useCallback((id: string, title: string) => {
-    setTabs((prev) =>
-      prev.some((t) => t.id === id && t.title !== title)
-        ? prev.map((t) => (t.id === id ? { ...t, title } : t))
-        : prev,
-    );
-  }, []);
 
   /** Highlight the launcher entry matching whatever tab is in front. */
   const railActive: VcrRailKey | null = useMemo(() => {
@@ -986,9 +979,6 @@ export default function VcrRoom() {
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
-            <span className="truncate font-medium text-vcr-chrome/75">
-              {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
-            </span>
             {roomState?.presenter_id && (
               <span className="truncate text-vcr-chrome/45">
                 · presenting: {roomState.presenter_name ?? 'someone in the class'}
@@ -1175,6 +1165,16 @@ export default function VcrRoom() {
                   activeTab !== t.id && 'hidden',
                 )}
               >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-800">{t.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => closeTab(t.id)}
+                    className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
+                  >
+                    Back to lesson
+                  </button>
+                </div>
                 {t.kind === 'syllabus' ? (
                   <VcrAppPanel
                     app="syllabus"
