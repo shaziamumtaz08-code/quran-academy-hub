@@ -739,7 +739,7 @@ export default function VcrRoom() {
         openTab({ id: 'web:youtube', kind: 'web', app: 'youtube', title: 'YouTube', icon: Youtube });
         return;
       case 'google':
-        openTab({ id: 'web:google', kind: 'web', app: 'google', title: 'Google', icon: Chrome });
+        openTab({ id: 'web:google', kind: 'web', app: 'google', title: 'Google', icon: Chrome, url: 'https://www.google.com/' });
         return;
       default:
         openTab({ id: `web:url:${Date.now()}`, kind: 'web', app: 'url', title: 'Web', icon: Link2 });
