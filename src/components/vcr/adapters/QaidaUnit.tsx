@@ -9,6 +9,7 @@ import { QaidaFlashcardSheet } from '@/components/qaida/QaidaFlashcardSheet';
 import { QaidaPracticeDeck } from '@/components/qaida/QaidaPracticeDeck';
 import { useQaidaWordProgress, type QaidaWordStatus } from '@/hooks/useQaidaWordProgress';
 import { detectHarakat, HARAKAT_STYLE } from '@/lib/qaidaHarakat';
+import { TajweedText, TajweedLegend } from '@/components/qaida/TajweedText';
 
 export interface QaidaPageWord {
   id: string;
@@ -191,7 +192,7 @@ export function QaidaUnit({
       const closing = page > 1;
       return (
         <div className={cn('flex flex-col items-center justify-center gap-4 py-14 text-center', className)}>
-          <span className={cn('font-uthmani leading-none', inkClass)} style={{ fontSize: `${64 * fontScale}px` }} dir="rtl">
+          <span className={cn('font-qaida leading-none', inkClass)} style={{ fontSize: `${64 * fontScale}px` }} dir="rtl">
             {closing ? 'تمت بالخیر' : 'نورانی قاعدہ'}
           </span>
           <h3 className={cn('font-display text-2xl', inkClass)}>
@@ -215,7 +216,7 @@ export function QaidaUnit({
           paper ? 'border-border text-muted-foreground' : 'border-vcr-ink/20 text-vcr-ink/70')}>
           Baab {baab.baab_number} · Pages {baab.start_page}–{baab.end_page}
         </span>
-        <span className={cn('font-uthmani leading-tight', inkClass)} style={{ fontSize: `${44 * fontScale}px` }} dir="rtl">
+        <span className={cn('font-qaida leading-tight', inkClass)} style={{ fontSize: `${44 * fontScale}px` }} dir="rtl">
           {baab.name_urdu || ''}
         </span>
         <h3 className={cn('font-display text-2xl', inkClass)}>{baab.name_english || `Baab ${baab.baab_number}`}</h3>
@@ -290,12 +291,11 @@ export function QaidaUnit({
                       isEnd && 'ring-2 ring-primary',
                     )}
                   >
-                    <span
-                      className="font-uthmani whitespace-nowrap leading-none text-slate-900"
+                    <TajweedText
+                      text={w.word_text}
+                      className="whitespace-nowrap leading-none text-slate-900"
                       style={{ fontSize: `${glyphFor(w.word_text)}px` }}
-                    >
-                      {w.word_text}
-                    </span>
+                    />
                     {mark && (
                       <span
                         className={cn(
