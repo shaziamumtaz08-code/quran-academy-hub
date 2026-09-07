@@ -35,9 +35,7 @@ import {
 } from '@/hooks/useAcademyTimezone';
 import { getTimezoneAbbr } from '@/lib/timezones';
 import { ZoomSessionAttendanceReport } from '@/components/zoom/ZoomSessionAttendanceReport';
-import { useSdkEmbedDisabledAccounts } from '@/hooks/useZoomSdkEmbed';
 import { parseZoomLink } from '@/lib/zoomLink';
-import { ZoomSdkMeeting } from '@/components/classroom/ZoomSdkMeeting';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -74,43 +72,9 @@ export function ZoomLiveOperations() {
   const [filter, setFilter] = React.useState<TileFilter>('all');
   const [recordingLinks, setRecordingLinks] = React.useState<Record<string, string>>({});
   const { user, profile } = useAuth() as any;
-  // In-app player state for the admin "Join class" action.
-  const [sdkJoin, setSdkJoin] = React.useState<
-    | {
-        sessionId: string;
-        teacherName: string;
-        zoomAccountId: string;
-        meetingNumber: string;
-        passcode: string;
-        encryptedToken?: string;
-
-        joinUrl: string;
-      }
-    | null
-   >(null);
-  const [sdkFailed, setSdkFailed] = React.useState<string | null>(null);
-  const { data: sdkDisabled } = useSdkEmbedDisabledAccounts();
-
   const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
-  const handleJoin = (session: any, joinUrl: string) => {
-    const embedOff = session.zoom_account_id && sdkDisabled?.has(session.zoom_account_id);
-    const parsed = session.zoom_account_id && !embedOff ? parseZoomLink(joinUrl) : null;
-    if (session.zoom_account_id && !embedOff && parsed) {
-      setSdkFailed(null);
-      setSdkJoin({
-        sessionId: session.id,
-        teacherName: session.teacherName,
-        zoomAccountId: session.zoom_account_id,
-        meetingNumber: parsed.meetingNumber,
-        passcode: parsed.passcode,
-        encryptedToken: parsed.encryptedToken,
-        joinUrl,
-      });
-      return;
-    }
-    openExternally(joinUrl);
-  };
+  const handleJoin = (_session: any, joinUrl: string) => openExternally(joinUrl);
 
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -549,56 +513,7 @@ export function ZoomLiveOperations() {
         {/* Zoom S2S webhook telemetry, rolled up per class session */}
         <ZoomSessionAttendanceReport />
 
-        {/* In-app Zoom player (admin joins as attendee; teacher stays host) */}
 
-        <Dialog
-          open={!!sdkJoin}
-          onOpenChange={(o) => {
-            if (!o) {
-              setSdkJoin(null);
-              setSdkFailed(null);
-            }
-          }}
-        >
-          <DialogContent
-            className="max-w-4xl"
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onInteractOutside={(e) => e.preventDefault()}
-            onEscapeKeyDown={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>{sdkJoin ? `${sdkJoin.teacherName}'s class` : 'Class'}</DialogTitle>
-            </DialogHeader>
-            {sdkJoin && !sdkFailed && (
-              <ZoomSdkMeeting
-                zoomAccountId={sdkJoin.zoomAccountId}
-                meetingNumber={sdkJoin.meetingNumber}
-                passcode={sdkJoin.passcode}
-                encryptedToken={sdkJoin.encryptedToken}
-                userName={profile?.full_name || user?.email || 'Admin'}
-                userEmail={user?.email || undefined}
-                role={0}
-                height={580}
-                onFailure={(msg) => setSdkFailed(msg || 'The in-app player could not start')}
-              />
-            )}
-            {sdkJoin && sdkFailed && (
-              <div className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="max-w-md text-sm text-muted-foreground">
-                  The built-in Zoom player couldn't start ({sdkFailed}). You can join this class in the Zoom app instead.
-                </p>
-                <a
-                  href={sdkJoin.joinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  Open class in Zoom
-                </a>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </TooltipProvider>
 
