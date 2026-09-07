@@ -26,13 +26,23 @@ export interface VcrViewState {
   whiteboardMode?: 'annotate' | 'board';
 }
 
-/** A freehand stroke in normalised (0..1) coordinates so it maps to any screen size. */
+/**
+ * One mark in normalised (0..1) coordinates so it maps to any screen size.
+ *
+ * `layer` keeps each working area separate: the whiteboard is its own canvas,
+ * and every Mushaf / Qaida / document page keeps its own marks, so nothing
+ * drawn on a page ever leaks onto the whiteboard or onto another page.
+ */
 export interface VcrStroke {
   id: string;
+  layer?: string;
   color: string;
   width: number;
+  /** Freehand line (default), or a rectangle / oval drawn corner to corner. */
+  shape?: 'free' | 'box' | 'circle';
   points: Array<{ x: number; y: number }>;
 }
+
 
 const DEFAULT_STATE: VcrViewState = {
   page: 1,
