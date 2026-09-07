@@ -238,6 +238,8 @@ export function ProfileEditorPanel({ userId }: Props) {
         country: form.country,
         city: form.city,
         timezone: form.timezone,
+        country_code: form.country_code,
+
         preferred_contact_method: form.preferred_contact_method,
         preferred_language: form.preferred_language,
         gov_id_type: form.gov_id_type,
