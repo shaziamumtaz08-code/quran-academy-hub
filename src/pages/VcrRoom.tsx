@@ -1007,19 +1007,21 @@ export default function VcrRoom() {
         )}
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
-        {/* The VCR's own app rail — separate from the LMS main sidebar */}
+      <div className="relative mx-auto w-full max-w-[1600px] flex-1 p-2 sm:p-4">
+        {/* The VCR's own app rail — floats over the workspace so the canvas
+            keeps its full width on both mobile and desktop. */}
         <VcrAppRail
           active={railActive}
           open={launcherOpen}
           onToggle={() => setLauncherOpen((v) => !v)}
           onSelect={onRailSelect}
           isMobile={isMobile}
+          className="absolute left-2 top-2 sm:left-4 sm:top-4"
         />
 
 
         {/* The workspace — the material is the page */}
-        <main className="relative min-w-0 flex-1">
+        <main className="relative min-w-0 w-full">
           
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
