@@ -87,13 +87,23 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
             );
           }
           if (!l.text_indopak) return <div key={l.id} className="h-2" aria-hidden />;
+          const lit = (canPoint ? pointed : highlight?.lineId) === l.id;
           return (
             <div
               key={l.id}
+              role={canPoint ? 'button' : undefined}
+              tabIndex={canPoint ? 0 : undefined}
+              onClick={canPoint ? () => {
+                const next = pointed === l.id ? null : l.id;
+                setPointed(next);
+                onPointLine?.(next);
+              } : undefined}
+              title={canPoint ? 'Point at this line' : undefined}
               className={cn(
-                'qaida-tile px-3 py-1.5 transition-colors',
+                'qaida-tile px-3 py-1.5 transition-all',
                 l.is_centered ? 'text-center' : 'text-justify',
-                highlight?.lineId === l.id && 'qaida-tile-selected ring-2 ring-primary/40'
+                canPoint && 'cursor-pointer hover:ring-2 hover:ring-primary/30',
+                lit && 'qaida-tile-selected scale-[1.01] shadow-lg ring-2 ring-amber-400',
               )}
             >
               <TajweedText
@@ -103,6 +113,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
               />
             </div>
           );
+
         })}
       </div>
 
