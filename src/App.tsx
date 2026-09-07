@@ -64,6 +64,7 @@ const StudentProfile = lazyWithRetry(() => import("./pages/StudentProfile"));
 const MyProfile = lazyWithRetry(() => import("./pages/MyProfile"));
 const Impersonate = lazyWithRetry(() => import("./pages/Impersonate"));
 const QuranPageBrowser = lazyWithRetry(() => import("./pages/QuranPageBrowser"));
+const MushafPreview = lazyWithRetry(() => import("./pages/MushafPreview"));
 const ParentProfile = lazyWithRetry(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazyWithRetry(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazyWithRetry(() => import("./pages/StudentOnboarding"));
@@ -435,7 +436,9 @@ function AppRoutes() {
       <Route path="/legal/policies" element={<PublicPolicies />} />
       <Route path="/policies" element={<ProtectedRoute><DashboardLayout><Policies /></DashboardLayout></ProtectedRoute>} />
       <Route path="/impersonate" element={<Impersonate />} />
-      <Route path="/quran-page" element={<ProtectedRoute><DashboardLayout><QuranPageBrowser /></DashboardLayout></ProtectedRoute>} />
+<Route path="/quran-page" element={<ProtectedRoute><DashboardLayout><QuranPageBrowser /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/mushaf" element={<ProtectedRoute><DashboardLayout><MushafPreview /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/mushaf/:page" element={<ProtectedRoute><DashboardLayout><MushafPreview /></DashboardLayout></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
