@@ -287,9 +287,11 @@ export function QaidaUnit({
                     }}
                     className={cn(
                       'qaida-tile relative flex shrink-0 items-center justify-center px-2 py-2',
+                      'transition-transform duration-150 ease-out hover:z-10 hover:scale-110 hover:shadow-xl focus-visible:z-10 focus-visible:scale-110',
                       active && 'qaida-tile-selected',
                       isEnd && 'ring-2 ring-primary',
                     )}
+
                   >
                     <TajweedText
                       text={w.word_text}
