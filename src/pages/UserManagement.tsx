@@ -537,7 +537,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
       return;
     }
     const path = profilePathFor(user.roles as string[], user.id);
-    if (path) navigate(path);
+    if (path) navigate(edit ? `${path}?edit=1` : path);
   };
 
   // Fetch users with profiles and ALL roles
