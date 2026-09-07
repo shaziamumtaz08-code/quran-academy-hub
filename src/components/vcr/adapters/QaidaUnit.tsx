@@ -314,6 +314,7 @@ export function QaidaUnit({
               })}
             </div>
           ))}
+          <TajweedLegend texts={words.map((w) => w.word_text)} className="pt-3" />
           <p className="pt-2 text-center text-sm text-slate-600" dir="ltr">
             {selecting
               ? 'Tap the first word of the lesson, then the last word.'
