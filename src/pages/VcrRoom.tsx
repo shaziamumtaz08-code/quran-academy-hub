@@ -693,7 +693,11 @@ export default function VcrRoom() {
   }, []);
 
   const setTabTitle = React.useCallback((id: string, title: string) => {
-    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+    setTabs((prev) =>
+      prev.some((t) => t.id === id && t.title !== title)
+        ? prev.map((t) => (t.id === id ? { ...t, title } : t))
+        : prev,
+    );
   }, []);
 
   /** Highlight the launcher entry matching whatever tab is in front. */
