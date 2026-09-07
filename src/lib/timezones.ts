@@ -76,27 +76,88 @@ export const TIMEZONES: TimezoneInfo[] = [
 export const TIMEZONES_SORTED = [...TIMEZONES].sort((a, b) => a.offset - b.offset);
 
 /**
+ * Legacy / mistyped timezone values found in older records. Anything not a
+ * valid IANA zone must be mapped here, otherwise conversions silently fall
+ * back to UTC and every converted class time is wrong.
+ */
+const TIMEZONE_ALIASES: Record<string, string> = {
+  Pakistan: 'Asia/Karachi',
+  'Asia/Karachii': 'Asia/Karachi',
+  PKT: 'Asia/Karachi',
+  UAE: 'Asia/Dubai',
+  Dubai: 'Asia/Dubai',
+  UK: 'Europe/London',
+  GMT: 'Europe/London',
+  Belgium: 'Europe/Brussels',
+  Qatar: 'Asia/Qatar',
+  India: 'Asia/Kolkata',
+  'Saudi Arabia': 'Asia/Riyadh',
+};
+
+/** Normalise any stored value to a usable IANA zone (falls back to academy zone). */
+export function normalizeTimezone(value: string | null | undefined): string {
+  const raw = (value || '').trim();
+  if (!raw) return 'Asia/Karachi';
+  if (TIMEZONE_ALIASES[raw]) return TIMEZONE_ALIASES[raw];
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: raw }).format(new Date());
+    return raw;
+  } catch {
+    return 'Asia/Karachi';
+  }
+}
+
+/**
  * Get timezone info by IANA value
  */
 export function getTimezoneByValue(value: string): TimezoneInfo | undefined {
-  return TIMEZONES.find(tz => tz.value === value);
+  const normalized = normalizeTimezone(value);
+  return TIMEZONES.find(tz => tz.value === normalized);
 }
 
 /**
- * Get timezone abbreviation for display
+ * Get timezone abbreviation for display — DST aware (CEST vs CET, EDT vs EST).
  */
 export function getTimezoneAbbr(value: string | null | undefined): string {
   if (!value) return 'UTC';
-  const tz = getTimezoneByValue(value);
-  return tz?.abbr || value.split('/').pop() || 'UTC';
+  const zone = normalizeTimezone(value);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      timeZoneName: 'short',
+    }).formatToParts(new Date());
+    const name = parts.find(p => p.type === 'timeZoneName')?.value;
+    if (name && !/^GMT[+-]/.test(name)) return name;
+    if (name) return name.replace('GMT', 'UTC');
+  } catch {
+    /* fall through */
+  }
+  return getTimezoneByValue(zone)?.abbr || zone.split('/').pop() || 'UTC';
 }
 
 /**
- * Get UTC offset for a timezone
+ * Actual UTC offset (in hours, can be fractional) for a timezone RIGHT NOW.
+ * Uses the real IANA rules so daylight saving is always respected.
  */
-export function getTimezoneOffset(value: string): number {
-  const tz = getTimezoneByValue(value);
-  return tz?.offset ?? 0;
+export function getTimezoneOffset(value: string, at: Date = new Date()): number {
+  const zone = normalizeTimezone(value);
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const p: Record<string, string> = {};
+    for (const part of dtf.formatToParts(at)) p[part.type] = part.value;
+    const asUTC = Date.UTC(
+      Number(p.year), Number(p.month) - 1, Number(p.day),
+      Number(p.hour) % 24, Number(p.minute), Number(p.second),
+    );
+    return (asUTC - Math.floor(at.getTime() / 1000) * 1000) / 3600000;
+  } catch {
+    return getTimezoneByValue(zone)?.offset ?? 0;
+  }
 }
 
 /**
