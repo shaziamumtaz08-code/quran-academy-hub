@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { openExternal } from '@/lib/popupWindow';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
