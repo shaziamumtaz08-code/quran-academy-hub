@@ -15,8 +15,6 @@ import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
   CalendarPlus, X, MonitorUp, Bell, FolderOpen,
 } from 'lucide-react';
-import { ZoomSdkMeeting } from './ZoomSdkMeeting';
-import { useClassSdkEmbedAllowed } from '@/hooks/useZoomSdkEmbed';
 import ClassroomTeachingPanel from './ClassroomTeachingPanel';
 
 import { parseZoomLink } from '@/lib/zoomLink';
@@ -164,53 +162,18 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
   const { user, profile } = useAuth();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
-  const [sdkFailed, setSdkFailed] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [pingCooldown, setPingCooldown] = useState(0);
   const [pinging, setPinging] = useState(false);
   const [incomingPing, setIncomingPing] = useState<'teacher' | 'student' | null>(null);
 
-  const zoomParsed = useMemo(() => parseZoomLink(meetingLink || ''), [meetingLink]);
-  // The link's `pwd` is Zoom's encrypted token, never the passcode. Read the
-  // real passcode from the Zoom account linked to this class.
-  const { data: storedPasscode } = useQuery({
-    queryKey: ['class-zoom-passcode', classId],
-    enabled: !!classId,
-    queryFn: async () => {
-      const { data: cls } = await supabase
-        .from('course_classes')
-        .select('zoom_account_id')
-        .eq('id', classId!)
-        .maybeSingle();
-      if (!cls?.zoom_account_id) return '';
-      const { data: acct } = await supabase
-        .from('zoom_accounts')
-        .select('meeting_passcode')
-        .eq('id', cls.zoom_account_id)
-        .maybeSingle();
-      return (acct?.meeting_passcode || '') as string;
-    },
-  });
-
-  // Accounts kept on the plain Zoom-link flow never render the embedded player.
-  const sdkEmbedAllowed = useClassSdkEmbedAllowed(classId);
-
-  // With the embed switched off there is no in-app meeting surface at all —
-  // the join action hands straight over to Zoom in a new tab.
+  // Zoom always opens in its own browser tab — there is no in-app player.
   const openMeetingSurface = () => {
     setIncomingPing(null);
-    if (!sdkEmbedAllowed) {
-      if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
-      return;
-    }
+    if (meetingLink) window.open(meetingLink, '_blank', 'noopener,noreferrer');
     setShowIframe(true);
     setIframeError(false);
   };
-
-  const sdkDisplayName =
-    (profile as any)?.full_name || (profile as any)?.name || user?.email?.split('@')[0] || 'Participant';
-
-
 
   // Check for virtual session (LiveKit)
   const { data: virtualSession } = useQuery({
@@ -526,40 +489,17 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
                   </Button>
                 </div>
               </div>
-              {iframeError ? (
-                <div className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Unable to embed meeting in browser</p>
-                  <a href={meetingLink} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline">
-                      <ExternalLink className="h-4 w-4 mr-1" /> Open Zoom in browser
-                    </Button>
-                  </a>
-                </div>
-              ) : zoomParsed && sdkEmbedAllowed && !sdkFailed ? (
-                <div className="p-2">
-                  <ZoomSdkMeeting
-                    courseClassId={classId}
-                    meetingNumber={zoomParsed.meetingNumber}
-                    passcode={storedPasscode || zoomParsed.passcode}
-                    encryptedToken={zoomParsed.encryptedToken}
-                    userName={sdkDisplayName}
-                    userEmail={user?.email || undefined}
-                    role={userRole === 'teacher' ? 1 : 0}
-                    height={580}
-                    onFailure={() => setSdkFailed(true)}
-                  />
-                </div>
-              ) : (
-                <iframe
-                  src={meetingLink}
-                  className="w-full border-0"
-                  style={{ height: '580px' }}
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
-                  allow="camera; microphone; fullscreen; display-capture; autoplay"
-                  onError={() => setIframeError(true)}
-                  title="Zoom Meeting"
-                />
-              )}
+              <div className="flex flex-col items-center gap-3 p-8 text-center">
+                <p className="max-w-md text-sm text-muted-foreground">
+                  The class runs in Zoom's own window. If it did not open automatically,
+                  use the button below.
+                </p>
+                <a href={meetingLink} target="_blank" rel="noopener noreferrer">
+                  <Button>
+                    <ExternalLink className="h-4 w-4 mr-1" /> Open class in Zoom
+                  </Button>
+                </a>
+              </div>
               <div className="px-3 py-2 border-t text-center">
                 <a href={meetingLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                   <ExternalLink className="h-3 w-3" /> Open in browser instead
