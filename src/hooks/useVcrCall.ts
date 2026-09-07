@@ -59,6 +59,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   const activeRef = useRef(false);
   const observerRef = useRef(observer);
   const [busy, setBusy] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const mutedRef = useRef(false);
+  const levelCtxRef = useRef<AudioContext | null>(null);
+  const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
+  const levelTimerRef = useRef<number | null>(null);
 
   observerRef.current = observer;
 
