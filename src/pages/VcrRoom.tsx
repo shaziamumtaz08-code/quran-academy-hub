@@ -881,7 +881,7 @@ export default function VcrRoom() {
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <h1 className="min-w-0 truncate self-center font-display text-lg font-semibold tracking-tight text-vcr-chrome sm:text-xl">
+          <h1 className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-vcr-chrome sm:text-xl">
             {student?.full_name ?? 'Student'}
           </h1>
           {attendance && (
