@@ -18,7 +18,7 @@ export default {
         serif: ['Amiri', 'serif'],
         display: ['Fraunces', 'Lora', 'serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
-        uthmani: ['"Amiri Quran"', '"PDMS Saleem Quran"', '"Noto Naskh Arabic"', 'serif'],
+        uthmani: ['"Indopak Quran"', '"PDMS Saleem Quran"', '"Amiri Quran"', '"Noto Naskh Arabic"', 'serif'],
       },
       boxShadow: {
         "vcr-1": "0 1px 2px rgba(0,0,0,.35), 0 6px 16px -8px rgba(0,0,0,.45)",
