@@ -66,7 +66,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
   return (
     <div className="space-y-4">
       <div dir="rtl" className="space-y-1.5">
-        {lines.map((l) => {
+        {lines.map((l, idx) => {
           if (l.line_type === 'surah_name' || l.line_type === 'basmallah') {
             const heading = l.line_type === 'basmallah'
               ? 'بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ'
@@ -75,7 +75,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
             return (
               <div
                 key={l.id}
-                className="qaida-tile my-3 px-4 py-2 text-center"
+                className={cn('qaida-tile mb-2 px-4 py-2 text-center', idx === 0 ? 'mt-0' : 'mt-2')}
               >
                 <TajweedText
                   text={heading}

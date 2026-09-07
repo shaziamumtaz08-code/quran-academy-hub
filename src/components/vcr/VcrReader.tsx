@@ -158,7 +158,7 @@ export function VcrReader({
         )}
       >
         {/* Page chrome */}
-        <div className={cn('mb-5 flex items-center justify-between gap-3 border-b pb-3',
+        <div className={cn('mb-2 flex items-center justify-between gap-3 border-b pb-2',
           pastel ? 'border-slate-900/10' : 'border-vcr-ink/15')}>
           <span className={cn('font-display text-xl sm:text-2xl', pastel ? 'text-slate-800' : 'text-vcr-ink')}>
             {adapter.currentLabel}
