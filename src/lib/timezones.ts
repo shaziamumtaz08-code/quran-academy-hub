@@ -19,8 +19,21 @@ export const TIMEZONES: TimezoneInfo[] = [
   
   // Europe
   { value: 'Europe/London', label: 'London (GMT/BST)', offset: 0, abbr: 'GMT' },
+  { value: 'Europe/Dublin', label: 'Dublin (GMT/IST)', offset: 0, abbr: 'GMT' },
+  { value: 'Europe/Lisbon', label: 'Lisbon (WET/WEST)', offset: 0, abbr: 'WET' },
+  { value: 'Europe/Brussels', label: 'Brussels (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Amsterdam', label: 'Amsterdam (CET/CEST)', offset: 1, abbr: 'CET' },
   { value: 'Europe/Paris', label: 'Paris (CET/CEST)', offset: 1, abbr: 'CET' },
   { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Madrid', label: 'Madrid (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Rome', label: 'Rome (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Zurich', label: 'Zurich (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Vienna', label: 'Vienna (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Stockholm', label: 'Stockholm (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Oslo', label: 'Oslo (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Copenhagen', label: 'Copenhagen (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Warsaw', label: 'Warsaw (CET/CEST)', offset: 1, abbr: 'CET' },
+  { value: 'Europe/Istanbul', label: 'Istanbul (TRT)', offset: 3, abbr: 'TRT' },
   { value: 'Europe/Moscow', label: 'Moscow (MSK)', offset: 3, abbr: 'MSK' },
   
   // Middle East
