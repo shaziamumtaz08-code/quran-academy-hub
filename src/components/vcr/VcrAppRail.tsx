@@ -52,6 +52,7 @@ interface Props {
   onToggle: () => void;
   onSelect: (key: VcrRailKey) => void;
   isMobile?: boolean;
+  className?: string;
 }
 
 /**
