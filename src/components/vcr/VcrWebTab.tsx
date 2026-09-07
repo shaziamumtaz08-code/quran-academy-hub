@@ -74,9 +74,12 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
   const embeddable = useMemo(() => !!url && canTryEmbed(url), [url]);
   const target = url || START[app];
 
+  const onTitleRef = useRef(onTitle);
+  onTitleRef.current = onTitle;
+
   useEffect(() => {
-    onTitle?.(url ? hostOf(url) || 'Web' : app === 'url' ? 'Web' : app === 'google' ? 'Google' : app === 'drive' ? 'Google Drive' : 'YouTube');
-  }, [url, app, onTitle]);
+    onTitleRef.current?.(url ? hostOf(url) || 'Web' : app === 'url' ? 'Web' : app === 'google' ? 'Google' : app === 'drive' ? 'Google Drive' : 'YouTube');
+  }, [url, app]);
 
   useEffect(() => {
     if (!embeddable) return;
