@@ -208,6 +208,24 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onSt
             />
           ))}
           <span className="mx-1 h-6 w-px bg-foreground/15" />
+          {TOOLS.map(({ shape, label, Icon }) => (
+            <button
+              key={shape}
+              type="button"
+              aria-label={label}
+              aria-pressed={tool === shape}
+              title={label}
+              onClick={() => setTool(shape)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium transition-colors',
+                tool === shape ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-900/5 hover:text-slate-900',
+              )}
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </button>
+          ))}
+          <span className="mx-1 h-6 w-px bg-foreground/15" />
+
           <button type="button" onClick={onUndo} aria-label="Undo stroke" title="Undo" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
             <Undo2 className="h-4 w-4" /> Undo
           </button>
