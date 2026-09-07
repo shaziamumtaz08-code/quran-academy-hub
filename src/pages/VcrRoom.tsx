@@ -32,8 +32,7 @@ import { VcrAppRail, type VcrRailKey } from '@/components/vcr/VcrAppRail';
 import { VcrAppPanel, type VcrOpenTarget } from '@/components/vcr/VcrAppPanel';
 import { VcrEmbedViewer } from '@/components/vcr/VcrEmbedViewer';
 import { VcrRecordingsPanel } from '@/components/vcr/VcrRecordingsPanel';
-import { VcrTabStrip, type VcrTab } from '@/components/vcr/VcrTabStrip';
-import { VcrWebTab } from '@/components/vcr/VcrWebTab';
+import { type VcrTab } from '@/components/vcr/VcrTabStrip';
 
 /** The real Library and My Drive screens, mounted inside classroom tabs. */
 const LibraryPage = React.lazy(() => import('@/pages/Library'));
@@ -692,13 +691,6 @@ export default function VcrRoom() {
     setActiveTab((cur) => (cur === id ? 'lesson' : cur));
   }, []);
 
-  const setTabTitle = React.useCallback((id: string, title: string) => {
-    setTabs((prev) =>
-      prev.some((t) => t.id === id && t.title !== title)
-        ? prev.map((t) => (t.id === id ? { ...t, title } : t))
-        : prev,
-    );
-  }, []);
 
   /** Highlight the launcher entry matching whatever tab is in front. */
   const railActive: VcrRailKey | null = useMemo(() => {
@@ -730,19 +722,25 @@ export default function VcrRoom() {
         openTab({ id: 'myspace', kind: 'myspace', title: 'My Drive', icon: Folder });
         return;
       case 'drive':
-        openTab({ id: 'web:drive', kind: 'web', app: 'drive', title: 'Google Drive', icon: HardDrive });
+        window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
         return;
       case 'youtube':
-        openTab({ id: 'web:youtube', kind: 'web', app: 'youtube', title: 'YouTube', icon: Youtube });
+        window.open('https://www.youtube.com/', '_blank', 'noopener,noreferrer');
         return;
       case 'google':
-        openTab({ id: 'web:google', kind: 'web', app: 'google', title: 'Google', icon: Chrome, url: 'https://www.google.com/' });
+        window.open('https://www.google.com/', '_blank', 'noopener,noreferrer');
         return;
       case 'zoom':
-        openTab({ id: 'web:zoom', kind: 'web', app: 'zoom', title: 'Zoom', icon: Video });
+        window.open('https://zoom.us/join', '_blank', 'noopener,noreferrer');
         return;
-      default:
-        openTab({ id: `web:url:${Date.now()}`, kind: 'web', app: 'url', title: 'Web', icon: Link2 });
+      default: {
+        const typed = window.prompt('Web address to open');
+        if (typed && typed.trim()) {
+          const href = /^https?:\/\//i.test(typed.trim()) ? typed.trim() : `https://${typed.trim()}`;
+          window.open(href, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
     }
   }, [openTab]);
 
@@ -977,14 +975,10 @@ export default function VcrRoom() {
 
         {/* The workspace — the material is the page */}
         <main className="relative min-w-0 flex-1">
-          <VcrTabStrip tabs={tabs} activeId={activeTab} onSelect={setActiveTab} onClose={closeTab} />
-
+          
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
-            <span className="truncate font-medium text-vcr-chrome/75">
-              {content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'No file open'}
-            </span>
             {roomState?.presenter_id && (
               <span className="truncate text-vcr-chrome/45">
                 · presenting: {roomState.presenter_name ?? 'someone in the class'}
@@ -1171,6 +1165,16 @@ export default function VcrRoom() {
                   activeTab !== t.id && 'hidden',
                 )}
               >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-800">{t.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => closeTab(t.id)}
+                    className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
+                  >
+                    Back to lesson
+                  </button>
+                </div>
                 {t.kind === 'syllabus' ? (
                   <VcrAppPanel
                     app="syllabus"
@@ -1192,20 +1196,6 @@ export default function VcrRoom() {
               </div>
             ))}
 
-
-          {/* Web tabs — Google Drive, YouTube, Google, any web address */}
-          {tabs
-            .filter((t) => t.kind === 'web')
-            .map((t) => (
-              <div key={t.id} className={cn(activeTab !== t.id && 'hidden')}>
-                <VcrWebTab
-                  app={t.app ?? 'url'}
-                  initialUrl={t.url}
-                  onTitle={(title) => setTabTitle(t.id, title)}
-                  onShare={canControl ? (url, title) => openTarget({ kind: 'link', title, url, app: t.app ?? 'url' } as any, true) : undefined}
-                />
-              </div>
-            ))}
 
           {/* Class recordings — inside the classroom, as its own tab */}
           {studentId && tabs.some((t) => t.kind === 'recordings') && (
