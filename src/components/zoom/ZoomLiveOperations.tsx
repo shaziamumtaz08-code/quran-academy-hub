@@ -35,9 +35,6 @@ import {
 } from '@/hooks/useAcademyTimezone';
 import { getTimezoneAbbr } from '@/lib/timezones';
 import { ZoomSessionAttendanceReport } from '@/components/zoom/ZoomSessionAttendanceReport';
-import { parseZoomLink } from '@/lib/zoomLink';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useAuth } from '@/contexts/AuthContext';
 
 type SlotState = 'live' | 'completed' | 'overdue' | 'upcoming';
 type TileFilter = 'all' | 'live' | 'upcoming' | 'completed' | 'overdue';
@@ -71,7 +68,6 @@ export function ZoomLiveOperations() {
   const [now, setNow] = React.useState(new Date());
   const [filter, setFilter] = React.useState<TileFilter>('all');
   const [recordingLinks, setRecordingLinks] = React.useState<Record<string, string>>({});
-  const { user, profile } = useAuth() as any;
   const openExternally = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   const handleJoin = (_session: any, joinUrl: string) => openExternally(joinUrl);
