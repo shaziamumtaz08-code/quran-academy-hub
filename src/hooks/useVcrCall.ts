@@ -331,17 +331,23 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
     channel
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
-        if (!claimPeer(payload?.from, payload?.name, payload?.observer)) return;
+        if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         send('present', me());
         await makeOffer(payload.from);
       })
       .on('broadcast', { event: 'present' }, async ({ payload }) => {
-        if (!claimPeer(payload?.from, payload?.name, payload?.observer)) return;
+        if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         await makeOffer(payload.from);
+      })
+      .on('broadcast', { event: 'mic' }, ({ payload }) => {
+        const peer = payload?.from ? peersRef.current.get(payload.from) : undefined;
+        if (!peer) return;
+        peersRef.current.set(peer.id, { ...peer, muted: !!payload.muted, speaking: payload.muted ? false : peer.speaking });
+        syncPeers();
       })
       .on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (!mine(payload) || payload?.from === peerId) return;
-        if (!claimPeer(payload.from, payload.name, payload.observer) || amOfferer(payload.from)) return;
+        if (!claimPeer(payload.from, payload.name, payload.observer, payload.muted) || amOfferer(payload.from)) return;
         const pc = ensurePc(payload.from);
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(payload.from, pc);
