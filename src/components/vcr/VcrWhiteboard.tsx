@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Eraser, Undo2, X } from 'lucide-react';
+import { Circle, Eraser, Pencil, Square, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { VcrStroke } from '@/hooks/useVcrViewSync';
 
@@ -10,12 +10,22 @@ const PENS = [
   { label: 'Blue', color: '#2563eb' },
 ];
 
+type Shape = 'free' | 'box' | 'circle';
+
+const TOOLS: { shape: Shape; label: string; Icon: typeof Pencil }[] = [
+  { shape: 'free', label: 'Draw', Icon: Pencil },
+  { shape: 'box', label: 'Box', Icon: Square },
+  { shape: 'circle', label: 'Circle', Icon: Circle },
+];
+
 interface Props {
   strokes: VcrStroke[];
   /** 'annotate' = transparent layer over the page, 'board' = separate blank board. */
   mode?: 'annotate' | 'board';
   /** Only the presenter can draw; students see a live mirror. */
   canDraw: boolean;
+  /** Which working area these marks belong to (page or whiteboard). */
+  layer?: string;
   onStroke?: (stroke: VcrStroke) => void;
   onUndo?: () => void;
   onClear?: () => void;
@@ -24,16 +34,19 @@ interface Props {
 }
 
 /**
- * Transparent drawing layer sitting over the reader. Coordinates are stored
- * normalised (0..1) so a stroke drawn on the teacher's screen lands in the same
- * place on the student's, whatever the viewport size.
+ * Drawing layer for one working area. Coordinates are stored normalised (0..1)
+ * so a mark drawn on the teacher's screen lands in the same place on the
+ * student's, whatever the viewport size. Every layer (each Mushaf/Qaida page
+ * and the whiteboard) keeps its own marks — they are never shared.
  */
-export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, onUndo, onClear, onClose, className }: Props) {
+export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onStroke, onUndo, onClear, onClose, className }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef<VcrStroke | null>(null);
   const [pen, setPen] = useState(PENS[0].color);
+  const [tool, setTool] = useState<Shape>('free');
   const [size, setSize] = useState({ w: 0, h: 0 });
+
 
   /* Keep the bitmap in step with the layout box */
   useEffect(() => {
@@ -66,6 +79,19 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
       ctx.strokeStyle = s.color;
       ctx.lineWidth = s.width;
       ctx.beginPath();
+      const shape = s.shape ?? 'free';
+      if (shape !== 'free') {
+        const a = s.points[0];
+        const b = s.points[s.points.length - 1];
+        const x1 = a.x * size.w, y1 = a.y * size.h, x2 = b.x * size.w, y2 = b.y * size.h;
+        if (shape === 'box') {
+          ctx.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+        } else {
+          ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2);
+        }
+        ctx.stroke();
+        return;
+      }
       s.points.forEach((p, i) => {
         const x = p.x * size.w;
         const y = p.y * size.h;
@@ -74,6 +100,7 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
       });
       ctx.stroke();
     });
+
   }, [strokes, size]);
 
   useEffect(() => { paint(); }, [paint]);
@@ -91,8 +118,10 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
     (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
     drawing.current = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      layer,
       color: pen,
       width: 3,
+      shape: tool,
       points: [pointFrom(e)],
     };
     paint();
@@ -100,11 +129,16 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
 
   const handleMove = (e: React.PointerEvent) => {
     if (!canDraw || !drawing.current) return;
-    drawing.current.points.push(pointFrom(e));
+    const p = pointFrom(e);
+    if (tool === 'free') drawing.current.points.push(p);
+    else drawing.current.points = [drawing.current.points[0], p];
     paint();
-    // Stream the in-progress stroke so the student sees it live.
-    if (drawing.current.points.length % 4 === 0) onStroke?.({ ...drawing.current, points: [...drawing.current.points] });
+    // Stream the in-progress mark so the student sees it live.
+    if (tool !== 'free' || drawing.current.points.length % 4 === 0) {
+      onStroke?.({ ...drawing.current, points: [...drawing.current.points] });
+    }
   };
+
 
   const handleUp = () => {
     if (!canDraw || !drawing.current) return;
@@ -174,6 +208,24 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, onStroke, o
             />
           ))}
           <span className="mx-1 h-6 w-px bg-foreground/15" />
+          {TOOLS.map(({ shape, label, Icon }) => (
+            <button
+              key={shape}
+              type="button"
+              aria-label={label}
+              aria-pressed={tool === shape}
+              title={label}
+              onClick={() => setTool(shape)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium transition-colors',
+                tool === shape ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-900/5 hover:text-slate-900',
+              )}
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </button>
+          ))}
+          <span className="mx-1 h-6 w-px bg-foreground/15" />
+
           <button type="button" onClick={onUndo} aria-label="Undo stroke" title="Undo" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-900/5 hover:text-slate-900">
             <Undo2 className="h-4 w-4" /> Undo
           </button>

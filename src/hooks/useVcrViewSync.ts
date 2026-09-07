@@ -26,13 +26,23 @@ export interface VcrViewState {
   whiteboardMode?: 'annotate' | 'board';
 }
 
-/** A freehand stroke in normalised (0..1) coordinates so it maps to any screen size. */
+/**
+ * One mark in normalised (0..1) coordinates so it maps to any screen size.
+ *
+ * `layer` keeps each working area separate: the whiteboard is its own canvas,
+ * and every Mushaf / Qaida / document page keeps its own marks, so nothing
+ * drawn on a page ever leaks onto the whiteboard or onto another page.
+ */
 export interface VcrStroke {
   id: string;
+  layer?: string;
   color: string;
   width: number;
+  /** Freehand line (default), or a rectangle / oval drawn corner to corner. */
+  shape?: 'free' | 'box' | 'circle';
   points: Array<{ x: number; y: number }>;
 }
+
 
 const DEFAULT_STATE: VcrViewState = {
   page: 1,
@@ -82,11 +92,18 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       })
       .on('broadcast', { event: 'wb-sync' }, ({ payload }) => {
         if (isPresenter) return;
-        setStrokes(((payload as any)?.strokes ?? []) as VcrStroke[]);
+        const incoming = ((payload as any)?.strokes ?? []) as VcrStroke[];
+        const layer = (payload as any)?.layer as string | undefined;
+        setStrokes((prev) => (layer
+          ? [...prev.filter((s) => (s.layer ?? 'whiteboard') !== layer), ...incoming]
+          : incoming));
       })
-      .on('broadcast', { event: 'wb-clear' }, () => {
-        if (!isPresenter) setStrokes([]);
+      .on('broadcast', { event: 'wb-clear' }, ({ payload }) => {
+        if (isPresenter) return;
+        const layer = (payload as any)?.layer as string | undefined;
+        setStrokes((prev) => (layer ? prev.filter((s) => (s.layer ?? 'whiteboard') !== layer) : []));
       })
+
       .on('broadcast', { event: 'view-request' }, () => {
         // A student joined — re-announce current state.
         if (!isPresenter) return;
@@ -123,9 +140,14 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
     channelRef.current?.send({ type: 'broadcast', event: 'view-state', payload: state });
   }, [isPresenter]);
 
-  /** Presenter-side: add or update a stroke and mirror it to the student. */
+  const layerOf = (s: VcrStroke) => s.layer ?? 'whiteboard';
+
+  /**
+   * Add or update a mark. Everyone may mark their own screen (a student can
+   * work on her page before the teacher joins); only the presenter's marks are
+   * mirrored to the other side.
+   */
   const pushStroke = useCallback((stroke: VcrStroke) => {
-    if (!isPresenter) return;
     setStrokes((prev) => {
       const next = prev.some((s) => s.id === stroke.id)
         ? prev.map((s) => (s.id === stroke.id ? stroke : s))
@@ -133,34 +155,51 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       strokesRef.current = next;
       return next;
     });
-    channelRef.current?.send({ type: 'broadcast', event: 'wb-stroke', payload: stroke });
+    if (isPresenter) channelRef.current?.send({ type: 'broadcast', event: 'wb-stroke', payload: stroke });
   }, [isPresenter]);
 
-  const undoStroke = useCallback(() => {
-    if (!isPresenter) return;
+  /** Undo the last mark on one working area only. */
+  const undoStroke = useCallback((layer?: string) => {
     setStrokes((prev) => {
-      const next = prev.slice(0, -1);
+      const key = layer ?? 'whiteboard';
+      const idx = [...prev].reverse().findIndex((s) => layerOf(s) === key);
+      const next = idx === -1 ? prev : prev.filter((_, i) => i !== prev.length - 1 - idx);
       strokesRef.current = next;
-      channelRef.current?.send({ type: 'broadcast', event: 'wb-sync', payload: { strokes: next } });
+      if (isPresenter) {
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'wb-sync',
+          payload: { layer: key, strokes: next.filter((s) => layerOf(s) === key) },
+        });
+      }
       return next;
     });
   }, [isPresenter]);
 
-  const clearBoard = useCallback(() => {
-    if (!isPresenter) return;
-    strokesRef.current = [];
-    setStrokes([]);
-    channelRef.current?.send({ type: 'broadcast', event: 'wb-clear', payload: {} });
+  /** Clear one working area — never the others. */
+  const clearBoard = useCallback((layer?: string) => {
+    const key = layer ?? 'whiteboard';
+    setStrokes((prev) => {
+      const next = prev.filter((s) => layerOf(s) !== key);
+      strokesRef.current = next;
+      return next;
+    });
+    if (isPresenter) channelRef.current?.send({ type: 'broadcast', event: 'wb-clear', payload: { layer: key } });
   }, [isPresenter]);
 
-  /** Replace the whole board — used when reopening saved personal annotations. */
-  const loadStrokes = useCallback((next: VcrStroke[]) => {
-    strokesRef.current = next;
-    setStrokes(next);
+  /** Replace the saved marks of one working area (reopening a page). */
+  const loadStrokes = useCallback((layer: string, incoming: VcrStroke[]) => {
+    const stamped = incoming.map((s) => ({ ...s, layer }));
+    setStrokes((prev) => {
+      const next = [...prev.filter((s) => layerOf(s) !== layer), ...stamped];
+      strokesRef.current = next;
+      return next;
+    });
     if (isPresenter) {
-      channelRef.current?.send({ type: 'broadcast', event: 'wb-sync', payload: { strokes: next } });
+      channelRef.current?.send({ type: 'broadcast', event: 'wb-sync', payload: { layer, strokes: stamped } });
     }
   }, [isPresenter]);
+
 
   return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes };
 }
