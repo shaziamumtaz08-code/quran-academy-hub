@@ -79,6 +79,19 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onSt
       ctx.strokeStyle = s.color;
       ctx.lineWidth = s.width;
       ctx.beginPath();
+      const shape = s.shape ?? 'free';
+      if (shape !== 'free') {
+        const a = s.points[0];
+        const b = s.points[s.points.length - 1];
+        const x1 = a.x * size.w, y1 = a.y * size.h, x2 = b.x * size.w, y2 = b.y * size.h;
+        if (shape === 'box') {
+          ctx.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+        } else {
+          ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2);
+        }
+        ctx.stroke();
+        return;
+      }
       s.points.forEach((p, i) => {
         const x = p.x * size.w;
         const y = p.y * size.h;
@@ -87,6 +100,7 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onSt
       });
       ctx.stroke();
     });
+
   }, [strokes, size]);
 
   useEffect(() => { paint(); }, [paint]);
