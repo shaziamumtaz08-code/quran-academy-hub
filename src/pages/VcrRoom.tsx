@@ -931,7 +931,14 @@ export default function VcrRoom() {
             {canControl && (
               <button
                 type="button"
-                onClick={() => setToolsOpen((v) => !v)}
+                onClick={() => {
+                  // Open only this panel — never leave another one half-open on top of it.
+                  setToolsOpen((v) => {
+                    const next = !v;
+                    if (next) { setCallOpen(false); setBookmarksOpen(false); setLauncherOpen(false); }
+                    return next;
+                  });
+                }}
                 aria-pressed={toolsOpen}
                 title="Lesson tools: notes, mark complete, attendance"
                 aria-label="Lesson tools"
