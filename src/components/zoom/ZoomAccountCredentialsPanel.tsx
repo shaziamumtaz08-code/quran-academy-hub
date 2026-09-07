@@ -27,8 +27,8 @@ const zoomSlug = (a: ZoomAccountRow) => {
 
 /**
  * Account-scoped credentials screen: pick ONE Zoom account at the top, then
- * manage its webhook endpoint + Secret Token, Meeting SDK credentials, and
- * Server-to-Server OAuth credentials — all against that same selection.
+ * manage its webhook endpoint + Secret Token and Server-to-Server OAuth
+ * credentials — all against that same selection.
  */
 export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: ZoomAccountRow[] }) {
   const { toast } = useToast();
@@ -301,7 +301,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
       {account && (
         <>
-          {/* Classes hosted by this account — the link the in-app player needs */}
+          {/* Classes hosted by this account */}
           <div className="zw-card zw-accent-edge space-y-4 p-6 pl-7">
             <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4" style={{ color: 'hsl(var(--zw-sage))' }} />
@@ -313,7 +313,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
 
             {linkedClasses.length === 0 ? (
               <p className="zw-meta">
-                No class is hosted by this seat yet — link one below so it can use the in-app player.
+                No class is hosted by this seat yet — link one below.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -440,8 +440,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
             )}
             <p className="zw-meta">
               These three come from this account’s <strong>Server-to-Server OAuth</strong> app in the Zoom Marketplace.
-              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault)
-              and not the Meeting SDK app below.
+              They power webhooks and attendance telemetry — they are <em>not</em> the login password (that lives in Zoom Vault).
             </p>
           </div>
 
