@@ -196,7 +196,7 @@ export default function ParentRegistration() {
               <div><Label>City</Label><SearchableCitySelect className="mt-1" countryCode={parent.countryCode} value={parent.city} onValueChange={city => patchParent({ city })} /></div>
               <div className="sm:col-span-2"><Label>Address</Label><Input className="mt-1" value={parent.address} onChange={event => patchParent({ address: event.target.value })} /></div>
               <div><Label>Occupation</Label><Input className="mt-1" value={parent.occupation} onChange={event => patchParent({ occupation: event.target.value })} /></div>
-              <div><Label>Timezone</Label><TimezoneSelect className="mt-1" countryCode={parent.countryCode} value={parent.timezone} onValueChange={timezone => patchContactTimezone(timezone)} /></div>
+              <div><Label>Timezone</Label><TimezoneSelect className="mt-1" countryCode={parent.countryCode} value={parent.timezone} onValueChange={timezone => patchParent({ timezone })} /></div>
             </div>
           </>}
 
