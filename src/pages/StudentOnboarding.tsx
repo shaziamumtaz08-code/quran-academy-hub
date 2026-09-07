@@ -173,9 +173,21 @@ export default function StudentOnboarding() {
                     <Field values={values} set={set} k="gender" label="Gender (male / female)" />
                     <Field values={values} set={set} k="school_name" label="School / institute *" />
                     <Field values={values} set={set} k="grade_level" label="Grade / class *" />
-                    <Field values={values} set={set} k="city" label="City" />
-                    <Field values={values} set={set} k="country" label="Country" />
-                    <Field values={values} set={set} k="timezone" label="Timezone" placeholder="e.g. Asia/Karachi" />
+                    <LocationFields
+                      value={{
+                        countryCode: values.country_code || '',
+                        country: values.country || '',
+                        city: values.city || '',
+                        timezone: values.timezone || '',
+                      }}
+                      onChange={(patch) => {
+                        if (patch.countryCode !== undefined) set('country_code', patch.countryCode);
+                        if (patch.country !== undefined) set('country', patch.country);
+                        if (patch.city !== undefined) set('city', patch.city);
+                        if (patch.timezone !== undefined) set('timezone', patch.timezone);
+                      }}
+                    />
+
                     <div className="sm:col-span-2"><Field values={values} set={set} k="address" label="Address *" area /></div>
                   </>
                 )}
