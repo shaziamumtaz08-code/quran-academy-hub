@@ -4,6 +4,7 @@ import {
   Link2, PlayCircle, Presentation, Video, X, Youtube,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export type VcrRailKey =
   | 'drive' | 'youtube' | 'google' | 'url' | 'whiteboard'
@@ -72,8 +73,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
       <nav
         aria-label="Class apps"
         className={cn(
-          'flex w-11 flex-col items-center gap-1 overflow-y-auto rounded-md border border-vcr-chrome/15 bg-background/95 p-1 shadow-sm backdrop-blur-md',
-          open && 'max-h-[calc(100dvh-8rem)]',
+          'flex w-11 flex-col items-center gap-1 overflow-visible rounded-md border border-vcr-chrome/15 bg-background/95 p-1 shadow-sm backdrop-blur-md',
           isMobile ? 'sticky top-2' : 'sticky top-4',
         )}
       >
@@ -96,45 +96,42 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
         {open && <div className="h-px w-6 shrink-0 bg-border" aria-hidden />}
 
         {open && (
-          <ul className="flex flex-col items-center gap-1">
-            {ITEMS.map(({ key, label, icon: Icon, accent }) => {
-              const styles = ACCENT_STYLES[accent];
-              const selected = active === key;
-              return (
-                <li key={key} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(key)}
-                    aria-current={selected ? 'true' : undefined}
-                    aria-label={label}
-                    className={cn(
-                      'group relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-all',
-                      selected
-                        ? cn('bg-white ring-1 shadow-sm', styles.ring)
-                        : 'bg-white hover:shadow-md hover:scale-110',
-                    )}
-                  >
-                    <Icon className={cn('h-4 w-4 transition-transform group-hover:scale-110', styles.text)} />
-                    {selected && (
-                      <span className={cn('absolute -end-0.5 h-1.5 w-1.5 rounded-full', styles.text.replace('text-', 'bg-'))} />
-                    )}
-                  </button>
-
-                  {/* Pop-out label on hover */}
-                  <span
-                    className={cn(
-                      'pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 translate-x-1',
-                      'whitespace-nowrap rounded-md bg-white px-2 py-1 text-xs font-medium text-foreground shadow-md ring-1 ring-border',
-                      'opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100',
-                      'hidden sm:block',
-                    )}
-                  >
-                    {label}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <TooltipProvider delayDuration={120}>
+            <ul className="flex max-h-[calc(100dvh-12rem)] w-full flex-col items-center gap-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]">
+              {ITEMS.map(({ key, label, icon: Icon, accent }) => {
+                const styles = ACCENT_STYLES[accent];
+                const selected = active === key;
+                return (
+                  <li key={key} className="shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => onSelect(key)}
+                          aria-current={selected ? 'true' : undefined}
+                          aria-label={label}
+                          className={cn(
+                            'group relative inline-flex h-9 w-9 items-center justify-center rounded-md bg-background transition-all',
+                            selected
+                              ? cn('ring-1 shadow-sm', styles.ring)
+                              : 'hover:scale-110 hover:shadow-md',
+                          )}
+                        >
+                          <Icon className={cn('h-4 w-4 transition-transform group-hover:scale-110', styles.text)} />
+                          {selected && (
+                            <span className={cn('absolute -end-0.5 h-1.5 w-1.5 rounded-full', styles.text.replace('text-', 'bg-'))} />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={8} className="text-xs font-medium">
+                        {label}
+                      </TooltipContent>
+                    </Tooltip>
+                  </li>
+                );
+              })}
+            </ul>
+          </TooltipProvider>
         )}
       </nav>
     </div>
