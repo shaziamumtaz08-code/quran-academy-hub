@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, X, Youtube } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -720,9 +720,6 @@ export default function VcrRoom() {
       case 'recordings':
         openTab({ id: 'recordings', kind: 'recordings', title: 'Recordings', icon: PlayCircle });
         return;
-      case 'call':
-        setCallOpen(true);
-        return;
       case 'syllabus':
         openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked });
         return;
@@ -740,6 +737,9 @@ export default function VcrRoom() {
         return;
       case 'google':
         openTab({ id: 'web:google', kind: 'web', app: 'google', title: 'Google', icon: Chrome, url: 'https://www.google.com/' });
+        return;
+      case 'zoom':
+        openTab({ id: 'web:zoom', kind: 'web', app: 'zoom', title: 'Zoom', icon: Video });
         return;
       default:
         openTab({ id: `web:url:${Date.now()}`, kind: 'web', app: 'url', title: 'Web', icon: Link2 });
