@@ -113,9 +113,31 @@ serve(async (req) => {
   const { data: userData, error: uErr } = await authed.auth.getUser();
   if (uErr || !userData?.user?.id) return json(401, { error: "Invalid session" }, origin);
 
+  let body: { recording_id?: string } = {};
+  try { body = await req.json(); } catch { /* full sweep */ }
+  const recordingId = typeof body.recording_id === "string" ? body.recording_id : null;
+
   const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
   const isAdmin = (roles || []).some((r: any) => r.role === "admin" || r.role === "super_admin");
-  if (!isAdmin) return json(403, { error: "Only admins can run the Drive backup" }, origin);
+
+  // A single recording may also be backed up by the teacher who made it,
+  // so class recordings reach Drive automatically instead of waiting for an admin sweep.
+  let single: any = null;
+  if (recordingId) {
+    const { data: rec } = await admin
+      .from("vcr_call_recordings")
+      .select("id, storage_path, started_at, teacher_id, created_by, drive_file_id")
+      .eq("id", recordingId)
+      .maybeSingle();
+    if (!rec) return json(404, { error: "Recording not found" }, origin);
+    const owns = rec.teacher_id === userData.user.id || rec.created_by === userData.user.id;
+    if (!isAdmin && !owns) return json(403, { error: "Not allowed to back up this recording" }, origin);
+    if (!rec.storage_path) return json(400, { error: "Recording has no stored file" }, origin);
+    if (rec.drive_file_id) return json(200, { uploaded: 0, skipped: 1, errors: [] }, origin);
+    single = rec;
+  } else if (!isAdmin) {
+    return json(403, { error: "Only admins can run the Drive backup" }, origin);
+  }
 
   let sa: { client_email: string; private_key: string };
   try {
@@ -127,14 +149,21 @@ serve(async (req) => {
   try {
     const gToken = await googleAccessToken(sa);
 
-    const { data: recs, error: rErr } = await admin
-      .from("vcr_call_recordings")
-      .select("id, storage_path, started_at")
-      .in("status", ["completed", "saved"])
-      .not("storage_path", "is", null)
-      .order("started_at", { ascending: false })
-      .limit(200);
-    if (rErr) throw rErr;
+    let recs: any[] = [];
+    if (single) {
+      recs = [single];
+    } else {
+      const { data, error: rErr } = await admin
+        .from("vcr_call_recordings")
+        .select("id, storage_path, started_at")
+        .in("status", ["completed", "saved"])
+        .not("storage_path", "is", null)
+        .is("drive_file_id", null)
+        .order("started_at", { ascending: false })
+        .limit(200);
+      if (rErr) throw rErr;
+      recs = data || [];
+    }
 
     let uploaded = 0;
     let skipped = 0;
