@@ -1798,7 +1798,6 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
 
         {!scopedView && (
           <div className="flex flex-wrap items-center gap-2.5">
-            <RegistrationLinksCard />
             <MigrateStudentLoginsDialog />
             <StudentLoginToolkitDialog />
           </div>
