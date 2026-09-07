@@ -701,6 +701,17 @@ export default function VcrRoom() {
     return t.kind as VcrRailKey;
   }, [tabs, activeTab]);
 
+  const goExternal = React.useCallback((url: string) => {
+    const ok = openExternal(url);
+    if (!ok) {
+      toast({
+        title: 'Your browser blocked the new tab',
+        description: `Allow pop-ups for this site, or open ${url} yourself.`,
+        variant: 'destructive',
+      });
+    }
+  }, []);
+
   const onRailSelect = React.useCallback((key: VcrRailKey) => {
     setLauncherOpen(false);
     switch (key) {
@@ -722,27 +733,28 @@ export default function VcrRoom() {
         openTab({ id: 'myspace', kind: 'myspace', title: 'My Drive', icon: Folder });
         return;
       case 'drive':
-        window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
+        goExternal('https://drive.google.com/drive/my-drive');
         return;
       case 'youtube':
-        window.open('https://www.youtube.com/', '_blank', 'noopener,noreferrer');
+        goExternal('https://www.youtube.com/');
         return;
       case 'google':
-        window.open('https://www.google.com/', '_blank', 'noopener,noreferrer');
+        goExternal('https://www.google.com/');
         return;
       case 'zoom':
-        window.open('https://zoom.us/join', '_blank', 'noopener,noreferrer');
+        goExternal('https://zoom.us/join');
         return;
       default: {
         const typed = window.prompt('Web address to open');
         if (typed && typed.trim()) {
           const href = /^https?:\/\//i.test(typed.trim()) ? typed.trim() : `https://${typed.trim()}`;
-          window.open(href, '_blank', 'noopener,noreferrer');
+          goExternal(href);
         }
         return;
       }
     }
-  }, [openTab]);
+  }, [openTab, goExternal]);
+
 
 
 
