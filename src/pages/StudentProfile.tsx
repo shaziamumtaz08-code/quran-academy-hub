@@ -142,7 +142,7 @@ export default function StudentProfile() {
           <>
             {canAdmin && (
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
-                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'Edit profile'}
+                <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}
               </Button>
             )}
             {p.email && (
