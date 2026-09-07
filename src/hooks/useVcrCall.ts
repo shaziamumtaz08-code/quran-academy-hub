@@ -81,10 +81,64 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     [peerId]
   );
 
+  /**
+   * Voice-activity metering: everyone can see who is actually talking, which
+   * removes the "whose mic is on?" confusion during a class.
+   */
+  const attachLevel = useCallback((id: string, stream: MediaStream) => {
+    try {
+      if (!stream.getAudioTracks().length) return;
+      const ctx = levelCtxRef.current ?? new AudioContext();
+      levelCtxRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      analysersRef.current.set(id, analyser);
+
+      if (levelTimerRef.current == null) {
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        levelTimerRef.current = window.setInterval(() => {
+          let selfLoud = false;
+          analysersRef.current.forEach((a, key) => {
+            a.getByteTimeDomainData(buf);
+            let sum = 0;
+            for (let i = 0; i < buf.length; i++) {
+              const v = (buf[i] - 128) / 128;
+              sum += v * v;
+            }
+            const loud = Math.sqrt(sum / buf.length) > 0.045;
+            if (key === 'self') {
+              selfLoud = loud && !mutedRef.current;
+              return;
+            }
+            const peer = peersRef.current.get(key);
+            if (peer && peer.speaking !== loud) {
+              peersRef.current.set(key, { ...peer, speaking: loud });
+              syncPeers();
+            }
+          });
+          setSpeaking(selfLoud);
+        }, 250);
+      }
+    } catch {
+      /* metering is a nicety — never break the call for it */
+    }
+  }, []);
+
+  const stopLevels = useCallback(() => {
+    if (levelTimerRef.current != null) window.clearInterval(levelTimerRef.current);
+    levelTimerRef.current = null;
+    analysersRef.current.clear();
+    levelCtxRef.current?.close().catch(() => {});
+    levelCtxRef.current = null;
+    setSpeaking(false);
+  }, []);
+
   const dropPeer = useCallback((id: string) => {
     pcsRef.current.get(id)?.close();
     pcsRef.current.delete(id);
     remoteStreamsRef.current.delete(id);
+    analysersRef.current.delete(id);
     const el = audioElsRef.current.get(id);
     if (el) {
       el.srcObject = null;
@@ -101,6 +155,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       if (activeRef.current) send('leave', {});
       activeRef.current = false;
       clearTimer();
+      stopLevels();
 
       Array.from(pcsRef.current.keys()).forEach(dropPeer);
       pcsRef.current.clear();
@@ -117,10 +172,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       }
 
       setPeers([]);
+      mutedRef.current = false;
       setMuted(false);
       setStatus(next);
     },
-    [dropPeer, send]
+    [dropPeer, send, stopLevels]
   );
 
   /** Only start counting down once someone else is actually in the room. */
