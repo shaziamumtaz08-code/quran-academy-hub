@@ -143,7 +143,8 @@ export function VcrReader({
     );
   }
 
-  const pastel = adapter.contentType === 'qaida';
+  /* Qaida and Mushaf share the pastel watercolour reading surface. */
+  const pastel = adapter.contentType === 'qaida' || adapter.contentType === 'mushaf';
 
   return (
     <div className={cn('vcr-stage w-full', className)}>
