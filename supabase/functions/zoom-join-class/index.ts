@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
         zoomAccountId: dedicatedAccount.id,
         passcode,
         meetingNumber,
-        sdkReady,
+
         joinUrl: isTeacher
           ? appendUname(dedicatedAccount.meeting_link)
           : toWebClient(dedicatedAccount.meeting_link),

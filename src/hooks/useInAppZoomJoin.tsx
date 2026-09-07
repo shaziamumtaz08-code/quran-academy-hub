@@ -17,9 +17,8 @@ export interface JoinClassBody {
 /**
  * Single join path for scheduled classes (1:1 and group).
  *
- * The schedule banner calls `join()`; when the hosting Zoom account has Meeting
- * SDK credentials the class opens INSIDE the LMS. Anything else (no SDK creds,
- * unparsable link, SDK failure) silently falls back to the external Zoom tab.
+ * The schedule banner calls `join()` and the class always opens in Zoom's own
+ * browser tab — there is no in-app meeting player.
  */
 export function useInAppZoomJoin(_role: 0 | 1) {
 
