@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, KeyRound, ShieldCheck, Users, Webhook } from 'lucide-react';
+import { Check, Copy, ShieldCheck, Users, Webhook } from 'lucide-react';
 import { validateAndSaveZoomAccount, type ZoomValidateResult } from '@/lib/zoomAccountValidation';
 import { STATUS_META, StatusLabel, type SeatStatus } from './seatStatus';
 
@@ -83,8 +83,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
     },
   });
 
-  // Which classes this Zoom seat hosts — this link is what lets a class use the
-  // in-app player (the signature function resolves credentials through it).
+  // Which classes this Zoom seat hosts.
   const { data: classRows } = useQuery({
     queryKey: ['zoom-linkable-classes'],
     queryFn: async () => {
@@ -295,7 +294,7 @@ export function ZoomAccountCredentialsPanel({ zoomAccounts }: { zoomAccounts: Zo
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <div className="zw-motif" />
           <p className="zw-body max-w-sm">
-            Select a Zoom account above — its webhook, in-app player credentials, and S2S OAuth credentials all appear here.
+            Select a Zoom account above — its webhook and S2S OAuth credentials appear here.
           </p>
         </div>
       )}
