@@ -57,9 +57,8 @@ const mmss = (secs: number) => {
  * the Zoom option stays available alongside it.
  */
 export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false }: Props) {
-  const { status, muted, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
+  const { status, muted, speaking, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
     useVcrCall({ roomId, peerId, displayName, observer });
-  const [showPeople, setShowPeople] = React.useState(false);
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Log every call — recorded or not. */
