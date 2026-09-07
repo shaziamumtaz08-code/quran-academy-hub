@@ -171,7 +171,7 @@ export function HifzAttendanceFields({
       />
       
       <TooltipProvider>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <div className={`flex h-12 min-w-0 items-center gap-2 rounded-xl border-2 px-3 shadow-sm transition-colors ${sabqiDone ? 'border-teal-500 bg-teal-500/10' : 'border-border bg-background'}`}>
             <RotateCcw className={`h-4 w-4 shrink-0 ${sabqiDone ? 'text-teal-600' : 'text-muted-foreground'}`} />
             <Tooltip>

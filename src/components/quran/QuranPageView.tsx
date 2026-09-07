@@ -288,7 +288,7 @@ export function QuranPageView({
   const pointLabel = (p: TapPoint) =>
     p.ayahAt
       ? `${surahNameByNumber(p.ayahAt.surah)}, verse ${p.ayahAt.ayah} (page ${p.page})`
-      : `End of line ${p.line.line_number}, page ${p.page}`;
+      : `${surahNameByNumber(p.line.surah_number)}, end of line ${p.line.line_number} (page ${p.page})`;
 
   const startLabel = start ? pointLabel(start) : null;
   const endLabel = end
