@@ -45,7 +45,10 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
   const paramId = params.teacherId ?? params.staffId;
   const { profile: me, isSuperAdmin, hasRole, isLoading: authLoading } = useAuth();
   const teacherId = paramId ?? me?.id;
-  const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
+  const canAdmin = !!(
+    isSuperAdmin || hasRole('admin') || hasRole('super_admin') || hasRole('admin_division') ||
+    hasRole('admin_admissions') || hasRole('admin_academic')
+  );
   const isSelf = teacherId === me?.id;
   const { toast } = useToast();
   const qc = useQueryClient();

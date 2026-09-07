@@ -164,11 +164,11 @@ export default function TeacherRegistration() {
         },
       });
       if (error) throw error;
-      await recordPolicyAcceptance({
+      void recordPolicyAcceptance({
         audience: 'teacher',
         name: form.fullName.trim(),
         email: form.email.trim(),
-      });
+      }).catch(() => undefined);
     },
     onSuccess: () => setSubmitted(true),
     onError: (error: any) => toast({ title: 'Could not submit', description: error.message, variant: 'destructive' }),

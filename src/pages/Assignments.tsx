@@ -530,14 +530,12 @@ export default function Assignments() {
       if (changeType === 'close') {
         const endDate = effectiveToDate;
         if (!endDate) throw new Error('End Date is required');
-        const todayStr = new Date().toISOString().split('T')[0];
-
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
             status: closeStatus,
             effective_to_date: endDate,
-            status_effective_date: todayStr,
+            status_effective_date: endDate,
             ...(closeReason ? { status_change_reason: closeReason } : {}),
           })
           .eq('id', id);
@@ -1068,7 +1066,7 @@ export default function Assignments() {
 
   const handleEditAssignment = (assignment: Assignment) => {
     setEditingAssignment(assignment);
-    setChangeType('payout');
+    setChangeType(assignment.status === 'completed' || assignment.status === 'left' ? 'close' : 'payout');
     setSelectedTeacher(assignment.teacher_id);
     setSelectedSubject(assignment.subject_id || '');
     setSelectedStudents([assignment.student_id]);
@@ -1078,13 +1076,13 @@ export default function Assignments() {
     const now = new Date();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     setEffectiveFromDate(nextMonth.toISOString().split('T')[0]);
-    setEffectiveToDate('');
+    setEffectiveToDate(assignment.effective_to_date || '');
     setCloseReason('');
     setInfoRequiresSchedule(assignment.requires_schedule);
     setInfoRequiresPlanning(assignment.requires_planning);
     setInfoRequiresAttendance(assignment.requires_attendance);
     setInfoNotes('');
-    setCloseStatus('completed');
+    setCloseStatus(assignment.status === 'left' ? 'left' : 'completed');
     setVoidPendingInvoices(false);
     setIsFormOpen(true);
   };
@@ -1121,6 +1119,10 @@ export default function Assignments() {
       if (changeType === 'close') {
         if (!effectiveToDate) {
           toast({ title: 'Missing end date', description: 'Select an End Date', variant: 'destructive' });
+          return;
+        }
+        if (!closeReason.trim()) {
+          toast({ title: 'Reason required', description: 'Add a reason for this dated assignment change.', variant: 'destructive' });
           return;
         }
       }
@@ -1489,7 +1491,7 @@ export default function Assignments() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Reason (optional)</Label>
+                      <Label className="text-xs">Reason *</Label>
                       <Textarea value={closeReason} onChange={(e) => setCloseReason(e.target.value)} rows={2} placeholder="e.g. Course completed, family relocated…" />
                     </div>
                     {effectiveToDate && pendingInvoicesAfterClose.length > 0 && (
@@ -1878,15 +1880,14 @@ export default function Assignments() {
                                 >
                                   <HistoryIcon className="h-4 w-4 text-muted-foreground" />
                                 </Button>
-                                {isClosed ? (
+                                {isClosed && (
                                   <Badge variant="outline" className="text-[10px] font-normal">
                                     Closed {assignment.effective_to_date ? `on ${formatDisplayDate(assignment.effective_to_date)}` : ''}
                                   </Badge>
-                                ) : (
-                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }} title="Edit">
-                                    <Pencil className="h-4 w-4 text-muted-foreground" />
-                                  </Button>
                                 )}
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }} title={isClosed ? 'Correct closing details' : 'Edit'}>
+                                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                                </Button>
                                 <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(assignment.id); }} disabled={deleteMutation.isPending} title="Delete">
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
