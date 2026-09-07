@@ -118,8 +118,10 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onSt
     (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
     drawing.current = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      layer,
       color: pen,
       width: 3,
+      shape: tool,
       points: [pointFrom(e)],
     };
     paint();
@@ -127,11 +129,16 @@ export function VcrWhiteboard({ strokes, mode = 'annotate', canDraw, layer, onSt
 
   const handleMove = (e: React.PointerEvent) => {
     if (!canDraw || !drawing.current) return;
-    drawing.current.points.push(pointFrom(e));
+    const p = pointFrom(e);
+    if (tool === 'free') drawing.current.points.push(p);
+    else drawing.current.points = [drawing.current.points[0], p];
     paint();
-    // Stream the in-progress stroke so the student sees it live.
-    if (drawing.current.points.length % 4 === 0) onStroke?.({ ...drawing.current, points: [...drawing.current.points] });
+    // Stream the in-progress mark so the student sees it live.
+    if (tool !== 'free' || drawing.current.points.length % 4 === 0) {
+      onStroke?.({ ...drawing.current, points: [...drawing.current.points] });
+    }
   };
+
 
   const handleUp = () => {
     if (!canDraw || !drawing.current) return;
