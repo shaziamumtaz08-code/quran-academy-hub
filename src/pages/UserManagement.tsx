@@ -97,7 +97,6 @@ import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { DuplicateFlagBadge } from '@/components/users/DuplicateFlagBadge';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
-import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
 import { MigrateStudentLoginsDialog } from '@/components/users/MigrateStudentLoginsDialog';
 import { StudentLoginToolkitDialog } from '@/components/users/StudentLoginToolkitDialog';
 
@@ -1798,7 +1797,6 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
 
         {!scopedView && (
           <div className="flex flex-wrap items-center gap-2.5">
-            <RegistrationLinksCard />
             <MigrateStudentLoginsDialog />
             <StudentLoginToolkitDialog />
           </div>

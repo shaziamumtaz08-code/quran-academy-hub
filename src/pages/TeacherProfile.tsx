@@ -208,11 +208,6 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
         }
         actions={
           <>
-            {(isSelf || canAdmin) && (
-              <Button size="sm" className="gap-1.5" onClick={() => setWizardOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" /> Edit profile
-              </Button>
-            )}
             {canAdmin && (
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAdvancedOpen((v) => !v)}>
                 <Settings2 className="h-3.5 w-3.5" /> {advancedOpen ? 'Hide all fields' : 'All fields'}

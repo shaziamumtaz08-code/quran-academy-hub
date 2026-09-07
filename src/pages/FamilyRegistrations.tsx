@@ -2,16 +2,16 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Copy, Eye, GraduationCap, Link2, Plus, Search, Users } from 'lucide-react';
+import { Eye, GraduationCap, Link2, Plus, Search, Users } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RegistrationLinksCard } from '@/components/users/RegistrationLinksCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type Status = 'pending' | 'approved' | 'rejected';
@@ -48,31 +48,25 @@ export default function FamilyRegistrations() {
       JSON.stringify(row.children ?? []).toLowerCase().includes(term));
   }, [data, search]);
 
-  const publicLink = `${window.location.origin}/register/student`;
-  const teacherLink = `${window.location.origin}/register/teacher`;
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Applications &amp; registrations</h1>
-          <p className="text-sm text-muted-foreground">Every submitted student and teacher form. Open a row to review the full profile before approving.</p>
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Applications &amp; registrations</h1>
+            <p className="text-sm text-muted-foreground">Every submitted student and teacher form. Open a row to review the full profile before approving.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate('/people/add/teacher')}>
+              <GraduationCap className="h-4 w-4 mr-1" />Add teacher manually
+            </Button>
+            <Button onClick={() => navigate('/people/add/student')}>
+              <Plus className="h-4 w-4 mr-1" />Add student manually
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(publicLink); toast({ title: 'Student form link copied', description: publicLink }); }}>
-            <Copy className="h-4 w-4 mr-1" />Copy student form link
-          </Button>
-          <Button variant="outline" onClick={() => { navigator.clipboard.writeText(teacherLink); toast({ title: 'Teacher form link copied', description: teacherLink }); }}>
-            <Copy className="h-4 w-4 mr-1" />Copy teacher form link
-          </Button>
-
-          <Button variant="outline" onClick={() => navigate('/people/add/teacher')}>
-            <GraduationCap className="h-4 w-4 mr-1" />Add teacher manually
-          </Button>
-          <Button onClick={() => navigate('/people/add/student')}>
-            <Plus className="h-4 w-4 mr-1" />Add student manually
-          </Button>
-        </div>
+        <RegistrationLinksCard />
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
