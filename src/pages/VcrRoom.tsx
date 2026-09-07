@@ -1267,9 +1267,10 @@ export default function VcrRoom() {
 
 
 
+        </main>
           {/* Lesson tools — a contextual drawer, not a permanent column */}
           {canControl && toolsOpen && (
-            <aside className="absolute inset-y-0 end-0 z-30 w-full max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-vcr-chrome/15 bg-[#0C1B1E]/95 p-4 shadow-2xl backdrop-blur">
+            <aside className="fixed inset-y-0 end-0 z-50 w-full max-w-sm space-y-3 overflow-y-auto border-s border-vcr-chrome/15 bg-[#0C1B1E]/95 p-4 shadow-2xl backdrop-blur lg:static lg:z-auto lg:w-[22rem] lg:shrink-0 lg:self-start lg:max-h-[80vh] lg:rounded-2xl lg:border lg:shadow-xl">
               <div className="flex items-center gap-2">
                 <span className="font-display text-base text-vcr-chrome">Lesson tools</span>
                 <button
@@ -1332,7 +1333,6 @@ export default function VcrRoom() {
               </button>
             </aside>
           )}
-        </main>
       </div>
 
 
