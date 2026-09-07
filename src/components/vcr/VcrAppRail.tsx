@@ -52,6 +52,7 @@ interface Props {
   onToggle: () => void;
   onSelect: (key: VcrRailKey) => void;
   isMobile?: boolean;
+  className?: string;
 }
 
 /**
@@ -60,7 +61,7 @@ interface Props {
  * own scrollbar; there are no up/down buttons. Icons sit on clean white
  * backgrounds and pop out on hover, revealing their label.
  */
-export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false }: Props) {
+export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false, className }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onToggle(); };
@@ -69,7 +70,7 @@ export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false 
   }, [open, onToggle]);
 
   return (
-    <div className="relative z-40 shrink-0 self-start">
+    <div className={cn('relative z-40 shrink-0 self-start', className)}>
       <nav
         aria-label="Class apps"
         className={cn(
