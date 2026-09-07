@@ -120,6 +120,8 @@ export default function VcrRoom() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   /** Zoom-style automatic recording — consent is still asked every call. */
   const [autoRecord, setAutoRecord] = useState<boolean>(() => localStorage.getItem('vcr-auto-record') === '1');
+  /** Any staff member can choose to sit in silently instead of taking a speaking seat. */
+  const [listenOnly, setListenOnly] = useState(false);
   const [turnSignal, setTurnSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const notesTimer = useRef<number | null>(null);
