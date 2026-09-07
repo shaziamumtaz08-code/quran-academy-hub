@@ -1,7 +1,7 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useMemo, useState } from 'react';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPayoutRate } from '@/lib/payoutRates';
 import { supabase } from '@/integrations/supabase/client';
@@ -51,7 +51,8 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
   const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [advancedOpen, setAdvancedOpen] = useState(searchParams.get('edit') === '1');
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(teacherId, () =>
     qc.invalidateQueries({ queryKey: ['teacher-profile-page', teacherId] }));
 

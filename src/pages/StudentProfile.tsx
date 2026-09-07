@@ -1,6 +1,6 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
@@ -38,7 +38,8 @@ export default function StudentProfile() {
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const [guardianOpen, setGuardianOpen] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [advancedOpen, setAdvancedOpen] = useState(searchParams.get('edit') === '1');
   const canTeach = !!(canAdmin || hasRole('teacher'));
   const canEditPhoto = !!(studentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(studentId, () =>

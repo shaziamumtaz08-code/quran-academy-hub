@@ -528,7 +528,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
     return `/staff-profile/${userId}`;
   };
 
-  const openProfilePage = (user: { id: string; roles?: string[] | null }) => {
+  const openProfilePage = (user: { id: string; roles?: string[] | null }, edit = false) => {
     const ADMIN_VIEWERS: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_academic'];
     const role = activeRole as AppRole | null;
     const allowed = isSuperAdmin || (role && ADMIN_VIEWERS.includes(role));
@@ -537,7 +537,7 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
       return;
     }
     const path = profilePathFor(user.roles as string[], user.id);
-    if (path) navigate(path);
+    if (path) navigate(edit ? `${path}?edit=1` : path);
   };
 
   // Fetch users with profiles and ALL roles
@@ -2155,8 +2155,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openProfilePage(user)}
-                                title="Open full profile"
+                                onClick={() => openProfilePage(user, true)}
+                                title="Edit profile"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -2470,8 +2470,8 @@ export default function UserManagement({ lockedRole }: { lockedRole?: 'teacher' 
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => openProfilePage(user)}
-                                  title="Open full profile"
+                                  onClick={() => openProfilePage(user, true)}
+                                  title="Edit profile"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>

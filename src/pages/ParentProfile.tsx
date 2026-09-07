@@ -1,6 +1,6 @@
 import { PROFILE_SAFE_COLUMNS } from '@/lib/profileColumns';
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
@@ -36,7 +36,8 @@ export default function ParentProfile() {
   const parentId = paramId ?? me?.id;
   const queryClient = useQueryClient();
   const canAdmin = !!(isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [advancedOpen, setAdvancedOpen] = useState(searchParams.get('edit') === '1');
   const canEditPhoto = !!(parentId === me?.id || isSuperAdmin || hasRole('admin') || hasRole('super_admin'));
   const { onAvatarSelect, uploading: avatarUploading } = useProfileAvatar(parentId, () =>
     queryClient.invalidateQueries({ queryKey: ['parent-profile-page', parentId] }));
