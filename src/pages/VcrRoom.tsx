@@ -990,10 +990,24 @@ export default function VcrRoom() {
                 callerName={(profile as any)?.full_name ?? 'Your teacher'}
                 knockerName={student?.full_name ?? 'Your student'}
                 studentId={studentId}
-                teacherId={canControl && !wantsObserver ? user.id : null}
+                teacherId={canControl && !wantsObserver && !listenOnly ? user.id : null}
                 displayName={(profile as any)?.full_name ?? 'Participant'}
-                observer={wantsObserver}
+                observer={wantsObserver || listenOnly}
               />
+            )}
+            {canControl && !wantsObserver && (
+              <button
+                type="button"
+                onClick={() => setListenOnly((v) => !v)}
+                aria-pressed={listenOnly}
+                title="Join the call silently — you can still unmute if you need to speak"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px]',
+                  listenOnly ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/60',
+                )}
+              >
+                <Eye className="h-3.5 w-3.5" /> {listenOnly ? 'Joining as listener' : 'Join as listener'}
+              </button>
             )}
             {canControl && (
               <button
