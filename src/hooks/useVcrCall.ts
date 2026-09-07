@@ -436,6 +436,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   return {
     status,
     muted,
+    speaking,
     error,
     busy,
     peers,
