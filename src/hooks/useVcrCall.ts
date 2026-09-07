@@ -234,6 +234,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         }
         remoteStreamsRef.current.set(remoteId, e.streams[0]);
         el.srcObject = e.streams[0];
+        attachLevel(remoteId, e.streams[0]);
         el.play().catch(() => setError('Tap anywhere on the page to allow audio playback.'));
       };
 
