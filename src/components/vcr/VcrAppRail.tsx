@@ -61,7 +61,7 @@ interface Props {
  * own scrollbar; there are no up/down buttons. Icons sit on clean white
  * backgrounds and pop out on hover, revealing their label.
  */
-export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false }: Props) {
+export function VcrAppRail({ active, open, onToggle, onSelect, isMobile = false, className }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onToggle(); };
