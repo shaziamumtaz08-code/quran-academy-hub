@@ -20,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
-import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared } from '@/lib/timezones';
+import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared, normalizeTimezone } from '@/lib/timezones';
 import { Calendar as DateCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { resolveScheduleForDate, type SchedulePeriod, type SchedulePeriodType } from '@/lib/schedulePeriods';
@@ -433,6 +433,22 @@ export default function Schedules() {
     'New Zealand': 'Pacific/Auckland',
     'Germany': 'Europe/Berlin',
     'France': 'Europe/Paris',
+    'Belgium': 'Europe/Brussels',
+    'Netherlands': 'Europe/Amsterdam',
+    'Spain': 'Europe/Madrid',
+    'Italy': 'Europe/Rome',
+    'Ireland': 'Europe/Dublin',
+    'Sweden': 'Europe/Stockholm',
+    'Norway': 'Europe/Oslo',
+    'Denmark': 'Europe/Copenhagen',
+    'Switzerland': 'Europe/Zurich',
+    'Austria': 'Europe/Vienna',
+    'Portugal': 'Europe/Lisbon',
+    'Oman': 'Asia/Muscat',
+    'Jordan': 'Asia/Amman',
+    'Indonesia': 'Asia/Jakarta',
+    'Japan': 'Asia/Tokyo',
+    'China': 'Asia/Shanghai',
   };
 
   const resolveTimezone = (
@@ -443,10 +459,10 @@ export default function Schedules() {
     // 1. Try exact country+city match from DB
     if (country && city) {
       const tz = tzByLocation.get(`${country}|${city}`);
-      if (tz) return tz;
+      if (tz) return normalizeTimezone(tz);
     }
     // 2. Try the stored IANA fallback from assignment (if it looks like IANA)
-    if (fallback && fallback.includes('/')) return fallback;
+    if (fallback && fallback.includes('/')) return normalizeTimezone(fallback);
     // 3. Country-level IANA fallback
     if (country) {
       const countryTz = COUNTRY_TZ_FALLBACKS[country];
@@ -457,7 +473,7 @@ export default function Schedules() {
         if (k.toLowerCase() === lower) return v;
       }
     }
-    return fallback || 'Asia/Karachi';
+    return normalizeTimezone(fallback);
   };
 
   // Create schedule mutation

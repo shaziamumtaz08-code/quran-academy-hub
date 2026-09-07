@@ -57,9 +57,8 @@ const mmss = (secs: number) => {
  * the Zoom option stays available alongside it.
  */
 export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false }: Props) {
-  const { status, muted, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
+  const { status, muted, speaking, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
     useVcrCall({ roomId, peerId, displayName, observer });
-  const [showPeople, setShowPeople] = React.useState(false);
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Log every call — recorded or not. */
@@ -118,30 +117,36 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         </span>
       )}
 
+      {/* Who is on the call, and whose microphone is live — always visible. */}
       {live && (
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowPeople((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-full border border-vcr-chrome/15 bg-black/25 px-3 py-1 text-xs text-vcr-chrome/75"
-          >
-            <Users className="h-3.5 w-3.5" aria-hidden />
-            Participants ({peers.length + 1})
-          </button>
-          {showPeople && (
-            <ul className="absolute left-0 top-full z-50 mt-1 min-w-44 space-y-1 rounded-lg border border-vcr-chrome/20 bg-black/85 p-2 text-xs text-vcr-chrome/85 shadow-xl">
-              <li className="flex items-center gap-2">
-                {observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
-                {displayName} (you){observer ? ' · observer' : ''}
-              </li>
-              {peers.map((p) => (
-                <li key={p.id} className="flex items-center gap-2">
-                  {p.observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
-                  {p.name}{p.observer ? ' · observer' : ''}
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-xs text-vcr-chrome/60">
+            <Users className="h-3.5 w-3.5" aria-hidden /> On the call ({peers.length + 1}):
+          </span>
+          {[
+            { id: 'self', name: `${displayName} (you)`, observer, muted, speaking },
+            ...peers,
+          ].map((p) => (
+            <span
+              key={p.id}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors',
+                p.speaking && !p.muted
+                  ? 'border-emerald-400/70 bg-emerald-500/20 text-emerald-100'
+                  : 'border-vcr-chrome/15 bg-black/25 text-vcr-chrome/80'
+              )}
+              title={p.muted ? `${p.name}'s microphone is off` : p.speaking ? `${p.name} is speaking` : `${p.name}'s microphone is on`}
+            >
+              {p.muted
+                ? <MicOff className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+                : <Mic className={cn('h-3.5 w-3.5', p.speaking ? 'text-emerald-300' : 'text-vcr-chrome/60')} aria-hidden />}
+              {p.observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
+              {p.name}
+              <span className="text-vcr-chrome/50">
+                {p.muted ? '· mic off' : p.speaking ? '· speaking' : '· mic on'}
+              </span>
+            </span>
+          ))}
         </div>
       )}
 
@@ -199,10 +204,15 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
             type="button"
             onClick={toggleMute}
             aria-pressed={muted}
-            className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm"
+            className={cn(
+              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
+              muted
+                ? 'border-amber-400/50 bg-amber-500/15 text-amber-100'
+                : speaking && 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
+            )}
           >
             {muted ? <MicOff className="h-4 w-4 text-amber-300" /> : <Mic className="h-4 w-4 text-vcr-gold" />}
-            {muted ? 'Unmute' : 'Mute'}
+            {muted ? 'Your mic is off — tap to unmute' : 'Your mic is on — tap to mute'}
           </button>
           <button
             type="button"

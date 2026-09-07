@@ -199,6 +199,20 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
       ? { title: 'Recording not saved', description: upErr.message, variant: 'destructive' }
       : { title: 'Recording saved', description: `${seconds}s of call audio stored securely.` });
 
+    // Copy it into the academy Google Drive folder straight away.
+    if (!upErr && id) {
+      const { data: backup, error: bErr } = await supabase.functions.invoke('vcr-drive-backup', {
+        body: { recording_id: id },
+      });
+      if (bErr) {
+        console.error('Drive backup failed', bErr);
+        toast({ title: 'Saved here, not on Drive yet', description: 'The recording is safe in the academy library; the Google Drive copy did not go through.' });
+      } else if ((backup as any)?.uploaded) {
+        toast({ title: 'Copied to Google Drive', description: 'A backup of this class call is now in the academy Drive folder.' });
+      }
+    }
+
+
   }, [roomId, send]);
 
   const stop = () => {

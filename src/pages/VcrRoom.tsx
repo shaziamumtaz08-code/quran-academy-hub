@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { openExternal } from '@/lib/popupWindow';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -120,6 +120,8 @@ export default function VcrRoom() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   /** Zoom-style automatic recording — consent is still asked every call. */
   const [autoRecord, setAutoRecord] = useState<boolean>(() => localStorage.getItem('vcr-auto-record') === '1');
+  /** Any staff member can choose to sit in silently instead of taking a speaking seat. */
+  const [listenOnly, setListenOnly] = useState(false);
   const [turnSignal, setTurnSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const notesTimer = useRef<number | null>(null);
@@ -988,10 +990,24 @@ export default function VcrRoom() {
                 callerName={(profile as any)?.full_name ?? 'Your teacher'}
                 knockerName={student?.full_name ?? 'Your student'}
                 studentId={studentId}
-                teacherId={canControl && !wantsObserver ? user.id : null}
+                teacherId={canControl && !wantsObserver && !listenOnly ? user.id : null}
                 displayName={(profile as any)?.full_name ?? 'Participant'}
-                observer={wantsObserver}
+                observer={wantsObserver || listenOnly}
               />
+            )}
+            {canControl && !wantsObserver && (
+              <button
+                type="button"
+                onClick={() => setListenOnly((v) => !v)}
+                aria-pressed={listenOnly}
+                title="Join the call silently — you can still unmute if you need to speak"
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px]',
+                  listenOnly ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/60',
+                )}
+              >
+                <Eye className="h-3.5 w-3.5" /> {listenOnly ? 'Joining as listener' : 'Join as listener'}
+              </button>
             )}
             {canControl && (
               <button

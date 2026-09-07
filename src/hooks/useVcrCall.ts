@@ -19,6 +19,10 @@ export interface CallPeer {
   id: string;
   name: string;
   observer: boolean;
+  /** Whether that person's microphone is currently off. */
+  muted: boolean;
+  /** True while that person is actually talking. */
+  speaking: boolean;
 }
 
 const CONNECT_TIMEOUT_MS = 25_000;
@@ -55,6 +59,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   const activeRef = useRef(false);
   const observerRef = useRef(observer);
   const [busy, setBusy] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const mutedRef = useRef(false);
+  const levelCtxRef = useRef<AudioContext | null>(null);
+  const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
+  const levelTimerRef = useRef<number | null>(null);
 
   observerRef.current = observer;
 
@@ -72,10 +81,64 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     [peerId]
   );
 
+  /**
+   * Voice-activity metering: everyone can see who is actually talking, which
+   * removes the "whose mic is on?" confusion during a class.
+   */
+  const attachLevel = useCallback((id: string, stream: MediaStream) => {
+    try {
+      if (!stream.getAudioTracks().length) return;
+      const ctx = levelCtxRef.current ?? new AudioContext();
+      levelCtxRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      analysersRef.current.set(id, analyser);
+
+      if (levelTimerRef.current == null) {
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        levelTimerRef.current = window.setInterval(() => {
+          let selfLoud = false;
+          analysersRef.current.forEach((a, key) => {
+            a.getByteTimeDomainData(buf);
+            let sum = 0;
+            for (let i = 0; i < buf.length; i++) {
+              const v = (buf[i] - 128) / 128;
+              sum += v * v;
+            }
+            const loud = Math.sqrt(sum / buf.length) > 0.045;
+            if (key === 'self') {
+              selfLoud = loud && !mutedRef.current;
+              return;
+            }
+            const peer = peersRef.current.get(key);
+            if (peer && peer.speaking !== loud) {
+              peersRef.current.set(key, { ...peer, speaking: loud });
+              syncPeers();
+            }
+          });
+          setSpeaking(selfLoud);
+        }, 250);
+      }
+    } catch {
+      /* metering is a nicety — never break the call for it */
+    }
+  }, []);
+
+  const stopLevels = useCallback(() => {
+    if (levelTimerRef.current != null) window.clearInterval(levelTimerRef.current);
+    levelTimerRef.current = null;
+    analysersRef.current.clear();
+    levelCtxRef.current?.close().catch(() => {});
+    levelCtxRef.current = null;
+    setSpeaking(false);
+  }, []);
+
   const dropPeer = useCallback((id: string) => {
     pcsRef.current.get(id)?.close();
     pcsRef.current.delete(id);
     remoteStreamsRef.current.delete(id);
+    analysersRef.current.delete(id);
     const el = audioElsRef.current.get(id);
     if (el) {
       el.srcObject = null;
@@ -92,6 +155,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       if (activeRef.current) send('leave', {});
       activeRef.current = false;
       clearTimer();
+      stopLevels();
 
       Array.from(pcsRef.current.keys()).forEach(dropPeer);
       pcsRef.current.clear();
@@ -108,10 +172,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       }
 
       setPeers([]);
+      mutedRef.current = false;
       setMuted(false);
       setStatus(next);
     },
-    [dropPeer, send]
+    [dropPeer, send, stopLevels]
   );
 
   /** Only start counting down once someone else is actually in the room. */
@@ -169,6 +234,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         }
         remoteStreamsRef.current.set(remoteId, e.streams[0]);
         el.srcObject = e.streams[0];
+        attachLevel(remoteId, e.streams[0]);
         el.play().catch(() => setError('Tap anywhere on the page to allow audio playback.'));
       };
 
@@ -180,7 +246,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       pcsRef.current.set(remoteId, pc);
       return pc;
     },
-    [send, refreshStatus]
+    [send, refreshStatus, attachLevel]
   );
 
   const drainIce = async (remoteId: string, pc: RTCPeerConnection) => {
@@ -207,27 +273,39 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       return;
     }
     localStreamRef.current = stream;
+    attachLevel('self', stream);
 
     // Observers arrive silently — they can unmute to speak.
     if (observerRef.current) {
       stream.getAudioTracks().forEach((t) => (t.enabled = false));
+      mutedRef.current = true;
       setMuted(true);
+    } else {
+      mutedRef.current = false;
+      setMuted(false);
     }
 
     // NOTE: must NOT share a topic with useVcrViewSync (`vcr-call:*`).
     const channel = supabase.channel(`vcr-audio:${roomId}`, { config: { broadcast: { self: false } } });
     channelRef.current = channel;
 
-    const me = () => ({ name: displayName, observer: observerRef.current });
+    const me = () => ({ name: displayName, observer: observerRef.current, muted: mutedRef.current });
 
     /** Track a peer; refuse a fourth participant. */
-    const claimPeer = (from?: string, name?: string, isObserver?: boolean) => {
+    const claimPeer = (from?: string, name?: string, isObserver?: boolean, isMuted?: boolean) => {
       if (!from || from === peerId) return false;
       if (!peersRef.current.has(from) && peersRef.current.size >= MAX_OTHERS) {
         channelRef.current?.send({ type: 'broadcast', event: 'busy', payload: { from: peerId, to: from } });
         return false;
       }
-      peersRef.current.set(from, { id: from, name: name || 'Participant', observer: !!isObserver });
+      const prev = peersRef.current.get(from);
+      peersRef.current.set(from, {
+        id: from,
+        name: name || prev?.name || 'Participant',
+        observer: isObserver ?? prev?.observer ?? false,
+        muted: isMuted ?? prev?.muted ?? false,
+        speaking: prev?.speaking ?? false,
+      });
       syncPeers();
       armConnectTimer();
       return true;
@@ -253,17 +331,23 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
     channel
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
-        if (!claimPeer(payload?.from, payload?.name, payload?.observer)) return;
+        if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         send('present', me());
         await makeOffer(payload.from);
       })
       .on('broadcast', { event: 'present' }, async ({ payload }) => {
-        if (!claimPeer(payload?.from, payload?.name, payload?.observer)) return;
+        if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         await makeOffer(payload.from);
+      })
+      .on('broadcast', { event: 'mic' }, ({ payload }) => {
+        const peer = payload?.from ? peersRef.current.get(payload.from) : undefined;
+        if (!peer) return;
+        peersRef.current.set(peer.id, { ...peer, muted: !!payload.muted, speaking: payload.muted ? false : peer.speaking });
+        syncPeers();
       })
       .on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (!mine(payload) || payload?.from === peerId) return;
-        if (!claimPeer(payload.from, payload.name, payload.observer) || amOfferer(payload.from)) return;
+        if (!claimPeer(payload.from, payload.name, payload.observer, payload.muted) || amOfferer(payload.from)) return;
         const pc = ensurePc(payload.from);
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(payload.from, pc);
@@ -317,7 +401,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     // No failure timer until someone else is present — whoever opens first
     // simply waits instead of being told the call failed.
     clearTimer();
-  }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer]);
+  }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer, attachLevel]);
 
   const end = useCallback(() => {
     teardown('ended');
@@ -327,8 +411,12 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     const track = localStreamRef.current?.getAudioTracks()[0];
     if (!track) return;
     track.enabled = !track.enabled;
+    mutedRef.current = !track.enabled;
     setMuted(!track.enabled);
-  }, []);
+    if (!track.enabled) setSpeaking(false);
+    // Tell the others straight away, so nobody talks into a muted mic.
+    send('mic', { muted: !track.enabled });
+  }, [send]);
 
   const retry = useCallback(async () => {
     teardown('idle');
@@ -348,6 +436,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   return {
     status,
     muted,
+    speaking,
     error,
     busy,
     peers,

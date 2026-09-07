@@ -12858,6 +12858,8 @@ export type Database = {
           consent_teacher: boolean
           created_at: string
           created_by: string | null
+          drive_backed_up_at: string | null
+          drive_file_id: string | null
           duration_seconds: number | null
           ended_at: string | null
           id: string
@@ -12875,6 +12877,8 @@ export type Database = {
           consent_teacher?: boolean
           created_at?: string
           created_by?: string | null
+          drive_backed_up_at?: string | null
+          drive_file_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
@@ -12892,6 +12896,8 @@ export type Database = {
           consent_teacher?: boolean
           created_at?: string
           created_by?: string | null
+          drive_backed_up_at?: string | null
+          drive_file_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
