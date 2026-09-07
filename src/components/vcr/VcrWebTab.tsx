@@ -3,7 +3,7 @@ import { ExternalLink, RotateCw, Search, ShieldAlert } from 'lucide-react';
 import { toEmbedUrl } from '@/hooks/useVcrRoomState';
 import { cn } from '@/lib/utils';
 
-type WebApp = 'drive' | 'youtube' | 'google' | 'url';
+type WebApp = 'drive' | 'youtube' | 'google' | 'url' | 'zoom';
 
 interface Props {
   app: WebApp;
@@ -42,6 +42,11 @@ function normalise(raw: string, app: WebApp): string {
   if (app === 'google' && !/^https?:\/\//i.test(v) && !v.includes('.')) {
     return `https://www.google.com/search?q=${encodeURIComponent(v)}`;
   }
+  if (app === 'zoom') {
+    if (/^https?:\/\//i.test(v)) return v;
+    if (/^\d{9,11}$/.test(v)) return `https://zoom.us/j/${v}`;
+    return `https://zoom.us/j/${encodeURIComponent(v)}`;
+  }
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
 }
 
@@ -50,6 +55,7 @@ const START: Record<WebApp, string> = {
   youtube: 'https://www.youtube.com/',
   google: 'https://www.google.com/',
   url: '',
+  zoom: 'https://zoom.us/',
 };
 
 const PLACEHOLDER: Record<WebApp, string> = {
@@ -57,6 +63,7 @@ const PLACEHOLDER: Record<WebApp, string> = {
   youtube: 'Search YouTube, or paste a video link',
   google: 'Search Google, or type a web address',
   url: 'Type a web address',
+  zoom: 'Paste a Zoom meeting link or ID',
 };
 
 /**
@@ -78,7 +85,13 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
   onTitleRef.current = onTitle;
 
   useEffect(() => {
-    onTitleRef.current?.(url ? hostOf(url) || 'Web' : app === 'url' ? 'Web' : app === 'google' ? 'Google' : app === 'drive' ? 'Google Drive' : 'YouTube');
+    const defaultTitle =
+      app === 'url' ? 'Web'
+      : app === 'google' ? 'Google'
+      : app === 'drive' ? 'Google Drive'
+      : app === 'zoom' ? 'Zoom'
+      : 'YouTube';
+    onTitleRef.current?.(url ? hostOf(url) || 'Web' : defaultTitle);
   }, [url, app]);
 
   useEffect(() => {
@@ -163,7 +176,9 @@ export function VcrWebTab({ app, initialUrl, onTitle, onShare }: Props) {
                     ? 'Search for a video above, or paste a YouTube link to play it here in class.'
                     : app === 'drive'
                       ? 'Paste a Google Drive file or folder link above to open it here in class.'
-                      : 'Type what you are looking for, or a web address, above.'}
+                      : app === 'zoom'
+                        ? 'Paste a Zoom meeting link or meeting ID above to join from here.'
+                        : 'Type what you are looking for, or a web address, above.'}
                 </p>
               </>
             ) : (

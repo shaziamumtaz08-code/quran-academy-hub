@@ -15,7 +15,7 @@ export interface VcrTab {
   pinned?: boolean;
   /** Web tabs only. */
   url?: string;
-  app?: 'drive' | 'youtube' | 'google' | 'url';
+  app?: 'drive' | 'youtube' | 'google' | 'url' | 'zoom';
 }
 
 interface Props {
