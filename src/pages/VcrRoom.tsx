@@ -484,8 +484,7 @@ export default function VcrRoom() {
     void (async () => {
       try {
         const saved = await getAnnotations(resource.id, currentPage);
-        loadStrokes(saved as any);
-        if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+        loadStrokes(`resource:${resource.id}:${currentPage}`, saved as any);
       } catch { /* nothing saved yet */ }
     })();
   }, [resource?.id, currentPage, loadStrokes]);
@@ -498,7 +497,7 @@ export default function VcrRoom() {
         studentId,
         contentType: content,
         unit: currentPage,
-        strokes,
+        strokes: pageStrokes,
         userId: user.id,
         reference: { libraryItemId: docId ?? null },
       });
@@ -515,7 +514,7 @@ export default function VcrRoom() {
     if (!resource || !user?.id) return;
     setSavingMarks(true);
     try {
-      await saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id });
+      await saveAnnotations({ resourceId: resource.id, page: currentPage, strokes: pageStrokes, userId: user.id });
       if (alsoVersion) {
         const v = await saveVersion({ resourceId: resource.id, userId: user.id, note: `Marked in class` });
         setResource({ ...resource, current_version: v.version_no });
@@ -536,16 +535,16 @@ export default function VcrRoom() {
     if (!submission?.synced_resource_id || !resource || !user?.id) return;
     if (resource.id !== submission.synced_resource_id || !canMarkResource) return;
     const id = window.setTimeout(() => {
-      void saveAnnotations({ resourceId: resource.id, page: currentPage, strokes, userId: user.id }).catch(() => {});
+      void saveAnnotations({ resourceId: resource.id, page: currentPage, strokes: pageStrokes, userId: user.id }).catch(() => {});
     }, 1500);
     return () => window.clearTimeout(id);
-  }, [strokes, currentPage, submission?.synced_resource_id, resource?.id, canMarkResource, user?.id]);
+  }, [pageStrokes, currentPage, submission?.synced_resource_id, resource?.id, canMarkResource, user?.id]);
 
   const saveReview = async (returnNow: boolean) => {
     if (!submission || !submission.synced_resource_id || !user?.id) return;
     setSavingReview(true);
     try {
-      await saveAnnotations({ resourceId: submission.synced_resource_id, page: currentPage, strokes, userId: user.id });
+      await saveAnnotations({ resourceId: submission.synced_resource_id, page: currentPage, strokes: pageStrokes, userId: user.id });
       await saveSyncedReview({
         submissionId: submission.id,
         resourceId: submission.synced_resource_id,
@@ -582,6 +581,25 @@ export default function VcrRoom() {
   const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
   const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
 
+  /* Every working area keeps its own marks: each Mushaf / Qaida / document
+     page has its own layer, and the whiteboard is a separate canvas that never
+     shares anything with the pages. */
+  const pageLayer = resource
+    ? `resource:${resource.id}:${currentPage}`
+    : content === 'doc'
+      ? `doc:${activeDocId ?? 'none'}:${currentPage}`
+      : `${content}:${currentPage}`;
+  const annotationLayer = whiteboardMode === 'board' ? 'whiteboard' : pageLayer;
+  const layerOf = (s: any) => s.layer ?? 'whiteboard';
+  const pageStrokes = React.useMemo(
+    () => strokes.filter((s) => layerOf(s) === pageLayer),
+    [strokes, pageLayer],
+  );
+  const activeStrokes = React.useMemo(
+    () => strokes.filter((s) => layerOf(s) === annotationLayer),
+    [strokes, annotationLayer],
+  );
+
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
   const lastView = useRef({ page: 1, fontScale: 1 });
@@ -607,7 +625,15 @@ export default function VcrRoom() {
 
 
 
-  const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz });
+  /* Teacher pointing at a Mushaf line — mirrored to the student's screen. */
+  const publishLine = React.useCallback(
+    (lineId: string | null) => {
+      publish({ ...lastView.current, highlight: lineId ? { lineId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+    },
+    [publish, content, docId, whiteboardOn, boardMode]
+  );
+
+  const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz, canControl, onPointLine: publishLine });
   const qaidaAdapter = useQaidaAdapter({
     resumePage: content === 'qaida' ? resumePage : null,
     canControl,
@@ -639,8 +665,7 @@ export default function VcrRoom() {
     loadedLessonMarksKey.current = key;
     void (async () => {
       const saved = await getLessonAnnotations(studentId, content, currentPage);
-      loadStrokes(saved as any);
-      if (saved.length) { setBoardMode('annotate'); setWhiteboardOn(true); }
+      loadStrokes(`${content}:${currentPage}`, saved as any);
     })();
   }, [isLessonContent, studentId, content, currentPage, loadStrokes]);
 
@@ -652,13 +677,13 @@ export default function VcrRoom() {
         studentId,
         contentType: content,
         unit: currentPage,
-        strokes,
+        strokes: pageStrokes,
         userId: user.id,
         reference: { libraryItemId: docId ?? null },
       }).catch(() => {});
     }, 1500);
     return () => window.clearTimeout(id);
-  }, [strokes, isLessonContent, studentId, content, currentPage, user?.id, canMarkLesson, docId]);
+  }, [pageStrokes, isLessonContent, studentId, content, currentPage, user?.id, canMarkLesson, docId]);
 
 
   /* ── VCR tabs: a browser-like workspace inside the classroom ───────────── */
@@ -1157,14 +1182,21 @@ export default function VcrRoom() {
           {/* Shared whiteboard layer — teacher draws, student mirrors live */}
           {whiteboardVisible && (activeTab === 'lesson' || activeTab === 'whiteboard') && (
             <VcrWhiteboard
-              strokes={strokes}
+              strokes={activeStrokes}
               mode={whiteboardMode}
+              layer={annotationLayer}
               canDraw={canMarkLesson}
               onStroke={pushStroke}
-              onUndo={undoStroke}
-              onClear={clearBoard}
-              onClose={() => closeTab('whiteboard')}
+              onUndo={() => undoStroke(annotationLayer)}
+              onClear={() => clearBoard(annotationLayer)}
+              onClose={() => { if (whiteboardMode === 'board') closeTab('whiteboard'); else setWhiteboardOn(false); }}
             />
+          )}
+
+          {/* Marks already made on this page stay visible after the drawing
+              tools are closed — they belong to the page, for this session. */}
+          {!whiteboardVisible && activeTab === 'lesson' && pageStrokes.length > 0 && (
+            <VcrWhiteboard strokes={pageStrokes} mode="annotate" layer={pageLayer} canDraw={false} />
           )}
 
           {/* Native app tabs — Syllabus (class material), Library, My Drive */}
