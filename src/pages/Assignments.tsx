@@ -1484,8 +1484,8 @@ export default function Assignments() {
                           type="date"
                           value={effectiveToDate}
                           onChange={(e) => setEffectiveToDate(e.target.value)}
-                          min={new Date().toISOString().split('T')[0]}
                         />
+                        <p className="text-[10px] text-muted-foreground">Back-dating is allowed — affected invoices and salary sheets are recalculated or flagged.</p>
                       </div>
                     </div>
                     <div className="space-y-1">
