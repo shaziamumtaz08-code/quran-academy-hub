@@ -150,6 +150,7 @@ export function AdminDashboard() {
     { icon: '👩‍🎓', label: 'Add Student', bg: 'bg-sky/10', textColor: 'text-sky', border: 'border-sky/15', onClick: () => navigate('/students') },
     { icon: '📢', label: 'Send Notice', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/hub') },
     { icon: '📊', label: 'View Reports', bg: 'bg-primary/10', textColor: 'text-primary', border: 'border-primary/15', onClick: () => navigate('/reports') },
+    { icon: '📖', label: 'Mushaf', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/mushaf') },
   ];
 
   const contextLabel = activeBranch && activeDivision ? `${activeBranch.name} — ${activeDivision.name}` : '';
