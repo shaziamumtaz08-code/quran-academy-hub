@@ -27,8 +27,21 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointed, setPointed] = useState<string | null>(null);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => { setPointed(null); }, [page]);
+
+  /* Auto-fit: narrow screens shrink the script so a full line stays on one row. */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  const fit = width > 0 ? Math.min(1, Math.max(0.5, width / 620)) : 1;
 
 
   useEffect(() => {
