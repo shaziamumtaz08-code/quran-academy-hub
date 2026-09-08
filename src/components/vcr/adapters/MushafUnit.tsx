@@ -27,8 +27,21 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointed, setPointed] = useState<string | null>(null);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => { setPointed(null); }, [page]);
+
+  /* Auto-fit: narrow screens shrink the script so a full line stays on one row. */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  const fit = width > 0 ? Math.min(1, Math.max(0.5, width / 620)) : 1;
 
 
   useEffect(() => {
@@ -51,6 +64,13 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
     [lines],
   );
 
+  /* Drop the empty spacer rows the layout data carries — they left a huge
+     blank gap between a surah heading and the first ayah. */
+  const visible = useMemo(
+    () => lines.filter((l) => Boolean(l.text_indopak) || l.line_type === 'surah_name' || l.line_type === 'basmallah'),
+    [lines],
+  );
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -64,9 +84,9 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={wrapRef}>
       <div dir="rtl" className="space-y-1.5">
-        {lines.map((l, idx) => {
+        {visible.map((l, idx) => {
           if (l.line_type === 'surah_name' || l.line_type === 'basmallah') {
             const heading = l.line_type === 'basmallah'
               ? 'بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ'
@@ -80,13 +100,13 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
                 <TajweedText
                   text={heading}
                   className="text-slate-800"
-                  style={{ fontSize: `${26 * fontScale}px`, lineHeight: 2 }}
+                  style={{ fontSize: `${26 * fontScale * fit}px`, lineHeight: 1.8 }}
                   plain={l.line_type === 'surah_name'}
                 />
               </div>
             );
           }
-          if (!l.text_indopak) return <div key={l.id} className="h-2" aria-hidden />;
+          if (!l.text_indopak) return null;
           const lit = (canPoint ? pointed : highlight?.lineId) === l.id;
           return (
             <div
@@ -109,7 +129,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
               <TajweedText
                 text={l.text_indopak}
                 className="block text-slate-900"
-                style={{ fontSize: `${32 * fontScale}px`, lineHeight: 2.1 }}
+                style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
               />
             </div>
           );
