@@ -1693,3 +1693,20 @@
   color: #26303F;
   border-color: rgba(15, 23, 42, 0.12);
 }
+
+/* Reader controls on the pastel (Mushaf / Qaida) surface — dark, readable */
+.vcr-controls-light .vcr-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.78));
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #1e293b;
+  font-weight: 600;
+  box-shadow: 0 8px 18px -12px rgba(60, 50, 90, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.vcr-controls-light .vcr-btn:hover { filter: none; background: #ffffff; }
+.vcr-controls-light [class*="text-vcr-chrome"] { color: #475569; }
+.vcr-controls-light input[type="number"] {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #1e293b;
+  border-color: rgba(15, 23, 42, 0.15);
+}
+.vcr-controls-light .vcr-fontsize-box { border-color: rgba(15, 23, 42, 0.12); background: rgba(255,255,255,0.55); }
