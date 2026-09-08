@@ -64,6 +64,13 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
     [lines],
   );
 
+  /* Drop the empty spacer rows the layout data carries — they left a huge
+     blank gap between a surah heading and the first ayah. */
+  const visible = useMemo(
+    () => lines.filter((l) => Boolean(l.text_indopak) || l.line_type === 'surah_name' || l.line_type === 'basmallah'),
+    [lines],
+  );
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -122,7 +129,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
               <TajweedText
                 text={l.text_indopak}
                 className="block text-slate-900"
-                style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9, whiteSpace: 'nowrap' }}
+                style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
               />
             </div>
           );
