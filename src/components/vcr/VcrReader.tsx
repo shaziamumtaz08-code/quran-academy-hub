@@ -174,7 +174,10 @@ export function VcrReader({
       </div>
 
       {showControls && (
-        <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
+        <div className={cn(
+          'mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3',
+          pastel && 'vcr-controls-light'
+        )}>
           <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(-1)}>
             <ChevronLeft className="h-5 w-5" /> Previous {adapter.unitNoun}
           </button>
@@ -201,7 +204,7 @@ export function VcrReader({
             </form>
 
             {/* Font size */}
-            <div className="flex items-center gap-1 rounded-lg border border-vcr-chrome/15 px-1 py-1">
+            <div className="vcr-fontsize-box flex items-center gap-1 rounded-lg border border-vcr-chrome/15 px-1 py-1">
               <button
                 type="button" aria-label="Smaller text"
                 className="vcr-btn h-8 w-8 rounded-md text-sm"
