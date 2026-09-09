@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Users, GraduationCap, CalendarCheck, Wallet, AlertTriangle, TrendingUp,
-  ClipboardList, UserPlus, BarChart3, Megaphone, ArrowRight, Video, BookOpen,
+  ClipboardList, UserPlus, BarChart3, Megaphone, ArrowRight, Video, BookOpen, History,
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
