@@ -804,6 +804,12 @@ export default function SalaryEngine() {
       setRevisionChangeType('payment_adjustment');
       return;
     }
+    if (payout) {
+      // Unpaid/confirmed sheet: show what will change before overwriting it.
+      setResyncPayout(payout);
+      setResyncTeacher(teacher);
+      return;
+    }
     savePayout.mutate({ teacher });
   };
 
