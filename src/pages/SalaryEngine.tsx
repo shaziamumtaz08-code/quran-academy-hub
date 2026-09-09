@@ -1327,6 +1327,72 @@ export default function SalaryEngine() {
           </DialogContent>
         </Dialog>
 
+        {/* ── Recalculation preview for unpaid / confirmed sheets ── */}
+        <Dialog open={!!resyncTeacher} onOpenChange={(open) => { if (!open) { setResyncTeacher(null); setResyncPayout(null); } }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>What will change on this salary sheet</DialogTitle>
+              <DialogDescription>
+                Nothing has been paid on this sheet yet, so saving simply replaces the stored figures with today's calculation.
+              </DialogDescription>
+            </DialogHeader>
+
+            {resyncTeacher && (
+              <div className="space-y-3">
+                {resyncPayout?.revision_reason && (
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-amber-900">
+                      Flagged for revision: {resyncPayout.revision_reason}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="rounded-md border divide-y text-sm">
+                  {([
+                    ['Base salary', Number(resyncPayout?.base_salary) || 0, resyncTeacher.baseSalary],
+                    ['Extra classes', Number(resyncPayout?.extra_class_amount) || 0, resyncTeacher.extraClassAmount],
+                    ['Adjustments', Number(resyncPayout?.adjustment_amount) || 0, resyncTeacher.adjustmentAmount],
+                    ['Deductions', Number(resyncPayout?.deductions) || 0, resyncTeacher.deductions],
+                    ['Net salary', Number(resyncPayout?.net_salary) || 0, resyncTeacher.netSalary],
+                  ] as [string, number, number][]).map(([label, oldValue, newValue]) => {
+                    const changed = Math.abs(oldValue - newValue) > 0.01;
+                    return (
+                      <div key={label} className={`grid grid-cols-3 gap-2 px-3 py-2 ${changed ? 'bg-amber-50/60' : ''}`}>
+                        <span className={label === 'Net salary' ? 'font-semibold' : ''}>{label}</span>
+                        <span className="text-right tabular-nums text-muted-foreground">PKR {oldValue.toFixed(2)}</span>
+                        <span className={`text-right tabular-nums ${changed ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                          PKR {newValue.toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <span></span><span className="text-right">Stored now</span><span className="text-right">After saving</span>
+                  </div>
+                </div>
+
+                {Math.abs((Number(resyncPayout?.net_salary) || 0) - resyncTeacher.netSalary) <= 0.01 && (
+                  <p className="text-xs text-muted-foreground">
+                    The stored sheet already matches the calculation. Saving will only clear the revision flag.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setResyncTeacher(null); setResyncPayout(null); }}>Cancel</Button>
+              <Button
+                onClick={() => resyncTeacher && savePayout.mutate({ teacher: resyncTeacher })}
+                disabled={savePayout.isPending}
+              >
+                {savePayout.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Save updated sheet
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* ── Revert Confirmation Modal ── */}
 
         <Dialog open={revertModalOpen} onOpenChange={setRevertModalOpen}>
