@@ -54,8 +54,32 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   duration, period type, dates and reason once, and save.
 - Each ticked day is saved as its own schedule period, using its own weekday, so
   history and back-dating behave exactly like a single-day edit.
+- **Shared start date snaps per day.** You pick one start date; each selected day
+  stores the first occurrence of *its own* weekday on or after that date (a
+  Mon/Wed/Fri edit starting Tue 8 Sep saves Wed 9, Fri 11, Mon 14). A shared end
+  date snaps the other way — the last occurrence of that weekday on or before it.
+  The dialog lists the resolved date next to each day before you save, so what is
+  stored is never a guess.
 - Conflicts are checked per day before anything is written; if one day clashes,
   it is reported by name and the rest are still saved, with a summary at the end.
+
+### 5. Back-dating in the middle of an existing sequence
+- A back-dated change may land *between* two saved periods. The save now also
+  looks forward: if a later period already starts after the new one, the new
+  period is capped the day before that later period begins, instead of being left
+  open-ended and overlapping it.
+- Reading a schedule for any given date is unaffected either way — the resolver
+  already picks the latest applicable period — but this keeps the stored history
+  clean and readable.
+
+### 6. Who can do this, and the trail it leaves
+- Back-dating and bulk editing stay **admin-only**, the same rule the single-day
+  save already enforces; the bulk action is hidden for anyone else.
+- Every saved period already records the reason, who saved it, and when. On top of
+  that, each change is written to the system activity log with the schedule, the
+  old and new timing, the effective dates, whether it was back-dated, and whether
+  it came from a bulk edit — so a multi-day change is traceable as one action.
+
 
 ## Technical notes
 
@@ -75,3 +99,22 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   `['class-schedules']` and `['schedule-periods']` afterwards.
 - Reuse the existing `detectScheduleConflict` helper per day rather than adding a
   second conflict path.
+- `apply_schedule_period` also gains a forward look-up: after closing the prior
+  period, select the earliest period for the same schedule with
+  `effective_from > _effective_from`; if found and `_effective_to` is null or
+  later, cap `_effective_to` at `next.effective_from - 1`. `get_effective_schedule_periods`
+  is unchanged — it already resolves by latest `effective_from`, then
+  `created_at`, with temporary periods winning.
+- Permission: the existing `is_admin(auth.uid()) OR is_super_admin(auth.uid())`
+  guard at the top of `apply_schedule_period` stays and covers bulk edits, since
+  every day goes through the same function; the bulk trigger is also gated in the
+  UI by the same role check used for the edit pencil.
+- Audit: insert one `system_logs` row per applied period (action
+  `schedule_period_applied`), carrying `schedule_id`, `assignment_id`, day, old vs
+  new time/duration, effective range, `is_backdated`, and a shared `batch_id` for
+  bulk edits. Written inside the function so both single and bulk paths are
+  covered.
+- Bulk date snapping is computed client-side before the RPC calls (`nextDateOnWeekday`
+  already exists in `Schedules.tsx`; add the mirror-image "previous occurrence"
+  helper for end dates) and each resolved date is shown in the day list.
+
