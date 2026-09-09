@@ -99,3 +99,22 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   `['class-schedules']` and `['schedule-periods']` afterwards.
 - Reuse the existing `detectScheduleConflict` helper per day rather than adding a
   second conflict path.
+- `apply_schedule_period` also gains a forward look-up: after closing the prior
+  period, select the earliest period for the same schedule with
+  `effective_from > _effective_from`; if found and `_effective_to` is null or
+  later, cap `_effective_to` at `next.effective_from - 1`. `get_effective_schedule_periods`
+  is unchanged — it already resolves by latest `effective_from`, then
+  `created_at`, with temporary periods winning.
+- Permission: the existing `is_admin(auth.uid()) OR is_super_admin(auth.uid())`
+  guard at the top of `apply_schedule_period` stays and covers bulk edits, since
+  every day goes through the same function; the bulk trigger is also gated in the
+  UI by the same role check used for the edit pencil.
+- Audit: insert one `system_logs` row per applied period (action
+  `schedule_period_applied`), carrying `schedule_id`, `assignment_id`, day, old vs
+  new time/duration, effective range, `is_backdated`, and a shared `batch_id` for
+  bulk edits. Written inside the function so both single and bulk paths are
+  covered.
+- Bulk date snapping is computed client-side before the RPC calls (`nextDateOnWeekday`
+  already exists in `Schedules.tsx`; add the mirror-image "previous occurrence"
+  helper for end dates) and each resolved date is shown in the day list.
+
