@@ -5712,6 +5712,7 @@ export type Database = {
           ai_summary: string | null
           ai_tags: string[] | null
           allow_downloads: boolean
+          approval_status: string
           author: string | null
           category_id: string | null
           cover_image: string | null
@@ -5732,6 +5733,9 @@ export type Database = {
           pages_count: number | null
           publication_year: number | null
           publisher: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           share_token: string | null
           share_token_expires_at: string | null
           source_asset_id: string | null
@@ -5754,6 +5758,7 @@ export type Database = {
           ai_summary?: string | null
           ai_tags?: string[] | null
           allow_downloads?: boolean
+          approval_status?: string
           author?: string | null
           category_id?: string | null
           cover_image?: string | null
@@ -5774,6 +5779,9 @@ export type Database = {
           pages_count?: number | null
           publication_year?: number | null
           publisher?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           share_token?: string | null
           share_token_expires_at?: string | null
           source_asset_id?: string | null
@@ -5796,6 +5804,7 @@ export type Database = {
           ai_summary?: string | null
           ai_tags?: string[] | null
           allow_downloads?: boolean
+          approval_status?: string
           author?: string | null
           category_id?: string | null
           cover_image?: string | null
@@ -5816,6 +5825,9 @@ export type Database = {
           pages_count?: number | null
           publication_year?: number | null
           publisher?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           share_token?: string | null
           share_token_expires_at?: string | null
           source_asset_id?: string | null
