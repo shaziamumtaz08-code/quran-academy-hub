@@ -62,6 +62,14 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   stored is never a guess.
 - Conflicts are checked per day before anything is written; if one day clashes,
   it is reported by name and the rest are still saved, with a summary at the end.
+- **Every per-day failure is handled the same graceful way** — a clash, a rejected
+  save, or a snapped range that ends up backwards (possible when the window is
+  shorter than a week, e.g. Monday's start snaps into next week while its end
+  snaps into last week). Each day is attempted independently, the failure is
+  listed by day name with its reason, and the remaining days still save. Days
+  whose snapped range is invalid are flagged in the day list *before* you press
+  save, so the usual case is caught up front rather than in the summary.
+
 
 ### 5. Back-dating in the middle of an existing sequence
 - A back-dated change may land *between* two saved periods. The save now also
@@ -95,8 +103,12 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
 - New `src/components/schedules/BulkScheduleEditDialog.tsx`: assignment picker,
   day checkboxes limited to days that already have a schedule for that assignment,
   shared time/duration/period/reason inputs, per-day `apply_schedule_period` calls
-  run sequentially, aggregated success/failure toast, invalidate
+  run sequentially inside a per-day `try/catch` so a thrown validation error
+  (`End date cannot be before the start date`, `Temporary timing requires a valid
+  end date`, permission, conflict) is collected rather than aborting the loop;
+  aggregated success/failure toast, invalidate
   `['class-schedules']` and `['schedule-periods']` afterwards.
+
 - Reuse the existing `detectScheduleConflict` helper per day rather than adding a
   second conflict path.
 - `apply_schedule_period` also gains a forward look-up: after closing the prior
