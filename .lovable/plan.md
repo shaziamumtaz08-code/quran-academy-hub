@@ -1,0 +1,77 @@
+# Schedules: back-dating, bulk editing, and safe date picking
+
+## What is wrong today
+
+Three separate things are getting in the way when you edit a class timing.
+
+1. **Back-dated schedule changes are blocked.** The save is refused by a rule in the
+   database that says the start date must land on the same weekday as the class
+   (e.g. "Start date must fall on a Monday"). Any date you pick that is not that
+   weekday is rejected — which is what happens most of the time when you go back
+   to an earlier date. The screen still shows the old note "Dates can only fall on
+   Monday", so the two disagree with each other.
+2. **The error message is confusing.** One message covers three different problems
+   (missing start date, bad end date, missing reason), so when the reason box is
+   empty it reads like a date problem.
+3. **Bulk works only for creating.** You can add the same timing to several days at
+   once, but you cannot edit several days at once — each day has to be opened and
+   saved separately.
+
+Note on existing records: of the 400 saved schedule periods, 311 already have a
+start date that does not fall on the class weekday, and 399 start in the past.
+So the weekday rule was never actually true of the data — it only blocks new
+edits. Nothing needs to be cleaned up or rewritten; existing history stays as is.
+
+## What will change
+
+### 1. Back-dating works everywhere
+- Remove the weekday restriction from the save rule, so any start date — past or
+  future — is accepted, exactly as intended.
+- Keep the sensible guards: end date cannot be before the start date, a temporary
+  period must have an end date, a reason of at least 4 characters is required.
+- Keep the existing behaviour where a back-dated permanent change closes off the
+  earlier period the day before the new one starts, and the live weekly timing is
+  refreshed only when the new period actually covers today.
+
+### 2. Date pickers guide you to the right day
+- In the edit dialog, the start and end calendars grey out every day that is not
+  the class weekday, so a wrong day cannot be picked by accident. Past dates stay
+  fully selectable.
+- A small "Allow any date" switch sits under the calendar for the rare correction
+  that must start mid-week; it is off by default.
+- The same weekday-aware calendar is used anywhere else a schedule date is picked
+  (temporary period end date, schedule overrides/reschedules).
+- Replace the stale helper line with one that matches what the calendar does.
+
+### 3. Clearer save errors
+- Split the single "Schedule period incomplete" message into specific ones:
+  missing start date, end date before start date, and reason too short — each
+  pointing at the field that needs attention.
+
+### 4. Bulk edit across days
+- Add a "Edit multiple days" action on the Schedules screen: pick a student's
+  assignment, tick the days that should change, set the new student time,
+  duration, period type, dates and reason once, and save.
+- Each ticked day is saved as its own schedule period, using its own weekday, so
+  history and back-dating behave exactly like a single-day edit.
+- Conflicts are checked per day before anything is written; if one day clashes,
+  it is reported by name and the rest are still saved, with a summary at the end.
+
+## Technical notes
+
+- `apply_schedule_period` (database function): drop the two `EXTRACT(DOW ...)`
+  weekday checks for `_effective_from` / `_effective_to`. All other validation,
+  the prior-period close-out, `superseded_by` link, and the live `schedules`
+  refresh stay untouched. No data migration; existing `schedule_periods` rows are
+  left alone.
+- `src/pages/Schedules.tsx`: pass a `disabled` predicate to the two `DateCalendar`
+  instances in the edit dialog driven by `newSchedule.day` plus an `allowAnyDate`
+  state; split the validation branch at `handleSubmitSchedule` into field-specific
+  toasts; correct the helper text at the "Dates can only fall on…" line.
+- New `src/components/schedules/BulkScheduleEditDialog.tsx`: assignment picker,
+  day checkboxes limited to days that already have a schedule for that assignment,
+  shared time/duration/period/reason inputs, per-day `apply_schedule_period` calls
+  run sequentially, aggregated success/failure toast, invalidate
+  `['class-schedules']` and `['schedule-periods']` afterwards.
+- Reuse the existing `detectScheduleConflict` helper per day rather than adding a
+  second conflict path.
