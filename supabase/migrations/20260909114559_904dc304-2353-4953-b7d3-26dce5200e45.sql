@@ -1,0 +1,1 @@
+drop function if exists public.apply_schedule_period(uuid, time without time zone, time without time zone, integer, public.schedule_period_type, date, date, text);

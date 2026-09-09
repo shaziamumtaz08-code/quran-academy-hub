@@ -14269,6 +14269,7 @@ export type Database = {
       }
       apply_schedule_period: {
         Args: {
+          _batch_id?: string
           _change_reason: string
           _duration_minutes: number
           _effective_from: string
