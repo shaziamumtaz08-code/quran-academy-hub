@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Users, GraduationCap, CalendarCheck, Wallet, AlertTriangle, TrendingUp,
-  ClipboardList, UserPlus, BarChart3, Megaphone, ArrowRight, Video, BookOpen,
+  ClipboardList, UserPlus, BarChart3, Megaphone, ArrowRight, Video, BookOpen, History,
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -267,6 +267,7 @@ function OneToOneAdminDashboard() {
         { icon: <ClipboardList className="h-4 w-4" />, label: 'Attendance', path: '/attendance' },
         { icon: <Users className="h-4 w-4" />, label: 'Assignments', path: '/assignments' },
         { icon: <BookOpen className="h-4 w-4" />, label: 'Mushaf', path: '/mushaf' },
+        { icon: <History className="h-4 w-4" />, label: 'Schedule history', path: '/schedule-history' },
         { icon: <UserPlus className="h-4 w-4" />, label: 'Leads', path: '/leads' },
         { icon: <Wallet className="h-4 w-4" />, label: 'Fees', path: '/payments' },
         { icon: <Video className="h-4 w-4" />, label: 'Zoom', path: '/zoom-management' },
@@ -276,6 +277,7 @@ function OneToOneAdminDashboard() {
         { icon: <ClipboardList className="h-4 w-4" />, label: 'Attendance', path: '/attendance' },
         { icon: <GraduationCap className="h-4 w-4" />, label: 'Courses', path: '/courses' },
         { icon: <BookOpen className="h-4 w-4" />, label: 'Mushaf', path: '/mushaf' },
+        { icon: <History className="h-4 w-4" />, label: 'Schedule history', path: '/schedule-history' },
         { icon: <Users className="h-4 w-4" />, label: 'Students', path: '/students' },
         { icon: <Wallet className="h-4 w-4" />, label: 'Fees', path: '/payments' },
         { icon: <Megaphone className="h-4 w-4" />, label: 'Announcements', path: '/announcements' },
