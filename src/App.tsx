@@ -37,6 +37,7 @@ const Policies = lazyWithRetry(() => import("./pages/Policies"));
 const PublicPolicies = lazyWithRetry(() => import("./pages/PublicPolicies"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Schedules = lazyWithRetry(() => import("./pages/Schedules"));
+const ScheduleHistory = lazyWithRetry(() => import("./pages/ScheduleHistory"));
 const Attendance = lazyWithRetry(() => import("./pages/Attendance"));
 const Lessons = lazyWithRetry(() => import("./pages/Lessons"));
 const Reports = lazyWithRetry(() => import("./pages/Reports"));
