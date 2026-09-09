@@ -524,6 +524,7 @@ function AppRoutes() {
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
       <Route path="/kpi" element={<ProtectedRoute><RouteGuard moduleId="kpi"><KPI /></RouteGuard></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><RouteGuard moduleId="schedules"><Schedules /></RouteGuard></ProtectedRoute>} />
+      <Route path="/schedule-history" element={<ProtectedRoute><RouteGuard moduleId="schedules"><DashboardLayout><ScheduleHistory /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/my-schedule" element={<ProtectedRoute><RouteGuard moduleId="my_schedule"><DashboardLayout><MySchedule /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><RouteGuard moduleId="zoom_management"><ZoomManagement /></RouteGuard></ProtectedRoute>} />
       <Route path="/admin/zoom-vault" element={<ProtectedRoute><RouteGuard moduleId="zoom_vault"><DashboardLayout><ZoomVault /></DashboardLayout></RouteGuard></ProtectedRoute>} />
