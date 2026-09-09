@@ -14843,6 +14843,17 @@ export type Database = {
         Args: { _effective_from: string; _student_id: string }
         Returns: Json
       }
+      profile_privileged_fields_unchanged: {
+        Args: {
+          _account_status: string
+          _banking_status: Database["public"]["Enums"]["banking_verify_status"]
+          _cv_status: Database["public"]["Enums"]["cv_review_status"]
+          _default_payout_rate: number
+          _gov_id_verified: boolean
+          _id: string
+        }
+        Returns: boolean
+      }
       quiz_session_is_open: {
         Args: { _bank_id: string; _session_id: string }
         Returns: boolean
