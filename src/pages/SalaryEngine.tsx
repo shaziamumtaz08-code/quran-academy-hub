@@ -127,6 +127,9 @@ export default function SalaryEngine() {
   const [revisionReasonOther, setRevisionReasonOther] = useState('');
   const [settlementAction, setSettlementAction] = useState<SettlementAction>('settle_separately');
   const [revisionChangeType, setRevisionChangeType] = useState<RevisionChangeType>('payment_adjustment');
+  // Preview shown before re-saving an unpaid/confirmed sheet, so the user can see what will change.
+  const [resyncTeacher, setResyncTeacher] = useState<TeacherSalaryRow | null>(null);
+  const [resyncPayout, setResyncPayout] = useState<any>(null);
 
   
   // Revert modal state
