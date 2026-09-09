@@ -20,6 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
+import { BulkScheduleEditDialog } from '@/components/schedules/BulkScheduleEditDialog';
+import { useAuth } from '@/contexts/AuthContext';
+
 import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared, normalizeTimezone } from '@/lib/timezones';
 import { Calendar as DateCalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -51,8 +54,9 @@ const nextDateOnWeekday = (day: string, from: Date = new Date()): string => {
   return format(base, 'yyyy-MM-dd');
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+/** True when the date lands on the class weekday (used to grey out other days). */
 const isOnWeekday = (date: Date, day: string) => {
+
   const target = DAY_INDEX[(day || '').toLowerCase()];
   return target === undefined ? true : date.getDay() === target;
 };
@@ -250,6 +254,12 @@ export default function Schedules() {
   const [effectiveFrom, setEffectiveFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [effectiveTo, setEffectiveTo] = useState('');
   const [changeReason, setChangeReason] = useState('');
+  const [allowAnyDate, setAllowAnyDate] = useState(false);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const { profile } = useAuth();
+  const canManageSchedules = (profile?.roles || []).some((r) =>
+    ['admin', 'super_admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
+
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
@@ -1072,20 +1082,27 @@ export default function Schedules() {
 
     const effectiveDuration = getEffectiveDuration(newSchedule.duration, newSchedule.customDuration);
 
-    if (editingSchedule && (changeReason.trim().length < 4 || !effectiveFrom || (periodType === 'temporary' && (!effectiveTo || effectiveTo < effectiveFrom)))) {
-      toast({ title: 'Schedule period incomplete', description: 'Choose a valid effective date range and enter a reason of at least 4 characters.', variant: 'destructive' });
-      return;
-    }
-
     if (editingSchedule) {
-      // Effective dates are simply the window this timing applies to — they do
-      // not have to land on the class weekday.
-
-      if (effectiveTo && effectiveTo < effectiveFrom) {
-        toast({ title: 'Invalid range', description: 'The end date cannot be before the start date.', variant: 'destructive' });
+      if (!effectiveFrom) {
+        toast({ title: 'Start date missing', description: 'Choose the date this timing starts from.', variant: 'destructive' });
         return;
       }
+      if (periodType === 'temporary' && !effectiveTo) {
+        toast({ title: 'End date missing', description: 'A temporary timing needs an end date.', variant: 'destructive' });
+        return;
+      }
+      if (effectiveTo && effectiveTo < effectiveFrom) {
+        toast({ title: 'End date is before the start', description: 'Pick an end date on or after the start date.', variant: 'destructive' });
+        return;
+      }
+      if (changeReason.trim().length < 4) {
+        toast({ title: 'Reason too short', description: 'Enter at least 4 characters explaining this change.', variant: 'destructive' });
+        return;
+      }
+      // Effective dates are simply the window this timing applies to — they do
+      // not have to land on the class weekday, and past dates are allowed.
     }
+
 
     // Check for conflicts
     const conflict = detectScheduleConflict(
@@ -1243,7 +1260,14 @@ export default function Schedules() {
               <Upload className="h-4 w-4 mr-1" />
               CSV Import
             </Button>
+            {canManageSchedules && (
+              <Button variant="outline" disabled={!hasAssignments} onClick={() => setIsBulkEditOpen(true)}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit multiple days
+              </Button>
+            )}
             {/* Bulk Add Button */}
+
             <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" disabled={!hasAssignments}>
@@ -1483,7 +1507,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined}  onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveFrom ? new Date(`${effectiveFrom}T12:00:00`) : undefined} disabled={(date) => !allowAnyDate && !isOnWeekday(date, newSchedule.day)} onSelect={(date) => date && setEffectiveFrom(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                           </div>
@@ -1499,7 +1523,7 @@ export default function Schedules() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => date < new Date(`${effectiveFrom}T00:00:00`)} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
+                                <DateCalendar mode="single" selected={effectiveTo ? new Date(`${effectiveTo}T12:00:00`) : undefined} disabled={(date) => (effectiveFrom ? date < new Date(`${effectiveFrom}T00:00:00`) : false) || (!allowAnyDate && !isOnWeekday(date, newSchedule.day))} onSelect={(date) => date && setEffectiveTo(format(date, 'yyyy-MM-dd'))} initialFocus className="p-3 pointer-events-auto" />
                               </PopoverContent>
                             </Popover>
                             {periodType === 'permanent' && effectiveTo && (
@@ -1509,12 +1533,21 @@ export default function Schedules() {
                             )}
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox id="allow-any-date" checked={allowAnyDate} onCheckedChange={(v) => setAllowAnyDate(Boolean(v))} />
+                          <Label htmlFor="allow-any-date" className="text-[11px] font-normal text-muted-foreground">
+                            Allow any date (not just {DAYS_LABELS[newSchedule.day] || 'the class day'})
+                          </Label>
+                        </div>
                         <p className="text-[11px] text-muted-foreground leading-snug">
-                          Dates can only fall on {DAYS_LABELS[newSchedule.day] || 'the class day'}.
+                          {allowAnyDate
+                            ? 'Any date can be picked, including past dates.'
+                            : `Only ${DAYS_LABELS[newSchedule.day] || 'class day'} dates are selectable — past dates included. Tick the box above to pick any date.`}
                           {periodType === 'permanent' && effectiveTo
                             ? ' This weekly class will be dismantled after the end date.'
                             : ''}
                         </p>
+
 
                         <div className="space-y-1">
                           <Label htmlFor="schedule-change-reason" className="text-xs">Reason *</Label>
@@ -1972,6 +2005,37 @@ export default function Schedules() {
           open={isCsvImportOpen} 
           onOpenChange={setIsCsvImportOpen} 
         />
+
+        {/* Bulk edit of existing weekly days */}
+        {canManageSchedules && (
+          <BulkScheduleEditDialog
+            open={isBulkEditOpen}
+            onOpenChange={setIsBulkEditOpen}
+            assignments={assignments.map((a) => ({
+              id: a.id,
+              label: `${a.student_name} → ${a.teacher_name}${a.subject_name ? ` (${a.subject_name})` : ''}`,
+            }))}
+            schedules={schedules.map((s) => ({
+              id: s.id,
+              assignment_id: s.assignment_id,
+              day_of_week: s.day_of_week,
+              student_local_time: s.student_local_time,
+              teacher_local_time: s.teacher_local_time,
+              duration_minutes: s.duration_minutes,
+            }))}
+            checkConflict={({ day, studentTime, duration, assignmentId, scheduleId }) => {
+              const result = detectScheduleConflict({ day, studentTime, duration, assignmentId }, assignments, schedules, scheduleId);
+              return { hasConflict: result.hasConflict, conflictDetails: result.conflictDetails };
+            }}
+            toTeacherTime={(assignmentId, studentTime) => {
+              const a = assignments.find((x) => x.id === assignmentId);
+              if (!a?.student_timezone || !a?.teacher_timezone) return studentTime;
+              return calculateTeacherTime(studentTime, normalizeTimezone(a.student_timezone), normalizeTimezone(a.teacher_timezone));
+            }}
+          />
+        )}
+
+
 
         {/* Export Date Range Dialog */}
         <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
