@@ -32,7 +32,8 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
 
   useEffect(() => { setPointed(null); }, [page]);
 
-  /* Auto-fit: narrow screens shrink the script so a full line stays on one row. */
+  /* Auto-fit: narrow screens shrink the script so a full line stays on one row.
+     Re-run when loading finishes so the ref is attached after the skeleton. */
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -40,7 +41,7 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
     ro.observe(el);
     setWidth(el.clientWidth);
     return () => ro.disconnect();
-  }, []);
+  }, [loading]);
   const fit = width > 0 ? Math.min(1, Math.max(0.5, width / 620)) : 1;
 
 
