@@ -54,8 +54,32 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   duration, period type, dates and reason once, and save.
 - Each ticked day is saved as its own schedule period, using its own weekday, so
   history and back-dating behave exactly like a single-day edit.
+- **Shared start date snaps per day.** You pick one start date; each selected day
+  stores the first occurrence of *its own* weekday on or after that date (a
+  Mon/Wed/Fri edit starting Tue 8 Sep saves Wed 9, Fri 11, Mon 14). A shared end
+  date snaps the other way — the last occurrence of that weekday on or before it.
+  The dialog lists the resolved date next to each day before you save, so what is
+  stored is never a guess.
 - Conflicts are checked per day before anything is written; if one day clashes,
   it is reported by name and the rest are still saved, with a summary at the end.
+
+### 5. Back-dating in the middle of an existing sequence
+- A back-dated change may land *between* two saved periods. The save now also
+  looks forward: if a later period already starts after the new one, the new
+  period is capped the day before that later period begins, instead of being left
+  open-ended and overlapping it.
+- Reading a schedule for any given date is unaffected either way — the resolver
+  already picks the latest applicable period — but this keeps the stored history
+  clean and readable.
+
+### 6. Who can do this, and the trail it leaves
+- Back-dating and bulk editing stay **admin-only**, the same rule the single-day
+  save already enforces; the bulk action is hidden for anyone else.
+- Every saved period already records the reason, who saved it, and when. On top of
+  that, each change is written to the system activity log with the schedule, the
+  old and new timing, the effective dates, whether it was back-dated, and whether
+  it came from a bulk edit — so a multi-day change is traceable as one action.
+
 
 ## Technical notes
 
