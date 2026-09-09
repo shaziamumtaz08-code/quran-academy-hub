@@ -62,6 +62,14 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
   stored is never a guess.
 - Conflicts are checked per day before anything is written; if one day clashes,
   it is reported by name and the rest are still saved, with a summary at the end.
+- **Every per-day failure is handled the same graceful way** — a clash, a rejected
+  save, or a snapped range that ends up backwards (possible when the window is
+  shorter than a week, e.g. Monday's start snaps into next week while its end
+  snaps into last week). Each day is attempted independently, the failure is
+  listed by day name with its reason, and the remaining days still save. Days
+  whose snapped range is invalid are flagged in the day list *before* you press
+  save, so the usual case is caught up front rather than in the summary.
+
 
 ### 5. Back-dating in the middle of an existing sequence
 - A back-dated change may land *between* two saved periods. The save now also
