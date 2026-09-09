@@ -483,10 +483,12 @@ export default function SalaryEngine() {
     },
 
     onSuccess: () => {
-      toast({ title: 'Salary saved & confirmed' });
+      toast({ title: 'Salary sheet updated', description: 'The sheet now matches the latest calculation.' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts-archived'] });
       setRevisionTeacher(null);
+      setResyncTeacher(null);
+      setResyncPayout(null);
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
