@@ -103,8 +103,12 @@ edits. Nothing needs to be cleaned up or rewritten; existing history stays as is
 - New `src/components/schedules/BulkScheduleEditDialog.tsx`: assignment picker,
   day checkboxes limited to days that already have a schedule for that assignment,
   shared time/duration/period/reason inputs, per-day `apply_schedule_period` calls
-  run sequentially, aggregated success/failure toast, invalidate
+  run sequentially inside a per-day `try/catch` so a thrown validation error
+  (`End date cannot be before the start date`, `Temporary timing requires a valid
+  end date`, permission, conflict) is collected rather than aborting the loop;
+  aggregated success/failure toast, invalidate
   `['class-schedules']` and `['schedule-periods']` afterwards.
+
 - Reuse the existing `detectScheduleConflict` helper per day rather than adding a
   second conflict path.
 - `apply_schedule_period` also gains a forward look-up: after closing the prior
