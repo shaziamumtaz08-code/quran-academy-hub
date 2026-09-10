@@ -182,6 +182,38 @@ export function QaidaFlashcard({ word, status, onGrade, onPrev, onNext, position
         </Button>
       </div>
 
+      {(onPrev || onNext) && (
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 w-12 rounded-full p-0"
+            onClick={onPrev}
+            disabled={!onPrev}
+            aria-label="Previous card"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+          {position && (
+            <span className="text-sm font-medium text-muted-foreground">
+              {position.index + 1} / {position.total}
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 w-12 rounded-full p-0"
+            onClick={onNext}
+            disabled={!onNext}
+            aria-label="Next card"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setFlipped(false)}
