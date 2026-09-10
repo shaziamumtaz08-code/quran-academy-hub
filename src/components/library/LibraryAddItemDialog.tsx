@@ -338,8 +338,21 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
             </div>
 
             {!isStaff && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+                  <Label htmlFor="share-academy" className="cursor-pointer">Share with the whole academy</Label>
+                  <Switch id="share-academy" checked={shareToAcademy} onCheckedChange={setShareToAcademy} />
+                </div>
+                <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  {shareToAcademy
+                    ? "An admin will review this before it appears in the shared library."
+                    : "This file stays in your personal space — only you (and anyone you share it with in class) can see it."}
+                </p>
+              </div>
+            )}
+            {isStaff && !isAdmin && (
               <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                This file goes to your personal space — only you (and anyone you share it with in class) can see it.
+                Teacher uploads are reviewed by an admin before they appear in the shared library.
               </p>
             )}
             {isStaff && (
