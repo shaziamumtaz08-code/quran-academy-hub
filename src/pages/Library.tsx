@@ -459,6 +459,22 @@ export default function Library() {
     queryClient.invalidateQueries({ queryKey: ["library-recent"] });
   };
 
+  /* Admin review of items other people offered to the shared library. */
+  const reviewItem = async (item: any, decision: "approved" | "rejected") => {
+    try {
+      const { error } = await (supabase.from("library_items") as any)
+        .update({
+          approval_status: decision,
+          reviewed_by: user?.id ?? null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast.success(decision === "approved" ? "Approved and visible now" : "Rejected");
+      refresh();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   const handleDelete = async () => {
     if (!deleteItem) return;
     try {
