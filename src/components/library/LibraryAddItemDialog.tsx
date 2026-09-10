@@ -84,6 +84,9 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
   const [syllabusOrder, setSyllabusOrder] = useState("");
   const [syllabusSubjectId, setSyllabusSubjectId] = useState("");
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
+  /* Non-staff can either keep a file private or offer it to the shared library
+     (which then waits for an admin to approve it). */
+  const [shareToAcademy, setShareToAcademy] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -169,8 +172,9 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
         is_featured: isFeatured,
         visibility,
         uploaded_by: user?.id,
-        /* Non-staff uploads are always personal (private to the uploader). */
-        is_personal: !isStaff,
+        /* Staff always publish to the shared shelf; everyone else keeps the
+           file private unless they choose to offer it to the academy. */
+        is_personal: isStaff ? false : !shareToAcademy,
         is_syllabus: isStaff && isSyllabus,
         syllabus_folder: isStaff && isSyllabus ? (syllabusFolder.trim() || null) : null,
         syllabus_order: isStaff && isSyllabus && syllabusOrder ? parseInt(syllabusOrder) : 0,
@@ -180,7 +184,12 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
       const { error } = await (supabase.from("library_items") as any).insert(payload);
       if (error) throw error;
 
-      toast.success("Resource added to library");
+      const willBePersonal = isStaff ? false : !shareToAcademy;
+      toast.success(
+        isAdmin || willBePersonal
+          ? willBePersonal ? "Saved to your personal space" : "Resource added to the library"
+          : "Sent for approval — an admin will review it before it appears in the library"
+      );
       reset();
       onSaved();
       onOpenChange(false);
@@ -329,8 +338,21 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
             </div>
 
             {!isStaff && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+                  <Label htmlFor="share-academy" className="cursor-pointer">Share with the whole academy</Label>
+                  <Switch id="share-academy" checked={shareToAcademy} onCheckedChange={setShareToAcademy} />
+                </div>
+                <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  {shareToAcademy
+                    ? "An admin will review this before it appears in the shared library."
+                    : "This file stays in your personal space — only you (and anyone you share it with in class) can see it."}
+                </p>
+              </div>
+            )}
+            {isStaff && !isAdmin && (
               <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                This file goes to your personal space — only you (and anyone you share it with in class) can see it.
+                Teacher uploads are reviewed by an admin before they appear in the shared library.
               </p>
             )}
             {isStaff && (

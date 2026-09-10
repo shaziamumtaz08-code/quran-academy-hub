@@ -294,9 +294,20 @@ export default function Library() {
     }
   };
 
+  /* Anything a non-admin offered to the shared shelf waits for approval. */
+  const pendingItems = useMemo(
+    () => items.filter((i) => (i.approval_status ?? "approved") === "pending"),
+    [items]
+  );
+  const myPendingCount = useMemo(
+    () => pendingItems.filter((i) => i.uploaded_by === user?.id).length,
+    [pendingItems, user?.id]
+  );
+
   const publishedItems = useMemo(
     () => items
       .filter((i) => (i.status ?? "published") === "published")
+      .filter((i) => (i.approval_status ?? "approved") === "approved")
       .filter((i) => {
         if (isAdmin) return true;
         // Uploader always sees their own items
@@ -446,6 +457,22 @@ export default function Library() {
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["library-items-v2"] });
     queryClient.invalidateQueries({ queryKey: ["library-recent"] });
+  };
+
+  /* Admin review of items other people offered to the shared library. */
+  const reviewItem = async (item: any, decision: "approved" | "rejected") => {
+    try {
+      const { error } = await (supabase.from("library_items") as any)
+        .update({
+          approval_status: decision,
+          reviewed_by: user?.id ?? null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast.success(decision === "approved" ? "Approved and visible now" : "Rejected");
+      refresh();
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const handleDelete = async () => {
@@ -707,6 +734,36 @@ export default function Library() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-10 py-8 space-y-12">
+        {!isAdmin && myPendingCount > 0 && (
+          <div className="rounded-lg border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+            {myPendingCount} of your {myPendingCount === 1 ? "item is" : "items are"} waiting for an admin to approve
+            {myPendingCount === 1 ? " it" : " them"} before {myPendingCount === 1 ? "it appears" : "they appear"} in the library.
+          </div>
+        )}
+
+        {isAdmin && pendingItems.length > 0 && (
+          <section className="rounded-xl border border-amber-300/70 bg-amber-50/60 p-4 dark:bg-amber-950/20">
+            <h2 className="mb-3 text-base font-semibold">
+              Waiting for your approval ({pendingItems.length})
+            </h2>
+            <div className="space-y-2">
+              {pendingItems.map((i) => (
+                <div key={i.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-background px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{i.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {i.type}{i.file_size_bytes ? ` • ${(i.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ""}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setDetailItem(i)}>Preview</Button>
+                  <Button size="sm" onClick={() => reviewItem(i, "approved")}>Approve</Button>
+                  <Button size="sm" variant="destructive" onClick={() => reviewItem(i, "rejected")}>Reject</Button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {isLoading ? (
           <div className="text-center py-20 text-muted-foreground">Loading library…</div>
         ) : view === "syllabus" ? (
