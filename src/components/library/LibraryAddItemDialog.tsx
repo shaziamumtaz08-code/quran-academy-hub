@@ -84,6 +84,9 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
   const [syllabusOrder, setSyllabusOrder] = useState("");
   const [syllabusSubjectId, setSyllabusSubjectId] = useState("");
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
+  /* Non-staff can either keep a file private or offer it to the shared library
+     (which then waits for an admin to approve it). */
+  const [shareToAcademy, setShareToAcademy] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -169,8 +172,9 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
         is_featured: isFeatured,
         visibility,
         uploaded_by: user?.id,
-        /* Non-staff uploads are always personal (private to the uploader). */
-        is_personal: !isStaff,
+        /* Staff always publish to the shared shelf; everyone else keeps the
+           file private unless they choose to offer it to the academy. */
+        is_personal: isStaff ? false : !shareToAcademy,
         is_syllabus: isStaff && isSyllabus,
         syllabus_folder: isStaff && isSyllabus ? (syllabusFolder.trim() || null) : null,
         syllabus_order: isStaff && isSyllabus && syllabusOrder ? parseInt(syllabusOrder) : 0,
