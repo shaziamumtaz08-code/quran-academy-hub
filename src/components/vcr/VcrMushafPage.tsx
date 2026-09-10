@@ -43,14 +43,13 @@ interface Token {
 
 /** Splits a line into words and end-of-verse medallions, tracking the running ayah. */
 function tokenize(line: MushafLine): Token[] {
-  const text = line.text_indopak ?? '';
+  const text = (line.text_indopak ?? '').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uE000-\uF8FF\uFEFF]/g, '');
   let surah = line.first_surah ?? null;
   let ayah = line.first_ayah ?? null;
   let prev: number | null = null;
   const out: Token[] = [];
-  for (const chunk of text.split(/\s+/).filter(Boolean)) {
-    const m = chunk.match(/^([٠-٩۰-۹]+)$/);
-    if (m) {
+  for (const chunk of text.split(/([٠-٩۰-۹]+)/).filter((part) => part !== '')) {
+    if (/^[٠-٩۰-۹]+$/.test(chunk)) {
       const n = fromArabicDigits(chunk);
       if (prev !== null && n <= prev) surah = (surah ?? 0) + 1;
       prev = n;
@@ -59,7 +58,7 @@ function tokenize(line: MushafLine): Token[] {
       ayah = n + 1;
       continue;
     }
-    out.push({ text: chunk, isAyahMark: false, ayah, surah });
+    if (chunk.trim()) out.push({ text: chunk, isAyahMark: false, ayah, surah });
   }
   return out;
 }

@@ -37,7 +37,7 @@ function tokenize(text: string): Token[] {
   const flush = () => {
     if (buf.length) { out.push({ text: buf.join(' '), isAyahMark: false, ayah: null }); buf = []; }
   };
-  const clean = text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF]/g, '');
+  const clean = text.replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uE000-\uF8FF\uFEFF]/g, '');
   for (const chunk of clean.split(/\s+/).filter(Boolean)) {
     if (/^[٠-٩۰-۹]+$/.test(chunk)) {
       flush();
