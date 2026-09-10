@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Star, RotateCcw, Volume2, RefreshCw } from 'lucide-react';
+import { Star, RotateCcw, Volume2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   detectHarakat,
@@ -23,6 +23,10 @@ interface Props {
   word: QaidaFlashcardWord;
   status?: QaidaWordStatus | null;
   onGrade: (status: QaidaWordStatus) => void;
+  /** Optional step-through of the surrounding words. */
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number } | null;
   className?: string;
 }
 
@@ -31,7 +35,7 @@ interface Props {
  * Front: the letter / word big, accented by its harakat.
  * Back: transliteration + a familiar example word.
  */
-export function QaidaFlashcard({ word, status, onGrade, className }: Props) {
+export function QaidaFlashcard({ word, status, onGrade, onPrev, onNext, position, className }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [burst, setBurst] = useState(false);
   const burstTimer = useRef<number | null>(null);
@@ -177,6 +181,38 @@ export function QaidaFlashcard({ word, status, onGrade, className }: Props) {
           <Star className="h-4 w-4" /> Mastered
         </Button>
       </div>
+
+      {(onPrev || onNext) && (
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 w-12 rounded-full p-0"
+            onClick={onPrev}
+            disabled={!onPrev}
+            aria-label="Previous card"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+          {position && (
+            <span className="text-sm font-medium text-muted-foreground">
+              {position.index + 1} / {position.total}
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 w-12 rounded-full p-0"
+            onClick={onNext}
+            disabled={!onNext}
+            aria-label="Next card"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
 
       <button
         type="button"

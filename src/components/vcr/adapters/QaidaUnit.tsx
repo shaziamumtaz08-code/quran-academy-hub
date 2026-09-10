@@ -150,10 +150,18 @@ export function QaidaUnit({
   /* Students mirror whichever word the teacher opened. */
   const remoteWordId = canControl ? null : highlight?.wordId ?? null;
   const activeWordId = remoteWordId || openWordId;
-  const activeWord = useMemo(
-    () => words.find((w) => w.id === activeWordId) ?? null,
+  const activeIndex = useMemo(
+    () => words.findIndex((w) => w.id === activeWordId),
     [words, activeWordId],
   );
+  const activeWord = activeIndex >= 0 ? words[activeIndex] : null;
+
+  const step = (delta: number) => {
+    const next = words[activeIndex + delta];
+    if (!next) return;
+    setOpenWordId(next.id);
+    if (canControl) onSelectWord?.(next.id);
+  };
 
   const lines = useMemo(() => {
     const map = new Map<number, QaidaPageWord[]>();
@@ -287,7 +295,7 @@ export function QaidaUnit({
                     }}
                     className={cn(
                       'qaida-tile relative flex shrink-0 items-center justify-center px-2 py-2',
-                      'transition-transform duration-150 ease-out hover:z-10 hover:scale-110 hover:shadow-xl focus-visible:z-10 focus-visible:scale-110',
+                      'transition-transform duration-150 ease-out hover:z-10 hover:scale-110 hover:shadow-xl focus-visible:z-10 focus-visible:scale-110 active:scale-95',
                       active && 'qaida-tile-selected',
                       isEnd && 'ring-2 ring-primary',
                     )}
@@ -350,6 +358,9 @@ export function QaidaUnit({
               }
             }}
             onGrade={grade}
+            onPrev={activeIndex > 0 ? () => step(-1) : undefined}
+            onNext={activeIndex >= 0 && activeIndex < words.length - 1 ? () => step(1) : undefined}
+            position={activeIndex >= 0 ? { index: activeIndex, total: words.length } : null}
           />
 
           <QaidaPracticeDeck

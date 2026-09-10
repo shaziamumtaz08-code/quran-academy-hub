@@ -9,10 +9,13 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGrade: (wordId: string, status: QaidaWordStatus) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number } | null;
 }
 
 /** Bright bottom-sheet flashcard opened by tapping a word on the Qaida page. */
-export function QaidaFlashcardSheet({ word, status, open, onOpenChange, onGrade }: Props) {
+export function QaidaFlashcardSheet({ word, status, open, onOpenChange, onGrade, onPrev, onNext, position }: Props) {
   return (
     <Sheet open={open && !!word} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="qaida-pop qaida-pastel max-h-[92vh] overflow-y-auto rounded-t-3xl pb-8">
@@ -24,6 +27,9 @@ export function QaidaFlashcardSheet({ word, status, open, onOpenChange, onGrade 
             key={word.id}
             word={word}
             status={status}
+            onPrev={onPrev}
+            onNext={onNext}
+            position={position}
             onGrade={(s) => {
               onGrade(word.id, s);
               window.setTimeout(() => onOpenChange(false), s === 'mastered' ? 650 : 200);
