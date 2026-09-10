@@ -261,8 +261,11 @@ export function VcrMushafPage({
                         type="button"
                         onClick={() => handleTap(line, t)}
                         disabled={!canControl}
-                        className="inline-flex items-center justify-center mx-1 align-middle rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:cursor-default"
-                        style={{ width: `${zoom * 1.9}rem`, height: `${zoom * 1.9}rem`, fontSize: `${zoom * 0.85}rem` }}
+                        className={cn(
+                          'ayah-mark',
+                          isSelectedLine(line) && selection?.ayah === t.ayah && 'ayah-mark-active'
+                        )}
+                        style={{ fontSize: `${zoom * 1.1}rem` }}
                         aria-label={`Verse ${t.ayah}`}
                       >
                         {t.text}

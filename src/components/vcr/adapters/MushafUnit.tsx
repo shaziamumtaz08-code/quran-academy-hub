@@ -182,13 +182,8 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAy
                     <span
                       key={i}
                       aria-label={`Verse ${t.ayah}`}
-                      className="mx-1 inline-flex items-center justify-center rounded-full border border-primary/40 bg-white/70 align-middle font-qaida text-primary"
-                      style={{
-                        width: `${26 * fontScale * fit}px`,
-                        height: `${26 * fontScale * fit}px`,
-                        fontSize: `${14 * fontScale * fit}px`,
-                        lineHeight: 1,
-                      }}
+                      className="ayah-mark"
+                      style={{ fontSize: `${18 * fontScale * fit}px`, cursor: 'default' }}
                     >
                       {t.text}
                     </span>
