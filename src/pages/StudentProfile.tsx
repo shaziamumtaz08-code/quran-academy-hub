@@ -57,7 +57,7 @@ export default function StudentProfile() {
       if (full.error) {
         const basic = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id, age, gender, timezone')
+          .select('id, full_name, email, city, country, avatar_url, created_at, account_status, registration_id, age, gender, timezone')
           .eq('id', studentId!)
           .maybeSingle();
         if (basic.error) throw basic.error;
@@ -73,7 +73,7 @@ export default function StudentProfile() {
 
       const { data: links } = await supabase
         .from('student_parent_links')
-        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url, whatsapp_number)')
+        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url)')
         .eq('student_id', studentId!);
 
       const { data: assignments } = await supabase

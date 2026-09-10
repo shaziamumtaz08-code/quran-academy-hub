@@ -54,7 +54,7 @@ export default function ParentProfile() {
       if (full.error) {
         const basic = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id, guardian_type, timezone')
+          .select('id, full_name, email, city, country, avatar_url, created_at, account_status, registration_id, guardian_type, timezone')
           .eq('id', parentId!)
           .maybeSingle();
         if (basic.error) throw basic.error;
