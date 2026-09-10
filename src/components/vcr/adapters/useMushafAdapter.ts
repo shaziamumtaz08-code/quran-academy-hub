@@ -83,7 +83,7 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
       renderUnit,
       referenceFor: (unit: number) => ({ page: unit, juz: info?.juz_number ?? null }),
     };
-  }, [info, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
+  }, [info, range, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
 }
 
 export default useMushafAdapter;
