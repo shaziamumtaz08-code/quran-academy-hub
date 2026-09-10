@@ -56,6 +56,7 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
         fontScale: ctx.fontScale,
         highlight: ctx.highlight,
         onInfo: setInfo,
+        onAyahRange: setRange,
         canPoint: canControl,
         onPointLine,
       }),
