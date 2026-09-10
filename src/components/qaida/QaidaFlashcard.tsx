@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Star, RotateCcw, Volume2, RefreshCw } from 'lucide-react';
+import { Star, RotateCcw, Volume2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   detectHarakat,
@@ -23,6 +23,10 @@ interface Props {
   word: QaidaFlashcardWord;
   status?: QaidaWordStatus | null;
   onGrade: (status: QaidaWordStatus) => void;
+  /** Optional step-through of the surrounding words. */
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number } | null;
   className?: string;
 }
 
