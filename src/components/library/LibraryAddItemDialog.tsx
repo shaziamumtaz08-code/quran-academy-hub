@@ -35,10 +35,29 @@ const EXT_TO_TYPE: Record<string, string> = {
 };
 const getType = (n: string) => EXT_TO_TYPE[n.split(".").pop()?.toLowerCase() || ""] || "file";
 
+/** Safety check: only known-safe learning file types, capped in size. */
+const ALLOWED_EXT = new Set([
+  "pdf","epub","mobi","txt","rtf","csv",
+  "doc","docx","ppt","pptx","xls","xlsx",
+  "mp3","wav","m4a","ogg","mp4","webm","mov",
+  "jpg","jpeg","png","webp","gif","svg",
+]);
+const MAX_FILE_MB = 200;
+const MAX_COVER_MB = 5;
+
+function checkFile(f: File, maxMb: number): string | null {
+  const ext = f.name.split(".").pop()?.toLowerCase() || "";
+  if (!ALLOWED_EXT.has(ext)) return `“.${ext}” files are not allowed here. Use a document, image, audio or video file.`;
+  if (f.size > maxMb * 1024 * 1024) return `That file is too big — the limit is ${maxMb} MB.`;
+  if (f.size === 0) return "That file is empty.";
+  return null;
+}
+
 export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, defaultSyllabus = false, onSaved }: Props) {
   const { user, profile, activeRole, isSuperAdmin } = useAuth();
   const role = (activeRole || (profile as any)?.role) as string | undefined;
-  const isStaff = !!isSuperAdmin || !!role && ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin","teacher"].includes(role);
+  const isAdmin = !!isSuperAdmin || (!!role && ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role));
+  const isStaff = isAdmin || role === "teacher";
   const [mode, setMode] = useState<"file" | "link">("file");
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
