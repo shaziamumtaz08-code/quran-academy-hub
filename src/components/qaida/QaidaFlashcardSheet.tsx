@@ -9,6 +9,9 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGrade: (wordId: string, status: QaidaWordStatus) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number } | null;
 }
 
 /** Bright bottom-sheet flashcard opened by tapping a word on the Qaida page. */
