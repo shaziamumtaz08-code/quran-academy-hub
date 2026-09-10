@@ -11371,6 +11371,61 @@ export type Database = {
           },
         ]
       }
+      syllabus_folder_links: {
+        Row: {
+          class_id: string | null
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          folder: string
+          id: string
+          subject_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folder: string
+          id?: string
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folder?: string
+          id?: string
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_folder_links_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syllabus_folder_links_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syllabus_folder_links_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syllabus_items: {
         Row: {
           content_type: string
