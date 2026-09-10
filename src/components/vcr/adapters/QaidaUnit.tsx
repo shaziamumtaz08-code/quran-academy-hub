@@ -306,7 +306,9 @@ export function QaidaUnit({
                     }}
                     className={cn(
                       'qaida-tile relative flex shrink-0 items-center justify-center px-2 py-2',
-                      'transition-transform duration-150 ease-out hover:z-10 hover:scale-110 hover:shadow-xl focus-visible:z-10 focus-visible:scale-110 active:scale-95',
+                      'transition-transform duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none',
+                      '[@media(hover:hover)]:hover:z-10 [@media(hover:hover)]:hover:scale-110 [@media(hover:hover)]:hover:shadow-xl focus-visible:z-10 focus-visible:scale-110 active:scale-95',
+                      previewed && 'z-10 scale-110 shadow-xl ring-2 ring-primary/50',
                       active && 'qaida-tile-selected',
                       isEnd && 'ring-2 ring-primary',
                     )}
