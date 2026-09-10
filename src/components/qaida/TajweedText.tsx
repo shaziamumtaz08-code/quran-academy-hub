@@ -14,18 +14,51 @@ interface Props {
  * Noorani Qaida Arabic text: Indo-Pak Nastaleeq typography with per-letter
  * tajweed rule colouring (Rangeen Tajweedi convention).
  */
+/**
+ * Arabic-Indic / Urdu digit runs (optionally wrapped in RLM marks) — these are
+ * end-of-verse numbers. The Indo-Pak Nastaleeq Qaida face has no standalone
+ * glyphs for them, so they must be rendered with a digit-safe Naskh stack.
+ */
+const AYAH_DIGITS_RE = /([\u0660-\u0669\u06F0-\u06F9]+)/g;
+
+/** Zero-width / directional controls stored in the source text — some render as tofu boxes. */
+const INVISIBLES_RE = /[\u200B\u200C\u200D\u200E\u200F\uFEFF]/g;
+
 export function TajweedText({ text, className, style, plain }: Props) {
-  const segments = useMemo(() => (plain ? [{ text, rule: 'none' as const }] : tajweedSegments(text)), [text, plain]);
+  const parts = useMemo(() => {
+    const clean = text.replace(INVISIBLES_RE, '');
+    const chunks = clean.split(AYAH_DIGITS_RE).filter((c) => c !== '');
+    return chunks.map((chunk) => {
+      const digits = chunk;
+      if (/^[\u0660-\u0669\u06F0-\u06F9]+$/.test(digits)) {
+        return { kind: 'digits' as const, text: digits, segments: [] };
+      }
+      return {
+        kind: 'text' as const,
+        text: chunk,
+        segments: plain ? [{ text: chunk, rule: 'none' as const }] : tajweedSegments(chunk),
+      };
+    });
+  }, [text, plain]);
+
   return (
     <span dir="rtl" className={cn('font-qaida', className)} style={style}>
-      {segments.map((s, i) => {
-        const color = tajweedColor(s.rule);
-        return (
-          <span key={i} style={color ? { color } : undefined}>
-            {s.text}
+      {parts.map((p, pi) =>
+        p.kind === 'digits' ? (
+          <span key={pi} className="ayah-mark" aria-label={`Verse ${p.text}`} style={{ cursor: 'default' }}>
+            {p.text}
           </span>
-        );
-      })}
+        ) : (
+          p.segments.map((s, i) => {
+            const color = tajweedColor(s.rule);
+            return (
+              <span key={`${pi}-${i}`} style={color ? { color } : undefined}>
+                {s.text}
+              </span>
+            );
+          })
+        ),
+      )}
     </span>
   );
 }

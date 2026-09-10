@@ -37,7 +37,8 @@ function tokenize(text: string): Token[] {
   const flush = () => {
     if (buf.length) { out.push({ text: buf.join(' '), isAyahMark: false, ayah: null }); buf = []; }
   };
-  for (const chunk of text.split(/\s+/).filter(Boolean)) {
+  const clean = text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF]/g, '');
+  for (const chunk of clean.split(/\s+/).filter(Boolean)) {
     if (/^[٠-٩۰-۹]+$/.test(chunk)) {
       flush();
       out.push({ text: chunk, isAyahMark: true, ayah: fromArabicDigits(chunk) });
@@ -182,13 +183,8 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAy
                     <span
                       key={i}
                       aria-label={`Verse ${t.ayah}`}
-                      className="mx-1 inline-flex items-center justify-center rounded-full border border-primary/40 bg-white/70 align-middle font-qaida text-primary"
-                      style={{
-                        width: `${26 * fontScale * fit}px`,
-                        height: `${26 * fontScale * fit}px`,
-                        fontSize: `${14 * fontScale * fit}px`,
-                        lineHeight: 1,
-                      }}
+                      className="ayah-mark"
+                      style={{ fontSize: `${18 * fontScale * fit}px`, cursor: 'default' }}
                     >
                       {t.text}
                     </span>
