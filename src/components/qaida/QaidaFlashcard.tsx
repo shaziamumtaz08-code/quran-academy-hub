@@ -35,7 +35,7 @@ interface Props {
  * Front: the letter / word big, accented by its harakat.
  * Back: transliteration + a familiar example word.
  */
-export function QaidaFlashcard({ word, status, onGrade, className }: Props) {
+export function QaidaFlashcard({ word, status, onGrade, onPrev, onNext, position, className }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [burst, setBurst] = useState(false);
   const burstTimer = useRef<number | null>(null);
