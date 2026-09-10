@@ -184,7 +184,12 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
       const { error } = await (supabase.from("library_items") as any).insert(payload);
       if (error) throw error;
 
-      toast.success("Resource added to library");
+      const willBePersonal = isStaff ? false : !shareToAcademy;
+      toast.success(
+        isAdmin || willBePersonal
+          ? willBePersonal ? "Saved to your personal space" : "Resource added to the library"
+          : "Sent for approval — an admin will review it before it appears in the library"
+      );
       reset();
       onSaved();
       onOpenChange(false);
