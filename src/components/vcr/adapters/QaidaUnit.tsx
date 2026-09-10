@@ -358,6 +358,9 @@ export function QaidaUnit({
               }
             }}
             onGrade={grade}
+            onPrev={activeIndex > 0 ? () => step(-1) : undefined}
+            onNext={activeIndex >= 0 && activeIndex < words.length - 1 ? () => step(1) : undefined}
+            position={activeIndex >= 0 ? { index: activeIndex, total: words.length } : null}
           />
 
           <QaidaPracticeDeck
