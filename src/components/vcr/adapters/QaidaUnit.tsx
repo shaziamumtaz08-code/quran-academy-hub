@@ -98,6 +98,12 @@ export function QaidaUnit({
   const [openWordId, setOpenWordId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
   const [baab, setBaab] = useState<QaidaBaabMeta | null>(null);
+  /* Two-step touch: first tap enlarges the tile, second tap opens the card. */
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const coarsePointer = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches,
+    [],
+  );
 
   const selecting = mode === 'select';
   const { progress, setStatus } = useQaidaWordProgress(selecting ? null : studentId);
@@ -127,6 +133,7 @@ export function QaidaUnit({
     let cancelled = false;
     setLoading(true);
     setOpenWordId(null);
+    setPreviewId(null);
     (async () => {
       let q = supabase
         .from('noorani_qaida_words' as any)
@@ -247,6 +254,10 @@ export function QaidaUnit({
 
   const tap = (w: QaidaPageWord) => {
     if (selecting) { onTapWord?.(w); return; }
+    /* Touch devices have no hover: the first tap only enlarges the tile,
+       the second tap on the same tile opens the flashcard. */
+    if (coarsePointer && previewId !== w.id) { setPreviewId(w.id); return; }
+    setPreviewId(w.id);
     setOpenWordId(w.id);
     if (canControl) onSelectWord?.(w.id);
   };
@@ -279,6 +290,7 @@ export function QaidaUnit({
                 const mark = selecting ? null : progress[w.id]?.status ?? null;
                 const accent = HARAKAT_STYLE[detectHarakat(w.word_text)];
                 const active = isEnd || inRange || open;
+                const previewed = !selecting && previewId === w.id;
                 return (
                   <button
                     key={w.id}
@@ -295,7 +307,9 @@ export function QaidaUnit({
                     }}
                     className={cn(
                       'qaida-tile relative flex shrink-0 items-center justify-center px-2 py-2',
-                      'transition-transform duration-150 ease-out hover:z-10 hover:scale-110 hover:shadow-xl focus-visible:z-10 focus-visible:scale-110 active:scale-95',
+                      'transition-transform duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none',
+                      '[@media(hover:hover)]:hover:z-10 [@media(hover:hover)]:hover:scale-110 [@media(hover:hover)]:hover:shadow-xl focus-visible:z-10 focus-visible:scale-110 active:scale-95',
+                      previewed && 'z-10 scale-110 shadow-xl ring-2 ring-primary/50',
                       active && 'qaida-tile-selected',
                       isEnd && 'ring-2 ring-primary',
                     )}
@@ -328,7 +342,9 @@ export function QaidaUnit({
           <p className="pt-2 text-center text-sm text-slate-600" dir="ltr">
             {selecting
               ? 'Tap the first word of the lesson, then the last word.'
-              : 'Tap any letter or word to open its flashcard.'}
+              : coarsePointer
+                ? 'Tap a letter once to enlarge it, tap again to open its flashcard.'
+                : 'Hover to enlarge a letter, click to open its flashcard.'}
           </p>
         </div>
       </div>
