@@ -73,7 +73,11 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
       totalUnits: MUSHAF_TOTAL_PAGES,
       unitNoun: 'page',
       currentLabel: surahs || 'Mushaf',
-      currentSubLabel: `${info?.juz_number ? `Juz ${info.juz_number} · ` : ''}Page ${unit}`.trim(),
+      currentSubLabel: [
+        info?.juz_number ? `Juz ${info.juz_number}` : null,
+        `Page ${unit}`,
+        ayahLabel(range),
+      ].filter(Boolean).join(' · '),
       resolveStartUnit: editionId ? resolveStartUnit : undefined,
       onUnitChange: setUnit,
       renderUnit,
