@@ -90,6 +90,20 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAy
       setLines(res.lines);
       setLoading(false);
       onInfo?.(res.info);
+      /* Ayah range on this page, derived per line the same way the tap
+         handler does (first_surah/first_ayah … last_surah/last_ayah). */
+      const ayahLines = res.lines.filter((l) => l.first_ayah != null || l.last_ayah != null);
+      onAyahRange?.(
+        ayahLines.length
+          ? {
+              first: { surah: ayahLines[0].first_surah, ayah: ayahLines[0].first_ayah },
+              last: {
+                surah: ayahLines[ayahLines.length - 1].last_surah,
+                ayah: ayahLines[ayahLines.length - 1].last_ayah,
+              },
+            }
+          : null,
+      );
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
