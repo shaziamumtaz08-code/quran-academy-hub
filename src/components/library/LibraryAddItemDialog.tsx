@@ -102,6 +102,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     setVisibility("all"); setStatus("published"); setAllowDownloads(true);
     setIsFeatured(false); setMode("file"); setResourceType("ebook");
     setIsSyllabus(defaultSyllabus); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
+    setShareToAcademy(false);
   };
 
   const handleSave = async () => {
@@ -109,6 +110,15 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     if (!categoryId) { toast.error("Choose a category"); return; }
     if (mode === "file" && !file) { toast.error("Upload a file"); return; }
     if (mode === "link" && !url.trim()) { toast.error("Enter a URL"); return; }
+    if (!user?.id) { toast.error("Please sign in again"); return; }
+    if (mode === "file" && file) {
+      const problem = checkFile(file, MAX_FILE_MB);
+      if (problem) { toast.error(problem); return; }
+    }
+    if (cover) {
+      const problem = checkFile(cover, MAX_COVER_MB);
+      if (problem) { toast.error(problem); return; }
+    }
 
     setSaving(true);
     try {
@@ -120,7 +130,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
       if (mode === "file" && file) {
         const ext = file.name.split(".").pop();
         const fname = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        file_path = `library/${fname}`;
+        file_path = `library/${user.id}/${fname}`;
         const { error } = await supabase.storage.from("resources").upload(file_path, file);
         if (error) throw error;
         detected_type = getType(file.name);
@@ -129,7 +139,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
 
       if (cover) {
         const ext = cover.name.split(".").pop();
-        const fname = `library-covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const fname = `library-covers/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error } = await supabase.storage.from("resources").upload(fname, cover);
         if (error) throw error;
         cover_image = fname;
