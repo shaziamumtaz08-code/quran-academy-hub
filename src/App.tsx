@@ -66,6 +66,7 @@ const MyProfile = lazyWithRetry(() => import("./pages/MyProfile"));
 const Impersonate = lazyWithRetry(() => import("./pages/Impersonate"));
 const QuranPageBrowser = lazyWithRetry(() => import("./pages/QuranPageBrowser"));
 const MushafPreview = lazyWithRetry(() => import("./pages/MushafPreview"));
+const QaidaPreview = lazyWithRetry(() => import("./pages/QaidaPreview"));
 const ParentProfile = lazyWithRetry(() => import("./pages/ParentProfile"));
 const TeacherOnboarding = lazyWithRetry(() => import("./pages/TeacherOnboarding"));
 const StudentOnboarding = lazyWithRetry(() => import("./pages/StudentOnboarding"));
@@ -440,6 +441,8 @@ function AppRoutes() {
 <Route path="/quran-page" element={<ProtectedRoute><DashboardLayout><QuranPageBrowser /></DashboardLayout></ProtectedRoute>} />
       <Route path="/mushaf" element={<ProtectedRoute><DashboardLayout><MushafPreview /></DashboardLayout></ProtectedRoute>} />
       <Route path="/mushaf/:page" element={<ProtectedRoute><DashboardLayout><MushafPreview /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/qaida" element={<ProtectedRoute><DashboardLayout><QaidaPreview /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/qaida/:page" element={<ProtectedRoute><DashboardLayout><QaidaPreview /></DashboardLayout></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
@@ -589,7 +592,8 @@ function AppRoutes() {
       <Route path="/class-room" element={<ProtectedRoute><DashboardLayout><ClassRoom /></DashboardLayout></ProtectedRoute>} />
       <Route path="/vcr/:studentId" element={<ProtectedRoute><DashboardLayout><VcrRoom /></DashboardLayout></ProtectedRoute>} />
       <Route path="/class-recordings" element={<ProtectedRoute><DashboardLayout><VcrRecordings /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/syllabus/:studentId" element={<ProtectedRoute><StudentSyllabus /></ProtectedRoute>} />
+      <Route path="/syllabus" element={<ProtectedRoute><DashboardLayout><StudentSyllabus /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/syllabus/:studentId" element={<ProtectedRoute><DashboardLayout><StudentSyllabus /></DashboardLayout></ProtectedRoute>} />
       <Route path="/live-classes" element={<ProtectedRoute><LiveClasses /></ProtectedRoute>} />
       <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
       <Route path="/qa-testmate" element={<ProtectedRoute><RouteGuard moduleId="qa_testmate"><QATestMate /></RouteGuard></ProtectedRoute>} />
