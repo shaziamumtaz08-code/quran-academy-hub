@@ -11,6 +11,18 @@ import { MushafUnit, type MushafAyahRange } from './MushafUnit';
 
 export const MUSHAF_TOTAL_PAGES = 610;
 
+/** "Ayah 3–5" within one surah, "Ayah 2:255 – 3:2" when the page spans two. */
+function ayahLabel(range: MushafAyahRange | null): string | null {
+  const a = range?.first;
+  const b = range?.last;
+  if (!a?.ayah) return null;
+  if (!b?.ayah) return `Ayah ${a.ayah}`;
+  if (a.surah && b.surah && a.surah !== b.surah) {
+    return `Ayah ${a.surah}:${a.ayah} – ${b.surah}:${b.ayah}`;
+  }
+  return a.ayah === b.ayah ? `Ayah ${a.ayah}` : `Ayah ${a.ayah}–${b.ayah}`;
+}
+
 interface Options {
   /** Resume position taken from student_progress, e.g. "2:34". */
   resumeAyah?: { surah: number; ayah: number } | null;
