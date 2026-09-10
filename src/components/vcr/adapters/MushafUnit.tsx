@@ -176,11 +176,31 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAy
                 lit && 'qaida-tile-selected scale-[1.01] shadow-lg ring-2 ring-amber-400',
               )}
             >
-              <TajweedText
-                text={l.text_indopak}
-                className="block text-slate-900"
-                style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
-              />
+              <span dir="rtl" className="block text-slate-900" style={{ lineHeight: 1.9 }}>
+                {tokenize(l.text_indopak).map((t, i) =>
+                  t.isAyahMark ? (
+                    <span
+                      key={i}
+                      aria-label={`Verse ${t.ayah}`}
+                      className="mx-1 inline-flex items-center justify-center rounded-full border border-primary/40 bg-white/70 align-middle font-qaida text-primary"
+                      style={{
+                        width: `${26 * fontScale * fit}px`,
+                        height: `${26 * fontScale * fit}px`,
+                        fontSize: `${14 * fontScale * fit}px`,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {t.text}
+                    </span>
+                  ) : (
+                    <TajweedText
+                      key={i}
+                      text={t.text}
+                      style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
+                    />
+                  ),
+                )}
+              </span>
             </div>
           );
 
