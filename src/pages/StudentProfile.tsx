@@ -5,6 +5,7 @@ import { LinkGuardianDialog } from '@/components/users/LinkGuardianDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchWhatsappMap } from '@/lib/sensitiveProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +58,7 @@ export default function StudentProfile() {
       if (full.error) {
         const basic = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id, age, gender, timezone')
+          .select('id, full_name, email, city, country, avatar_url, created_at, account_status, registration_id, age, gender, timezone')
           .eq('id', studentId!)
           .maybeSingle();
         if (basic.error) throw basic.error;
@@ -73,8 +74,19 @@ export default function StudentProfile() {
 
       const { data: links } = await supabase
         .from('student_parent_links')
-        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url, whatsapp_number)')
+        .select('parent_id, relationship, parent:profiles!student_parent_links_parent_id_fkey(id, full_name, email, avatar_url)')
         .eq('student_id', studentId!);
+
+      // Phone numbers live in profile_sensitive_data (restricted on profiles).
+      const phones = await fetchWhatsappMap([
+        studentId!,
+        ...((links ?? []).map((l: any) => l.parent?.id).filter(Boolean)),
+      ]);
+      if (profile) profile = { ...profile, whatsapp_number: phones.get(studentId!) ?? null };
+      const linksWithPhone = (links ?? []).map((l: any) => ({
+        ...l,
+        parent: l.parent ? { ...l.parent, whatsapp_number: phones.get(l.parent.id) ?? null } : l.parent,
+      }));
 
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
@@ -82,7 +94,7 @@ export default function StudentProfile() {
         .eq('student_id', studentId!)
         .eq('status', 'active');
 
-      return { profile, links: links ?? [], assignments: assignments ?? [] };
+      return { profile, links: linksWithPhone, assignments: assignments ?? [] };
     },
   });
 

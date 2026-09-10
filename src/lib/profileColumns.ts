@@ -7,14 +7,14 @@
  * Never use select('*') on profiles: it fails with "permission denied for table profiles"
  * because the restricted columns above have no grant for the authenticated role.
  */
+// NOTE: whatsapp_number, emergency_contact_name and address are restricted —
+// read them via profile_sensitive_data helpers or the sensitive-profile RPCs.
 export const PROFILE_SAFE_COLUMNS = [
   'id',
   'full_name',
   'display_name',
   'email',
-  'whatsapp_number',
   'avatar_url',
-  'address',
   'city',
   'country',
   'country_code',
@@ -33,7 +33,6 @@ export const PROFILE_SAFE_COLUMNS = [
   'guardian_type',
   'father_name',
   'mother_name',
-  'emergency_contact_name',
   'preferred_contact_method',
   'preferred_language',
   'first_language',

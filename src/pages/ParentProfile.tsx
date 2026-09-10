@@ -5,6 +5,7 @@ import { ProfileEditorPanel } from '@/components/profile/ProfileEditorPanel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfileAvatar } from '@/hooks/useProfileAvatar';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchWhatsapp } from '@/lib/sensitiveProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +55,7 @@ export default function ParentProfile() {
       if (full.error) {
         const basic = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id, guardian_type, timezone')
+          .select('id, full_name, email, city, country, avatar_url, created_at, account_status, registration_id, guardian_type, timezone')
           .eq('id', parentId!)
           .maybeSingle();
         if (basic.error) throw basic.error;
@@ -71,6 +72,8 @@ export default function ParentProfile() {
         .from('student_parent_links')
         .select('student_id, relationship, student:profiles!student_parent_links_student_id_fkey(id, full_name, email, avatar_url, registration_id)')
         .eq('parent_id', parentId!);
+
+      if (profile) profile = { ...profile, whatsapp_number: await fetchWhatsapp(parentId!) };
 
       return { profile, children: links ?? [] };
     },
