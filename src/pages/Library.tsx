@@ -294,9 +294,20 @@ export default function Library() {
     }
   };
 
+  /* Anything a non-admin offered to the shared shelf waits for approval. */
+  const pendingItems = useMemo(
+    () => items.filter((i) => (i.approval_status ?? "approved") === "pending"),
+    [items]
+  );
+  const myPendingCount = useMemo(
+    () => pendingItems.filter((i) => i.uploaded_by === user?.id).length,
+    [pendingItems, user?.id]
+  );
+
   const publishedItems = useMemo(
     () => items
       .filter((i) => (i.status ?? "published") === "published")
+      .filter((i) => (i.approval_status ?? "approved") === "approved")
       .filter((i) => {
         if (isAdmin) return true;
         // Uploader always sees their own items
