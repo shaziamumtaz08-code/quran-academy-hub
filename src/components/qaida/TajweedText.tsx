@@ -19,13 +19,17 @@ interface Props {
  * end-of-verse numbers. The Indo-Pak Nastaleeq Qaida face has no standalone
  * glyphs for them, so they must be rendered with a digit-safe Naskh stack.
  */
-const AYAH_DIGITS_RE = /([\u200F]*[\u0660-\u0669\u06F0-\u06F9]+[\u200F]*)/g;
+const AYAH_DIGITS_RE = /([\u0660-\u0669\u06F0-\u06F9]+)/g;
+
+/** Zero-width / directional controls stored in the source text — some render as tofu boxes. */
+const INVISIBLES_RE = /[\u200B\u200C\u200D\u200E\u200F\uFEFF]/g;
 
 export function TajweedText({ text, className, style, plain }: Props) {
   const parts = useMemo(() => {
-    const chunks = text.split(AYAH_DIGITS_RE).filter((c) => c !== '');
+    const clean = text.replace(INVISIBLES_RE, '');
+    const chunks = clean.split(AYAH_DIGITS_RE).filter((c) => c !== '');
     return chunks.map((chunk) => {
-      const digits = chunk.replace(/[\u200F]/g, '');
+      const digits = chunk;
       if (/^[\u0660-\u0669\u06F0-\u06F9]+$/.test(digits)) {
         return { kind: 'digits' as const, text: digits, segments: [] };
       }
