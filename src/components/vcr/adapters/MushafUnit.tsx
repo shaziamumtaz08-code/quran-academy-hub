@@ -5,13 +5,48 @@ import { fetchPage, surahNameByNumber, type MushafLine, type MushafPageInfo } fr
 import { TajweedText, TajweedLegend } from '@/components/qaida/TajweedText';
 import type { VcrRenderContext } from '../adapter';
 
+export interface MushafAyahRange {
+  first: { surah: number | null; ayah: number | null } | null;
+  last: { surah: number | null; ayah: number | null } | null;
+}
+
 interface Props extends VcrRenderContext {
   editionId: string | null;
   page: number;
   onInfo?: (info: MushafPageInfo | null) => void;
+  /** Ayah range visible on this page, for header chrome. */
+  onAyahRange?: (range: MushafAyahRange | null) => void;
   /** Teacher can point at a line; the student's screen follows the pointer. */
   canPoint?: boolean;
   onPointLine?: (lineId: string | null) => void;
+}
+
+/** Token: either a run of words, or an end-of-verse medallion. */
+interface Token { text: string; isAyahMark: boolean; ayah: number | null }
+
+const fromArabicDigits = (s: string) =>
+  Number(s.replace(/[٠-٩۰-۹]/g, (d) => {
+    const a = '٠١٢٣٤٥٦٧٨٩'.indexOf(d);
+    return String(a >= 0 ? a : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  }));
+
+/** Splits a line into word runs and ayah-end digit groups (same rule as VcrMushafPage). */
+function tokenize(text: string): Token[] {
+  const out: Token[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length) { out.push({ text: buf.join(' '), isAyahMark: false, ayah: null }); buf = []; }
+  };
+  for (const chunk of text.split(/\s+/).filter(Boolean)) {
+    if (/^[٠-٩۰-۹]+$/.test(chunk)) {
+      flush();
+      out.push({ text: chunk, isAyahMark: true, ayah: fromArabicDigits(chunk) });
+    } else {
+      buf.push(chunk);
+    }
+  }
+  flush();
+  return out;
 }
 
 /**
