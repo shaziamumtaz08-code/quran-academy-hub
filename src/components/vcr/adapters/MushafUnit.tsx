@@ -58,7 +58,7 @@ function tokenize(text: string): Token[] {
  * The teacher can tap a line to point at it while teaching; the same line
  * lights up on the student's screen.
  */
-export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canPoint = false, onPointLine }: Props) {
+export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAyahRange, canPoint = false, onPointLine }: Props) {
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointed, setPointed] = useState<string | null>(null);
