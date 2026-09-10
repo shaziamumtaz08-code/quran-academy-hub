@@ -289,6 +289,7 @@ export function QaidaUnit({
                 const mark = selecting ? null : progress[w.id]?.status ?? null;
                 const accent = HARAKAT_STYLE[detectHarakat(w.word_text)];
                 const active = isEnd || inRange || open;
+                const previewed = !selecting && previewId === w.id;
                 return (
                   <button
                     key={w.id}
