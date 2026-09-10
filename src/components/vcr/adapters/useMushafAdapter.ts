@@ -7,9 +7,21 @@ import {
   type MushafPageInfo,
 } from '@/lib/mushafResolve';
 import type { VcrAdapter, VcrRenderContext } from '../adapter';
-import { MushafUnit } from './MushafUnit';
+import { MushafUnit, type MushafAyahRange } from './MushafUnit';
 
 export const MUSHAF_TOTAL_PAGES = 610;
+
+/** "Ayah 3–5" within one surah, "Ayah 2:255 – 3:2" when the page spans two. */
+function ayahLabel(range: MushafAyahRange | null): string | null {
+  const a = range?.first;
+  const b = range?.last;
+  if (!a?.ayah) return null;
+  if (!b?.ayah) return `Ayah ${a.ayah}`;
+  if (a.surah && b.surah && a.surah !== b.surah) {
+    return `Ayah ${a.surah}:${a.ayah} – ${b.surah}:${b.ayah}`;
+  }
+  return a.ayah === b.ayah ? `Ayah ${a.ayah}` : `Ayah ${a.ayah}–${b.ayah}`;
+}
 
 interface Options {
   /** Resume position taken from student_progress, e.g. "2:34". */
@@ -26,6 +38,7 @@ interface Options {
 export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryItemId = null, canControl = false, onPointLine }: Options): VcrAdapter {
   const [editionId, setEditionId] = useState<string | null>(null);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
+  const [range, setRange] = useState<MushafAyahRange | null>(null);
   const [unit, setUnit] = useState(1);
 
   useEffect(() => {
@@ -55,6 +68,7 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
         fontScale: ctx.fontScale,
         highlight: ctx.highlight,
         onInfo: setInfo,
+        onAyahRange: setRange,
         canPoint: canControl,
         onPointLine,
       }),
@@ -71,13 +85,17 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
       totalUnits: MUSHAF_TOTAL_PAGES,
       unitNoun: 'page',
       currentLabel: surahs || 'Mushaf',
-      currentSubLabel: `${info?.juz_number ? `Juz ${info.juz_number} · ` : ''}Page ${unit}`.trim(),
+      currentSubLabel: [
+        info?.juz_number ? `Juz ${info.juz_number}` : null,
+        `Page ${unit}`,
+        ayahLabel(range),
+      ].filter(Boolean).join(' · '),
       resolveStartUnit: editionId ? resolveStartUnit : undefined,
       onUnitChange: setUnit,
       renderUnit,
       referenceFor: (unit: number) => ({ page: unit, juz: info?.juz_number ?? null }),
     };
-  }, [info, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
+  }, [info, range, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
 }
 
 export default useMushafAdapter;

@@ -5,13 +5,48 @@ import { fetchPage, surahNameByNumber, type MushafLine, type MushafPageInfo } fr
 import { TajweedText, TajweedLegend } from '@/components/qaida/TajweedText';
 import type { VcrRenderContext } from '../adapter';
 
+export interface MushafAyahRange {
+  first: { surah: number | null; ayah: number | null } | null;
+  last: { surah: number | null; ayah: number | null } | null;
+}
+
 interface Props extends VcrRenderContext {
   editionId: string | null;
   page: number;
   onInfo?: (info: MushafPageInfo | null) => void;
+  /** Ayah range visible on this page, for header chrome. */
+  onAyahRange?: (range: MushafAyahRange | null) => void;
   /** Teacher can point at a line; the student's screen follows the pointer. */
   canPoint?: boolean;
   onPointLine?: (lineId: string | null) => void;
+}
+
+/** Token: either a run of words, or an end-of-verse medallion. */
+interface Token { text: string; isAyahMark: boolean; ayah: number | null }
+
+const fromArabicDigits = (s: string) =>
+  Number(s.replace(/[٠-٩۰-۹]/g, (d) => {
+    const a = '٠١٢٣٤٥٦٧٨٩'.indexOf(d);
+    return String(a >= 0 ? a : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  }));
+
+/** Splits a line into word runs and ayah-end digit groups (same rule as VcrMushafPage). */
+function tokenize(text: string): Token[] {
+  const out: Token[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length) { out.push({ text: buf.join(' '), isAyahMark: false, ayah: null }); buf = []; }
+  };
+  for (const chunk of text.split(/\s+/).filter(Boolean)) {
+    if (/^[٠-٩۰-۹]+$/.test(chunk)) {
+      flush();
+      out.push({ text: chunk, isAyahMark: true, ayah: fromArabicDigits(chunk) });
+    } else {
+      buf.push(chunk);
+    }
+  }
+  flush();
+  return out;
 }
 
 /**
@@ -23,7 +58,7 @@ interface Props extends VcrRenderContext {
  * The teacher can tap a line to point at it while teaching; the same line
  * lights up on the student's screen.
  */
-export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canPoint = false, onPointLine }: Props) {
+export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, onAyahRange, canPoint = false, onPointLine }: Props) {
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointed, setPointed] = useState<string | null>(null);
@@ -55,6 +90,20 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
       setLines(res.lines);
       setLoading(false);
       onInfo?.(res.info);
+      /* Ayah range on this page, derived per line the same way the tap
+         handler does (first_surah/first_ayah … last_surah/last_ayah). */
+      const ayahLines = res.lines.filter((l) => l.first_ayah != null || l.last_ayah != null);
+      onAyahRange?.(
+        ayahLines.length
+          ? {
+              first: { surah: ayahLines[0].first_surah, ayah: ayahLines[0].first_ayah },
+              last: {
+                surah: ayahLines[ayahLines.length - 1].last_surah,
+                ayah: ayahLines[ayahLines.length - 1].last_ayah,
+              },
+            }
+          : null,
+      );
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,11 +176,31 @@ export function MushafUnit({ editionId, page, fontScale, highlight, onInfo, canP
                 lit && 'qaida-tile-selected scale-[1.01] shadow-lg ring-2 ring-amber-400',
               )}
             >
-              <TajweedText
-                text={l.text_indopak}
-                className="block text-slate-900"
-                style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
-              />
+              <span dir="rtl" className="block text-slate-900" style={{ lineHeight: 1.9 }}>
+                {tokenize(l.text_indopak).map((t, i) =>
+                  t.isAyahMark ? (
+                    <span
+                      key={i}
+                      aria-label={`Verse ${t.ayah}`}
+                      className="mx-1 inline-flex items-center justify-center rounded-full border border-primary/40 bg-white/70 align-middle font-qaida text-primary"
+                      style={{
+                        width: `${26 * fontScale * fit}px`,
+                        height: `${26 * fontScale * fit}px`,
+                        fontSize: `${14 * fontScale * fit}px`,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {t.text}
+                    </span>
+                  ) : (
+                    <TajweedText
+                      key={i}
+                      text={t.text}
+                      style={{ fontSize: `${32 * fontScale * fit}px`, lineHeight: 1.9 }}
+                    />
+                  ),
+                )}
+              </span>
             </div>
           );
 
