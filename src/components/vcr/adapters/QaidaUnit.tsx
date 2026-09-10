@@ -253,6 +253,10 @@ export function QaidaUnit({
 
   const tap = (w: QaidaPageWord) => {
     if (selecting) { onTapWord?.(w); return; }
+    /* Touch devices have no hover: the first tap only enlarges the tile,
+       the second tap on the same tile opens the flashcard. */
+    if (coarsePointer && previewId !== w.id) { setPreviewId(w.id); return; }
+    setPreviewId(w.id);
     setOpenWordId(w.id);
     if (canControl) onSelectWord?.(w.id);
   };
