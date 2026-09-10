@@ -35,10 +35,29 @@ const EXT_TO_TYPE: Record<string, string> = {
 };
 const getType = (n: string) => EXT_TO_TYPE[n.split(".").pop()?.toLowerCase() || ""] || "file";
 
+/** Safety check: only known-safe learning file types, capped in size. */
+const ALLOWED_EXT = new Set([
+  "pdf","epub","mobi","txt","rtf","csv",
+  "doc","docx","ppt","pptx","xls","xlsx",
+  "mp3","wav","m4a","ogg","mp4","webm","mov",
+  "jpg","jpeg","png","webp","gif","svg",
+]);
+const MAX_FILE_MB = 200;
+const MAX_COVER_MB = 5;
+
+function checkFile(f: File, maxMb: number): string | null {
+  const ext = f.name.split(".").pop()?.toLowerCase() || "";
+  if (!ALLOWED_EXT.has(ext)) return `“.${ext}” files are not allowed here. Use a document, image, audio or video file.`;
+  if (f.size > maxMb * 1024 * 1024) return `That file is too big — the limit is ${maxMb} MB.`;
+  if (f.size === 0) return "That file is empty.";
+  return null;
+}
+
 export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCategoryId, defaultSyllabus = false, onSaved }: Props) {
   const { user, profile, activeRole, isSuperAdmin } = useAuth();
   const role = (activeRole || (profile as any)?.role) as string | undefined;
-  const isStaff = !!isSuperAdmin || !!role && ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin","teacher"].includes(role);
+  const isAdmin = !!isSuperAdmin || (!!role && ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role));
+  const isStaff = isAdmin || role === "teacher";
   const [mode, setMode] = useState<"file" | "link">("file");
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
@@ -83,6 +102,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     setVisibility("all"); setStatus("published"); setAllowDownloads(true);
     setIsFeatured(false); setMode("file"); setResourceType("ebook");
     setIsSyllabus(defaultSyllabus); setSyllabusFolder(""); setSyllabusOrder(""); setSyllabusSubjectId("");
+    setShareToAcademy(false);
   };
 
   const handleSave = async () => {
@@ -90,6 +110,15 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
     if (!categoryId) { toast.error("Choose a category"); return; }
     if (mode === "file" && !file) { toast.error("Upload a file"); return; }
     if (mode === "link" && !url.trim()) { toast.error("Enter a URL"); return; }
+    if (!user?.id) { toast.error("Please sign in again"); return; }
+    if (mode === "file" && file) {
+      const problem = checkFile(file, MAX_FILE_MB);
+      if (problem) { toast.error(problem); return; }
+    }
+    if (cover) {
+      const problem = checkFile(cover, MAX_COVER_MB);
+      if (problem) { toast.error(problem); return; }
+    }
 
     setSaving(true);
     try {
@@ -101,7 +130,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
       if (mode === "file" && file) {
         const ext = file.name.split(".").pop();
         const fname = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        file_path = `library/${fname}`;
+        file_path = `library/${user.id}/${fname}`;
         const { error } = await supabase.storage.from("resources").upload(file_path, file);
         if (error) throw error;
         detected_type = getType(file.name);
@@ -110,7 +139,7 @@ export function LibraryAddItemDialog({ open, onOpenChange, categories, defaultCa
 
       if (cover) {
         const ext = cover.name.split(".").pop();
-        const fname = `library-covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const fname = `library-covers/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error } = await supabase.storage.from("resources").upload(fname, cover);
         if (error) throw error;
         cover_image = fname;
