@@ -14308,6 +14308,7 @@ export type Database = {
           gov_id_doc_url: string
           gov_id_number: string
           gov_id_type: string
+          whatsapp_number: string
         }[]
       }
       admin_set_teacher_verification: {
@@ -14627,6 +14628,7 @@ export type Database = {
           gov_id_doc_url: string
           gov_id_number: string
           gov_id_type: string
+          whatsapp_number: string
         }[]
       }
       get_org_default_currency: { Args: never; Returns: string }
