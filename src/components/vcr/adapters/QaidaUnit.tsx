@@ -133,6 +133,7 @@ export function QaidaUnit({
     let cancelled = false;
     setLoading(true);
     setOpenWordId(null);
+    setPreviewId(null);
     (async () => {
       let q = supabase
         .from('noorani_qaida_words' as any)
@@ -341,7 +342,9 @@ export function QaidaUnit({
           <p className="pt-2 text-center text-sm text-slate-600" dir="ltr">
             {selecting
               ? 'Tap the first word of the lesson, then the last word.'
-              : 'Tap any letter or word to open its flashcard.'}
+              : coarsePointer
+                ? 'Tap a letter once to enlarge it, tap again to open its flashcard.'
+                : 'Hover to enlarge a letter, click to open its flashcard.'}
           </p>
         </div>
       </div>
