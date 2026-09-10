@@ -21,8 +21,12 @@ interface Props {
  */
 const AYAH_DIGITS_RE = /([\u0660-\u0669\u06F0-\u06F9]+)/g;
 
-/** Zero-width / directional controls stored in the source text — some render as tofu boxes. */
-const INVISIBLES_RE = /[\u200B\u200C\u200D\u200E\u200F\uFEFF]/g;
+/**
+ * Non-printing controls and legacy private-use Quran markers stored around
+ * ayah endings. The QUL text already carries the visible digit separately;
+ * allowing these markers through produces an empty/tofu square in web fonts.
+ */
+const INVISIBLES_RE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uE000-\uF8FF\uFEFF]/g;
 
 export function TajweedText({ text, className, style, plain }: Props) {
   const parts = useMemo(() => {
