@@ -98,6 +98,12 @@ export function QaidaUnit({
   const [openWordId, setOpenWordId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
   const [baab, setBaab] = useState<QaidaBaabMeta | null>(null);
+  /* Two-step touch: first tap enlarges the tile, second tap opens the card. */
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const coarsePointer = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches,
+    [],
+  );
 
   const selecting = mode === 'select';
   const { progress, setStatus } = useQaidaWordProgress(selecting ? null : studentId);
