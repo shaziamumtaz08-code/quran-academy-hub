@@ -141,16 +141,50 @@ export default function Expenses() {
         status: 'approved',
       };
 
+      const salaryMonth = form.expense_date.substring(0, 7);
+
       if (editingId) {
         const { error } = await supabase.from('expenses').update(payload).eq('id', editingId);
         if (error) throw error;
+
+        // Keep the linked salary adjustment in sync with the edited expense
+        // (date change must move it to the right salary month, amount/teacher too).
+        const { data: existingAdj } = await supabase
+          .from('salary_adjustments')
+          .select('id')
+          .eq('expense_id', editingId)
+          .maybeSingle();
+
+        if (form.teacher_id) {
+          const adjPayload = {
+            teacher_id: form.teacher_id,
+            salary_month: salaryMonth,
+            adjustment_type: 'expense',
+            amount: parseFloat(form.amount) || 0,
+            reason: `Expense: ${form.description}`,
+            expense_id: editingId,
+            created_by: user?.id,
+          };
+          if (existingAdj) {
+            const { error: adjErr } = await supabase
+              .from('salary_adjustments')
+              .update(adjPayload)
+              .eq('id', existingAdj.id);
+            if (adjErr) throw adjErr;
+          } else {
+            const { error: adjErr } = await supabase.from('salary_adjustments').insert(adjPayload);
+            if (adjErr) throw adjErr;
+          }
+        } else if (existingAdj) {
+          // Expense no longer linked to a staff member — drop the payroll line.
+          await supabase.from('salary_adjustments').delete().eq('id', existingAdj.id);
+        }
       } else {
         const { data: inserted, error } = await supabase.from('expenses').insert(payload).select('id').single();
         if (error) throw error;
 
         // Auto-create salary adjustment for teacher-linked expenses
         if (form.teacher_id && inserted) {
-          const salaryMonth = form.expense_date.substring(0, 7);
           await supabase.from('salary_adjustments').insert({
             teacher_id: form.teacher_id,
             salary_month: salaryMonth,
@@ -162,6 +196,7 @@ export default function Expenses() {
           });
         }
       }
+
     },
     onSuccess: () => {
       toast({ title: editingId ? 'Expense updated' : 'Expense added' });
