@@ -26,6 +26,7 @@ interface Options {
 export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryItemId = null, canControl = false, onPointLine }: Options): VcrAdapter {
   const [editionId, setEditionId] = useState<string | null>(null);
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
+  const [range, setRange] = useState<MushafAyahRange | null>(null);
   const [unit, setUnit] = useState(1);
 
   useEffect(() => {
