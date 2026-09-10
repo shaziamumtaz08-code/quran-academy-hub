@@ -7,7 +7,7 @@ import {
   type MushafPageInfo,
 } from '@/lib/mushafResolve';
 import type { VcrAdapter, VcrRenderContext } from '../adapter';
-import { MushafUnit } from './MushafUnit';
+import { MushafUnit, type MushafAyahRange } from './MushafUnit';
 
 export const MUSHAF_TOTAL_PAGES = 610;
 
