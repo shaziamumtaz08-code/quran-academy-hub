@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.fn_library_item_approval_guard() FROM PUBLIC, anon, authenticated;
