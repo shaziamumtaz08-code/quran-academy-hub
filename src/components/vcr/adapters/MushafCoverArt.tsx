@@ -10,12 +10,12 @@ import React from 'react';
 export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; pages: number }) {
   return (
     <div
-      className="relative mx-auto w-full max-w-[min(100%,34rem)] select-none"
+      className="relative mx-auto w-full max-w-[min(100%,34rem,57vh)] select-none"
       style={{ fontSize: `${fontScale}rem` }}
     >
       <div
         style={{ containerType: 'inline-size' }}
-        className="relative aspect-[3/4] max-h-[76vh] w-full overflow-hidden rounded-[1.75rem] shadow-[0_30px_80px_-40px_rgba(4,32,30,0.85)] ring-1 ring-vcr-gold/40">
+        className="relative aspect-[3/4] w-full overflow-hidden rounded-[1.75rem] shadow-[0_30px_80px_-40px_rgba(4,32,30,0.85)] ring-1 ring-vcr-gold/40">
         {/* Background field */}
         <svg viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full" aria-hidden>
           <defs>
