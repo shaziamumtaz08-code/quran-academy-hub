@@ -466,14 +466,8 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
           setStatus('connecting');
           send('join', me());
         } else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
-          void ensureRealtimeSession()
-            .then(() => {
-              if (activeRef.current) channel.subscribe();
-            })
-            .catch(() => {
-              teardown('failed');
-              setError('Your session expired. Please sign in again before starting the call.');
-            });
+          teardown('failed');
+          setError('The live call connection was interrupted. Tap Try again to reconnect.');
         }
       });
 

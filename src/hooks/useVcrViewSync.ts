@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureRealtimeSession } from '@/lib/ensureSession';
 
 /**
  * Real-time view sync for the Virtual Class Room.
@@ -81,12 +82,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
 
   useEffect(() => {
     if (!roomId || !enabled) return;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const channel = supabase.channel(`vcr-call:${roomId}`, {
-      config: { broadcast: { self: false } },
-    });
+    void ensureRealtimeSession().then(() => {
+      if (cancelled) return;
+      channel = supabase.channel(`vcr-call:${roomId}`, {
+        config: { broadcast: { self: false } },
+      });
 
-    channel
+      channel
       .on('broadcast', { event: 'view-state' }, ({ payload }) => {
         if (isPresenter) return;
         setPresenterOnline(true);
@@ -137,17 +142,18 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return;
         if (!isPresenter) {
-          channel.send({ type: 'broadcast', event: 'view-request', payload: {} });
+          channel?.send({ type: 'broadcast', event: 'view-request', payload: {} });
         }
       });
-
-    channelRef.current = channel;
+      channelRef.current = channel;
+    }).catch(() => {});
 
     return () => {
-      if (isPresenter) {
+      cancelled = true;
+      if (isPresenter && channel) {
         channel.send({ type: 'broadcast', event: 'view-presenter-left', payload: {} });
       }
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
       channelRef.current = null;
       lastSent.current = '';
       if (pointerTimer.current) window.clearTimeout(pointerTimer.current);

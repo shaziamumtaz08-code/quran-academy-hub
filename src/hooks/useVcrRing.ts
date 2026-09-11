@@ -126,6 +126,11 @@ export function useVcrKnockSender(roomId: string | null | undefined) {
 
   const knock = async (fromName?: string, extraRooms: string[] = []) => {
     if (!roomId) return;
+    try {
+      await ensureRealtimeSession();
+    } catch {
+      return;
+    }
     const rooms = Array.from(new Set([roomId, ...extraRooms.filter(Boolean)]));
     await Promise.all(
       rooms.map(
