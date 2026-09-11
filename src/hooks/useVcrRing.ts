@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { playPingChime } from '@/lib/pingChime';
+import { ensureRealtimeSession } from '@/lib/ensureSession';
 
 /**
  * Lightweight "a call is happening" presence signal for the Virtual Class Room.
@@ -25,11 +26,9 @@ export function useVcrRingHost(roomId: string, active: boolean, callerName?: str
 
   useEffect(() => {
     if (!roomId || !active) return;
+    let cancelled = false;
     const rooms = Array.from(new Set([roomId, ...extraKey.split(',').filter(Boolean)]));
-    const channels = rooms.map((r) => ({
-      room: r,
-      channel: supabase.channel(topic(r), { config: { broadcast: { self: false } } }),
-    }));
+    const channels: Array<{ room: string; channel: ReturnType<typeof supabase.channel> }> = [];
 
     const announce = () =>
       channels.forEach(({ channel }) =>
@@ -40,18 +39,24 @@ export function useVcrRingHost(roomId: string, active: boolean, callerName?: str
         })
       );
 
-    channels.forEach(({ channel }) =>
-      channel
-        .on('broadcast', { event: 'ping' }, () => void announce())
-        .subscribe((state) => {
-          if (state === 'SUBSCRIBED') void announce();
-        })
-    );
+    void ensureRealtimeSession().then(() => {
+      if (cancelled) return;
+      rooms.forEach((r) => {
+        const channel = supabase.channel(topic(r), { config: { broadcast: { self: false } } });
+        channels.push({ room: r, channel });
+        channel
+          .on('broadcast', { event: 'ping' }, () => void announce())
+          .subscribe((state) => {
+            if (state === 'SUBSCRIBED') void announce();
+          });
+      });
+    }).catch(() => {});
 
     // Re-announce periodically so a student opening the app late still sees it.
     const beat = window.setInterval(() => void announce(), 8000);
 
     return () => {
+      cancelled = true;
       window.clearInterval(beat);
       channels.forEach(({ channel }) => {
         void channel.send({ type: 'broadcast', event: 'ring-end', payload: { room: roomId } });
@@ -71,7 +76,8 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
 
   useEffect(() => {
     if (!roomId || !enabled) return;
-    const channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const bump = (name?: string, room?: string) => {
       if (name) setCallerName(name);
@@ -89,20 +95,25 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
       }, 20000);
     };
 
-    channel
-      .on('broadcast', { event: 'ring' }, ({ payload }) => bump(payload?.callerName, payload?.room))
-      .on('broadcast', { event: 'ring-end' }, () => {
-        if (expiry.current) window.clearTimeout(expiry.current);
-        ringingRef.current = false;
-        setRinging(false);
-      })
-      .subscribe((state) => {
-        if (state === 'SUBSCRIBED') void channel.send({ type: 'broadcast', event: 'ping', payload: {} });
-      });
+    void ensureRealtimeSession().then(() => {
+      if (cancelled) return;
+      channel = supabase.channel(topic(roomId), { config: { broadcast: { self: false } } });
+      channel
+        .on('broadcast', { event: 'ring' }, ({ payload }) => bump(payload?.callerName, payload?.room))
+        .on('broadcast', { event: 'ring-end' }, () => {
+          if (expiry.current) window.clearTimeout(expiry.current);
+          ringingRef.current = false;
+          setRinging(false);
+        })
+        .subscribe((state) => {
+          if (state === 'SUBSCRIBED') void channel?.send({ type: 'broadcast', event: 'ping', payload: {} });
+        });
+    }).catch(() => {});
 
     return () => {
+      cancelled = true;
       if (expiry.current) window.clearTimeout(expiry.current);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [roomId, enabled]);
 
@@ -150,21 +161,27 @@ export function useVcrKnockListener(roomId: string | null | undefined, enabled =
 
   useEffect(() => {
     if (!roomId || !enabled) return;
-    const channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    channel
-      .on('broadcast', { event: 'knock' }, ({ payload }) => {
-        setKnockerName(payload?.fromName ?? 'Your student');
-        setSourceRoom(payload?.room ?? roomId);
-        playPingChime();
-        if (expiry.current) window.clearTimeout(expiry.current);
-        expiry.current = window.setTimeout(() => setKnockerName(null), 30000);
-      })
-      .subscribe();
+    void ensureRealtimeSession().then(() => {
+      if (cancelled) return;
+      channel = supabase.channel(knockTopic(roomId), { config: { broadcast: { self: false } } });
+      channel
+        .on('broadcast', { event: 'knock' }, ({ payload }) => {
+          setKnockerName(payload?.fromName ?? 'Your student');
+          setSourceRoom(payload?.room ?? roomId);
+          playPingChime();
+          if (expiry.current) window.clearTimeout(expiry.current);
+          expiry.current = window.setTimeout(() => setKnockerName(null), 30000);
+        })
+        .subscribe();
+    }).catch(() => {});
 
     return () => {
+      cancelled = true;
       if (expiry.current) window.clearTimeout(expiry.current);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [roomId, enabled]);
 

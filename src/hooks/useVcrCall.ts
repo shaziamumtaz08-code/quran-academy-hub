@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getIceServers, hasTurnConfigured } from '@/lib/call/iceConfig';
+import { ensureRealtimeSession } from '@/lib/ensureSession';
 
 /**
  * Audio-only mesh call for the Virtual Class Room.
@@ -314,6 +315,15 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     setStatus('connecting');
     activeRef.current = true;
 
+    try {
+      await ensureRealtimeSession();
+    } catch {
+      activeRef.current = false;
+      setStatus('failed');
+      setError('Your session expired. Please sign in again before starting the call.');
+      return;
+    }
+
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -452,10 +462,18 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       })
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
+          setError(null);
+          setStatus('connecting');
           send('join', me());
         } else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
-          setStatus('failed');
-          setError('Could not reach the signalling service. Please use the Zoom link instead.');
+          void ensureRealtimeSession()
+            .then(() => {
+              if (activeRef.current) channel.subscribe();
+            })
+            .catch(() => {
+              teardown('failed');
+              setError('Your session expired. Please sign in again before starting the call.');
+            });
         }
       });
 

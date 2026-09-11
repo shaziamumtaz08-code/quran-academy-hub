@@ -9,14 +9,16 @@ import { supabase } from '@/integrations/supabase/client';
  * "Edge Function returned a non-2xx status code".
  */
 export async function ensureFreshSession(): Promise<string> {
-  const { data } = await supabase.auth.getSession();
+  const { data, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error('Your session expired. Please sign in again.');
   let session = data.session;
 
   const expiresAt = session?.expires_at ? session.expires_at * 1000 : 0;
   const nearExpiry = !expiresAt || expiresAt - Date.now() < 60_000;
 
   if (!session || nearExpiry) {
-    const { data: refreshed } = await supabase.auth.refreshSession();
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) throw new Error('Your session expired. Please sign in again.');
     session = refreshed.session ?? session;
   }
 
@@ -24,4 +26,10 @@ export async function ensureFreshSession(): Promise<string> {
     throw new Error('Your session expired. Please sign in again.');
   }
   return session.access_token;
+}
+
+/** Refreshes the live connection token before opening a Realtime channel. */
+export async function ensureRealtimeSession(): Promise<void> {
+  const token = await ensureFreshSession();
+  await supabase.realtime.setAuth(token);
 }
