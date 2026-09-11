@@ -939,8 +939,8 @@ export default function VcrRoom() {
                 type="button"
                 onClick={() => setCallOpen((v) => !v)}
                 aria-pressed={callOpen}
-                title="Voice call"
-                aria-label="Voice call"
+                title="Audio & video call"
+                aria-label="Audio and video call"
                 className={cn(
                   'inline-flex h-8 w-8 items-center justify-center rounded-full border',
                   callOpen ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold' : 'border-vcr-chrome/20 text-vcr-chrome/65',
