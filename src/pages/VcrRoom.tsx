@@ -723,6 +723,11 @@ export default function VcrRoom() {
   /* Someone calling or ringing while the call bar is closed must still be noticed. */
   const { ringing: roomRinging, callerName: roomCaller } = useVcrRingListener(studentId, !callOpen);
   const { knockerName: roomKnocker, dismiss: dismissRoomKnock } = useVcrKnockListener(studentId, !callOpen);
+  /* A live call in this room opens the call bar by itself — nobody has to hunt for it. */
+  useEffect(() => {
+    if (roomRinging || roomKnocker) setCallOpen(true);
+  }, [roomRinging, roomKnocker]);
+
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
