@@ -7,6 +7,8 @@ export interface VcrFollowState {
   page: number;
   fontScale: number;
   highlight: { lineId?: string | null; wordId?: string | null } | null;
+  /** Which front-matter page (cover/index) is showing, or null for a real page. */
+  front?: number | null;
 }
 
 interface Props {
@@ -59,6 +61,11 @@ export function VcrReader({
   const resolvedStart = useRef(false);
 
   const total = adapter.totalUnits;
+  const front = adapter.front ?? [];
+  /* Book-like material opens on its cover, then its index, then page 1.
+     Front matter carries no unit number, so bookmarks, annotations and
+     progress keep pointing at the real pages. */
+  const [frontIdx, setFrontIdx] = useState<number | null>(front.length ? 0 : null);
   const showControls = canControl && !isFollower;
   const highlight = isFollower ? followState?.highlight ?? null : null;
 
@@ -67,20 +74,23 @@ export function VcrReader({
     if (!isFollower || !followState) return;
     setUnit((u) => (u === followState.page ? u : followState.page));
     setFontScale((f) => (f === followState.fontScale ? f : followState.fontScale));
-  }, [isFollower, followState?.page, followState?.fontScale]);
+    const f = followState.front ?? null;
+    setFrontIdx((cur) => (cur === f ? cur : f));
+  }, [isFollower, followState?.page, followState?.fontScale, followState?.front]);
 
   /* Presenter: publish the local position so students follow along. */
   useEffect(() => {
     if (isFollower) return;
-    onViewChange?.({ page: unit, fontScale, highlight: null });
-  }, [isFollower, unit, fontScale, onViewChange]);
+    onViewChange?.({ page: unit, fontScale, highlight: null, front: frontIdx });
+  }, [isFollower, unit, fontScale, frontIdx, onViewChange]);
 
   useEffect(() => {
     if (isFollower) return;
     localStorage.setItem('vcr-font-scale', String(fontScale));
   }, [fontScale, isFollower]);
 
-  /* Resume position, resolved once by the adapter. */
+  /* Resume position, resolved once by the adapter. The book still opens on its
+     cover; leaving the index lands on the resumed page. */
   useEffect(() => {
     if (resolvedStart.current || isFollower || !adapter.resolveStartUnit) return;
     resolvedStart.current = true;
@@ -110,14 +120,45 @@ export function VcrReader({
 
   const goTo = (target: number) => {
     const next = Math.min(total, Math.max(1, target));
-    if (next === unit) return;
+    const leavingFront = frontIdx !== null;
+    if (next === unit && !leavingFront) return;
     playTurn();
     window.setTimeout(() => {
+      setFrontIdx(null);
       setUnit(next);
       adapter.goTo?.(next);
     }, 210);
   };
-  const go = (delta: number) => goTo(unit + delta);
+
+  /* Cover -> Index -> page 1 -> … -> last page, in one continuous sequence. */
+  const atFirst = frontIdx !== null ? frontIdx === 0 : front.length === 0 && unit <= 1;
+  const atLast = frontIdx === null && unit >= total;
+
+  const go = (delta: number) => {
+    if (delta > 0) {
+      if (frontIdx !== null) {
+        playTurn();
+        const nextFront = frontIdx + 1;
+        window.setTimeout(() => setFrontIdx(nextFront < front.length ? nextFront : null), 210);
+        return;
+      }
+      goTo(unit + 1);
+      return;
+    }
+    if (frontIdx !== null) {
+      if (frontIdx === 0) return;
+      playTurn();
+      window.setTimeout(() => setFrontIdx(frontIdx - 1), 210);
+      return;
+    }
+    if (unit <= 1) {
+      if (!front.length) return;
+      playTurn();
+      window.setTimeout(() => setFrontIdx(front.length - 1), 210);
+      return;
+    }
+    goTo(unit - 1);
+  };
 
   /* Bookmark jump requested from outside the reader. */
   useEffect(() => {
@@ -161,16 +202,18 @@ export function VcrReader({
         <div className={cn('mb-2 flex items-center justify-between gap-3 border-b pb-2',
           pastel ? 'border-slate-900/10' : 'border-vcr-ink/15')}>
           <span className={cn('font-display text-xl sm:text-2xl', pastel ? 'text-slate-800' : 'text-vcr-ink')}>
-            {adapter.currentLabel}
+            {frontIdx !== null ? front[frontIdx]?.label ?? adapter.currentLabel : adapter.currentLabel}
           </span>
           <span className={cn('font-mono text-base tabular-nums sm:text-lg',
             pastel ? 'text-slate-600' : 'text-vcr-ink/70')}>
-            {adapter.currentSubLabel}
+            {frontIdx !== null ? front[frontIdx]?.subLabel ?? '' : adapter.currentSubLabel}
           </span>
         </div>
 
 
-        {adapter.renderUnit(unit, { fontScale, highlight })}
+        {frontIdx !== null && front[frontIdx]
+          ? front[frontIdx].render({ fontScale, highlight, goToUnit: goTo })
+          : adapter.renderUnit(unit, { fontScale, highlight })}
       </div>
 
       {showControls && (
@@ -180,9 +223,9 @@ export function VcrReader({
         )}>
           <button
             type="button"
-            disabled={unit <= 1}
-            aria-disabled={unit <= 1}
-            title={unit <= 1 ? `You are on the first ${adapter.unitNoun}` : undefined}
+            disabled={atFirst}
+            aria-disabled={atFirst}
+            title={atFirst ? 'You are on the first page of this book' : undefined}
             className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => go(-1)}
           >
@@ -191,6 +234,16 @@ export function VcrReader({
 
 
           <div className="flex items-center gap-3">
+            {/* Back to this book's own index — internal navigation, not browser history */}
+            {front.some((f) => f.key === 'index') && frontIdx === null && (
+              <button
+                type="button"
+                className="vcr-btn h-10 rounded-lg px-3 text-sm"
+                onClick={() => { playTurn(); const i = front.findIndex((f) => f.key === 'index'); window.setTimeout(() => setFrontIdx(i), 210); }}
+              >
+                Contents
+              </button>
+            )}
             {/* Jump to page */}
             <form
               className="flex items-center gap-2"
@@ -229,9 +282,9 @@ export function VcrReader({
 
           <button
             type="button"
-            disabled={unit >= total}
-            aria-disabled={unit >= total}
-            title={unit >= total ? `You are on the last ${adapter.unitNoun}` : undefined}
+            disabled={atLast}
+            aria-disabled={atLast}
+            title={atLast ? `You are on the last ${adapter.unitNoun}` : undefined}
             className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => go(1)}
           >

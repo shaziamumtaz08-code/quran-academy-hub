@@ -8,6 +8,7 @@ import {
 } from '@/lib/mushafResolve';
 import type { VcrAdapter, VcrRenderContext } from '../adapter';
 import { MushafUnit, type MushafAyahRange } from './MushafUnit';
+import { MushafCover, MushafIndexPage, useMushafIndex } from './MushafFront';
 
 export const MUSHAF_TOTAL_PAGES = 610;
 
@@ -40,6 +41,7 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
   const [info, setInfo] = useState<MushafPageInfo | null>(null);
   const [range, setRange] = useState<MushafAyahRange | null>(null);
   const [unit, setUnit] = useState(1);
+  const mushafIndex = useMushafIndex(editionId);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +83,25 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
     const surahs = s && e && s !== e ? `${s} – ${e}` : s || e || '';
     return {
       contentType: 'mushaf',
+      front: [
+        {
+          key: 'cover',
+          label: 'Mushaf',
+          subLabel: 'Cover',
+          render: (ctx) => React.createElement(MushafCover, { fontScale: ctx.fontScale, pages: MUSHAF_TOTAL_PAGES }),
+        },
+        {
+          key: 'index',
+          label: 'Mushaf',
+          subLabel: 'Index',
+          render: (ctx) =>
+            React.createElement(MushafIndexPage, {
+              index: mushafIndex,
+              fontScale: ctx.fontScale,
+              onOpenPage: ctx.goToUnit,
+            }),
+        },
+      ],
       libraryItemId,
       totalUnits: MUSHAF_TOTAL_PAGES,
       unitNoun: 'page',
@@ -95,7 +116,7 @@ export function useMushafAdapter({ resumeAyah = null, resumeJuz = null, libraryI
       renderUnit,
       referenceFor: (unit: number) => ({ page: unit, juz: info?.juz_number ?? null }),
     };
-  }, [info, range, unit, editionId, resolveStartUnit, renderUnit, libraryItemId]);
+  }, [info, range, unit, editionId, resolveStartUnit, renderUnit, libraryItemId, mushafIndex]);
 }
 
 export default useMushafAdapter;

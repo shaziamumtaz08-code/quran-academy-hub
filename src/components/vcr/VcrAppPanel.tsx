@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Copy, Loader2, Share2, Upload } from 'lucide-react';
+import { Copy, Loader2, Share2, Upload } from 'lucide-react';
 import { useMyResources } from '@/hooks/useMyResources';
 import { toEmbedUrl } from '@/hooks/useVcrRoomState';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,37 +103,12 @@ function ShareAction({ target, onOpenSynced }: { target: VcrOpenTarget; onOpenSy
   );
 }
 
-interface BaabRow {
-  id: string; baab_number: number; name_english: string | null; name_urdu: string | null; start_page: number; end_page: number;
-}
-
-/** Chapters of the Noorani Qaida, so a teacher can jump straight to Baab 4. */
-function useQaidaBaabs(enabled: boolean) {
-  const [baabs, setBaabs] = useState<BaabRow[]>([]);
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    void (async () => {
-      const { data } = await supabase
-        .from('noorani_qaida_baabs' as any)
-        .select('id, baab_number, name_english, name_urdu, start_page, end_page')
-        .order('baab_number');
-      if (!cancelled) setBaabs(((data as any[]) || []) as BaabRow[]);
-    })();
-    return () => { cancelled = true; };
-  }, [enabled]);
-  return baabs;
-}
-
-
 /** Whatever the VCR app rail is pointing at, rendered inside the classroom. */
 export function VcrAppPanel({
   app, docs, docsLoading, docsError, userId, onOpenPrivate, onOpenSynced, onUpload,
 }: Props) {
   const { mine, sharedWithMe, isLoading: resourcesLoading } = useMyResources();
   const [link, setLink] = useState('');
-  const [chaptersOpen, setChaptersOpen] = useState(false);
-  const baabs = useQaidaBaabs(app === 'syllabus');
 
 
   const syllabusDocs = useMemo(
@@ -179,90 +154,62 @@ export function VcrAppPanel({
   }
 
   if (app === 'syllabus') {
-    /* Interactive Qaida + Mushaf are the real content. Baab shortcuts only jump
-       into the Qaida, and files already covered by them are never listed twice. */
+    /* Books, not pages: the Qaida and the Mushaf each carry their own index,
+       so chapter- or page-level files never appear as separate syllabus rows. */
     const extraFiles = syllabusDocs.filter((d) => {
       const t = d.title.trim().toLowerCase();
+      /* Anything the two books already navigate to — chapters, juz, page pointers. */
       if (t === 'noorani qaida' || t === 'mushaf') return false;
-      return !baabs.some(
-        (b) => t === `baab ${b.baab_number}${b.name_english ? ` — ${b.name_english}` : ''}`.toLowerCase(),
-      );
+      if (/^baab\s*\d+/.test(t) || /^juz\s*\d+/.test(t) || /^para\s*\d+/.test(t)) return false;
+      if (/^(page|surah)\s*\d+/.test(t)) return false;
+      return true;
     });
+    const folders = Array.from(new Set(extraFiles.map((d) => d.syllabus_folder || 'Other materials')));
+
 
     return (
       <div className="space-y-4">
         <p className="text-sm text-slate-600">
-          The set material for this student. Tap to open it — Share puts it on the shared classroom screen.
+          The complete books and materials for this student. Each book opens at its cover, then its index. Share puts it on the shared classroom screen.
         </p>
 
         <ul className="space-y-1.5">
           <Row
             title="Noorani Qaida"
-            subtitle="Interactive lesson pages"
+            subtitle="Complete book — cover, index, then all chapters"
             onOpen={() => onOpenPrivate({ kind: 'content', content: 'qaida', title: 'Noorani Qaida' })}
           >
             <ShareAction target={{ kind: 'content', content: 'qaida', title: 'Noorani Qaida' }} onOpenSynced={onOpenSynced} />
           </Row>
           <Row
             title="Mushaf"
-            subtitle="Interactive Qur’an pages"
+            subtitle="Complete Qur’an — cover, index by juz and surah, then all pages"
             onOpen={() => onOpenPrivate({ kind: 'content', content: 'mushaf', title: 'Mushaf' })}
           >
             <ShareAction target={{ kind: 'content', content: 'mushaf', title: 'Mushaf' }} onOpenSynced={onOpenSynced} />
           </Row>
         </ul>
 
-        {baabs.length > 0 && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setChaptersOpen((v) => !v)}
-              aria-expanded={chaptersOpen}
-              className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700"
-            >
-              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', chaptersOpen && 'rotate-180')} />
-              Jump to a Qaida chapter
-            </button>
-            {chaptersOpen && (
-              <ul className="mt-1.5 space-y-1.5">
-                {baabs.map((b) => {
-                  const title = `Baab ${b.baab_number}${b.name_english ? ` — ${b.name_english}` : ''}`;
-                  const target: VcrOpenTarget = { kind: 'content', content: 'qaida', title, page: b.start_page };
-                  return (
-                    <Row
-                      key={b.id}
-                      title={title}
-                      subtitle={`Pages ${b.start_page}–${b.end_page}`}
-                      onOpen={() => onOpenPrivate(target)}
-                    >
-                      <ShareAction target={target} onOpenSynced={onOpenSynced} />
-                    </Row>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
-
         {docsLoading && <p className="text-sm text-slate-500"><Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Loading…</p>}
         {docsError && <p className="text-sm text-red-600">Could not load syllabus files: {docsError}</p>}
-        {!docsLoading && !docsError && extraFiles.length > 0 && (
-          <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Syllabus files</p>
+        {!docsLoading && !docsError && folders.map((folder) => (
+          <div key={folder}>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{folder}</p>
             <ul className="space-y-1.5">
-              {extraFiles.map((d) => (
-                <Row
-                  key={d.id}
-                  title={d.title}
-                  subtitle={d.syllabus_folder ?? 'Syllabus'}
-                  onOpen={() => onOpenPrivate({ kind: 'doc', docId: d.id, title: d.title })}
-                >
-                  <ShareAction target={{ kind: 'doc', docId: d.id, title: d.title }} onOpenSynced={onOpenSynced} />
-                </Row>
-              ))}
+              {extraFiles
+                .filter((d) => (d.syllabus_folder || 'Other materials') === folder)
+                .map((d) => (
+                  <Row
+                    key={d.id}
+                    title={d.title}
+                    onOpen={() => onOpenPrivate({ kind: 'doc', docId: d.id, title: d.title })}
+                  >
+                    <ShareAction target={{ kind: 'doc', docId: d.id, title: d.title }} onOpenSynced={onOpenSynced} />
+                  </Row>
+                ))}
             </ul>
           </div>
-        )}
+        ))}
       </div>
     );
   }
