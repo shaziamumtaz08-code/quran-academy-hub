@@ -132,6 +132,7 @@ export function VcrAppPanel({
 }: Props) {
   const { mine, sharedWithMe, isLoading: resourcesLoading } = useMyResources();
   const [link, setLink] = useState('');
+  const [chaptersOpen, setChaptersOpen] = useState(false);
   const baabs = useQaidaBaabs(app === 'syllabus');
 
 
