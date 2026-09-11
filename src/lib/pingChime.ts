@@ -16,9 +16,13 @@ export function playPingChime() {
       osc.start(ctx.currentTime + startAt);
       osc.stop(ctx.currentTime + startAt + 0.16);
     };
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
     tone(880, 0);
     tone(1174.66, 0.18);
-    setTimeout(() => ctx.close().catch(() => {}), 800);
+    tone(880, 0.4);
+    tone(1174.66, 0.58);
+    try { (navigator as any).vibrate?.([120, 90, 120]); } catch { /* no haptics */ }
+    setTimeout(() => ctx.close().catch(() => {}), 1400);
   } catch {
     /* audio unavailable — banner still shows */
   }
