@@ -112,7 +112,7 @@ export function ProfileEditorPanel({ userId }: Props) {
         ...(data as any),
         ...(sensitive || {}),
         emergency_contact_name: restricted?.emergency_contact_name ?? null,
-        default_payout_rate: rateHolder(await fetchPayoutRate(userId)),
+        default_payout_rate: await fetchPayoutRate(userId),
       };
     },
     enabled: !!userId,
@@ -136,7 +136,7 @@ export function ProfileEditorPanel({ userId }: Props) {
       if (!userId) return null;
       const { data } = await supabase
         .from('student_parent_links')
-        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email, whatsapp_number)')
+        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email)')
         .eq('student_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -263,7 +263,7 @@ export function ProfileEditorPanel({ userId }: Props) {
         gov_id_verified: form.gov_id_verified,
         account_status: form.account_status,
         guardian_type: form.guardian_type,
-        emergency_contact_name: form.emergency_contact_name,
+        ...(profile ? { emergency_contact_name: form.emergency_contact_name ?? null } : {}),
         force_password_reset: form.force_password_reset,
         age: computedAge,
         ...(form.gov_id_verified && !profile?.gov_id_verified ? {
