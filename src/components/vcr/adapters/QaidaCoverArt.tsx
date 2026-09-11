@@ -93,7 +93,7 @@ export function QaidaCoverArt({ fontScale = 1, pages }: { fontScale?: number; pa
           dir="rtl"
           lang="ar"
           className="font-qaida bg-gradient-to-b from-[#b8892f] via-[#d8b269] to-[#a9782c] bg-clip-text leading-[1.75] text-transparent"
-          style={{ fontSize: 'clamp(2.2rem, 7.5cqw, 4.2rem)' }}
+          style={{ fontSize: 'clamp(1.7rem, 5.2cqw, 3.1rem)' }}
         >
           القاعدة النورانية
         </p>
