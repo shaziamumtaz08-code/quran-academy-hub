@@ -1,17 +1,10 @@
 import React from 'react';
-import { BookCover, BookIndex, IndexEntry } from './BookFront';
+import { BookIndex, IndexEntry } from './BookFront';
+import { QaidaCoverArt } from './QaidaCoverArt';
 import type { QaidaBaab } from '@/hooks/useQaidaProgress';
 
 export function QaidaCover({ fontScale = 1, pages }: { fontScale?: number; pages: number }) {
-  return (
-    <BookCover
-      fontScale={fontScale}
-      arabicTitle="القاعدة النورانية"
-      title="Noorani Qaida"
-      subtitle="The complete foundation book for reading the Qur’an — letters, sounds, joining and tajweed."
-      note={`${pages} pages · one complete book`}
-    />
-  );
+  return <QaidaCoverArt fontScale={fontScale} pages={pages} />;
 }
 
 export function QaidaIndexPage({
