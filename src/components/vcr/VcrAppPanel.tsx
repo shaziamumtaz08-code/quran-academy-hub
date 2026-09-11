@@ -132,6 +132,8 @@ export function VcrAppPanel({
 }: Props) {
   const { mine, sharedWithMe, isLoading: resourcesLoading } = useMyResources();
   const [link, setLink] = useState('');
+  const baabs = useQaidaBaabs(app === 'syllabus');
+
 
   const syllabusDocs = useMemo(
     () => docs.filter((d) => d.is_syllabus || (!d.is_personal && !!d.syllabus_folder)),
