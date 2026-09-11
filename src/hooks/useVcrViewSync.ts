@@ -150,6 +150,8 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       supabase.removeChannel(channel);
       channelRef.current = null;
       lastSent.current = '';
+      if (pointerTimer.current) window.clearTimeout(pointerTimer.current);
+      setRemotePointer(null);
     };
   }, [roomId, isPresenter, enabled]);
 
