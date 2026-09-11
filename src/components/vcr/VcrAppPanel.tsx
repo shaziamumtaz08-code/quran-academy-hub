@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Loader2, Share2, Upload } from 'lucide-react';
+import { ChevronDown, Copy, Loader2, Share2, Upload } from 'lucide-react';
 import { useMyResources } from '@/hooks/useMyResources';
 import { toEmbedUrl } from '@/hooks/useVcrRoomState';
 import { supabase } from '@/integrations/supabase/client';
