@@ -264,8 +264,11 @@ export function QaidaUnit({
 
   const grade = (wordId: string, status: QaidaWordStatus) => { void setStatus(wordId, status); };
 
-  const tileSize = Math.round((paper ? 68 : 84) * fontScale);
-  const baseGlyph = Math.round((paper ? 30 : 38) * fontScale);
+  /* Size from the space we actually have, not from the browser's default font
+     metrics — that is what made Chrome render everything smaller than Edge. */
+  const fit = wrapWidth > 0 ? Math.min(1.5, Math.max(0.85, wrapWidth / 720)) : 1;
+  const tileSize = Math.round((paper ? 68 : 92) * fontScale * fit);
+  const baseGlyph = Math.round((paper ? 30 : 42) * fontScale * fit);
   /* Multi-letter words and phrases (Baabs 3, 6, 9, 13) need wider tiles and a
      smaller glyph so the text stays inside the glass box. Arabic diacritics
      inflate code-point counts, so only shrink gently with length. */
@@ -278,8 +281,9 @@ export function QaidaUnit({
   };
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', className)} ref={wrapRef}>
       <div className="qaida-pastel relative overflow-hidden rounded-3xl p-4 sm:p-6">
+
         <div dir="rtl" className="space-y-3 sm:space-y-4">
           {lines.map(([lineNo, lineWords]) => (
             <div key={lineNo} className="flex flex-wrap items-center justify-center gap-3">
