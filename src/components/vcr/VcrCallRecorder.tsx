@@ -8,6 +8,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { ensureRealtimeSession } from '@/lib/ensureSession';
 
 interface Props {
   /** Same room key as the call/signalling channels. */
@@ -57,9 +58,13 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
   /* Consent + status signalling on its own topic. */
   useEffect(() => {
     if (!roomId || !peerId) return;
-    const channel = supabase.channel(`vcr-record:${roomId}`, { config: { broadcast: { self: false } } });
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    channel
+    void ensureRealtimeSession().then(() => {
+      if (cancelled) return;
+      channel = supabase.channel(`vcr-record:${roomId}`, { config: { broadcast: { self: false } } });
+      channel
       .on('broadcast', { event: 'record-request' }, ({ payload }) => {
         if (isHost || payload?.from === peerId) return;
         setConsentOpen(true);
@@ -82,10 +87,12 @@ export function VcrCallRecorder({ roomId, peerId, isHost, live, studentId, teach
         setConsentOpen(false);
       })
       .subscribe();
+      channelRef.current = channel;
+    }).catch(() => {});
 
-    channelRef.current = channel;
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
       channelRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
