@@ -72,6 +72,7 @@ export function MushafIndexPage({
   onOpenPage: (page: number) => void;
 }) {
   const [view, setView] = useState<'juz' | 'surah'>('juz');
+  const [surahPage, setSurahPage] = useState(0);
   const surahRows = useMemo(
     () =>
       index.surah.map((s) => ({
@@ -80,12 +81,17 @@ export function MushafIndexPage({
       })),
     [index.surah],
   );
+  /* Keep the surah view the same balanced length as the juz view:
+     one tidy grid page of entries at a time, not one long scroll. */
+  const SURAH_PER_PAGE = 39; // 3 columns × 13 rows
+  const surahPages = Math.max(1, Math.ceil(surahRows.length / SURAH_PER_PAGE));
+  const surahSlice = surahRows.slice(surahPage * SURAH_PER_PAGE, (surahPage + 1) * SURAH_PER_PAGE);
 
   const tab = (key: 'juz' | 'surah', label: string) => (
     <button
       key={key}
       type="button"
-      onClick={() => setView(key)}
+        onClick={() => { setView(key); setSurahPage(0); }}
       aria-pressed={view === key}
       className={cn(
         'h-8 rounded-lg border px-3 text-xs font-medium transition',
@@ -125,18 +131,44 @@ export function MushafIndexPage({
           ))}
         </ul>
       ) : (
-        <ul className="grid gap-1.5 sm:grid-cols-2">
-          {surahRows.map((s) => (
-            <li key={s.number}>
-              <IndexEntry
-                ordinal={String(s.number)}
-                title={s.info?.name ?? `Surah ${s.number}`}
-                meta={[s.info?.englishName, `Page ${s.page}`].filter(Boolean).join(' · ')}
-                onOpen={() => onOpenPage(s.page)}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {surahSlice.map((s) => (
+              <li key={s.number}>
+                <IndexEntry
+                  ordinal={String(s.number)}
+                  title={s.info?.name ?? `Surah ${s.number}`}
+                  meta={[s.info?.englishName, `Page ${s.page}`].filter(Boolean).join(' · ')}
+                  onOpen={() => onOpenPage(s.page)}
+                />
+              </li>
+            ))}
+          </ul>
+          {surahPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              {Array.from({ length: surahPages }, (_, i) => {
+                const first = i * SURAH_PER_PAGE + 1;
+                const last = Math.min(surahRows.length, (i + 1) * SURAH_PER_PAGE);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSurahPage(i)}
+                    aria-pressed={surahPage === i}
+                    className={cn(
+                      'h-7 rounded-lg border px-2.5 text-[11px] font-medium transition',
+                      surahPage === i
+                        ? 'border-vcr-gold/70 bg-amber-50 text-slate-900'
+                        : 'border-slate-900/10 bg-white/60 text-slate-600 hover:text-slate-900',
+                    )}
+                  >
+                    {first}–{last}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </BookIndex>
   );
