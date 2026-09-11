@@ -102,7 +102,7 @@ export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; p
       </svg>
 
       {/* Title block */}
-      <div className="relative flex min-h-[clamp(18rem,50cqw,32rem)] flex-col items-center justify-center px-[10%] py-[8%] text-center">
+      <div className="relative flex min-h-[clamp(18rem,50cqw,32rem)] flex-col items-center justify-center px-[10%] pb-[9%] pt-[15%] text-center">
         <p
           dir="rtl"
           lang="ar"
