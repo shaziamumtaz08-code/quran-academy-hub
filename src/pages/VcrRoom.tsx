@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { openExternal } from '@/lib/popupWindow';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, ChevronLeft, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, ChevronLeft, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, MousePointer2, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -19,6 +19,7 @@ import {
 import { SubmitToAssignmentDialog, type SyncedSource } from '@/components/assignments/SubmitToAssignmentDialog';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
+import { VcrPointerLayer } from '@/components/vcr/VcrPointerLayer';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
