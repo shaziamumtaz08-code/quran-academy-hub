@@ -44,6 +44,16 @@ export interface VcrStroke {
 }
 
 
+/**
+ * Live teaching pointer position, in normalised (0..1) page coordinates.
+ * Ephemeral only — never saved and never part of the page's marks.
+ */
+export interface VcrPointer {
+  x: number;
+  y: number;
+  style: 'laser' | 'finger';
+}
+
 const DEFAULT_STATE: VcrViewState = {
   page: 1,
   fontScale: 1,
@@ -66,6 +76,8 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastSent = useRef<string>('');
   const strokesRef = useRef<VcrStroke[]>([]);
+  const [remotePointer, setRemotePointer] = useState<VcrPointer | null>(null);
+  const pointerTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!roomId || !enabled) return;
@@ -104,6 +116,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
         setStrokes((prev) => (layer ? prev.filter((s) => (s.layer ?? 'whiteboard') !== layer) : []));
       })
 
+      .on('broadcast', { event: 'pointer' }, ({ payload }) => {
+        if (isPresenter) return;
+        const p = payload as (VcrPointer & { off?: boolean }) | null;
+        if (pointerTimer.current) window.clearTimeout(pointerTimer.current);
+        if (!p || p.off) { setRemotePointer(null); return; }
+        setRemotePointer({ x: p.x, y: p.y, style: p.style ?? 'laser' });
+        /* Safety net: if the teacher's screen goes quiet, the dot fades away. */
+        pointerTimer.current = window.setTimeout(() => setRemotePointer(null), 4000);
+      })
+
       .on('broadcast', { event: 'view-request' }, () => {
         // A student joined — re-announce current state.
         if (!isPresenter) return;
@@ -128,6 +150,8 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
       supabase.removeChannel(channel);
       channelRef.current = null;
       lastSent.current = '';
+      if (pointerTimer.current) window.clearTimeout(pointerTimer.current);
+      setRemotePointer(null);
     };
   }, [roomId, isPresenter, enabled]);
 
@@ -201,7 +225,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
   }, [isPresenter]);
 
 
-  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes };
+  /**
+   * Live teaching pointer — purely ephemeral. Never stored, never mixed with
+   * marks: it is only a position broadcast that fades away on its own.
+   */
+  const sendPointer = useCallback((pointer: VcrPointer | null) => {
+    if (!isPresenter) return;
+    channelRef.current?.send({ type: 'broadcast', event: 'pointer', payload: pointer ?? { off: true } });
+  }, [isPresenter]);
+
+  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer };
 }
 
 export default useVcrViewSync;

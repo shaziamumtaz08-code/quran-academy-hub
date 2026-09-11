@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { openExternal } from '@/lib/popupWindow';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, ChevronLeft, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, ChevronLeft, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, MousePointer2, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -19,6 +19,7 @@ import {
 import { SubmitToAssignmentDialog, type SyncedSource } from '@/components/assignments/SubmitToAssignmentDialog';
 import { LibraryAddItemDialog } from '@/components/library/LibraryAddItemDialog';
 import { VcrReader } from '@/components/vcr/VcrReader';
+import { VcrPointerLayer } from '@/components/vcr/VcrPointerLayer';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useMushafAdapter } from '@/components/vcr/adapters/useMushafAdapter';
 import { useQaidaAdapter } from '@/components/vcr/adapters/useQaidaAdapter';
@@ -99,7 +100,7 @@ export default function VcrRoom() {
   const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
 
 
-  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
+  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer } = useVcrViewSync({
     roomId: studentId,
     isPresenter: canControl,
     enabled: !!studentId,
@@ -309,6 +310,10 @@ export default function VcrRoom() {
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | 'doc' | null>(null);
+  /* Live teaching pointer — separate from Annotate; nothing is ever saved. */
+  const pageAreaRef = React.useRef<HTMLDivElement | null>(null);
+  const [pointerOn, setPointerOn] = useState(false);
+  const [pointerStyle, setPointerStyle] = useState<'laser' | 'finger'>('laser');
   const [whiteboardOn, setWhiteboardOn] = useState(false);
   const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
 
@@ -1087,6 +1092,46 @@ export default function VcrRoom() {
                   <PenLine className="h-3.5 w-3.5" /> Annotate
                 </button>
               )}
+              {canControl && (
+                <span className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPointerOn((v) => !v)}
+                    aria-pressed={pointerOn}
+                    title="Point at a word for the student — nothing is saved"
+                    className={cn(
+                      'inline-flex h-7 items-center gap-1 rounded-full border px-2',
+                      pointerOn
+                        ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
+                        : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                    )}
+                  >
+                    <MousePointer2 className="h-3.5 w-3.5" /> Live Pointer
+                  </button>
+                  {pointerOn && (
+                    <span className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-chrome/20 px-1">
+                      <button
+                        type="button"
+                        onClick={() => setPointerStyle('laser')}
+                        aria-pressed={pointerStyle === 'laser'}
+                        title="Laser dot"
+                        className={cn('rounded-full px-1.5', pointerStyle === 'laser' ? 'text-vcr-gold' : 'text-vcr-chrome/55')}
+                      >
+                        Laser
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPointerStyle('finger')}
+                        aria-pressed={pointerStyle === 'finger'}
+                        title="Soft finger spotlight"
+                        className={cn('rounded-full px-1.5', pointerStyle === 'finger' ? 'text-vcr-gold' : 'text-vcr-chrome/55')}
+                      >
+                        Finger
+                      </button>
+                    </span>
+                  )}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setBookmarksOpen((v) => !v)}
@@ -1194,6 +1239,7 @@ export default function VcrRoom() {
             </div>
           )}
 
+          <div ref={pageAreaRef} className="relative">
           {embed ? (
             <VcrEmbedViewer
               title={embed.title}
@@ -1215,6 +1261,16 @@ export default function VcrRoom() {
               jumpRequest={jumpRequest}
             />
           )}
+
+          {/* Live teaching pointer — a temporary dot only, nothing is saved */}
+          <VcrPointerLayer
+            targetRef={pageAreaRef}
+            active={canControl && pointerOn}
+            style={pointerStyle}
+            onMove={canControl ? sendPointer : undefined}
+            remote={canControl ? null : remotePointer}
+          />
+          </div>
           </div>
 
           {/* Shared whiteboard layer — teacher draws, student mirrors live */}
