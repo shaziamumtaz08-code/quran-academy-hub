@@ -1,9 +1,10 @@
 import React from 'react';
-import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X, Users, Eye } from 'lucide-react';
+import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X, Users, Eye, Video, VideoOff } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
 import { useVcrCallLog } from '@/hooks/useVcrCallLog';
 import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
 import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
+import { VcrVideoTiles } from '@/components/vcr/VcrVideoTiles';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -57,8 +58,8 @@ const mmss = (secs: number) => {
  * the Zoom option stays available alongside it.
  */
 export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false }: Props) {
-  const { status, muted, speaking, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams } =
-    useVcrCall({ roomId, peerId, displayName, observer });
+  const { status, muted, speaking, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams,
+    cameraOn, localVideo, remoteVideos, toggleCamera } = useVcrCall({ roomId, peerId, displayName, observer });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
 
   /* Log every call — recorded or not. */
@@ -216,12 +217,30 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
           </button>
           <button
             type="button"
+            onClick={() => void toggleCamera()}
+            aria-pressed={cameraOn}
+            className={cn(
+              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
+              cameraOn && 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
+            )}
+          >
+            {cameraOn ? <Video className="h-4 w-4 text-emerald-300" /> : <VideoOff className="h-4 w-4 text-vcr-gold" />}
+            {cameraOn ? 'Camera on — tap to turn off' : 'Turn camera on'}
+          </button>
+          <button
+            type="button"
             onClick={end}
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-400/40 bg-red-500/15 px-3 text-sm text-red-200 transition-colors hover:bg-red-500/25"
           >
             <PhoneOff className="h-4 w-4" /> End call
           </button>
         </>
+      )}
+
+      {live && (localVideo || remoteVideos.length > 0) && (
+        <div className="w-full pt-1">
+          <VcrVideoTiles localStream={localVideo} localName={displayName} remotes={remoteVideos} />
+        </div>
       )}
 
       {/* Opt-in call recording — requires the student's explicit consent */}
