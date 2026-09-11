@@ -28,6 +28,8 @@ interface Props {
   displayName?: string;
   /** Join silently as an observer (examiner/admin) — starts muted, can unmute. */
   observer?: boolean;
+  /** Personal rooms (user ids) of the other participants — they get alerted anywhere in the app. */
+  notifyRooms?: string[];
 }
 
 const STATUS_LABEL: Record<CallStatus, string> = {
@@ -57,7 +59,7 @@ const mmss = (secs: number) => {
  * Audio-only in-app call controls. Fully separate from the Zoom flow —
  * the Zoom option stays available alongside it.
  */
-export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false }: Props) {
+export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', autoRecord = false, callerName, knockerName, studentId = null, teacherId = null, displayName = 'Participant', observer = false, notifyRooms = [] }: Props) {
   const { status, muted, speaking, error, busy, peers, remoteJoined, remotePeerId, start, end, toggleMute, retry, getStreams,
     cameraOn, localVideo, remoteVideos, toggleCamera } = useVcrCall({ roomId, peerId, displayName, observer });
   const live = status === 'connecting' || status === 'connected' || status === 'reconnecting';
@@ -69,7 +71,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
   });
 
   /* Announce / observe the call — either side may be the one on the line. */
-  useVcrRingHost(roomId, live && !observer, callerName);
+  useVcrRingHost(roomId, live && !observer, callerName, notifyRooms);
   const { ringing } = useVcrRingListener(roomId, !live);
 
   /* Bell: either side can ring the other when no call is up. */
@@ -190,7 +192,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
           {!ringing && !observer && (
             <button
               type="button"
-              onClick={() => void knock(knockerName)}
+              onClick={() => void knock(knockerName, notifyRooms)}
               disabled={knockCooldown}
               className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-50"
             >
