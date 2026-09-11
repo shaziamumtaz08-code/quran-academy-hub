@@ -25,7 +25,7 @@ export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; p
         <defs>
           <linearGradient id="mcv-gold" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#e8cd91" />
-            <stop offset="40%" stopColor="#c39b४d".replace ? "#c39b4d" : "#c39b4d"} />
+            <stop offset="40%" stopColor="#c39b4d" />
             <stop offset="100%" stopColor="#e3c68a" />
           </linearGradient>
           <radialGradient id="mcv-glow" cx="50%" cy="42%" r="60%">
@@ -102,13 +102,27 @@ export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; p
       </svg>
 
       {/* Title block */}
-      <div className="relative flex min-h-[clamp(20rem,52cqw,34rem)] flex-col items-center justify-center px-[10%] py-[8%] text-center">
+      <div className="relative flex min-h-[clamp(18rem,50cqw,32rem)] flex-col items-center justify-center px-[10%] py-[8%] text-center">
         <p
           dir="rtl"
           lang="ar"
-          className="font-qaida bg-gradient-to-b from-[#b8892f] via-[#cfa busy]" 
+          className="font-qaida bg-gradient-to-b from-[#b8892f] via-[#d8b269] to-[#a9782c] bg-clip-text leading-[1.75] text-transparent"
+          style={{ fontSize: 'clamp(2.6rem, 9cqw, 5rem)' }}
         >
           القرآن الكريم
+        </p>
+        <span aria-hidden className="my-[2.5%] h-px w-[38%] bg-gradient-to-r from-transparent via-vcr-gold/70 to-transparent" />
+        <h1
+          className="font-display tracking-[0.22em] text-slate-800"
+          style={{ fontSize: 'clamp(0.9rem, 2.6cqw, 1.4rem)' }}
+        >
+          AL-QUR’AN AL-KAREEM
+        </h1>
+        <p
+          className="mt-[3%] font-mono uppercase tracking-[0.28em] text-slate-500"
+          style={{ fontSize: 'clamp(0.55rem, 1.6cqw, 0.72rem)' }}
+        >
+          {pages} pages · 30 juz · 114 surahs
         </p>
       </div>
     </div>
