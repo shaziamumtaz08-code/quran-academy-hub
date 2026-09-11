@@ -309,6 +309,10 @@ export default function VcrRoom() {
 
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [contentMode, setContentMode] = useState<'mushaf' | 'qaida' | 'doc' | null>(null);
+  /* Live teaching pointer — separate from Annotate; nothing is ever saved. */
+  const pageAreaRef = React.useRef<HTMLDivElement | null>(null);
+  const [pointerOn, setPointerOn] = useState(false);
+  const [pointerStyle, setPointerStyle] = useState<'laser' | 'finger'>('laser');
   const [whiteboardOn, setWhiteboardOn] = useState(false);
   const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
 
