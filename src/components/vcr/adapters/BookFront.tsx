@@ -56,7 +56,7 @@ export function BookIndex({
         {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
         <div className="mx-auto mt-3 h-px w-20 bg-vcr-gold/60" />
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
     </div>
   );
 }
