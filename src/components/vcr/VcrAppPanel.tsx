@@ -63,17 +63,68 @@ function OpenActions({ target, onOpenPrivate, onOpenSynced }: {
   );
 }
 
-function Row({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Row({ title, subtitle, onOpen, children }: {
+  title: string; subtitle?: string; onOpen?: () => void; children?: React.ReactNode;
+}) {
   return (
     <li className="flex items-center gap-2 rounded-xl border border-slate-900/8 bg-slate-900/[0.03] px-3 py-2">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-slate-800">{title}</span>
-        {subtitle && <span className="block truncate text-[11px] text-slate-500">{subtitle}</span>}
-      </span>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="min-w-0 flex-1 text-left"
+          title="Open this now"
+        >
+          <span className="block truncate text-sm font-medium text-slate-800 hover:text-slate-950 hover:underline">{title}</span>
+          {subtitle && <span className="block truncate text-[11px] text-slate-500">{subtitle}</span>}
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm text-slate-800">{title}</span>
+          {subtitle && <span className="block truncate text-[11px] text-slate-500">{subtitle}</span>}
+        </span>
+      )}
       {children}
     </li>
   );
 }
+
+/** Just the "put it on the shared screen" action — opening is the row itself. */
+function ShareAction({ target, onOpenSynced }: { target: VcrOpenTarget; onOpenSynced: (t: VcrOpenTarget) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenSynced(target)}
+      title="Put it on the shared classroom workspace so the other person sees it too"
+      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-vcr-gold/60 bg-vcr-gold/20 px-2.5 text-[11px] font-medium text-slate-900 hover:bg-vcr-gold/30"
+    >
+      <Share2 className="h-3 w-3" /> Share
+    </button>
+  );
+}
+
+interface BaabRow {
+  id: string; baab_number: number; name_english: string | null; name_urdu: string | null; start_page: number; end_page: number;
+}
+
+/** Chapters of the Noorani Qaida, so a teacher can jump straight to Baab 4. */
+function useQaidaBaabs(enabled: boolean) {
+  const [baabs, setBaabs] = useState<BaabRow[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from('noorani_qaida_baabs' as any)
+        .select('id, baab_number, name_english, name_urdu, start_page, end_page')
+        .order('baab_number');
+      if (!cancelled) setBaabs(((data as any[]) || []) as BaabRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, [enabled]);
+  return baabs;
+}
+
 
 /** Whatever the VCR app rail is pointing at, rendered inside the classroom. */
 export function VcrAppPanel({
