@@ -72,6 +72,7 @@ export function MushafIndexPage({
   onOpenPage: (page: number) => void;
 }) {
   const [view, setView] = useState<'juz' | 'surah'>('juz');
+  const [surahPage, setSurahPage] = useState(0);
   const surahRows = useMemo(
     () =>
       index.surah.map((s) => ({
@@ -80,6 +81,11 @@ export function MushafIndexPage({
       })),
     [index.surah],
   );
+  /* Keep the surah view the same balanced length as the juz view:
+     one tidy grid page of entries at a time, not one long scroll. */
+  const SURAH_PER_PAGE = 39; // 3 columns × 13 rows
+  const surahPages = Math.max(1, Math.ceil(surahRows.length / SURAH_PER_PAGE));
+  const surahSlice = surahRows.slice(surahPage * SURAH_PER_PAGE, (surahPage + 1) * SURAH_PER_PAGE);
 
   const tab = (key: 'juz' | 'surah', label: string) => (
     <button
