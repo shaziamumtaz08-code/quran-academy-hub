@@ -91,7 +91,7 @@ export function MushafIndexPage({
     <button
       key={key}
       type="button"
-      onClick={() => setView(key)}
+        onClick={() => { setView(key); setSurahPage(0); }}
       aria-pressed={view === key}
       className={cn(
         'h-8 rounded-lg border px-3 text-xs font-medium transition',
