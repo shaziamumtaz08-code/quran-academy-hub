@@ -27,6 +27,7 @@ import { useDocAdapter, type DocSource } from '@/components/vcr/adapters/useDocA
 import { VcrBookmarkBar } from '@/components/vcr/VcrBookmarkBar';
 import { useVcrBookmarks } from '@/hooks/useVcrBookmarks';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
+import { useVcrRingListener, useVcrKnockListener } from '@/hooks/useVcrRing';
 
 import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
@@ -698,6 +699,30 @@ export default function VcrRoom() {
   const [launcherOpen, setLauncherOpen] = useState(false);
   useEffect(() => { if (isMobile) setLauncherOpen(false); }, [isMobile]);
   const [callOpen, setCallOpen] = useState(false);
+
+  /* Personal rooms of the other side, so a ring reaches them anywhere in the app.
+   * Staff ring the student's own room (= the class room id); the student rings
+   * every teacher currently assigned to her. */
+  const [teacherRooms, setTeacherRooms] = useState<string[]>([]);
+  useEffect(() => {
+    if (!studentId || canControl) { setTeacherRooms([]); return; }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await (supabase as any)
+        .from('student_teacher_assignments')
+        .select('teacher_id')
+        .eq('student_id', studentId)
+        .eq('status', 'active');
+      if (cancelled) return;
+      setTeacherRooms(Array.from(new Set(((data as any[]) ?? []).map((r) => r.teacher_id).filter(Boolean))));
+    })();
+    return () => { cancelled = true; };
+  }, [studentId, canControl]);
+  const notifyRooms = canControl ? [] : teacherRooms;
+
+  /* Someone calling or ringing while the call bar is closed must still be noticed. */
+  const { ringing: roomRinging, callerName: roomCaller } = useVcrRingListener(studentId, !callOpen);
+  const { knockerName: roomKnocker, dismiss: dismissRoomKnock } = useVcrKnockListener(studentId, !callOpen);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
@@ -975,6 +1000,23 @@ export default function VcrRoom() {
 
         </div>
 
+        {/* A call or a bell arriving while the call bar is closed */}
+        {!callOpen && user?.id && (roomRinging || roomKnocker) && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-emerald-400/30 bg-emerald-500/15 px-3 py-2 sm:px-5">
+            <span className="inline-flex items-center gap-2 text-sm text-emerald-100">
+              <span className="h-2 w-2 animate-ping rounded-full bg-emerald-300" aria-hidden />
+              {roomRinging ? `${roomCaller} is on the call` : `${roomKnocker} is ringing you`}
+            </span>
+            <button
+              type="button"
+              onClick={() => { dismissRoomKnock(); setCallOpen(true); }}
+              className="inline-flex h-8 items-center gap-2 rounded-lg bg-emerald-500/30 px-3 text-sm text-emerald-50 transition-colors hover:bg-emerald-500/45"
+            >
+              <PhoneCall className="h-3.5 w-3.5" /> {roomRinging ? 'Join call' : 'Open call'}
+            </button>
+          </div>
+        )}
+
         {/* Voice call — compact, only when asked for */}
         {callOpen && user?.id && (
           <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-3 py-2 sm:px-5">
@@ -1001,6 +1043,7 @@ export default function VcrRoom() {
                 teacherId={canControl && !wantsObserver && !listenOnly ? user.id : null}
                 displayName={(profile as any)?.full_name ?? 'Participant'}
                 observer={wantsObserver || listenOnly}
+                notifyRooms={notifyRooms}
               />
             )}
             {canControl && !wantsObserver && (
