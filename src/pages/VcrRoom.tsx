@@ -1084,8 +1084,8 @@ export default function VcrRoom() {
               <PlayCircle className="h-3.5 w-3.5" /> Recordings
             </button>
           </div>
-        )}
-      </header>
+      )}
+
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The workspace — the material is the page */}
