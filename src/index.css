@@ -39,8 +39,7 @@
   font-family: 'Indopak Quran';
   src: url('/fonts/IndopakNastaleeqHanafi.ttf') format('truetype'),
        url('/__l5e/assets-v1/f333f5a5-1b0a-4bb5-a153-418e5a7d4532/IndopakNastaleeqHanafi.ttf') format('truetype');
-  font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+  font-display: block;
 }
 
 /*
@@ -48,14 +47,33 @@
  * Source: Quranic Universal Library (QUL) by Tarteel AI,
  * https://qul.tarteel.ai/resources/font/242 — free for developer use.
  * Self-hosted on this project's own asset CDN; not hotlinked. See CREDITS.md.
+ *
+ * No `unicode-range` here on purpose: Chrome segments a text run strictly by
+ * unicode-range and shapes each segment separately, which breaks Arabic
+ * joining and mark placement (the "scrambled" look). One face for the whole
+ * run keeps Chrome, Edge, Firefox and Safari identical.
  */
 @font-face {
   font-family: 'Indopak Nastaleeq';
   src: url('/fonts/IndopakNastaleeqHanafi.ttf') format('truetype'),
        url('/__l5e/assets-v1/f333f5a5-1b0a-4bb5-a153-418e5a7d4532/IndopakNastaleeqHanafi.ttf') format('truetype');
-  font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+  font-display: block;
 }
+
+/* Arabic / Qur'anic runs: never synthesise, never track, always shape. */
+.font-qaida,
+.font-uthmani,
+.mushaf-line,
+.ayah-mark {
+  font-synthesis: none;
+  font-variant-ligatures: normal;
+  font-kerning: normal;
+  font-feature-settings: 'liga' 1, 'calt' 1, 'rlig' 1, 'mark' 1, 'mkmk' 1, 'ccmp' 1;
+  letter-spacing: normal;
+  text-rendering: optimizeLegibility;
+  unicode-bidi: isolate;
+}
+
 
 
 

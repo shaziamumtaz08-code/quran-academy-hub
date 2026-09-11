@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { openExternal } from '@/lib/popupWindow';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
+import { ArrowLeft, BookMarked, Bookmark, CheckCircle2, ChevronLeft, Chrome, Circle, ClipboardList, Eye, Folder, Grid2X2, HardDrive, Library, Link2, ListOrdered, Lock, PenLine, PhoneCall, PlayCircle, Presentation, Save, Share2, Video, X, Youtube } from 'lucide-react';
 import {
   getResource, getAnnotations, saveAnnotations, saveVersion, resolveResourceFile,
   type UserResource,
@@ -796,6 +796,9 @@ export default function VcrRoom() {
       } else if (t.kind === 'content') {
         setEmbed(null);
         setContentMode(t.content === 'qaida' ? 'qaida' : 'mushaf');
+        /* Chapters open at their own first page. */
+        if (t.page && t.page > 0) setJumpRequest({ unit: t.page, nonce: Date.now() });
+
       } else if (t.kind === 'doc' && t.docId) {
         setEmbed(null);
         setDocId(t.docId);
@@ -1041,6 +1044,17 @@ export default function VcrRoom() {
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
+            {/* Classroom -> Syllabus -> item -> page: this step goes back one
+                level only. The arrow in the header still leaves the classroom. */}
+            <button
+              type="button"
+              onClick={() => openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked })}
+              title="Back to the syllabus list"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-chrome/20 px-2 text-vcr-chrome/70 hover:text-vcr-chrome"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to Syllabus
+            </button>
+
             {roomState?.presenter_id && (
               <span className="truncate text-vcr-chrome/45">
                 · presenting: {roomState.presenter_name ?? 'someone in the class'}
