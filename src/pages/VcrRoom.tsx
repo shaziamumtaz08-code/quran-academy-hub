@@ -1044,6 +1044,17 @@ export default function VcrRoom() {
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-vcr-chrome/55">
+            {/* Classroom -> Syllabus -> item -> page: this step goes back one
+                level only. The arrow in the header still leaves the classroom. */}
+            <button
+              type="button"
+              onClick={() => openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked })}
+              title="Back to the syllabus list"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-chrome/20 px-2 text-vcr-chrome/70 hover:text-vcr-chrome"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to Syllabus
+            </button>
+
             {roomState?.presenter_id && (
               <span className="truncate text-vcr-chrome/45">
                 · presenting: {roomState.presenter_name ?? 'someone in the class'}
