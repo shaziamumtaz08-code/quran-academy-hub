@@ -99,7 +99,7 @@ export default function VcrRoom() {
   const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
 
 
-  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes } = useVcrViewSync({
+  const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer } = useVcrViewSync({
     roomId: studentId,
     isPresenter: canControl,
     enabled: !!studentId,
