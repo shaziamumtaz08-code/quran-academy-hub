@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SURAHS } from '@/lib/quranData';
 import { cn } from '@/lib/utils';
-import { BookCover, BookIndex, IndexEntry } from './BookFront';
+import { BookIndex, IndexEntry } from './BookFront';
+import { MushafCoverArt } from './MushafCoverArt';
 
 export interface MushafIndexData {
   /** Juz number -> first page. */
@@ -51,15 +52,7 @@ export function useMushafIndex(editionId: string | null): MushafIndexData {
 }
 
 export function MushafCover({ fontScale = 1, pages }: { fontScale?: number; pages: number }) {
-  return (
-    <BookCover
-      fontScale={fontScale}
-      arabicTitle="القرآن الكريم"
-      title="Mushaf"
-      subtitle="The complete Qur’an, page by page, in the Indo-Pak script used in class."
-      note={`${pages} pages · 30 juz · 114 surahs`}
-    />
-  );
+  return <MushafCoverArt fontScale={fontScale} pages={pages} />;
 }
 
 export function MushafIndexPage({
