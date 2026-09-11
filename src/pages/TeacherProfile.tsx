@@ -71,7 +71,7 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
       if (full.error) {
         const basic = await supabase
           .from('profiles')
-          .select('id, full_name, email, whatsapp_number, city, country, avatar_url, created_at, account_status, registration_id')
+          .select('id, full_name, email, city, country, avatar_url, created_at, account_status, registration_id')
           .eq('id', teacherId!)
           .maybeSingle();
         if (basic.error) throw basic.error;
