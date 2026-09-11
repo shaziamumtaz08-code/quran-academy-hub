@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Copy, Loader2, Share2, Upload } from 'lucide-react';
 import { useMyResources } from '@/hooks/useMyResources';
 import { toEmbedUrl } from '@/hooks/useVcrRoomState';
+import { supabase } from '@/integrations/supabase/client';
 import type { VcrRailKey } from './VcrAppRail';
 import { cn } from '@/lib/utils';
 
@@ -11,9 +12,12 @@ export interface VcrOpenTarget {
   docId?: string;
   resourceId?: string;
   content?: 'mushaf' | 'qaida';
+  /** Open the content straight at this page (e.g. the first page of a Baab). */
+  page?: number;
   url?: string;
   app?: 'drive' | 'youtube' | 'url';
 }
+
 
 interface DocRow {
   id: string; title: string; syllabus_folder?: string | null; syllabus_order?: number | null;
