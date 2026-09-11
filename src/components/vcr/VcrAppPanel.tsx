@@ -235,17 +235,28 @@ export function VcrAppPanel({
             <p className="text-sm text-slate-500">No syllabus files have been set for this class yet.</p>
           )}
           <ul className="space-y-1.5">
-            {syllabusDocs.map((d) => (
-              <Row
-                key={d.id}
-                title={d.title}
-                subtitle={d.syllabus_folder ?? 'Syllabus'}
-                onOpen={() => onOpenPrivate({ kind: 'doc', docId: d.id, title: d.title })}
-              >
-                <ShareAction target={{ kind: 'doc', docId: d.id, title: d.title }} onOpenSynced={onOpenSynced} />
-              </Row>
-            ))}
+            {syllabusDocs
+              /* The chapters above already open the real interactive pages —
+                 don't list the same lesson twice as a library file. */
+              .filter((d) => {
+                const t = d.title.trim().toLowerCase();
+                if (t === 'noorani qaida' || t === 'mushaf') return false;
+                return !baabs.some(
+                  (b) => t === `baab ${b.baab_number}${b.name_english ? ` — ${b.name_english}` : ''}`.toLowerCase(),
+                );
+              })
+              .map((d) => (
+                <Row
+                  key={d.id}
+                  title={d.title}
+                  subtitle={d.syllabus_folder ?? 'Syllabus'}
+                  onOpen={() => onOpenPrivate({ kind: 'doc', docId: d.id, title: d.title })}
+                >
+                  <ShareAction target={{ kind: 'doc', docId: d.id, title: d.title }} onOpenSynced={onOpenSynced} />
+                </Row>
+              ))}
           </ul>
+
         </div>
       </div>
     );
