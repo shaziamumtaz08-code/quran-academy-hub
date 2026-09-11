@@ -868,7 +868,7 @@ export default function VcrRoom() {
     <div className={cn('flex min-h-screen flex-col text-vcr-chrome', content === 'qaida' ? 'qaida-room' : 'vcr-canvas')}>
       {/* Header — one compact line: who the class is with, plus room state */}
       <header className="sticky top-0 z-20 border-b border-vcr-chrome/10 bg-[#0C1B1E]/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-3 py-2 sm:px-5">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2 sm:flex-nowrap sm:px-5">
           {/* Class Apps launcher — lives in the header so the Quran/Qaida
               canvas below keeps its full width on mobile and desktop. */}
           <VcrAppRail
@@ -900,7 +900,7 @@ export default function VcrRoom() {
             </span>
           )}
 
-          <div className="ms-auto flex items-center gap-1.5">
+          <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:ms-auto sm:w-auto sm:flex-nowrap">
             {/* One clear control: whose workspace am I looking at? */}
             <div
               role="tablist"
