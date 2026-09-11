@@ -179,43 +179,79 @@ export function VcrAppPanel({
 
   if (app === 'syllabus') {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <p className="text-sm text-slate-600">
-          The set material for this student. Qaida and Mushaf are interactive class apps — annotations,
-          bookmarks, marks and notes are saved with the class.
+          The set material for this student. Tap anything here to open it straight away — Share puts it on
+          the shared classroom screen instead.
         </p>
-        <ul className="space-y-1.5">
-          <Row title="Noorani Qaida" subtitle="Interactive lesson pages">
-            <OpenActions
-              target={{ kind: 'content', content: 'qaida', title: 'Noorani Qaida' }}
-              onOpenPrivate={onOpenPrivate} onOpenSynced={onOpenSynced}
-            />
-          </Row>
-          <Row title="Mushaf" subtitle="Interactive Qur’an pages">
-            <OpenActions
-              target={{ kind: 'content', content: 'mushaf', title: 'Mushaf' }}
-              onOpenPrivate={onOpenPrivate} onOpenSynced={onOpenSynced}
-            />
-          </Row>
-        </ul>
-        {docsLoading && <p className="text-sm text-slate-500"><Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Loading syllabus files…</p>}
-        {docsError && <p className="text-sm text-red-600">Could not load syllabus files: {docsError}</p>}
-        {!docsLoading && !docsError && syllabusDocs.length === 0 && (
-          <p className="text-sm text-slate-500">No syllabus files have been set for this class yet.</p>
-        )}
-        <ul className="space-y-1.5">
-          {syllabusDocs.map((d) => (
-            <Row key={d.id} title={d.title} subtitle={d.syllabus_folder ?? 'Syllabus'}>
-              <OpenActions
-                target={{ kind: 'doc', docId: d.id, title: d.title }}
-                onOpenPrivate={onOpenPrivate} onOpenSynced={onOpenSynced}
-              />
+
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Class books</p>
+          <ul className="space-y-1.5">
+            <Row
+              title="Noorani Qaida"
+              subtitle="Interactive lesson pages"
+              onOpen={() => onOpenPrivate({ kind: 'content', content: 'qaida', title: 'Noorani Qaida' })}
+            >
+              <ShareAction target={{ kind: 'content', content: 'qaida', title: 'Noorani Qaida' }} onOpenSynced={onOpenSynced} />
             </Row>
-          ))}
-        </ul>
+            <Row
+              title="Mushaf"
+              subtitle="Interactive Qur’an pages"
+              onOpen={() => onOpenPrivate({ kind: 'content', content: 'mushaf', title: 'Mushaf' })}
+            >
+              <ShareAction target={{ kind: 'content', content: 'mushaf', title: 'Mushaf' }} onOpenSynced={onOpenSynced} />
+            </Row>
+          </ul>
+        </div>
+
+        {baabs.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Noorani Qaida chapters</p>
+            <ul className="space-y-1.5">
+              {baabs.map((b) => {
+                const title = `Baab ${b.baab_number}${b.name_english ? ` — ${b.name_english}` : ''}`;
+                const target: VcrOpenTarget = { kind: 'content', content: 'qaida', title, page: b.start_page };
+                return (
+                  <Row
+                    key={b.id}
+                    title={title}
+                    subtitle={`Pages ${b.start_page}–${b.end_page}`}
+                    onOpen={() => onOpenPrivate(target)}
+                  >
+                    <ShareAction target={target} onOpenSynced={onOpenSynced} />
+                  </Row>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Syllabus files</p>
+          {docsLoading && <p className="text-sm text-slate-500"><Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Loading syllabus files…</p>}
+          {docsError && <p className="text-sm text-red-600">Could not load syllabus files: {docsError}</p>}
+          {!docsLoading && !docsError && syllabusDocs.length === 0 && (
+            <p className="text-sm text-slate-500">No syllabus files have been set for this class yet.</p>
+          )}
+          <ul className="space-y-1.5">
+            {syllabusDocs.map((d) => (
+              <Row
+                key={d.id}
+                title={d.title}
+                subtitle={d.syllabus_folder ?? 'Syllabus'}
+                onOpen={() => onOpenPrivate({ kind: 'doc', docId: d.id, title: d.title })}
+              >
+                <ShareAction target={{ kind: 'doc', docId: d.id, title: d.title }} onOpenSynced={onOpenSynced} />
+              </Row>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }
+
+
 
   if (app === 'library') {
     return (
