@@ -20,7 +20,22 @@ export interface VcrRenderContext {
   highlight: { lineId?: string | null; wordId?: string | null } | null;
 }
 
+/**
+ * Front matter of a book-like material: the cover, then the index.
+ * These are not content pages — they carry no unit number, so bookmarks,
+ * annotations and progress keep pointing at the real page numbers.
+ */
+export interface VcrFrontPage {
+  key: string;
+  /** Header label while this front page is showing. */
+  label: string;
+  subLabel?: string;
+  render: (ctx: VcrRenderContext & { goToUnit: (unit: number) => void }) => ReactNode;
+}
+
 export interface VcrAdapter {
+  /** Cover / index pages shown before page 1 of the book. */
+  front?: VcrFrontPage[];
   /** Persisted alongside progress/session rows. */
   contentType: VcrContentType;
   /** Library row this content came from, when it is a library asset. */

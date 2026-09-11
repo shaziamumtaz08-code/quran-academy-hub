@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useQaidaReference, baabsForPage } from '@/hooks/useQaidaProgress';
 import type { VcrAdapter, VcrRenderContext } from '../adapter';
 import { QaidaUnit, type QaidaPageWord } from './QaidaUnit';
+import { QaidaCover, QaidaIndexPage } from './QaidaFront';
 
 export const QAIDA_FALLBACK_PAGES = 32;
 
@@ -66,6 +67,25 @@ export function useQaidaAdapter({
       : `Page ${unit}`;
     return {
       contentType: 'qaida',
+      front: [
+        {
+          key: 'cover',
+          label: 'Noorani Qaida',
+          subLabel: 'Cover',
+          render: (ctx) => React.createElement(QaidaCover, { fontScale: ctx.fontScale, pages: totalUnits }),
+        },
+        {
+          key: 'index',
+          label: 'Noorani Qaida',
+          subLabel: 'Index',
+          render: (ctx) =>
+            React.createElement(QaidaIndexPage, {
+              baabs: ref?.baabs ?? [],
+              fontScale: ctx.fontScale,
+              onOpenPage: ctx.goToUnit,
+            }),
+        },
+      ],
       libraryItemId,
       totalUnits,
       unitNoun: 'page',
