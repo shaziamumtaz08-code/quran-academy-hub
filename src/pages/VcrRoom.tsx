@@ -1194,6 +1194,7 @@ export default function VcrRoom() {
             </div>
           )}
 
+          <div ref={pageAreaRef} className="relative">
           {embed ? (
             <VcrEmbedViewer
               title={embed.title}
