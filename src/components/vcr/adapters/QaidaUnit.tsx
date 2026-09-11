@@ -111,6 +111,18 @@ export function QaidaUnit({
   const selecting = mode === 'select';
   const { progress, setStatus } = useQaidaWordProgress(selecting ? null : studentId);
 
+  /* Measure the reading area so the letters fill it the same way in every
+     browser instead of depending on the browser's own default font size. */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWrapWidth(el.clientWidth));
+    ro.observe(el);
+    setWrapWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [loading]);
+
+
   /* Baab metadata for the page — used to render a real chapter panel on the
      pattern-drill baabs that have no word-level rows yet. */
   useEffect(() => {

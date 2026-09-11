@@ -227,9 +227,17 @@ export function VcrReader({
             </div>
           </div>
 
-          <button type="button" className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base" onClick={() => go(1)}>
+          <button
+            type="button"
+            disabled={unit >= total}
+            aria-disabled={unit >= total}
+            title={unit >= total ? `You are on the last ${adapter.unitNoun}` : undefined}
+            className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={() => go(1)}
+          >
             Next {adapter.unitNoun} <ChevronRight className="h-5 w-5" />
           </button>
+
         </div>
       )}
     </div>
