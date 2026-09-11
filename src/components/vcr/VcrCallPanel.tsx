@@ -97,34 +97,35 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
   return (
     <div
       className={cn(
-        'flex w-full flex-wrap items-center gap-2 rounded-xl border px-3 py-2 transition-colors',
-        status === 'connected' || status === 'reconnecting'
-          ? 'border-emerald-400/50 bg-emerald-500/10'
-          : ringing
-            ? 'border-emerald-400/50 bg-emerald-500/10'
-            : 'border-transparent'
+        'flex w-full flex-col gap-3 rounded-2xl border p-3 text-vcr-chrome transition-colors',
+        status === 'connected' || status === 'reconnecting' || ringing
+          ? 'border-emerald-400/40 bg-emerald-500/10'
+          : 'border-vcr-chrome/15 bg-black/20'
       )}
     >
-      <span
-        className="inline-flex items-center gap-2 rounded-full border border-vcr-chrome/15 bg-black/25 px-3 py-1 text-xs text-vcr-chrome/75"
-        role="status"
-        aria-live="polite"
-      >
-        <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[status])} aria-hidden />
-        {label}
-      </span>
-
-      {(status === 'connected' || status === 'reconnecting') && (
-        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 font-mono text-xs tabular-nums text-emerald-200">
-          Call {mmss(duration)}
+      {/* Line 1 — what is happening right now */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="inline-flex items-center gap-2 text-sm font-medium text-vcr-chrome"
+          role="status"
+          aria-live="polite"
+        >
+          <span className={cn('h-2.5 w-2.5 rounded-full', STATUS_DOT[status])} aria-hidden />
+          {label}
         </span>
-      )}
 
-      {/* Who is on the call, and whose microphone is live — always visible. */}
+        {(status === 'connected' || status === 'reconnecting') && (
+          <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 font-mono text-xs tabular-nums text-emerald-100">
+            {mmss(duration)}
+          </span>
+        )}
+      </div>
+
+      {/* Line 2 — who is on the call, and whose microphone is live */}
       {live && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 text-xs text-vcr-chrome/60">
-            <Users className="h-3.5 w-3.5" aria-hidden /> On the call ({peers.length + 1}):
+          <span className="inline-flex items-center gap-1 text-xs text-vcr-chrome/55">
+            <Users className="h-3.5 w-3.5" aria-hidden /> {peers.length + 1} on the call
           </span>
           {[
             { id: 'self', name: `${displayName} (you)`, observer, muted, speaking },
@@ -135,8 +136,8 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors',
                 p.speaking && !p.muted
-                  ? 'border-emerald-400/70 bg-emerald-500/20 text-emerald-100'
-                  : 'border-vcr-chrome/15 bg-black/25 text-vcr-chrome/80'
+                  ? 'border-emerald-400/70 bg-emerald-500/25 text-emerald-50'
+                  : 'border-vcr-chrome/20 bg-black/35 text-vcr-chrome'
               )}
               title={p.muted ? `${p.name}'s microphone is off` : p.speaking ? `${p.name} is speaking` : `${p.name}'s microphone is on`}
             >
@@ -144,10 +145,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
                 ? <MicOff className="h-3.5 w-3.5 text-amber-300" aria-hidden />
                 : <Mic className={cn('h-3.5 w-3.5', p.speaking ? 'text-emerald-300' : 'text-vcr-chrome/60')} aria-hidden />}
               {p.observer && <Eye className="h-3 w-3 text-vcr-gold" aria-hidden />}
-              {p.name}
-              <span className="text-vcr-chrome/50">
-                {p.muted ? '· mic off' : p.speaking ? '· speaking' : '· mic on'}
-              </span>
+              <span className="max-w-[10rem] truncate">{p.name}</span>
             </span>
           ))}
         </div>

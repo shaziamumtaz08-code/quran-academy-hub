@@ -723,6 +723,11 @@ export default function VcrRoom() {
   /* Someone calling or ringing while the call bar is closed must still be noticed. */
   const { ringing: roomRinging, callerName: roomCaller } = useVcrRingListener(studentId, !callOpen);
   const { knockerName: roomKnocker, dismiss: dismissRoomKnock } = useVcrKnockListener(studentId, !callOpen);
+  /* A live call in this room opens the call bar by itself — nobody has to hunt for it. */
+  useEffect(() => {
+    if (roomRinging || roomKnocker) setCallOpen(true);
+  }, [roomRinging, roomKnocker]);
+
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
@@ -1017,9 +1022,11 @@ export default function VcrRoom() {
           </div>
         )}
 
-        {/* Voice call — compact, only when asked for */}
-        {callOpen && user?.id && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-3 py-2 sm:px-5">
+      </header>
+
+      {/* Call bar — sits in the normal page flow so it never covers the lesson */}
+      {callOpen && user?.id && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 rounded-2xl border border-vcr-chrome/10 bg-[#0C1B1E] px-3 py-3 text-vcr-chrome sm:px-5">
             {wantsObserver && mayObserve === null && (
               <span className="text-xs text-vcr-chrome/60">Checking your sit-in access…</span>
             )}
@@ -1082,8 +1089,8 @@ export default function VcrRoom() {
               <PlayCircle className="h-3.5 w-3.5" /> Recordings
             </button>
           </div>
-        )}
-      </header>
+      )}
+
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The workspace — the material is the page */}
