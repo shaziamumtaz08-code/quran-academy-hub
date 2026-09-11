@@ -23,6 +23,14 @@ export interface CallPeer {
   muted: boolean;
   /** True while that person is actually talking. */
   speaking: boolean;
+  /** True while that person's camera is on. */
+  camera?: boolean;
+}
+
+export interface RemoteVideo {
+  id: string;
+  name: string;
+  stream: MediaStream;
 }
 
 const CONNECT_TIMEOUT_MS = 25_000;
@@ -47,11 +55,19 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [peers, setPeers] = useState<CallPeer[]>([]);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [localVideo, setLocalVideo] = useState<MediaStream | null>(null);
+  const [remoteVideos, setRemoteVideos] = useState<RemoteVideo[]>([]);
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  /** One pre-negotiated video slot per peer — lets the camera turn on without re-negotiating. */
+  const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const videoStreamRef = useRef<MediaStream | null>(null);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const remoteVideoRef = useRef<Map<string, MediaStream>>(new Map());
   const pendingIce = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const peersRef = useRef<Map<string, CallPeer>>(new Map());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -146,6 +162,9 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       audioElsRef.current.delete(id);
     }
     pendingIce.current.delete(id);
+    videoSendersRef.current.delete(id);
+    remoteVideoRef.current.delete(id);
+    setRemoteVideos((v) => v.filter((r) => r.id !== id));
     peersRef.current.delete(id);
     syncPeers();
   }, []);
@@ -165,6 +184,14 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
+      videoStreamRef.current?.getTracks().forEach((t) => t.stop());
+      videoStreamRef.current = null;
+      videoTrackRef.current = null;
+      videoSendersRef.current.clear();
+      remoteVideoRef.current.clear();
+      setRemoteVideos([]);
+      setLocalVideo(null);
+      setCameraOn(false);
 
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
@@ -224,6 +251,24 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       };
 
       pc.ontrack = (e) => {
+        if (e.track.kind === 'video') {
+          const stream = e.streams[0] ?? new MediaStream([e.track]);
+          remoteVideoRef.current.set(remoteId, stream);
+          const publish = () =>
+            setRemoteVideos(
+              Array.from(remoteVideoRef.current.entries())
+                .filter(([id]) => id !== peerId)
+                .map(([id, s]) => ({ id, name: peersRef.current.get(id)?.name ?? 'Participant', stream: s }))
+            );
+          publish();
+          e.track.onmute = publish;
+          e.track.onunmute = publish;
+          e.track.onended = () => {
+            remoteVideoRef.current.delete(remoteId);
+            publish();
+          };
+          return;
+        }
         let el = audioElsRef.current.get(remoteId);
         if (!el) {
           el = document.createElement('audio');
@@ -242,6 +287,12 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
       const local = localStreamRef.current;
       if (local) local.getAudioTracks().forEach((t) => pc.addTrack(t, local));
+
+      // Reserve a video slot up front so turning the camera on later never
+      // needs a fresh offer/answer round.
+      const videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+      videoSendersRef.current.set(remoteId, videoTx.sender);
+      if (videoTrackRef.current) videoTx.sender.replaceTrack(videoTrackRef.current).catch(() => {});
 
       pcsRef.current.set(remoteId, pc);
       return pc;
@@ -319,7 +370,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       const pc = ensurePc(remoteId);
       if (pc.signalingState !== 'stable' || pc.currentRemoteDescription) return;
       try {
-        const offer = await pc.createOffer({ offerToReceiveAudio: true });
+        const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         send('offer', { to: remoteId, sdp: offer });
       } catch {
@@ -344,6 +395,16 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         if (!peer) return;
         peersRef.current.set(peer.id, { ...peer, muted: !!payload.muted, speaking: payload.muted ? false : peer.speaking });
         syncPeers();
+      })
+      .on('broadcast', { event: 'cam' }, ({ payload }) => {
+        const peer = payload?.from ? peersRef.current.get(payload.from) : undefined;
+        if (!peer) return;
+        peersRef.current.set(peer.id, { ...peer, camera: !!payload.camera });
+        syncPeers();
+        if (!payload.camera) {
+          remoteVideoRef.current.delete(peer.id);
+          setRemoteVideos((v) => v.filter((r) => r.id !== peer.id));
+        }
       })
       .on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (!mine(payload) || payload?.from === peerId) return;
@@ -418,6 +479,38 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     send('mic', { muted: !track.enabled });
   }, [send]);
 
+  /**
+   * Camera is opt-in: it starts off, and turning it on simply fills the video
+   * slot that was reserved when the call connected.
+   */
+  const toggleCamera = useCallback(async () => {
+    if (cameraOn) {
+      videoTrackRef.current = null;
+      videoStreamRef.current?.getTracks().forEach((t) => t.stop());
+      videoStreamRef.current = null;
+      setLocalVideo(null);
+      setCameraOn(false);
+      videoSendersRef.current.forEach((s) => { void s.replaceTrack(null).catch(() => {}); });
+      send('cam', { camera: false });
+      return;
+    }
+    try {
+      const cam = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        audio: false,
+      });
+      const track = cam.getVideoTracks()[0] ?? null;
+      videoStreamRef.current = cam;
+      videoTrackRef.current = track;
+      setLocalVideo(cam);
+      setCameraOn(true);
+      videoSendersRef.current.forEach((s) => { void s.replaceTrack(track).catch(() => {}); });
+      send('cam', { camera: true });
+    } catch {
+      setError('Camera access was blocked. Allow the camera in your browser to turn video on.');
+    }
+  }, [cameraOn, send]);
+
   const retry = useCallback(async () => {
     teardown('idle');
     window.setTimeout(() => { void start(); }, 150);
@@ -445,6 +538,10 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     start,
     end,
     toggleMute,
+    cameraOn,
+    localVideo,
+    remoteVideos,
+    toggleCamera,
     retry,
     getStreams,
   };
