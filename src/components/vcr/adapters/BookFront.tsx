@@ -22,7 +22,7 @@ export function BookCover({
 }) {
   return (
     <div
-      className="relative mx-auto flex min-h-[52vh] w-full max-w-2xl flex-col items-center justify-center gap-6 rounded-2xl border border-vcr-gold/40 bg-gradient-to-b from-amber-50/70 via-white/60 to-amber-50/40 px-6 py-14 text-center shadow-[0_18px_50px_-30px_rgba(60,50,90,0.6)]"
+      className="relative mx-auto flex h-full w-full flex-1 flex-col items-center justify-center gap-6 rounded-2xl border border-vcr-gold/40 bg-gradient-to-b from-amber-50/70 via-white/60 to-amber-50/40 px-6 py-10 text-center shadow-[0_18px_50px_-30px_rgba(60,50,90,0.6)]"
       style={{ fontSize: `${fontScale}rem` }}
     >
       <span aria-hidden className="pointer-events-none absolute inset-3 rounded-xl border border-vcr-gold/30" />
@@ -50,13 +50,13 @@ export function BookIndex({
   fontScale?: number;
 }) {
   return (
-    <div className="mx-auto w-full max-w-3xl" style={{ fontSize: `${fontScale}rem` }}>
+    <div className="mx-auto flex h-full w-full flex-1 flex-col" style={{ fontSize: `${fontScale}rem` }}>
       <div className="mb-4 text-center">
         <h2 className="font-display text-2xl text-slate-900 sm:text-3xl">{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
         <div className="mx-auto mt-3 h-px w-20 bg-vcr-gold/60" />
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
     </div>
   );
 }

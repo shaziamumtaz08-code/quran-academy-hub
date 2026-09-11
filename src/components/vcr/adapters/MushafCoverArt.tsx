@@ -13,7 +13,7 @@ export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; p
   return (
     <div
       style={{ containerType: 'inline-size', fontSize: `${fontScale}rem` }}
-      className="relative w-full overflow-hidden rounded-xl border border-vcr-gold/45 bg-gradient-to-b from-[#fffaf0] via-[#fdf7f7] to-[#f3f0fb] shadow-[0_18px_50px_-32px_rgba(60,50,90,0.55)]"
+      className="relative flex h-full w-full flex-1 overflow-hidden rounded-xl border border-vcr-gold/45 bg-gradient-to-b from-[#fffaf0] via-[#fdf7f7] to-[#f3f0fb] shadow-[0_18px_50px_-32px_rgba(60,50,90,0.55)]"
     >
       {/* Ornament layer */}
       <svg
@@ -102,7 +102,7 @@ export function MushafCoverArt({ fontScale = 1, pages }: { fontScale?: number; p
       </svg>
 
       {/* Title block */}
-      <div className="relative flex min-h-[clamp(18rem,50cqw,32rem)] flex-col items-center justify-center px-[10%] pb-[9%] pt-[15%] text-center">
+      <div className="relative flex h-full w-full flex-col items-center justify-center px-[10%] pb-[8%] pt-[10%] text-center">
         <p
           dir="rtl"
           lang="ar"
