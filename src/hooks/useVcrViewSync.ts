@@ -76,6 +76,8 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastSent = useRef<string>('');
   const strokesRef = useRef<VcrStroke[]>([]);
+  const [remotePointer, setRemotePointer] = useState<VcrPointer | null>(null);
+  const pointerTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!roomId || !enabled) return;
