@@ -1216,6 +1216,16 @@ export default function VcrRoom() {
               jumpRequest={jumpRequest}
             />
           )}
+
+          {/* Live teaching pointer — a temporary dot only, nothing is saved */}
+          <VcrPointerLayer
+            targetRef={pageAreaRef}
+            active={canControl && pointerOn}
+            style={pointerStyle}
+            onMove={canControl ? sendPointer : undefined}
+            remote={canControl ? null : remotePointer}
+          />
+          </div>
           </div>
 
           {/* Shared whiteboard layer — teacher draws, student mirrors live */}
