@@ -97,6 +97,9 @@ export function QaidaUnit({
   const [loading, setLoading] = useState(!providedWords);
   const [openWordId, setOpenWordId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const [wrapWidth, setWrapWidth] = useState(0);
+
   const [baab, setBaab] = useState<QaidaBaabMeta | null>(null);
   /* Two-step touch: first tap enlarges the tile, second tap opens the card. */
   const [previewId, setPreviewId] = useState<string | null>(null);
