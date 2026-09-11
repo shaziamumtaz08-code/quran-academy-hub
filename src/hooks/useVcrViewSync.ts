@@ -116,6 +116,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
         setStrokes((prev) => (layer ? prev.filter((s) => (s.layer ?? 'whiteboard') !== layer) : []));
       })
 
+      .on('broadcast', { event: 'pointer' }, ({ payload }) => {
+        if (isPresenter) return;
+        const p = payload as (VcrPointer & { off?: boolean }) | null;
+        if (pointerTimer.current) window.clearTimeout(pointerTimer.current);
+        if (!p || p.off) { setRemotePointer(null); return; }
+        setRemotePointer({ x: p.x, y: p.y, style: p.style ?? 'laser' });
+        /* Safety net: if the teacher's screen goes quiet, the dot fades away. */
+        pointerTimer.current = window.setTimeout(() => setRemotePointer(null), 4000);
+      })
+
       .on('broadcast', { event: 'view-request' }, () => {
         // A student joined — re-announce current state.
         if (!isPresenter) return;
