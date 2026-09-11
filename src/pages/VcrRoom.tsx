@@ -1017,9 +1017,11 @@ export default function VcrRoom() {
           </div>
         )}
 
-        {/* Voice call — compact, only when asked for */}
-        {callOpen && user?.id && (
-          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 border-t border-vcr-chrome/10 px-3 py-2 sm:px-5">
+      </header>
+
+      {/* Call bar — sits in the normal page flow so it never covers the lesson */}
+      {callOpen && user?.id && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-2 rounded-2xl border border-vcr-chrome/10 bg-[#0C1B1E] px-3 py-3 text-vcr-chrome sm:px-5">
             {wantsObserver && mayObserve === null && (
               <span className="text-xs text-vcr-chrome/60">Checking your sit-in access…</span>
             )}
