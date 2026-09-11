@@ -87,11 +87,12 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
 
     void ensureRealtimeSession().then(() => {
       if (cancelled) return;
-      channel = supabase.channel(`vcr-call:${roomId}`, {
+      const nextChannel = supabase.channel(`vcr-call:${roomId}`, {
         config: { broadcast: { self: false } },
       });
+      channel = nextChannel;
 
-      channel
+      nextChannel
       .on('broadcast', { event: 'view-state' }, ({ payload }) => {
         if (isPresenter) return;
         setPresenterOnline(true);
@@ -135,17 +136,17 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
         // A student joined — re-announce current state.
         if (!isPresenter) return;
         if (lastSent.current) {
-          channel.send({ type: 'broadcast', event: 'view-state', payload: JSON.parse(lastSent.current) });
+          nextChannel.send({ type: 'broadcast', event: 'view-state', payload: JSON.parse(lastSent.current) });
         }
-        channel.send({ type: 'broadcast', event: 'wb-sync', payload: { strokes: strokesRef.current } });
+        nextChannel.send({ type: 'broadcast', event: 'wb-sync', payload: { strokes: strokesRef.current } });
       })
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return;
         if (!isPresenter) {
-          channel?.send({ type: 'broadcast', event: 'view-request', payload: {} });
+          nextChannel.send({ type: 'broadcast', event: 'view-request', payload: {} });
         }
       });
-      channelRef.current = channel;
+      channelRef.current = nextChannel;
     }).catch(() => {});
 
     return () => {
