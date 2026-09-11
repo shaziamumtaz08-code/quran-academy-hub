@@ -796,6 +796,9 @@ export default function VcrRoom() {
       } else if (t.kind === 'content') {
         setEmbed(null);
         setContentMode(t.content === 'qaida' ? 'qaida' : 'mushaf');
+        /* Chapters open at their own first page. */
+        if (t.page && t.page > 0) setJumpRequest({ unit: t.page, nonce: Date.now() });
+
       } else if (t.kind === 'doc' && t.docId) {
         setEmbed(null);
         setDocId(t.docId);
