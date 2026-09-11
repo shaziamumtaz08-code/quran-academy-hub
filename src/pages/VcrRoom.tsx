@@ -1091,6 +1091,46 @@ export default function VcrRoom() {
                   <PenLine className="h-3.5 w-3.5" /> Annotate
                 </button>
               )}
+              {canControl && (
+                <span className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPointerOn((v) => !v)}
+                    aria-pressed={pointerOn}
+                    title="Point at a word for the student — nothing is saved"
+                    className={cn(
+                      'inline-flex h-7 items-center gap-1 rounded-full border px-2',
+                      pointerOn
+                        ? 'border-vcr-gold/60 bg-vcr-gold/15 text-vcr-gold'
+                        : 'border-vcr-chrome/20 hover:text-vcr-chrome',
+                    )}
+                  >
+                    <MousePointer2 className="h-3.5 w-3.5" /> Live Pointer
+                  </button>
+                  {pointerOn && (
+                    <span className="inline-flex h-7 items-center gap-1 rounded-full border border-vcr-chrome/20 px-1">
+                      <button
+                        type="button"
+                        onClick={() => setPointerStyle('laser')}
+                        aria-pressed={pointerStyle === 'laser'}
+                        title="Laser dot"
+                        className={cn('rounded-full px-1.5', pointerStyle === 'laser' ? 'text-vcr-gold' : 'text-vcr-chrome/55')}
+                      >
+                        Laser
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPointerStyle('finger')}
+                        aria-pressed={pointerStyle === 'finger'}
+                        title="Soft finger spotlight"
+                        className={cn('rounded-full px-1.5', pointerStyle === 'finger' ? 'text-vcr-gold' : 'text-vcr-chrome/55')}
+                      >
+                        Finger
+                      </button>
+                    </span>
+                  )}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setBookmarksOpen((v) => !v)}
