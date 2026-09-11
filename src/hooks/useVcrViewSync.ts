@@ -44,6 +44,16 @@ export interface VcrStroke {
 }
 
 
+/**
+ * Live teaching pointer position, in normalised (0..1) page coordinates.
+ * Ephemeral only — never saved and never part of the page's marks.
+ */
+export interface VcrPointer {
+  x: number;
+  y: number;
+  style: 'laser' | 'finger';
+}
+
 const DEFAULT_STATE: VcrViewState = {
   page: 1,
   fontScale: 1,
