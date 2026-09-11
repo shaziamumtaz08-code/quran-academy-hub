@@ -211,9 +211,20 @@ export function VcrReader({
         </div>
 
 
-        {frontIdx !== null && front[frontIdx]
-          ? front[frontIdx].render({ fontScale, highlight, goToUnit: goTo })
-          : adapter.renderUnit(unit, { fontScale, highlight })}
+        {/* Every page of the book — cover, index and content — uses the same
+            page body box, so the reading surface keeps one constant size. */}
+        <div
+          className={cn(
+            'flex w-full flex-col',
+            frontIdx !== null
+              ? 'h-[clamp(20rem,62vh,42rem)] overflow-y-auto'
+              : 'min-h-[clamp(20rem,62vh,42rem)]',
+          )}
+        >
+          {frontIdx !== null && front[frontIdx]
+            ? front[frontIdx].render({ fontScale, highlight, goToUnit: goTo })
+            : adapter.renderUnit(unit, { fontScale, highlight })}
+        </div>
       </div>
 
       {showControls && (
