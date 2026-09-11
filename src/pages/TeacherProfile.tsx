@@ -93,9 +93,10 @@ export default function TeacherProfile({ staffMode = false }: { staffMode?: bool
 
       const { data: sensitive } = await (supabase as any)
         .from('profile_sensitive_data')
-        .select('bank_name, bank_account_title, bank_account_number, bank_iban')
+        .select('bank_name, bank_account_title, bank_account_number, bank_iban, whatsapp_number')
         .eq('user_id', teacherId!)
         .maybeSingle();
+      if (profile && sensitive?.whatsapp_number) profile = { ...profile, whatsapp_number: sensitive.whatsapp_number };
 
       const { data: salary } = await (supabase as any)
         .from('staff_salaries')
