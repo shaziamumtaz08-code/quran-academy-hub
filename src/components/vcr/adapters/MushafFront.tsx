@@ -131,18 +131,44 @@ export function MushafIndexPage({
           ))}
         </ul>
       ) : (
-        <ul className="grid gap-1.5 sm:grid-cols-2">
-          {surahRows.map((s) => (
-            <li key={s.number}>
-              <IndexEntry
-                ordinal={String(s.number)}
-                title={s.info?.name ?? `Surah ${s.number}`}
-                meta={[s.info?.englishName, `Page ${s.page}`].filter(Boolean).join(' · ')}
-                onOpen={() => onOpenPage(s.page)}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {surahSlice.map((s) => (
+              <li key={s.number}>
+                <IndexEntry
+                  ordinal={String(s.number)}
+                  title={s.info?.name ?? `Surah ${s.number}`}
+                  meta={[s.info?.englishName, `Page ${s.page}`].filter(Boolean).join(' · ')}
+                  onOpen={() => onOpenPage(s.page)}
+                />
+              </li>
+            ))}
+          </ul>
+          {surahPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              {Array.from({ length: surahPages }, (_, i) => {
+                const first = i * SURAH_PER_PAGE + 1;
+                const last = Math.min(surahRows.length, (i + 1) * SURAH_PER_PAGE);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSurahPage(i)}
+                    aria-pressed={surahPage === i}
+                    className={cn(
+                      'h-7 rounded-lg border px-2.5 text-[11px] font-medium transition',
+                      surahPage === i
+                        ? 'border-vcr-gold/70 bg-amber-50 text-slate-900'
+                        : 'border-slate-900/10 bg-white/60 text-slate-600 hover:text-slate-900',
+                    )}
+                  >
+                    {first}–{last}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </BookIndex>
   );
