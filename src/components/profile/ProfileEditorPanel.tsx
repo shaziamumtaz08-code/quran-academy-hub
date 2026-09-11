@@ -86,7 +86,7 @@ export function ProfileEditorPanel({ userId }: Props) {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, emergency_contact_name, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
+        .select('id, full_name, email, avatar_url, created_at, updated_at, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount, gender, age, preferred_language, country, city, meeting_link, timezone, country_code, region, archived_at, registration_id, teaching_os_language, gov_id_type, gov_id_verified, gov_id_verified_at, gov_id_verified_by, guardian_type, learning_goals, special_needs, hear_about_us, arabic_level, first_language, nationality, preferred_contact_method, display_name, account_status, force_password_reset')
         .eq('id', userId)
         .maybeSingle();
       if (error) throw error;
@@ -95,8 +95,25 @@ export function ProfileEditorPanel({ userId }: Props) {
         .select('bank_account_number, bank_iban, bank_name, bank_account_title, gov_id_number, gov_id_doc_url, emergency_contact_phone, whatsapp_number, date_of_birth')
         .eq('user_id', userId)
         .maybeSingle();
-      const rate = await fetchPayoutRate(userId);
-      return { ...(data as any), ...(sensitive || {}), default_payout_rate: rate };
+      // emergency_contact_name lives on profiles but is not readable directly —
+      // admins/self read it through the secure RPC.
+      let restricted: any = null;
+      try {
+        const { data: adminRow } = await (supabase as any).rpc('admin_get_sensitive_profile', { _user_id: userId });
+        restricted = Array.isArray(adminRow) ? adminRow[0] : adminRow;
+      } catch { /* not permitted — leave restricted fields untouched */ }
+      if (!restricted) {
+        try {
+          const { data: selfRow } = await (supabase as any).rpc('get_my_sensitive_profile');
+          restricted = Array.isArray(selfRow) ? selfRow[0] : selfRow;
+        } catch { /* ignore */ }
+      }
+      return {
+        ...(data as any),
+        ...(sensitive || {}),
+        emergency_contact_name: restricted?.emergency_contact_name ?? null,
+        default_payout_rate: await fetchPayoutRate(userId),
+      };
     },
     enabled: !!userId,
   });
@@ -119,7 +136,7 @@ export function ProfileEditorPanel({ userId }: Props) {
       if (!userId) return null;
       const { data } = await supabase
         .from('student_parent_links')
-        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email, whatsapp_number)')
+        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email)')
         .eq('student_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -246,7 +263,7 @@ export function ProfileEditorPanel({ userId }: Props) {
         gov_id_verified: form.gov_id_verified,
         account_status: form.account_status,
         guardian_type: form.guardian_type,
-        emergency_contact_name: form.emergency_contact_name,
+        ...(profile ? { emergency_contact_name: form.emergency_contact_name ?? null } : {}),
         force_password_reset: form.force_password_reset,
         age: computedAge,
         ...(form.gov_id_verified && !profile?.gov_id_verified ? {
