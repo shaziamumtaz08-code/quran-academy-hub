@@ -173,74 +173,79 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         </span>
       )}
 
-      {!live ? (
-        <>
-          <button
-            type="button"
-            onClick={() => void start()}
-            className={cn(
-              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
-              ringing && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
-            )}
-          >
-            <PhoneCall className="h-4 w-4 text-vcr-gold" />
-            {observer ? (ringing ? 'Sit in on the call' : 'Sit in (observer)') : ringing ? 'Join call now' : 'Start In-App Call'}
-            <span className="text-vcr-chrome/45">· audio</span>
-          </button>
-          {!ringing && !observer && (
+      <div className="flex flex-wrap items-center gap-2">
+        {!live ? (
+          <>
             <button
               type="button"
-              onClick={() => void knock(knockerName, notifyRooms)}
-              disabled={knockCooldown}
-              className="vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm disabled:opacity-50"
+              onClick={() => void start()}
+              className={cn(
+                'inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium transition-colors',
+                ringing
+                  ? 'bg-emerald-500 text-[#06231C] hover:bg-emerald-400'
+                  : 'bg-vcr-gold text-[#0C1B1E] hover:brightness-110'
+              )}
             >
-              <BellRing className="h-4 w-4 text-vcr-gold" />
-              {knockCooldown ? 'Rang — waiting…' : isCaller ? 'Ring student' : 'Ring teacher'}
+              <PhoneCall className="h-4 w-4" />
+              {observer ? (ringing ? 'Sit in on the call' : 'Sit in') : ringing ? 'Join call' : 'Start call'}
             </button>
-          )}
-        </>
-      ) : (
-        <>
-          <button
-            type="button"
-            onClick={toggleMute}
-            aria-pressed={muted}
-            className={cn(
-              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
-              muted
-                ? 'border-amber-400/50 bg-amber-500/15 text-amber-100'
-                : speaking && 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
+            {!ringing && !observer && (
+              <button
+                type="button"
+                onClick={() => void knock(knockerName, notifyRooms)}
+                disabled={knockCooldown}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-vcr-chrome/25 px-3 text-sm text-vcr-chrome transition-colors hover:bg-white/5 disabled:opacity-50"
+              >
+                <BellRing className="h-4 w-4 text-vcr-gold" />
+                {knockCooldown ? 'Ringing…' : isCaller ? 'Ring student' : 'Ring teacher'}
+              </button>
             )}
-          >
-            {muted ? <MicOff className="h-4 w-4 text-amber-300" /> : <Mic className="h-4 w-4 text-vcr-gold" />}
-            {muted ? 'Your mic is off — tap to unmute' : 'Your mic is on — tap to mute'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void toggleCamera()}
-            aria-pressed={cameraOn}
-            className={cn(
-              'vcr-btn inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm',
-              cameraOn && 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
-            )}
-          >
-            {cameraOn ? <Video className="h-4 w-4 text-emerald-300" /> : <VideoOff className="h-4 w-4 text-vcr-gold" />}
-            {cameraOn ? 'Camera on — tap to turn off' : 'Turn camera on'}
-          </button>
-          <button
-            type="button"
-            onClick={end}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-400/40 bg-red-500/15 px-3 text-sm text-red-200 transition-colors hover:bg-red-500/25"
-          >
-            <PhoneOff className="h-4 w-4" /> End call
-          </button>
-        </>
-      )}
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-pressed={muted}
+              aria-label={muted ? 'Unmute your microphone' : 'Mute your microphone'}
+              className={cn(
+                'inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors',
+                muted
+                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-100'
+                  : 'border-vcr-chrome/25 bg-white/5 text-vcr-chrome hover:bg-white/10'
+              )}
+            >
+              {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-emerald-300" />}
+              {muted ? 'Unmute' : 'Mute'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleCamera()}
+              aria-pressed={cameraOn}
+              aria-label={cameraOn ? 'Turn your camera off' : 'Turn your camera on'}
+              className={cn(
+                'inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors',
+                cameraOn
+                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-50'
+                  : 'border-vcr-chrome/25 bg-white/5 text-vcr-chrome hover:bg-white/10'
+              )}
+            >
+              {cameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              {cameraOn ? 'Camera on' : 'Camera off'}
+            </button>
+            <button
+              type="button"
+              onClick={end}
+              className="ms-auto inline-flex h-10 items-center gap-2 rounded-xl bg-red-500/90 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500"
+            >
+              <PhoneOff className="h-4 w-4" /> End
+            </button>
+          </>
+        )}
+      </div>
 
       {live && (localVideo || remoteVideos.length > 0) && (
-        <div className="w-full pt-1">
-          <VcrVideoTiles localStream={localVideo} localName={displayName} remotes={remoteVideos} />
-        </div>
+        <VcrVideoTiles localStream={localVideo} localName={displayName} remotes={remoteVideos} />
       )}
 
       {/* Opt-in call recording — requires the student's explicit consent */}
