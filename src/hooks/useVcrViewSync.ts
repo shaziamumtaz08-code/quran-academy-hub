@@ -201,7 +201,16 @@ export function useVcrViewSync({ roomId, isPresenter, enabled = true }: Options)
   }, [isPresenter]);
 
 
-  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes };
+  /**
+   * Live teaching pointer — purely ephemeral. Never stored, never mixed with
+   * marks: it is only a position broadcast that fades away on its own.
+   */
+  const sendPointer = useCallback((pointer: VcrPointer | null) => {
+    if (!isPresenter) return;
+    channelRef.current?.send({ type: 'broadcast', event: 'pointer', payload: pointer ?? { off: true } });
+  }, [isPresenter]);
+
+  return { remoteState, presenterOnline, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer };
 }
 
 export default useVcrViewSync;
