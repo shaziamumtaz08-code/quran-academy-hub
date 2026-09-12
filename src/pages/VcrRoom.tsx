@@ -545,8 +545,13 @@ export default function VcrRoom() {
   }, [effectiveResourceId]);
 
   /* Followers show the board whenever the teacher has it open. */
-  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
-  const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
+  const whiteboardVisible = isFollower
+    ? (roomState?.view_whiteboard ?? remoteState?.whiteboard ?? false)
+    : whiteboardOn;
+  const whiteboardMode = isFollower
+    ? (roomState?.view_whiteboard_mode ?? remoteState?.whiteboardMode ?? 'board')
+    : boardMode;
+
 
   /* Every working area keeps its own marks: each Mushaf / Qaida / document
      page has its own layer, and the whiteboard is a separate canvas that never
