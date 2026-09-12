@@ -553,6 +553,28 @@ export default function VcrRoom() {
     ? (roomState?.view_whiteboard_mode ?? remoteState?.whiteboardMode ?? 'board')
     : boardMode;
 
+  /* What a follower shows: the shared record is the truth, the live broadcast
+     is only a faster hint. This is what makes a refresh land on exactly the
+     page, cover/index position and zoom the sharer is on. */
+  const followView = React.useMemo(() => {
+    if (!isFollower) return null;
+    const sharedPage = roomState?.view_page ?? null;
+    const sharedFront = roomState?.view_front ?? null;
+    const sharedScale = roomState?.view_font_scale ?? null;
+    if (remoteState) {
+      return {
+        page: remoteState.page ?? sharedPage ?? 1,
+        fontScale: remoteState.fontScale ?? sharedScale ?? 1,
+        highlight: remoteState.highlight ?? null,
+        front: remoteState.front ?? sharedFront ?? null,
+      };
+    }
+    if (sharedPage == null && sharedFront == null) return null;
+    return { page: sharedPage ?? 1, fontScale: sharedScale ?? 1, highlight: null, front: sharedFront };
+  }, [isFollower, remoteState, roomState?.view_page, roomState?.view_front, roomState?.view_font_scale]);
+
+
+
 
   /* Every working area keeps its own marks: each Mushaf / Qaida / document
      page has its own layer, and the whiteboard is a separate canvas that never
@@ -677,7 +699,7 @@ export default function VcrRoom() {
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
-  const lastView = useRef({ page: 1, fontScale: 1 });
+  const lastView = useRef<{ page: number; fontScale: number; front: number | null }>({ page: 1, fontScale: 1, front: null });
   /**
    * The one write path for "what is on screen".
    *
@@ -687,13 +709,14 @@ export default function VcrRoom() {
    * someone who is not the one sharing.
    */
   const announceView = React.useCallback(
-    (state: { page: number; fontScale: number; highlight: any }) => {
+    (state: { page: number; fontScale: number; highlight: any; front?: number | null }) => {
       if (!isDriving || nothingOpen) return;
       publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
       patchView({
         view_content: content,
         view_library_item_id: content === 'doc' ? docId : null,
         view_page: state.page,
+        view_front: state.front ?? null,
         view_font_scale: state.fontScale,
         view_whiteboard: whiteboardOn,
         view_whiteboard_mode: boardMode,
@@ -702,8 +725,8 @@ export default function VcrRoom() {
     [isDriving, nothingOpen, publish, patchView, content, docId, whiteboardOn, boardMode],
   );
   const publishView = React.useCallback(
-    (state: { page: number; fontScale: number; highlight: any }) => {
-      lastView.current = { page: state.page, fontScale: state.fontScale };
+    (state: { page: number; fontScale: number; highlight: any; front?: number | null }) => {
+      lastView.current = { page: state.page, fontScale: state.fontScale, front: state.front ?? null };
       announceView(state);
     },
     [announceView]
@@ -1037,6 +1060,30 @@ export default function VcrRoom() {
     setActiveTab('lesson');
     window.setTimeout(() => lessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
+
+  /* The person who is sharing gets their own workspace back after a refresh:
+     the same book, the same page and the same board, read once from the
+     shared record instead of starting over on a guessed page. */
+  const rehydrated = React.useRef(false);
+  useEffect(() => {
+    if (rehydrated.current || !roomState) return;
+    if (!roomState.presenter_id || roomState.presenter_id !== user?.id) return;
+    rehydrated.current = true;
+    const v = roomState.view_content ?? null;
+    if (v === 'mushaf' || v === 'qaida') { setEmbed(null); setContentMode(v); }
+    else if (v === 'doc' && roomState.view_library_item_id) {
+      setEmbed(null); setDocId(roomState.view_library_item_id); setContentMode('doc');
+    }
+    if (roomState.view_whiteboard) {
+      setWhiteboardOn(true);
+      setBoardMode(roomState.view_whiteboard_mode === 'annotate' ? 'annotate' : 'board');
+    }
+    const page = roomState.view_page ?? null;
+    if (page && page > 0 && (roomState.view_front ?? null) === null) {
+      setJumpRequest({ unit: page, nonce: Date.now() });
+    }
+    if (v) setActiveTab('lesson');
+  }, [roomState, user?.id]);
 
 
 
@@ -1478,7 +1525,7 @@ export default function VcrRoom() {
               canControl={canControl}
               turnSignal={turnSignal}
               isFollower={isFollower}
-              followState={remoteState}
+              followState={followView}
               onViewChange={publishView}
               onUnitChange={(p) => setCurrentPage(p)}
               jumpRequest={jumpRequest}
