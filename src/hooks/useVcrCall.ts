@@ -81,6 +81,8 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   const levelCtxRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
   const levelTimerRef = useRef<number | null>(null);
+  /** Ask for a fresh offer/answer with one peer (set up when the call starts). */
+  const renegotiateRef = useRef<((remoteId: string) => void) | null>(null);
 
   observerRef.current = observer;
 
@@ -517,7 +519,10 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       videoStreamRef.current = null;
       setLocalVideo(null);
       setCameraOn(false);
-      videoSendersRef.current.forEach((s) => { void s.replaceTrack(null).catch(() => {}); });
+      videoSendersRef.current.forEach((s, id) => {
+        void s.replaceTrack(null).catch(() => {});
+        renegotiateRef.current?.(id);
+      });
       send('cam', { camera: false });
       return;
     }
@@ -531,7 +536,9 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       videoTrackRef.current = track;
       setLocalVideo(cam);
       setCameraOn(true);
-      videoSendersRef.current.forEach((s) => { void s.replaceTrack(track).catch(() => {}); });
+      videoSendersRef.current.forEach((s, id) => {
+        void s.replaceTrack(track).then(() => renegotiateRef.current?.(id)).catch(() => {});
+      });
       send('cam', { camera: true });
     } catch {
       setError('Camera access was blocked. Allow the camera in your browser to turn video on.');
