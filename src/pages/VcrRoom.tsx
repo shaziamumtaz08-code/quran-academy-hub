@@ -1061,6 +1061,30 @@ export default function VcrRoom() {
     window.setTimeout(() => lessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
 
+  /* The person who is sharing gets their own workspace back after a refresh:
+     the same book, the same page and the same board, read once from the
+     shared record instead of starting over on a guessed page. */
+  const rehydrated = React.useRef(false);
+  useEffect(() => {
+    if (rehydrated.current || !roomState) return;
+    if (!roomState.presenter_id || roomState.presenter_id !== user?.id) return;
+    rehydrated.current = true;
+    const v = roomState.view_content ?? null;
+    if (v === 'mushaf' || v === 'qaida') { setEmbed(null); setContentMode(v); }
+    else if (v === 'doc' && roomState.view_library_item_id) {
+      setEmbed(null); setDocId(roomState.view_library_item_id); setContentMode('doc');
+    }
+    if (roomState.view_whiteboard) {
+      setWhiteboardOn(true);
+      setBoardMode(roomState.view_whiteboard_mode === 'annotate' ? 'annotate' : 'board');
+    }
+    const page = roomState.view_page ?? null;
+    if (page && page > 0 && (roomState.view_front ?? null) === null) {
+      setJumpRequest({ unit: page, nonce: Date.now() });
+    }
+    if (v) setActiveTab('lesson');
+  }, [roomState, user?.id]);
+
 
 
 
