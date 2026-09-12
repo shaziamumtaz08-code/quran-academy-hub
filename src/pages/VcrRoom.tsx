@@ -951,7 +951,10 @@ export default function VcrRoom() {
           presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null, page: t.page ?? null } as any,
-
+          /* Same record, same fields the follower reads — no second source. */
+          view_content: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : null) as any,
+          view_library_item_id: t.kind === 'doc' ? (t.docId ?? null) : null,
+          view_page: t.page && t.page > 0 ? t.page : null,
         });
       }
     },
@@ -966,7 +969,12 @@ export default function VcrRoom() {
   const toggleShareScreen = React.useCallback(async () => {
     if (!mayToggleShare) return;
     const takingOver = synced && canControl && !iAmPresenter;
-    if (synced && !takingOver) { await patchRoom({ sync_enabled: false }); return; }
+    if (synced && !takingOver) {
+      /* Stop sharing clears the shared view as well, so nobody is left
+         mirroring a page that is no longer being presented. */
+      await patchRoom({ sync_enabled: false, presenter_id: null, presenter_name: null, presenter_role: null });
+      return;
+    }
     await patchRoom({
       sync_enabled: true,
       presenter_id: user?.id ?? null,
@@ -974,8 +982,12 @@ export default function VcrRoom() {
       presenter_role: canControl ? 'staff' : 'student',
       app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
       payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
+      view_content: (contentMode ?? null) as any,
+      view_library_item_id: contentMode === 'doc' ? (docId ?? null) : null,
+      view_page: currentPage > 0 ? currentPage : null,
     });
-  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle, currentPage]);
+
 
 
   /** Teacher takes presentation priority away from the student. */
