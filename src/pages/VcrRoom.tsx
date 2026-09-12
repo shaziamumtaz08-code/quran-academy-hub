@@ -309,6 +309,28 @@ export default function VcrRoom() {
     return m ? Number(m[1]) : null;
   }, [currentItem?.title]);
 
+  /**
+   * Which books belong in this student's syllabus, straight from her subjects:
+   * Qaida for a Qaida subject, the Mushaf for Nazra, Hifz and Tafseer. A
+   * student taking both subjects gets both books; nobody gets a book that is
+   * not part of what she studies.
+   */
+  const myBooks = useMemo<Array<'qaida' | 'mushaf'>>(() => {
+    const all = subjectNames.length ? subjectNames : (subjectName ? [subjectName] : []);
+    const books: Array<'qaida' | 'mushaf'> = [];
+    for (const raw of all) {
+      const s = raw.toLowerCase();
+      if (/qaida|qa'ida|noorani/.test(s) && !books.includes('qaida')) books.push('qaida');
+      if (/nazra|nazira|nazrah|hifz|hifdh|tafseer|tafsir|quran|qur'an/.test(s) && !books.includes('mushaf')) {
+        books.push('mushaf');
+      }
+    }
+    if (books.length) return books;
+    /* No subject recorded yet: fall back to the wording of the syllabus item. */
+    const text = `${currentItem?.level ?? ''} ${currentItem?.title ?? ''}`.toLowerCase();
+    return /qaida|qa'ida|noorani/.test(text) ? ['qaida'] : ['mushaf'];
+  }, [subjectNames, subjectName, currentItem?.level, currentItem?.title]);
+
   /* Which content the reader shows. Seeded from progress / syllabus wording,
      and switchable by staff for the rest of the session. */
   const suggestedContent: 'mushaf' | 'qaida' | 'doc' = useMemo(() => {
