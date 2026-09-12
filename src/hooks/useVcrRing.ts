@@ -81,6 +81,16 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
   const expiry = useRef<number | null>(null);
   const ringingRef = useRef(false);
 
+  /* While I am on the call myself the listener is switched off. Its last
+     "someone is on the call" flag must be dropped, or it reappears the moment
+     the call ends and offers a Join button for a call nobody is on. */
+  useEffect(() => {
+    if (enabled && roomId) return;
+    if (expiry.current) window.clearTimeout(expiry.current);
+    ringingRef.current = false;
+    setRinging(false);
+  }, [enabled, roomId]);
+
   useEffect(() => {
     if (!roomId || !enabled) return;
     let cancelled = false;
@@ -95,12 +105,13 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
       ringingRef.current = true;
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
-      // Auto-clear if the heartbeat stops (teacher closed the tab).
+      // Auto-clear if the heartbeat stops (call ended, tab closed, network lost).
       expiry.current = window.setTimeout(() => {
         ringingRef.current = false;
         setRinging(false);
-      }, 20000);
+      }, 14000);
     };
+
 
     void ensureRealtimeSession().then(() => {
       if (cancelled) return;
