@@ -475,7 +475,6 @@ export default function VcrRoom() {
   const [searchParams] = useSearchParams();
   const resourceId = searchParams.get('resource');
   const submissionIdParam = searchParams.get('submission');
-  const [resource, setResource] = useState<UserResource | null>(null);
   const [savingMarks, setSavingMarks] = useState(false);
   const loadedMarksKey = useRef<string>('');
   const [sharedEditable, setSharedEditable] = useState(false);
@@ -792,7 +791,6 @@ export default function VcrRoom() {
 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
-  const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
 
   const lessonTitle = content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'Lesson';
   /* The room opens on the syllabus, not on a book: nobody arrives to find a
