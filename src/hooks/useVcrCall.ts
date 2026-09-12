@@ -441,7 +441,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       .on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (!mine(payload) || payload?.from === peerId) return;
         const pc = pcsRef.current.get(payload.from);
-        if (!pc || pc.currentRemoteDescription) return;
+        if (!pc || pc.signalingState !== 'have-local-offer') return;
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(payload.from, pc);
       })
