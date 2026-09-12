@@ -257,10 +257,15 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         if (e.track.kind === 'video') {
           const stream = e.streams[0] ?? new MediaStream([e.track]);
           remoteVideoRef.current.set(remoteId, stream);
+          /* A pre-reserved video slot delivers a muted, empty track before the
+             other person ever switches their camera on — showing it would put a
+             permanent black box on screen. Only publish streams actually sending. */
+          const isLive = (s: MediaStream) =>
+            s.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted);
           const publish = () =>
             setRemoteVideos(
               Array.from(remoteVideoRef.current.entries())
-                .filter(([id]) => id !== peerId)
+                .filter(([id, s]) => id !== peerId && isLive(s))
                 .map(([id, s]) => ({ id, name: peersRef.current.get(id)?.name ?? 'Participant', stream: s }))
             );
           publish();
@@ -272,6 +277,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
           };
           return;
         }
+
         let el = audioElsRef.current.get(remoteId);
         if (!el) {
           el = document.createElement('audio');
