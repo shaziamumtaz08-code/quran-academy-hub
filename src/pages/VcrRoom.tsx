@@ -27,7 +27,8 @@ import { useDocAdapter, type DocSource } from '@/components/vcr/adapters/useDocA
 import { VcrBookmarkBar } from '@/components/vcr/VcrBookmarkBar';
 import { useVcrBookmarks } from '@/hooks/useVcrBookmarks';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
-import { useVcrRingListener, useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrCallPresence } from '@/hooks/useVcrCallPresence';
 
 import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
@@ -367,6 +368,11 @@ export default function VcrRoom() {
   const [pointerStyle, setPointerStyle] = useState<'laser' | 'finger'>('laser');
   const [whiteboardOn, setWhiteboardOn] = useState(false);
   const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
+  /* Declared here so "is anything open?" can be answered before the reader is
+     wired up — the shared record must never announce a guessed book. */
+  const [resource, setResource] = useState<UserResource | null>(null);
+  const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
+
 
   /* Library is the single source of syllabus material: books, worksheets,
      PDFs and images that were marked for the syllabus folders. */
@@ -404,11 +410,18 @@ export default function VcrRoom() {
     })();
   }, [canControl]);
 
-  /* Students mirror whichever reader the teacher is driving. */
+  /* One shared record decides what is on screen while someone is sharing.
+     The live broadcast is only a fast hint; the row is the truth, so a refresh
+     or a reconnect never leaves the two screens on different material. */
   const content = isFollower
-    ? (remoteState?.content ?? contentMode ?? suggestedContent)
+    ? (roomState?.view_content ?? remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
-  const activeDocId = isFollower ? (remoteState?.libraryItemId ?? null) : docId;
+  const activeDocId = isFollower
+    ? (roomState?.view_library_item_id ?? remoteState?.libraryItemId ?? null)
+    : docId;
+  /* Nothing has been opened yet — never announce a guessed book. */
+  const nothingOpen = !contentMode && !resource && !embed;
+
   /* A non-Qaida / non-Quran subject opens its own book: the first syllabus
      file filed under that subject, else the first syllabus file we have. */
   useEffect(() => {
@@ -463,7 +476,6 @@ export default function VcrRoom() {
   const [searchParams] = useSearchParams();
   const resourceId = searchParams.get('resource');
   const submissionIdParam = searchParams.get('submission');
-  const [resource, setResource] = useState<UserResource | null>(null);
   const [savingMarks, setSavingMarks] = useState(false);
   const loadedMarksKey = useRef<string>('');
   const [sharedEditable, setSharedEditable] = useState(false);
@@ -534,8 +546,13 @@ export default function VcrRoom() {
   }, [effectiveResourceId]);
 
   /* Followers show the board whenever the teacher has it open. */
-  const whiteboardVisible = isFollower ? !!remoteState?.whiteboard : whiteboardOn;
-  const whiteboardMode = isFollower ? (remoteState?.whiteboardMode ?? 'board') : boardMode;
+  const whiteboardVisible = isFollower
+    ? (roomState?.view_whiteboard ?? remoteState?.whiteboard ?? false)
+    : whiteboardOn;
+  const whiteboardMode = isFollower
+    ? (roomState?.view_whiteboard_mode ?? remoteState?.whiteboardMode ?? 'board')
+    : boardMode;
+
 
   /* Every working area keeps its own marks: each Mushaf / Qaida / document
      page has its own layer, and the whiteboard is a separate canvas that never
@@ -661,34 +678,58 @@ export default function VcrRoom() {
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
   const lastView = useRef({ page: 1, fontScale: 1 });
+  /**
+   * The one write path for "what is on screen".
+   *
+   * The shared record is the truth (it survives a refresh and a late join);
+   * the broadcast is only there to make the other screen move instantly.
+   * Nothing is announced while nothing is open, and nothing is announced by
+   * someone who is not the one sharing.
+   */
+  const announceView = React.useCallback(
+    (state: { page: number; fontScale: number; highlight: any }) => {
+      if (!isDriving || nothingOpen) return;
+      publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      patchView({
+        view_content: content,
+        view_library_item_id: content === 'doc' ? docId : null,
+        view_page: state.page,
+        view_font_scale: state.fontScale,
+        view_whiteboard: whiteboardOn,
+        view_whiteboard_mode: boardMode,
+      });
+    },
+    [isDriving, nothingOpen, publish, patchView, content, docId, whiteboardOn, boardMode],
+  );
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView(state);
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView({ ...lastView.current, highlight: wordId ? { wordId } : null });
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
   );
 
   /* Announce whiteboard open/close immediately, not just on the next page turn. */
   useEffect(() => {
-    if (!canControl) return;
-    publish({ ...lastView.current, highlight: null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
-  }, [whiteboardOn, boardMode, canControl, content, docId, publish]);
+    announceView({ ...lastView.current, highlight: null });
+  }, [whiteboardOn, boardMode, announceView]);
+
 
 
 
   /* Teacher pointing at a Mushaf line — mirrored to the student's screen. */
   const publishLine = React.useCallback(
     (lineId: string | null) => {
-      publish({ ...lastView.current, highlight: lineId ? { lineId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView({ ...lastView.current, highlight: lineId ? { lineId } : null });
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
+
   );
 
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz, canControl, onPointLine: publishLine });
@@ -771,7 +812,14 @@ export default function VcrRoom() {
   const notifyRooms = canControl ? [] : teacherRooms;
 
   /* Someone calling or ringing while the call bar is closed must still be noticed. */
-  const { ringing: roomRinging, callerName: roomCaller } = useVcrRingListener(studentId, !callOpen);
+  /* The shared record says who is on the call; nothing is inferred locally. */
+  const { others: roomOnCall, someoneElseOnCall: roomRinging } = useVcrCallPresence(
+    studentId || null,
+    user?.id ?? null,
+    false,
+  );
+  const roomCaller = roomOnCall[0]?.name ?? 'Someone';
+
   const { knockerName: roomKnocker, dismiss: dismissRoomKnock } = useVcrKnockListener(studentId, !callOpen);
   /* A live call in this room opens the call bar by itself — nobody has to hunt for it. */
   useEffect(() => {
@@ -780,7 +828,6 @@ export default function VcrRoom() {
 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
-  const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
 
   const lessonTitle = content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'Lesson';
   /* The room opens on the syllabus, not on a book: nobody arrives to find a
@@ -912,7 +959,10 @@ export default function VcrRoom() {
           presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null, page: t.page ?? null } as any,
-
+          /* Same record, same fields the follower reads — no second source. */
+          view_content: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : null) as any,
+          view_library_item_id: t.kind === 'doc' ? (t.docId ?? null) : null,
+          view_page: t.page && t.page > 0 ? t.page : null,
         });
       }
     },
@@ -927,7 +977,12 @@ export default function VcrRoom() {
   const toggleShareScreen = React.useCallback(async () => {
     if (!mayToggleShare) return;
     const takingOver = synced && canControl && !iAmPresenter;
-    if (synced && !takingOver) { await patchRoom({ sync_enabled: false }); return; }
+    if (synced && !takingOver) {
+      /* Stop sharing clears the shared view as well, so nobody is left
+         mirroring a page that is no longer being presented. */
+      await patchRoom({ sync_enabled: false, presenter_id: null, presenter_name: null, presenter_role: null });
+      return;
+    }
     await patchRoom({
       sync_enabled: true,
       presenter_id: user?.id ?? null,
@@ -935,8 +990,12 @@ export default function VcrRoom() {
       presenter_role: canControl ? 'staff' : 'student',
       app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
       payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
+      view_content: (contentMode ?? null) as any,
+      view_library_item_id: contentMode === 'doc' ? (docId ?? null) : null,
+      view_page: currentPage > 0 ? currentPage : null,
     });
-  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle, currentPage]);
+
 
 
   /** Teacher takes presentation priority away from the student. */
@@ -965,13 +1024,20 @@ export default function VcrRoom() {
     }
     else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
 
-    const stamp = JSON.stringify([roomState.app, p.docId ?? null, p.resourceId ?? null, p.url ?? null, (p as any).page ?? null]);
+    /* The page position lives on the same shared record, so a follower who
+       joins late or refreshes lands exactly where the sharer is. */
+    const sharedPage = roomState.view_page ?? (p as any).page ?? null;
+    const stamp = JSON.stringify([
+      roomState.app, roomState.view_content ?? null, roomState.view_library_item_id ?? null,
+      p.docId ?? null, p.resourceId ?? null, p.url ?? null, sharedPage,
+    ]);
     if (stamp === lastShared.current) return;
     lastShared.current = stamp;
-    if ((p as any).page && (p as any).page > 0) setJumpRequest({ unit: (p as any).page, nonce: Date.now() });
+    if (sharedPage && sharedPage > 0) setJumpRequest({ unit: sharedPage, nonce: Date.now() });
     setActiveTab('lesson');
     window.setTimeout(() => lessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
+
 
 
 

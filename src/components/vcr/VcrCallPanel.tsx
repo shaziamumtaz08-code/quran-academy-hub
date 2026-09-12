@@ -2,7 +2,8 @@ import React from 'react';
 import { Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, AlertTriangle, BellRing, X, Eye, Video, VideoOff } from 'lucide-react';
 import { useVcrCall, type CallStatus } from '@/hooks/useVcrCall';
 import { useVcrCallLog } from '@/hooks/useVcrCallLog';
-import { useVcrRingHost, useVcrRingListener, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrRingHost, useVcrKnockSender, useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrCallPresence } from '@/hooks/useVcrCallPresence';
 import { VcrCallRecorder } from '@/components/vcr/VcrCallRecorder';
 import { VcrVideoTiles } from '@/components/vcr/VcrVideoTiles';
 import { cn } from '@/lib/utils';
@@ -76,7 +77,22 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
 
   /* Announce / observe the call — either side may be the one on the line. */
   useVcrRingHost(roomId, live && !observer, callerName, notifyRooms);
-  const { ringing } = useVcrRingListener(roomId, !live);
+  /**
+   * Who is actually on the call is read from the room's shared record, not from
+   * a local flag fed by broadcasts: each person writes only their own entry and
+   * clears it when they hang up, so one side ending a call can never leave the
+   * other side showing a stale "is on the call" badge.
+   */
+  const { others, someoneElseOnCall } = useVcrCallPresence(
+    studentId ?? roomId,
+    peerId,
+    live && !observer,
+    displayName,
+    observer ? `${role} (observer)` : role,
+  );
+  const ringing = someoneElseOnCall;
+  const onCallName = others[0]?.name ?? (isCaller ? 'The student' : 'Your teacher');
+
 
   /* Bell: either side can ring the other when no call is up. */
   const { knock, sentAt } = useVcrKnockSender(!live ? roomId : null);
@@ -142,7 +158,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         {ringing && !live && (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
             <span className="h-2 w-2 animate-ping rounded-full bg-emerald-300" aria-hidden />
-            {isCaller ? 'The student is on the call' : 'Your teacher is on the call'}
+            {onCallName} is on the call
           </span>
         )}
 
