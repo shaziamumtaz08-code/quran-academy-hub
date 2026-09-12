@@ -375,10 +375,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     /** Deterministic, role-free: the higher peer id creates the offer. */
     const amOfferer = (other: string) => peerId > other;
 
-    const makeOffer = async (remoteId: string) => {
+    const makeOffer = async (remoteId: string, force = false) => {
       if (!amOfferer(remoteId)) return;
       const pc = ensurePc(remoteId);
-      if (pc.signalingState !== 'stable' || pc.currentRemoteDescription) return;
+      if (pc.signalingState !== 'stable') return;
+      if (!force && pc.currentRemoteDescription) return;
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
