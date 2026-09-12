@@ -93,9 +93,18 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
     if (!live) setDuration(0);
   }, [status, live]);
 
-  /* Video is tucked away by default so the page stays about the lesson. */
+  /* Video stays tucked away until there is something to see — then it opens by
+     itself, so nobody has to hunt for the other person's camera. */
   const [showVideo, setShowVideo] = React.useState(false);
-  const hasVideo = !!localVideo || remoteVideos.length > 0;
+  const videoCount = (localVideo ? 1 : 0) + remoteVideos.length;
+  const hasVideo = videoCount > 0;
+  React.useEffect(() => {
+    if (hasVideo) setShowVideo(true);
+  }, [hasVideo]);
+  React.useEffect(() => {
+    if (!live) setShowVideo(false);
+  }, [live]);
+
 
   const label =
     status === 'connecting' && !remoteJoined
