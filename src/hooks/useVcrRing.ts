@@ -58,13 +58,20 @@ export function useVcrRingHost(roomId: string, active: boolean, callerName?: str
     return () => {
       cancelled = true;
       window.clearInterval(beat);
+      /* Tell everyone the call is over *before* dropping the socket — removing
+         the channel in the same tick would throw the message away, which used
+         to leave a stale "… is on the call" badge on the other screen. */
       channels.forEach(({ channel }) => {
-        void channel.send({ type: 'broadcast', event: 'ring-end', payload: { room: roomId } });
-        supabase.removeChannel(channel);
+        const drop = () => supabase.removeChannel(channel);
+        void Promise.resolve(channel.send({ type: 'broadcast', event: 'ring-end', payload: { room: roomId } }))
+          .then(drop)
+          .catch(drop);
+        window.setTimeout(drop, 1500);
       });
     };
   }, [roomId, active, callerName, extraKey]);
 }
+
 
 /** Listen for a live call in a room (own personal room, or a class room). */
 export function useVcrRingListener(roomId: string | null | undefined, enabled = true) {
