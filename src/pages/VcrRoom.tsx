@@ -367,6 +367,11 @@ export default function VcrRoom() {
   const [pointerStyle, setPointerStyle] = useState<'laser' | 'finger'>('laser');
   const [whiteboardOn, setWhiteboardOn] = useState(false);
   const [boardMode, setBoardMode] = useState<'annotate' | 'board'>('board');
+  /* Declared here so "is anything open?" can be answered before the reader is
+     wired up — the shared record must never announce a guessed book. */
+  const [resource, setResource] = useState<UserResource | null>(null);
+  const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
+
 
   /* Library is the single source of syllabus material: books, worksheets,
      PDFs and images that were marked for the syllabus folders. */
