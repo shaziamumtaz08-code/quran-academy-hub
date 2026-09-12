@@ -16,6 +16,8 @@ export interface VcrViewState {
   page: number;
   fontScale: number;
   highlight: { lineId?: string | null; wordId?: string | null } | null;
+  /** Cover / index page showing instead of a numbered page, or null. */
+  front?: number | null;
   /** Which reader the teacher is on, so students mirror Mushaf vs Qaida vs a file. */
   content?: 'mushaf' | 'qaida' | 'doc';
   /** Library item open in the file reader, so students see the same document. */
