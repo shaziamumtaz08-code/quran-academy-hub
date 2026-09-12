@@ -58,13 +58,20 @@ export function useVcrRingHost(roomId: string, active: boolean, callerName?: str
     return () => {
       cancelled = true;
       window.clearInterval(beat);
+      /* Tell everyone the call is over *before* dropping the socket — removing
+         the channel in the same tick would throw the message away, which used
+         to leave a stale "… is on the call" badge on the other screen. */
       channels.forEach(({ channel }) => {
-        void channel.send({ type: 'broadcast', event: 'ring-end', payload: { room: roomId } });
-        supabase.removeChannel(channel);
+        const drop = () => supabase.removeChannel(channel);
+        void Promise.resolve(channel.send({ type: 'broadcast', event: 'ring-end', payload: { room: roomId } }))
+          .then(drop)
+          .catch(drop);
+        window.setTimeout(drop, 1500);
       });
     };
   }, [roomId, active, callerName, extraKey]);
 }
+
 
 /** Listen for a live call in a room (own personal room, or a class room). */
 export function useVcrRingListener(roomId: string | null | undefined, enabled = true) {
@@ -73,6 +80,16 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
   const [sourceRoom, setSourceRoom] = useState<string | null>(null);
   const expiry = useRef<number | null>(null);
   const ringingRef = useRef(false);
+
+  /* While I am on the call myself the listener is switched off. Its last
+     "someone is on the call" flag must be dropped, or it reappears the moment
+     the call ends and offers a Join button for a call nobody is on. */
+  useEffect(() => {
+    if (enabled && roomId) return;
+    if (expiry.current) window.clearTimeout(expiry.current);
+    ringingRef.current = false;
+    setRinging(false);
+  }, [enabled, roomId]);
 
   useEffect(() => {
     if (!roomId || !enabled) return;
@@ -88,12 +105,13 @@ export function useVcrRingListener(roomId: string | null | undefined, enabled = 
       ringingRef.current = true;
       setRinging(true);
       if (expiry.current) window.clearTimeout(expiry.current);
-      // Auto-clear if the heartbeat stops (teacher closed the tab).
+      // Auto-clear if the heartbeat stops (call ended, tab closed, network lost).
       expiry.current = window.setTimeout(() => {
         ringingRef.current = false;
         setRinging(false);
-      }, 20000);
+      }, 14000);
     };
+
 
     void ensureRealtimeSession().then(() => {
       if (cancelled) return;

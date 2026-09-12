@@ -472,11 +472,14 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         dropPeer(payload.from);
         if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
+      /* An explicit hangup is intentional (unlike a reload): the line closes on
+         both sides at once, so nobody is left staring at a call that is over. */
       .on('broadcast', { event: 'hangup' }, ({ payload }) => {
         if (payload?.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
+        if (peersRef.current.size === 0 && activeRef.current) teardown('ended');
       })
+
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
           setError(null);
@@ -494,8 +497,12 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer, attachLevel]);
 
   const end = useCallback(() => {
+    /* Announce the hangup first: the socket is dropped a moment later inside
+       teardown, and the other side needs this message to close its own line. */
+    if (activeRef.current) send('hangup', {});
     teardown('ended');
-  }, [teardown]);
+  }, [teardown, send]);
+
 
   const toggleMute = useCallback(() => {
     const track = localStreamRef.current?.getAudioTracks()[0];

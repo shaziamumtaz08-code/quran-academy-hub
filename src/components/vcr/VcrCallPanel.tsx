@@ -93,9 +93,18 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
     if (!live) setDuration(0);
   }, [status, live]);
 
-  /* Video is tucked away by default so the page stays about the lesson. */
+  /* Video stays tucked away until there is something to see — then it opens by
+     itself, so nobody has to hunt for the other person's camera. */
   const [showVideo, setShowVideo] = React.useState(false);
-  const hasVideo = !!localVideo || remoteVideos.length > 0;
+  const videoCount = (localVideo ? 1 : 0) + remoteVideos.length;
+  const hasVideo = videoCount > 0;
+  React.useEffect(() => {
+    if (hasVideo) setShowVideo(true);
+  }, [hasVideo]);
+  React.useEffect(() => {
+    if (!live) setShowVideo(false);
+  }, [live]);
+
 
   const label =
     status === 'connecting' && !remoteJoined
@@ -190,16 +199,15 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
                 {cameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                 {cameraOn ? 'Camera on' : 'Camera'}
               </button>
-              {hasVideo && (
-                <button
-                  type="button"
-                  onClick={() => setShowVideo((v) => !v)}
-                  aria-pressed={showVideo}
-                  className={cn(btn, 'bg-white/15 text-white hover:bg-white/25')}
-                >
-                  {showVideo ? 'Hide video' : `Show video (${remoteVideos.length + (localVideo ? 1 : 0)})`}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowVideo((v) => !v)}
+                aria-pressed={showVideo}
+                className={cn(btn, 'bg-white/15 text-white hover:bg-white/25')}
+              >
+                {showVideo ? 'Hide video' : `Show video${videoCount ? ` (${videoCount})` : ''}`}
+              </button>
+
               <button
                 type="button"
                 onClick={end}
@@ -212,11 +220,18 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         </div>
       </div>
 
-      {live && hasVideo && showVideo && (
-        <div className="w-full max-w-2xl">
-          <VcrVideoTiles localStream={localVideo} localName={displayName} remotes={remoteVideos} />
+      {live && showVideo && (
+        <div className="w-full max-w-2xl rounded-xl bg-black/20 p-1.5">
+          <VcrVideoTiles
+            localStream={localVideo}
+            localName={displayName}
+            remotes={remoteVideos}
+            /* Everyone sees their own picture, exactly like the other side does. */
+            alwaysShowSelf
+          />
         </div>
       )}
+
 
       {/* Opt-in call recording — requires the student's explicit consent */}
       <VcrCallRecorder

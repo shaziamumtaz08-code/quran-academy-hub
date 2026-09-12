@@ -908,7 +908,8 @@ export default function VcrRoom() {
           presenter_name: (profile as any)?.full_name ?? null,
           presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
-          payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
+          payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null, page: t.page ?? null } as any,
+
         });
       }
     },
@@ -944,7 +945,12 @@ export default function VcrRoom() {
     });
   }, [patchRoom, user?.id, profile]);
 
-  /* Followers mirror whatever is on the shared workspace while sharing is on. */
+  /* Followers mirror whatever is on the shared workspace while sharing is on.
+     Anything arriving from the other side also brings the lesson to the front
+     and scrolls it into view, so shared material is never sitting unseen
+     behind the syllabus list or below the fold. */
+  const lessonRef = React.useRef<HTMLElement | null>(null);
+  const lastShared = React.useRef<string>('');
   useEffect(() => {
     if (!synced || !roomState) return;
     if (roomState.presenter_id && roomState.presenter_id === user?.id) return;
@@ -955,7 +961,15 @@ export default function VcrRoom() {
       if (p.resourceId !== resourceId) navigate(`/vcr/${studentId}?resource=${p.resourceId}`, { replace: true });
     }
     else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
+
+    const stamp = JSON.stringify([roomState.app, p.docId ?? null, p.resourceId ?? null, p.url ?? null, (p as any).page ?? null]);
+    if (stamp === lastShared.current) return;
+    lastShared.current = stamp;
+    if ((p as any).page && (p as any).page > 0) setJumpRequest({ unit: (p as any).page, nonce: Date.now() });
+    setActiveTab('lesson');
+    window.setTimeout(() => lessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
+
 
 
 
@@ -1169,7 +1183,7 @@ export default function VcrRoom() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The workspace — the material is the page */}
-        <main className="relative min-w-0 flex-1">
+        <main ref={lessonRef} className="relative min-w-0 flex-1 scroll-mt-24">
           
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
