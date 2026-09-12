@@ -672,25 +672,48 @@ export default function VcrRoom() {
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
   const lastView = useRef({ page: 1, fontScale: 1 });
+  /**
+   * The one write path for "what is on screen".
+   *
+   * The shared record is the truth (it survives a refresh and a late join);
+   * the broadcast is only there to make the other screen move instantly.
+   * Nothing is announced while nothing is open, and nothing is announced by
+   * someone who is not the one sharing.
+   */
+  const announceView = React.useCallback(
+    (state: { page: number; fontScale: number; highlight: any }) => {
+      if (!isDriving || nothingOpen) return;
+      publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      patchView({
+        view_content: content,
+        view_library_item_id: content === 'doc' ? docId : null,
+        view_page: state.page,
+        view_font_scale: state.fontScale,
+        view_whiteboard: whiteboardOn,
+        view_whiteboard_mode: boardMode,
+      });
+    },
+    [isDriving, nothingOpen, publish, patchView, content, docId, whiteboardOn, boardMode],
+  );
   const publishView = React.useCallback(
     (state: { page: number; fontScale: number; highlight: any }) => {
       lastView.current = { page: state.page, fontScale: state.fontScale };
-      publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView(state);
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
   );
   const publishWord = React.useCallback(
     (wordId: string | null) => {
-      publish({ ...lastView.current, highlight: wordId ? { wordId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView({ ...lastView.current, highlight: wordId ? { wordId } : null });
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
   );
 
   /* Announce whiteboard open/close immediately, not just on the next page turn. */
   useEffect(() => {
-    if (!canControl) return;
-    publish({ ...lastView.current, highlight: null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
-  }, [whiteboardOn, boardMode, canControl, content, docId, publish]);
+    announceView({ ...lastView.current, highlight: null });
+  }, [whiteboardOn, boardMode, announceView]);
+
 
 
 
