@@ -873,12 +873,13 @@ export default function VcrRoom() {
 
 
   /**
-   * Open something in the classroom. It goes on my own screen; if I am the
-   * teacher and Share screen is on, the class sees the same thing.
+   * Open something in the classroom. It goes on my own screen; if I am the one
+   * sharing, everyone else sees the same thing. A teacher opening something
+   * always takes the shared screen back from the student.
    */
   const openTarget = React.useCallback(
     (t: VcrOpenTarget) => {
-      const share = canControl && synced;
+      const share = synced && (canControl || iAmPresenter);
       if (t.kind === 'link') {
         if (!t.url) return;
         setEmbed({ title: t.title, url: t.url, synced: share });
@@ -905,31 +906,34 @@ export default function VcrRoom() {
           sync_enabled: true,
           presenter_id: user?.id ?? null,
           presenter_name: (profile as any)?.full_name ?? null,
-          presenter_role: 'staff',
+          presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
         });
       }
     },
-    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced],
+    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced, iAmPresenter],
   );
 
   /**
-   * Share screen on/off. While it is on, whatever the teacher opens is shown
-   * to the class; turning it off puts everyone back on their own screen.
+   * Share on/off. While it is on, whatever the sharer opens is shown to the
+   * other person. A teacher pressing it while the student is sharing simply
+   * takes the shared screen over — teacher sharing always wins.
    */
   const toggleShareScreen = React.useCallback(async () => {
-    if (!canControl) return;
-    if (synced) { await patchRoom({ sync_enabled: false }); return; }
+    if (!mayToggleShare) return;
+    const takingOver = synced && canControl && !iAmPresenter;
+    if (synced && !takingOver) { await patchRoom({ sync_enabled: false }); return; }
     await patchRoom({
       sync_enabled: true,
       presenter_id: user?.id ?? null,
       presenter_name: (profile as any)?.full_name ?? null,
-      presenter_role: 'staff',
+      presenter_role: canControl ? 'staff' : 'student',
       app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
       payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
     });
-  }, [canControl, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+
 
   /** Teacher takes presentation priority away from the student. */
   const takeOver = React.useCallback(async () => {
