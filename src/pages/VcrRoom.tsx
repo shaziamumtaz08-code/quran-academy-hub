@@ -113,6 +113,8 @@ export default function VcrRoom() {
   const [student, setStudent] = useState<{ id: string; full_name: string } | null>(null);
   /** The student's enrolled subject — decides which reader opens by default. */
   const [subjectName, setSubjectName] = useState<string | null>(null);
+  /** Every subject the student is taking — decides which books she gets. */
+  const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [items, setItems] = useState<SyllabusItem[]>([]);
   const [progress, setProgress] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
