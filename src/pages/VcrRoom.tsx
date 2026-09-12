@@ -770,10 +770,13 @@ export default function VcrRoom() {
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
 
   const lessonTitle = content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'Lesson';
+  /* The room opens on the syllabus, not on a book: nobody arrives to find a
+     page already open on their screen. */
   const [tabs, setTabs] = useState<VcrTab[]>([
     { id: 'lesson', kind: 'lesson', title: 'Lesson', icon: BookMarked, pinned: true },
+    { id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked },
   ]);
-  const [activeTab, setActiveTab] = useState('lesson');
+  const [activeTab, setActiveTab] = useState('syllabus');
 
   /* The lesson tab always names whatever the reader is showing. */
   useEffect(() => {
