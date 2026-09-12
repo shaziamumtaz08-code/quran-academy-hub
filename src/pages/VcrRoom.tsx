@@ -1351,6 +1351,21 @@ export default function VcrRoom() {
               synced={!!embed.synced}
               onClose={() => setEmbed(null)}
             />
+          ) : !contentMode && !resource ? (
+            <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-vcr-chrome/10 bg-white/[0.03] p-8 text-center">
+              <BookMarked className="h-7 w-7 text-vcr-chrome/40" />
+              <p className="mt-3 text-sm font-medium text-vcr-chrome/85">Nothing is open yet</p>
+              <p className="mt-1 max-w-sm text-xs text-vcr-chrome/55">
+                Choose a book or a file from the syllabus to start.
+              </p>
+              <button
+                type="button"
+                onClick={() => { openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked }); }}
+                className="mt-4 inline-flex h-8 items-center rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-4 text-xs font-medium text-vcr-gold"
+              >
+                Open the syllabus
+              </button>
+            </div>
           ) : (
             <VcrReader
               key={`${content}:${activeDocId ?? 'none'}`}
