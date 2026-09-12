@@ -94,7 +94,7 @@ export default function VcrRoom() {
    * student mirrors the teacher depends on it: sharing OFF (the default) means
    * she reads and reviews her own syllabus freely, with or without a teacher.
    */
-  const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
+  const { state: roomState, patch: patchRoom, patchThrottled: patchView } = useVcrRoomState(studentId || null, user?.id ?? null);
   const synced = !!roomState?.sync_enabled;
 
   /**
@@ -109,12 +109,15 @@ export default function VcrRoom() {
 
   /** Mirror whoever is sharing, unless that is me. */
   const isFollower = synced && !iAmPresenter && (isRoomStudent || (canControl && studentSharing));
+  /** Only the person actually sharing drives the other screen. */
+  const isDriving = synced && iAmPresenter;
 
   const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer } = useVcrViewSync({
     roomId: studentId,
-    isPresenter: iAmPresenter || (!synced && canControl),
+    isPresenter: isDriving,
     enabled: !!studentId,
   });
+
 
 
 
