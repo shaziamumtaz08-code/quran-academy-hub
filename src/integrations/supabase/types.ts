@@ -13050,6 +13050,7 @@ export type Database = {
       vcr_room_state: {
         Row: {
           app: string | null
+          call_participants: Json
           created_at: string
           payload: Json
           presenter_id: string | null
@@ -13059,9 +13060,17 @@ export type Database = {
           sync_enabled: boolean
           updated_at: string
           updated_by: string | null
+          view_content: string | null
+          view_font_scale: number | null
+          view_front: number | null
+          view_library_item_id: string | null
+          view_page: number | null
+          view_whiteboard: boolean | null
+          view_whiteboard_mode: string | null
         }
         Insert: {
           app?: string | null
+          call_participants?: Json
           created_at?: string
           payload?: Json
           presenter_id?: string | null
@@ -13071,9 +13080,17 @@ export type Database = {
           sync_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
+          view_content?: string | null
+          view_font_scale?: number | null
+          view_front?: number | null
+          view_library_item_id?: string | null
+          view_page?: number | null
+          view_whiteboard?: boolean | null
+          view_whiteboard_mode?: string | null
         }
         Update: {
           app?: string | null
+          call_participants?: Json
           created_at?: string
           payload?: Json
           presenter_id?: string | null
@@ -13083,6 +13100,13 @@ export type Database = {
           sync_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
+          view_content?: string | null
+          view_font_scale?: number | null
+          view_front?: number | null
+          view_library_item_id?: string | null
+          view_page?: number | null
+          view_whiteboard?: boolean | null
+          view_whiteboard_mode?: string | null
         }
         Relationships: []
       }
@@ -15044,6 +15068,15 @@ export type Database = {
       user_resource_share_level: {
         Args: { _resource_id: string; _user_id: string }
         Returns: string
+      }
+      vcr_set_call_presence: {
+        Args: {
+          p_active: boolean
+          p_name?: string
+          p_role?: string
+          p_student_id: string
+        }
+        Returns: Json
       }
       vcr_stamp_observer_joined: { Args: { _room_id: string }; Returns: string }
       zoom_monitor_teacher_for_license: {
