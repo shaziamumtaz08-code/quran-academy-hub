@@ -822,9 +822,13 @@ export default function VcrRoom() {
 
 
 
-  /** Put a target on my own screen, or on the shared classroom workspace. */
+  /**
+   * Open something in the classroom. It goes on my own screen; if I am the
+   * teacher and Share screen is on, the class sees the same thing.
+   */
   const openTarget = React.useCallback(
-    (t: VcrOpenTarget, share: boolean) => {
+    (t: VcrOpenTarget) => {
+      const share = canControl && synced;
       if (t.kind === 'link') {
         if (!t.url) return;
         setEmbed({ title: t.title, url: t.url, synced: share });
