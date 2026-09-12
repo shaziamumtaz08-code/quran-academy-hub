@@ -199,16 +199,15 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
                 {cameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                 {cameraOn ? 'Camera on' : 'Camera'}
               </button>
-              {hasVideo && (
-                <button
-                  type="button"
-                  onClick={() => setShowVideo((v) => !v)}
-                  aria-pressed={showVideo}
-                  className={cn(btn, 'bg-white/15 text-white hover:bg-white/25')}
-                >
-                  {showVideo ? 'Hide video' : `Show video (${remoteVideos.length + (localVideo ? 1 : 0)})`}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowVideo((v) => !v)}
+                aria-pressed={showVideo}
+                className={cn(btn, 'bg-white/15 text-white hover:bg-white/25')}
+              >
+                {showVideo ? 'Hide video' : `Show video${videoCount ? ` (${videoCount})` : ''}`}
+              </button>
+
               <button
                 type="button"
                 onClick={end}
