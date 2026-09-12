@@ -935,39 +935,32 @@ export default function VcrRoom() {
           )}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:ms-auto sm:w-auto sm:flex-nowrap">
-            {/* One clear control: whose workspace am I looking at? */}
-            <div
-              role="tablist"
-              aria-label="Viewing mode"
-              className="flex items-center gap-0.5 rounded-full border border-vcr-chrome/15 bg-white/5 p-0.5"
-            >
+            {/* Screen sharing: off by default, exactly like a meeting app. */}
+            {canControl ? (
               <button
                 type="button"
-                role="tab"
-                aria-selected={!synced}
-                onClick={() => { if (synced) void patchRoom({ sync_enabled: false }); }}
-                title="Only you can see what you open here"
+                onClick={() => void toggleShareScreen()}
+                aria-pressed={synced}
+                title={synced
+                  ? 'Stop sharing — what you open next stays on your screen only'
+                  : 'Share your screen: whatever you open is shown to the class'}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
-                  !synced ? 'bg-vcr-chrome/90 font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs',
+                  synced
+                    ? 'border-vcr-gold/60 bg-vcr-gold text-[#0C1B1E] font-medium'
+                    : 'border-vcr-chrome/20 text-vcr-chrome/75 hover:text-vcr-chrome',
                 )}
               >
-                <Lock className="h-3.5 w-3.5" /> My Copy
+                {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                {synced ? 'Stop sharing' : 'Share screen'}
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={synced}
-                onClick={() => { if (!synced) void patchRoom({ sync_enabled: true }); }}
-                title="The other person in this class sees and works on the same workspace"
-                className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
-                  synced ? 'bg-vcr-gold font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
-                )}
-              >
-                <Share2 className="h-3.5 w-3.5" /> Synced
-              </button>
-            </div>
+            ) : (
+              synced && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
+                  <Share2 className="h-3.5 w-3.5" /> Teacher is sharing
+                </span>
+              )
+            )}
             {user?.id && (
               <button
                 type="button"
