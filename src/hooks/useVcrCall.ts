@@ -391,7 +391,18 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
     const mine = (payload: any) => !payload?.to || payload.to === peerId;
 
+    /* Turning a camera on needs a fresh offer/answer. Only one side may make
+       offers, so the other side simply asks for one. */
+    renegotiateRef.current = (remoteId: string) => {
+      if (amOfferer(remoteId)) void makeOffer(remoteId, true);
+      else send('renegotiate', { to: remoteId });
+    };
+
     channel
+      .on('broadcast', { event: 'renegotiate' }, async ({ payload }) => {
+        if (!mine(payload) || payload?.from === peerId) return;
+        await makeOffer(payload.from, true);
+      })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         send('present', me());
