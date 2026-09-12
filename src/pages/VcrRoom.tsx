@@ -1004,13 +1004,20 @@ export default function VcrRoom() {
     }
     else if (p.url) setEmbed({ title: p.title ?? 'Shared with the class', url: p.url, synced: true });
 
-    const stamp = JSON.stringify([roomState.app, p.docId ?? null, p.resourceId ?? null, p.url ?? null, (p as any).page ?? null]);
+    /* The page position lives on the same shared record, so a follower who
+       joins late or refreshes lands exactly where the sharer is. */
+    const sharedPage = roomState.view_page ?? (p as any).page ?? null;
+    const stamp = JSON.stringify([
+      roomState.app, roomState.view_content ?? null, roomState.view_library_item_id ?? null,
+      p.docId ?? null, p.resourceId ?? null, p.url ?? null, sharedPage,
+    ]);
     if (stamp === lastShared.current) return;
     lastShared.current = stamp;
-    if ((p as any).page && (p as any).page > 0) setJumpRequest({ unit: (p as any).page, nonce: Date.now() });
+    if (sharedPage && sharedPage > 0) setJumpRequest({ unit: sharedPage, nonce: Date.now() });
     setActiveTab('lesson');
     window.setTimeout(() => lessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }, [synced, roomState, user?.id, resourceId, studentId, navigate]);
+
 
 
 
