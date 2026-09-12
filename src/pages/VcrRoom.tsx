@@ -855,13 +855,13 @@ export default function VcrRoom() {
           sync_enabled: true,
           presenter_id: user?.id ?? null,
           presenter_name: (profile as any)?.full_name ?? null,
-          presenter_role: canControl ? 'staff' : 'student',
+          presenter_role: 'staff',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
         });
       }
     },
-    [navigate, studentId, patchRoom, user?.id, profile, canControl],
+    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced],
   );
 
   /** Teacher takes presentation priority away from the student. */
