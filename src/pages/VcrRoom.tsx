@@ -97,15 +97,25 @@ export default function VcrRoom() {
   const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
   const synced = !!roomState?.sync_enabled;
 
-  /** Mirror the teacher's screen only while the shared workspace is on. */
-  const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
+  /**
+   * Anyone in the room can share what they are reading, but the teacher wins:
+   * while she is sharing, the student cannot take the screen from her.
+   */
+  const isRoomStudent = !!user?.id && user.id === studentId;
+  const iAmPresenter = !!roomState?.presenter_id && roomState.presenter_id === user?.id;
+  const teacherSharing = synced && roomState?.presenter_role === 'staff';
+  const studentSharing = synced && roomState?.presenter_role === 'student';
+  const mayToggleShare = canControl || (isRoomStudent && !teacherSharing);
 
+  /** Mirror whoever is sharing, unless that is me. */
+  const isFollower = synced && !iAmPresenter && (isRoomStudent || (canControl && studentSharing));
 
   const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer } = useVcrViewSync({
     roomId: studentId,
-    isPresenter: canControl,
+    isPresenter: iAmPresenter || (!synced && canControl),
     enabled: !!studentId,
   });
+
 
 
 
