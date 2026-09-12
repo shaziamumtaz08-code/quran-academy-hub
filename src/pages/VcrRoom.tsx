@@ -908,7 +908,8 @@ export default function VcrRoom() {
           presenter_name: (profile as any)?.full_name ?? null,
           presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
-          payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
+          payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null, page: t.page ?? null } as any,
+
         });
       }
     },
