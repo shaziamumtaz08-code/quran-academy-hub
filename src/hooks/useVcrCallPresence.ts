@@ -18,8 +18,10 @@ export interface CallPresenceEntry {
 }
 
 /** A heartbeat older than this means the person is gone (tab closed, offline). */
-const TTL_MS = 35_000;
-const BEAT_MS = 10_000;
+/* Generous, because a backgrounded tab has its timers throttled; hanging up
+   clears the entry immediately, so this only covers crashes. */
+const TTL_MS = 90_000;
+const BEAT_MS = 20_000;
 
 export function useVcrCallPresence(
   studentId: string | null | undefined,
@@ -113,5 +115,21 @@ export function useVcrCallPresence(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participants, selfId, Math.floor(Date.now() / 5000)]);
 
-  return { others, someoneElseOnCall: others.length > 0, refresh: read };
+  /** Write my own entry directly — used when hanging up, so the other side
+      never keeps a stale "is on the call" badge waiting for a heartbeat. */
+  const setPresence = useMemo(
+    () => async (active: boolean) => {
+      if (!studentId) return;
+      await (supabase as any).rpc('vcr_set_call_presence', {
+        p_student_id: studentId,
+        p_active: active,
+        p_name: displayName ?? null,
+        p_role: role ?? null,
+      });
+      await read();
+    },
+    [studentId, displayName, role, read],
+  );
+
+  return { others, someoneElseOnCall: others.length > 0, refresh: read, setPresence };
 }

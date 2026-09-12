@@ -83,7 +83,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
    * clears it when they hang up, so one side ending a call can never leave the
    * other side showing a stale "is on the call" badge.
    */
-  const { others, someoneElseOnCall } = useVcrCallPresence(
+  const { others, someoneElseOnCall, setPresence } = useVcrCallPresence(
     studentId ?? roomId,
     peerId,
     live && !observer,
@@ -226,7 +226,7 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
 
               <button
                 type="button"
-                onClick={end}
+                onClick={() => { void setPresence(false); end(); }}
                 className={cn(btn, 'bg-red-500 text-white hover:bg-red-400')}
               >
                 <PhoneOff className="h-4 w-4" /> End
