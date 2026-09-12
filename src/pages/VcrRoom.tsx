@@ -113,6 +113,8 @@ export default function VcrRoom() {
   const [student, setStudent] = useState<{ id: string; full_name: string } | null>(null);
   /** The student's enrolled subject — decides which reader opens by default. */
   const [subjectName, setSubjectName] = useState<string | null>(null);
+  /** Every subject the student is taking — decides which books she gets. */
+  const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [items, setItems] = useState<SyllabusItem[]>([]);
   const [progress, setProgress] = useState<any | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -156,14 +158,27 @@ export default function VcrRoom() {
 
       setStudent((p.data as any) ?? null);
       void (async () => {
-        const { data: asg } = await (supabase as any)
-          .from('student_teacher_assignments')
-          .select('subject_id, subjects(name)')
-          .eq('student_id', studentId)
-          .eq('status', 'active')
-          .limit(1);
-        const nm = (asg as any[])?.[0]?.subjects?.name ?? null;
-        if (!cancelled) setSubjectName(nm);
+        /* Every subject this student is taking — each one decides which book
+           belongs in her syllabus (Qaida, or the Mushaf, or a file). */
+        const [asg, enr] = await Promise.all([
+          (supabase as any)
+            .from('student_teacher_assignments')
+            .select('subjects(name)')
+            .eq('student_id', studentId)
+            .eq('status', 'active'),
+          (supabase as any)
+            .from('enrollments')
+            .select('subjects(name)')
+            .eq('student_id', studentId),
+        ]);
+        const names = [
+          ...(((asg.data as any[]) ?? []).map((r) => r?.subjects?.name)),
+          ...(((enr.data as any[]) ?? []).map((r) => r?.subjects?.name)),
+        ].filter(Boolean) as string[];
+        if (!cancelled) {
+          setSubjectNames(Array.from(new Set(names)));
+          setSubjectName(names[0] ?? null);
+        }
       })();
       const list = ((syl.data as any[]) ?? []) as SyllabusItem[];
       setItems(list);
@@ -293,6 +308,28 @@ export default function VcrRoom() {
     const m = String(currentItem?.title ?? '').match(/juz\s*(\d+)/i);
     return m ? Number(m[1]) : null;
   }, [currentItem?.title]);
+
+  /**
+   * Which books belong in this student's syllabus, straight from her subjects:
+   * Qaida for a Qaida subject, the Mushaf for Nazra, Hifz and Tafseer. A
+   * student taking both subjects gets both books; nobody gets a book that is
+   * not part of what she studies.
+   */
+  const myBooks = useMemo<Array<'qaida' | 'mushaf'>>(() => {
+    const all = subjectNames.length ? subjectNames : (subjectName ? [subjectName] : []);
+    const books: Array<'qaida' | 'mushaf'> = [];
+    for (const raw of all) {
+      const s = raw.toLowerCase();
+      if (/qaida|qa'ida|noorani/.test(s) && !books.includes('qaida')) books.push('qaida');
+      if (/nazra|nazira|nazrah|hifz|hifdh|tafseer|tafsir|quran|qur'an/.test(s) && !books.includes('mushaf')) {
+        books.push('mushaf');
+      }
+    }
+    if (books.length) return books;
+    /* No subject recorded yet: fall back to the wording of the syllabus item. */
+    const text = `${currentItem?.level ?? ''} ${currentItem?.title ?? ''}`.toLowerCase();
+    return /qaida|qa'ida|noorani/.test(text) ? ['qaida'] : ['mushaf'];
+  }, [subjectNames, subjectName, currentItem?.level, currentItem?.title]);
 
   /* Which content the reader shows. Seeded from progress / syllabus wording,
      and switchable by staff for the rest of the session. */
@@ -733,10 +770,13 @@ export default function VcrRoom() {
   const [embed, setEmbed] = useState<{ title: string; url: string; synced?: boolean } | null>(null);
 
   const lessonTitle = content === 'qaida' ? 'Noorani Qaida' : content === 'mushaf' ? 'Mushaf' : activeDoc?.title ?? 'Lesson';
+  /* The room opens on the syllabus, not on a book: nobody arrives to find a
+     page already open on their screen. */
   const [tabs, setTabs] = useState<VcrTab[]>([
     { id: 'lesson', kind: 'lesson', title: 'Lesson', icon: BookMarked, pinned: true },
+    { id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked },
   ]);
-  const [activeTab, setActiveTab] = useState('lesson');
+  const [activeTab, setActiveTab] = useState('syllabus');
 
   /* The lesson tab always names whatever the reader is showing. */
   useEffect(() => {
@@ -822,9 +862,13 @@ export default function VcrRoom() {
 
 
 
-  /** Put a target on my own screen, or on the shared classroom workspace. */
+  /**
+   * Open something in the classroom. It goes on my own screen; if I am the
+   * teacher and Share screen is on, the class sees the same thing.
+   */
   const openTarget = React.useCallback(
-    (t: VcrOpenTarget, share: boolean) => {
+    (t: VcrOpenTarget) => {
+      const share = canControl && synced;
       if (t.kind === 'link') {
         if (!t.url) return;
         setEmbed({ title: t.title, url: t.url, synced: share });
@@ -851,14 +895,31 @@ export default function VcrRoom() {
           sync_enabled: true,
           presenter_id: user?.id ?? null,
           presenter_name: (profile as any)?.full_name ?? null,
-          presenter_role: canControl ? 'staff' : 'student',
+          presenter_role: 'staff',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
         });
       }
     },
-    [navigate, studentId, patchRoom, user?.id, profile, canControl],
+    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced],
   );
+
+  /**
+   * Share screen on/off. While it is on, whatever the teacher opens is shown
+   * to the class; turning it off puts everyone back on their own screen.
+   */
+  const toggleShareScreen = React.useCallback(async () => {
+    if (!canControl) return;
+    if (synced) { await patchRoom({ sync_enabled: false }); return; }
+    await patchRoom({
+      sync_enabled: true,
+      presenter_id: user?.id ?? null,
+      presenter_name: (profile as any)?.full_name ?? null,
+      presenter_role: 'staff',
+      app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
+      payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
+    });
+  }, [canControl, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
 
   /** Teacher takes presentation priority away from the student. */
   const takeOver = React.useCallback(async () => {
@@ -931,39 +992,32 @@ export default function VcrRoom() {
           )}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:ms-auto sm:w-auto sm:flex-nowrap">
-            {/* One clear control: whose workspace am I looking at? */}
-            <div
-              role="tablist"
-              aria-label="Viewing mode"
-              className="flex items-center gap-0.5 rounded-full border border-vcr-chrome/15 bg-white/5 p-0.5"
-            >
+            {/* Screen sharing: off by default, exactly like a meeting app. */}
+            {canControl ? (
               <button
                 type="button"
-                role="tab"
-                aria-selected={!synced}
-                onClick={() => { if (synced) void patchRoom({ sync_enabled: false }); }}
-                title="Only you can see what you open here"
+                onClick={() => void toggleShareScreen()}
+                aria-pressed={synced}
+                title={synced
+                  ? 'Stop sharing — what you open next stays on your screen only'
+                  : 'Share your screen: whatever you open is shown to the class'}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
-                  !synced ? 'bg-vcr-chrome/90 font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs',
+                  synced
+                    ? 'border-vcr-gold/60 bg-vcr-gold text-[#0C1B1E] font-medium'
+                    : 'border-vcr-chrome/20 text-vcr-chrome/75 hover:text-vcr-chrome',
                 )}
               >
-                <Lock className="h-3.5 w-3.5" /> My Copy
+                {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                {synced ? 'Stop sharing' : 'Share screen'}
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={synced}
-                onClick={() => { if (!synced) void patchRoom({ sync_enabled: true }); }}
-                title="The other person in this class sees and works on the same workspace"
-                className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs',
-                  synced ? 'bg-vcr-gold font-medium text-[#0C1B1E]' : 'text-vcr-chrome/60',
-                )}
-              >
-                <Share2 className="h-3.5 w-3.5" /> Synced
-              </button>
-            </div>
+            ) : (
+              synced && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
+                  <Share2 className="h-3.5 w-3.5" /> Teacher is sharing
+                </span>
+              )
+            )}
             {user?.id && (
               <button
                 type="button"
@@ -1297,6 +1351,21 @@ export default function VcrRoom() {
               synced={!!embed.synced}
               onClose={() => setEmbed(null)}
             />
+          ) : !contentMode && !resource ? (
+            <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-vcr-chrome/10 bg-white/[0.03] p-8 text-center">
+              <BookMarked className="h-7 w-7 text-vcr-chrome/40" />
+              <p className="mt-3 text-sm font-medium text-vcr-chrome/85">Nothing is open yet</p>
+              <p className="mt-1 max-w-sm text-xs text-vcr-chrome/55">
+                Choose a book or a file from the syllabus to start.
+              </p>
+              <button
+                type="button"
+                onClick={() => { openTab({ id: 'syllabus', kind: 'syllabus', title: 'Syllabus', icon: BookMarked }); }}
+                className="mt-4 inline-flex h-8 items-center rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-4 text-xs font-medium text-vcr-gold"
+              >
+                Open the syllabus
+              </button>
+            </div>
           ) : (
             <VcrReader
               key={`${content}:${activeDocId ?? 'none'}`}
@@ -1371,8 +1440,8 @@ export default function VcrRoom() {
                     docsLoading={loading}
                     docsError={null}
                     userId={user?.id ?? null}
-                    onOpenPrivate={(target) => { openTarget(target, false); setActiveTab('lesson'); }}
-                    onOpenSynced={(target) => { openTarget(target, true); setActiveTab('lesson'); }}
+                    books={myBooks}
+                    onOpen={(target) => { openTarget(target); setActiveTab('lesson'); }}
                     onUpload={canControl ? () => setUploadOpen(true) : undefined}
                   />
                 ) : (
