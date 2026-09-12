@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { normalizeAttendanceStatus, isPresentStatus, isAbsentStatus, isLeaveStatus } from '@/lib/attendanceStatus';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
+import { MyEarningsHistory } from '@/components/salary/MyEarningsHistory';
 import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
 import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { SalarySheetAuditPanel } from '@/components/finance/SalarySheetAuditPanel';
@@ -925,6 +926,8 @@ export default function SalaryEngine() {
             </div>
           </div>
         )}
+
+        {isTeacherView && <MyEarningsHistory />}
 
         {!isTeacherView && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

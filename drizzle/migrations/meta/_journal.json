@@ -8,6 +8,13 @@
       "when": 1789230047607,
       "tag": "0000_vcr_room_state_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789240672790,
+      "tag": "0001_revoke_courses_webhook_secret",
+      "breakpoints": true
     }
   ]
 }
