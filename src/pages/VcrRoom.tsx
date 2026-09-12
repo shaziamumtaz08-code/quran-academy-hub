@@ -864,6 +864,23 @@ export default function VcrRoom() {
     [navigate, studentId, patchRoom, user?.id, profile, canControl, synced],
   );
 
+  /**
+   * Share screen on/off. While it is on, whatever the teacher opens is shown
+   * to the class; turning it off puts everyone back on their own screen.
+   */
+  const toggleShareScreen = React.useCallback(async () => {
+    if (!canControl) return;
+    if (synced) { await patchRoom({ sync_enabled: false }); return; }
+    await patchRoom({
+      sync_enabled: true,
+      presenter_id: user?.id ?? null,
+      presenter_name: (profile as any)?.full_name ?? null,
+      presenter_role: 'staff',
+      app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
+      payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
+    });
+  }, [canControl, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+
   /** Teacher takes presentation priority away from the student. */
   const takeOver = React.useCallback(async () => {
     await patchRoom({
