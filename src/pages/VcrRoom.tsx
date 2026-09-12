@@ -720,9 +720,10 @@ export default function VcrRoom() {
   /* Teacher pointing at a Mushaf line — mirrored to the student's screen. */
   const publishLine = React.useCallback(
     (lineId: string | null) => {
-      publish({ ...lastView.current, highlight: lineId ? { lineId } : null, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
+      announceView({ ...lastView.current, highlight: lineId ? { lineId } : null });
     },
-    [publish, content, docId, whiteboardOn, boardMode]
+    [announceView]
+
   );
 
   const mushafAdapter = useMushafAdapter({ resumeAyah, resumeJuz, canControl, onPointLine: publishLine });
