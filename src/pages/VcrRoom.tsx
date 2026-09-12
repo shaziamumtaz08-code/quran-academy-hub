@@ -97,15 +97,25 @@ export default function VcrRoom() {
   const { state: roomState, patch: patchRoom } = useVcrRoomState(studentId || null, user?.id ?? null);
   const synced = !!roomState?.sync_enabled;
 
-  /** Mirror the teacher's screen only while the shared workspace is on. */
-  const isFollower = !canControl && !!user?.id && user.id === studentId && synced;
+  /**
+   * Anyone in the room can share what they are reading, but the teacher wins:
+   * while she is sharing, the student cannot take the screen from her.
+   */
+  const isRoomStudent = !!user?.id && user.id === studentId;
+  const iAmPresenter = !!roomState?.presenter_id && roomState.presenter_id === user?.id;
+  const teacherSharing = synced && roomState?.presenter_role === 'staff';
+  const studentSharing = synced && roomState?.presenter_role === 'student';
+  const mayToggleShare = canControl || (isRoomStudent && !teacherSharing);
 
+  /** Mirror whoever is sharing, unless that is me. */
+  const isFollower = synced && !iAmPresenter && (isRoomStudent || (canControl && studentSharing));
 
   const { remoteState, publish, strokes, pushStroke, undoStroke, clearBoard, loadStrokes, remotePointer, sendPointer } = useVcrViewSync({
     roomId: studentId,
-    isPresenter: canControl,
+    isPresenter: iAmPresenter || (!synced && canControl),
     enabled: !!studentId,
   });
+
 
 
 
@@ -863,12 +873,13 @@ export default function VcrRoom() {
 
 
   /**
-   * Open something in the classroom. It goes on my own screen; if I am the
-   * teacher and Share screen is on, the class sees the same thing.
+   * Open something in the classroom. It goes on my own screen; if I am the one
+   * sharing, everyone else sees the same thing. A teacher opening something
+   * always takes the shared screen back from the student.
    */
   const openTarget = React.useCallback(
     (t: VcrOpenTarget) => {
-      const share = canControl && synced;
+      const share = synced && (canControl || iAmPresenter);
       if (t.kind === 'link') {
         if (!t.url) return;
         setEmbed({ title: t.title, url: t.url, synced: share });
@@ -895,31 +906,34 @@ export default function VcrRoom() {
           sync_enabled: true,
           presenter_id: user?.id ?? null,
           presenter_name: (profile as any)?.full_name ?? null,
-          presenter_role: 'staff',
+          presenter_role: canControl ? 'staff' : 'student',
           app: (t.kind === 'content' ? t.content : t.kind === 'doc' ? 'doc' : (t.app ?? 'url')) as any,
           payload: { title: t.title, url: t.url, docId: t.docId ?? null, resourceId: t.resourceId ?? null },
         });
       }
     },
-    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced],
+    [navigate, studentId, patchRoom, user?.id, profile, canControl, synced, iAmPresenter],
   );
 
   /**
-   * Share screen on/off. While it is on, whatever the teacher opens is shown
-   * to the class; turning it off puts everyone back on their own screen.
+   * Share on/off. While it is on, whatever the sharer opens is shown to the
+   * other person. A teacher pressing it while the student is sharing simply
+   * takes the shared screen over — teacher sharing always wins.
    */
   const toggleShareScreen = React.useCallback(async () => {
-    if (!canControl) return;
-    if (synced) { await patchRoom({ sync_enabled: false }); return; }
+    if (!mayToggleShare) return;
+    const takingOver = synced && canControl && !iAmPresenter;
+    if (synced && !takingOver) { await patchRoom({ sync_enabled: false }); return; }
     await patchRoom({
       sync_enabled: true,
       presenter_id: user?.id ?? null,
       presenter_name: (profile as any)?.full_name ?? null,
-      presenter_role: 'staff',
+      presenter_role: canControl ? 'staff' : 'student',
       app: (contentMode === 'doc' ? 'doc' : contentMode ?? 'mushaf') as any,
       payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
     });
-  }, [canControl, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+  }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle]);
+
 
   /** Teacher takes presentation priority away from the student. */
   const takeOver = React.useCallback(async () => {
@@ -992,32 +1006,39 @@ export default function VcrRoom() {
           )}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:ms-auto sm:w-auto sm:flex-nowrap">
-            {/* Screen sharing: off by default, exactly like a meeting app. */}
-            {canControl ? (
+            {/* Sharing: off by default. Both sides can share; the teacher wins. */}
+            {mayToggleShare && (
               <button
                 type="button"
                 onClick={() => void toggleShareScreen()}
-                aria-pressed={synced}
-                title={synced
-                  ? 'Stop sharing — what you open next stays on your screen only'
-                  : 'Share your screen: whatever you open is shown to the class'}
+                aria-pressed={synced && iAmPresenter}
+                title={
+                  synced && iAmPresenter
+                    ? 'Stop sharing — what you open next stays on your screen only'
+                    : synced && canControl
+                      ? 'Take over sharing: the class follows your screen instead'
+                      : 'Share your screen: whatever you open is shown to the other person'
+                }
                 className={cn(
                   'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs',
-                  synced
+                  synced && iAmPresenter
                     ? 'border-vcr-gold/60 bg-vcr-gold text-[#0C1B1E] font-medium'
                     : 'border-vcr-chrome/20 text-vcr-chrome/75 hover:text-vcr-chrome',
                 )}
               >
-                {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                {synced ? 'Stop sharing' : 'Share screen'}
+                {synced && iAmPresenter ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                {synced && iAmPresenter ? 'Stop sharing' : synced && canControl ? 'Take over sharing' : 'Share screen'}
               </button>
-            ) : (
-              synced && (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
-                  <Share2 className="h-3.5 w-3.5" /> Teacher is sharing
-                </span>
-              )
             )}
+            {synced && !iAmPresenter && (
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
+                <Share2 className="h-3.5 w-3.5" />
+                {roomState?.presenter_name
+                  ? `${roomState.presenter_name} is sharing`
+                  : teacherSharing ? 'Teacher is sharing' : 'Sharing in progress'}
+              </span>
+            )}
+
             {user?.id && (
               <button
                 type="button"
