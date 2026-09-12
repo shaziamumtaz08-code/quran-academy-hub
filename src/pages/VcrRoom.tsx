@@ -404,11 +404,18 @@ export default function VcrRoom() {
     })();
   }, [canControl]);
 
-  /* Students mirror whichever reader the teacher is driving. */
+  /* One shared record decides what is on screen while someone is sharing.
+     The live broadcast is only a fast hint; the row is the truth, so a refresh
+     or a reconnect never leaves the two screens on different material. */
   const content = isFollower
-    ? (remoteState?.content ?? contentMode ?? suggestedContent)
+    ? (roomState?.view_content ?? remoteState?.content ?? contentMode ?? suggestedContent)
     : (contentMode ?? suggestedContent);
-  const activeDocId = isFollower ? (remoteState?.libraryItemId ?? null) : docId;
+  const activeDocId = isFollower
+    ? (roomState?.view_library_item_id ?? remoteState?.libraryItemId ?? null)
+    : docId;
+  /* Nothing has been opened yet — never announce a guessed book. */
+  const nothingOpen = !contentMode && !resource && !embed;
+
   /* A non-Qaida / non-Quran subject opens its own book: the first syllabus
      file filed under that subject, else the first syllabus file we have. */
   useEffect(() => {
