@@ -677,7 +677,7 @@ export default function VcrRoom() {
 
   /* Keep the last broadcast view so word flips can be published without
      the reader having to own highlight state. */
-  const lastView = useRef({ page: 1, fontScale: 1 });
+  const lastView = useRef<{ page: number; fontScale: number; front: number | null }>({ page: 1, fontScale: 1, front: null });
   /**
    * The one write path for "what is on screen".
    *
@@ -687,13 +687,14 @@ export default function VcrRoom() {
    * someone who is not the one sharing.
    */
   const announceView = React.useCallback(
-    (state: { page: number; fontScale: number; highlight: any }) => {
+    (state: { page: number; fontScale: number; highlight: any; front?: number | null }) => {
       if (!isDriving || nothingOpen) return;
       publish({ ...state, content, libraryItemId: docId, whiteboard: whiteboardOn, whiteboardMode: boardMode });
       patchView({
         view_content: content,
         view_library_item_id: content === 'doc' ? docId : null,
         view_page: state.page,
+        view_front: state.front ?? null,
         view_font_scale: state.fontScale,
         view_whiteboard: whiteboardOn,
         view_whiteboard_mode: boardMode,
@@ -702,8 +703,8 @@ export default function VcrRoom() {
     [isDriving, nothingOpen, publish, patchView, content, docId, whiteboardOn, boardMode],
   );
   const publishView = React.useCallback(
-    (state: { page: number; fontScale: number; highlight: any }) => {
-      lastView.current = { page: state.page, fontScale: state.fontScale };
+    (state: { page: number; fontScale: number; highlight: any; front?: number | null }) => {
+      lastView.current = { page: state.page, fontScale: state.fontScale, front: state.front ?? null };
       announceView(state);
     },
     [announceView]
