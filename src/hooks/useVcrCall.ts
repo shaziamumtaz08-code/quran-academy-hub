@@ -81,6 +81,8 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   const levelCtxRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
   const levelTimerRef = useRef<number | null>(null);
+  /** Ask for a fresh offer/answer with one peer (set up when the call starts). */
+  const renegotiateRef = useRef<((remoteId: string) => void) | null>(null);
 
   observerRef.current = observer;
 
@@ -375,10 +377,11 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
     /** Deterministic, role-free: the higher peer id creates the offer. */
     const amOfferer = (other: string) => peerId > other;
 
-    const makeOffer = async (remoteId: string) => {
+    const makeOffer = async (remoteId: string, force = false) => {
       if (!amOfferer(remoteId)) return;
       const pc = ensurePc(remoteId);
-      if (pc.signalingState !== 'stable' || pc.currentRemoteDescription) return;
+      if (pc.signalingState !== 'stable') return;
+      if (!force && pc.currentRemoteDescription) return;
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -390,7 +393,18 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
 
     const mine = (payload: any) => !payload?.to || payload.to === peerId;
 
+    /* Turning a camera on needs a fresh offer/answer. Only one side may make
+       offers, so the other side simply asks for one. */
+    renegotiateRef.current = (remoteId: string) => {
+      if (amOfferer(remoteId)) void makeOffer(remoteId, true);
+      else send('renegotiate', { to: remoteId });
+    };
+
     channel
+      .on('broadcast', { event: 'renegotiate' }, async ({ payload }) => {
+        if (!mine(payload) || payload?.from === peerId) return;
+        await makeOffer(payload.from, true);
+      })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         if (!claimPeer(payload?.from, payload?.name, payload?.observer, payload?.muted)) return;
         send('present', me());
@@ -429,7 +443,7 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       .on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (!mine(payload) || payload?.from === peerId) return;
         const pc = pcsRef.current.get(payload.from);
-        if (!pc || pc.currentRemoteDescription) return;
+        if (!pc || pc.signalingState !== 'have-local-offer') return;
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         await drainIce(payload.from, pc);
       })
@@ -450,15 +464,18 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         setError('This class call is full (three people). Ask someone to leave, then try again.');
         teardown('failed');
       })
+      /* The other person leaving must not hang up on me: a refreshed page or a
+         dropped mobile connection would end the class. The line stays open and
+         simply waits for them to come back. */
       .on('broadcast', { event: 'leave' }, ({ payload }) => {
         if (!payload?.from || payload.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0) teardown('ended');
+        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
       .on('broadcast', { event: 'hangup' }, ({ payload }) => {
         if (payload?.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0) teardown('ended');
+        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
@@ -502,7 +519,10 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       videoStreamRef.current = null;
       setLocalVideo(null);
       setCameraOn(false);
-      videoSendersRef.current.forEach((s) => { void s.replaceTrack(null).catch(() => {}); });
+      videoSendersRef.current.forEach((s, id) => {
+        void s.replaceTrack(null).catch(() => {});
+        renegotiateRef.current?.(id);
+      });
       send('cam', { camera: false });
       return;
     }
@@ -516,7 +536,9 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
       videoTrackRef.current = track;
       setLocalVideo(cam);
       setCameraOn(true);
-      videoSendersRef.current.forEach((s) => { void s.replaceTrack(track).catch(() => {}); });
+      videoSendersRef.current.forEach((s, id) => {
+        void s.replaceTrack(track).then(() => renegotiateRef.current?.(id)).catch(() => {});
+      });
       send('cam', { camera: true });
     } catch {
       setError('Camera access was blocked. Allow the camera in your browser to turn video on.');
