@@ -497,8 +497,12 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
   }, [roomId, peerId, displayName, ensurePc, send, teardown, dropPeer, armConnectTimer, attachLevel]);
 
   const end = useCallback(() => {
+    /* Announce the hangup first: the socket is dropped a moment later inside
+       teardown, and the other side needs this message to close its own line. */
+    if (activeRef.current) send('hangup', {});
     teardown('ended');
-  }, [teardown]);
+  }, [teardown, send]);
+
 
   const toggleMute = useCallback(() => {
     const track = localStreamRef.current?.getAudioTracks()[0];
