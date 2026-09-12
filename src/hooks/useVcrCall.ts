@@ -462,15 +462,18 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         setError('This class call is full (three people). Ask someone to leave, then try again.');
         teardown('failed');
       })
+      /* The other person leaving must not hang up on me: a refreshed page or a
+         dropped mobile connection would end the class. The line stays open and
+         simply waits for them to come back. */
       .on('broadcast', { event: 'leave' }, ({ payload }) => {
         if (!payload?.from || payload.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0) teardown('ended');
+        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
       .on('broadcast', { event: 'hangup' }, ({ payload }) => {
         if (payload?.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0) teardown('ended');
+        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
