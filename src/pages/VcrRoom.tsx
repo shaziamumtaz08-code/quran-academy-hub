@@ -1006,32 +1006,39 @@ export default function VcrRoom() {
           )}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:ms-auto sm:w-auto sm:flex-nowrap">
-            {/* Screen sharing: off by default, exactly like a meeting app. */}
-            {canControl ? (
+            {/* Sharing: off by default. Both sides can share; the teacher wins. */}
+            {mayToggleShare && (
               <button
                 type="button"
                 onClick={() => void toggleShareScreen()}
-                aria-pressed={synced}
-                title={synced
-                  ? 'Stop sharing — what you open next stays on your screen only'
-                  : 'Share your screen: whatever you open is shown to the class'}
+                aria-pressed={synced && iAmPresenter}
+                title={
+                  synced && iAmPresenter
+                    ? 'Stop sharing — what you open next stays on your screen only'
+                    : synced && canControl
+                      ? 'Take over sharing: the class follows your screen instead'
+                      : 'Share your screen: whatever you open is shown to the other person'
+                }
                 className={cn(
                   'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs',
-                  synced
+                  synced && iAmPresenter
                     ? 'border-vcr-gold/60 bg-vcr-gold text-[#0C1B1E] font-medium'
                     : 'border-vcr-chrome/20 text-vcr-chrome/75 hover:text-vcr-chrome',
                 )}
               >
-                {synced ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                {synced ? 'Stop sharing' : 'Share screen'}
+                {synced && iAmPresenter ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                {synced && iAmPresenter ? 'Stop sharing' : synced && canControl ? 'Take over sharing' : 'Share screen'}
               </button>
-            ) : (
-              synced && (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
-                  <Share2 className="h-3.5 w-3.5" /> Teacher is sharing
-                </span>
-              )
             )}
+            {synced && !iAmPresenter && (
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-vcr-gold/50 bg-vcr-gold/15 px-3 text-xs text-vcr-gold">
+                <Share2 className="h-3.5 w-3.5" />
+                {roomState?.presenter_name
+                  ? `${roomState.presenter_name} is sharing`
+                  : teacherSharing ? 'Teacher is sharing' : 'Sharing in progress'}
+              </span>
+            )}
+
             {user?.id && (
               <button
                 type="button"
