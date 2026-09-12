@@ -156,14 +156,27 @@ export default function VcrRoom() {
 
       setStudent((p.data as any) ?? null);
       void (async () => {
-        const { data: asg } = await (supabase as any)
-          .from('student_teacher_assignments')
-          .select('subject_id, subjects(name)')
-          .eq('student_id', studentId)
-          .eq('status', 'active')
-          .limit(1);
-        const nm = (asg as any[])?.[0]?.subjects?.name ?? null;
-        if (!cancelled) setSubjectName(nm);
+        /* Every subject this student is taking — each one decides which book
+           belongs in her syllabus (Qaida, or the Mushaf, or a file). */
+        const [asg, enr] = await Promise.all([
+          (supabase as any)
+            .from('student_teacher_assignments')
+            .select('subjects(name)')
+            .eq('student_id', studentId)
+            .eq('status', 'active'),
+          (supabase as any)
+            .from('enrollments')
+            .select('subjects(name)')
+            .eq('student_id', studentId),
+        ]);
+        const names = [
+          ...(((asg.data as any[]) ?? []).map((r) => r?.subjects?.name)),
+          ...(((enr.data as any[]) ?? []).map((r) => r?.subjects?.name)),
+        ].filter(Boolean) as string[];
+        if (!cancelled) {
+          setSubjectNames(Array.from(new Set(names)));
+          setSubjectName(names[0] ?? null);
+        }
       })();
       const list = ((syl.data as any[]) ?? []) as SyllabusItem[];
       setItems(list);
