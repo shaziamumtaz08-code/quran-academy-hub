@@ -553,6 +553,28 @@ export default function VcrRoom() {
     ? (roomState?.view_whiteboard_mode ?? remoteState?.whiteboardMode ?? 'board')
     : boardMode;
 
+  /* What a follower shows: the shared record is the truth, the live broadcast
+     is only a faster hint. This is what makes a refresh land on exactly the
+     page, cover/index position and zoom the sharer is on. */
+  const followView = React.useMemo(() => {
+    if (!isFollower) return null;
+    const sharedPage = roomState?.view_page ?? null;
+    const sharedFront = roomState?.view_front ?? null;
+    const sharedScale = roomState?.view_font_scale ?? null;
+    if (remoteState) {
+      return {
+        page: remoteState.page ?? sharedPage ?? 1,
+        fontScale: remoteState.fontScale ?? sharedScale ?? 1,
+        highlight: remoteState.highlight ?? null,
+        front: remoteState.front ?? sharedFront ?? null,
+      };
+    }
+    if (sharedPage == null && sharedFront == null) return null;
+    return { page: sharedPage ?? 1, fontScale: sharedScale ?? 1, highlight: null, front: sharedFront };
+  }, [isFollower, remoteState, roomState?.view_page, roomState?.view_front, roomState?.view_font_scale]);
+
+
+
 
   /* Every working area keeps its own marks: each Mushaf / Qaida / document
      page has its own layer, and the whiteboard is a separate canvas that never
