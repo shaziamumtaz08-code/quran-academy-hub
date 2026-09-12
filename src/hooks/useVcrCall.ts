@@ -472,11 +472,14 @@ export function useVcrCall({ roomId, peerId, displayName = 'Participant', observ
         dropPeer(payload.from);
         if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
       })
+      /* An explicit hangup is intentional (unlike a reload): the line closes on
+         both sides at once, so nobody is left staring at a call that is over. */
       .on('broadcast', { event: 'hangup' }, ({ payload }) => {
         if (payload?.from === peerId) return;
         dropPeer(payload.from);
-        if (peersRef.current.size === 0 && activeRef.current) { clearTimer(); setStatus('connecting'); }
+        if (peersRef.current.size === 0 && activeRef.current) teardown('ended');
       })
+
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
           setError(null);
