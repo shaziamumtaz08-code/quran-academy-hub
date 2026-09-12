@@ -811,7 +811,14 @@ export default function VcrRoom() {
   const notifyRooms = canControl ? [] : teacherRooms;
 
   /* Someone calling or ringing while the call bar is closed must still be noticed. */
-  const { ringing: roomRinging, callerName: roomCaller } = useVcrRingListener(studentId, !callOpen);
+  /* The shared record says who is on the call; nothing is inferred locally. */
+  const { others: roomOnCall, someoneElseOnCall: roomRinging } = useVcrCallPresence(
+    studentId || null,
+    user?.id ?? null,
+    false,
+  );
+  const roomCaller = roomOnCall[0]?.name ?? 'Someone';
+
   const { knockerName: roomKnocker, dismiss: dismissRoomKnock } = useVcrKnockListener(studentId, !callOpen);
   /* A live call in this room opens the call bar by itself — nobody has to hunt for it. */
   useEffect(() => {
