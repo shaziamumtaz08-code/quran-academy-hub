@@ -1371,8 +1371,8 @@ export default function VcrRoom() {
                     docsLoading={loading}
                     docsError={null}
                     userId={user?.id ?? null}
-                    onOpenPrivate={(target) => { openTarget(target, false); setActiveTab('lesson'); }}
-                    onOpenSynced={(target) => { openTarget(target, true); setActiveTab('lesson'); }}
+                    books={myBooks}
+                    onOpen={(target) => { openTarget(target); setActiveTab('lesson'); }}
                     onUpload={canControl ? () => setUploadOpen(true) : undefined}
                   />
                 ) : (
