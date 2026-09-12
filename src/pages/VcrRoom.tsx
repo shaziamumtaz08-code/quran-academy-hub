@@ -27,7 +27,8 @@ import { useDocAdapter, type DocSource } from '@/components/vcr/adapters/useDocA
 import { VcrBookmarkBar } from '@/components/vcr/VcrBookmarkBar';
 import { useVcrBookmarks } from '@/hooks/useVcrBookmarks';
 import { VcrCallPanel } from '@/components/vcr/VcrCallPanel';
-import { useVcrRingListener, useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrKnockListener } from '@/hooks/useVcrRing';
+import { useVcrCallPresence } from '@/hooks/useVcrCallPresence';
 
 import { VcrWhiteboard } from '@/components/vcr/VcrWhiteboard';
 import { useVcrViewSync } from '@/hooks/useVcrViewSync';
