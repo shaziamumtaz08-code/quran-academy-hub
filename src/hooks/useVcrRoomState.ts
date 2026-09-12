@@ -56,7 +56,7 @@ export interface VcrRoomState {
 
 const TABLE = 'vcr_room_state' as any;
 /** A heartbeat older than this means that person is gone (tab closed, network lost). */
-const PRESENCE_TTL_MS = 35_000;
+const PRESENCE_TTL_MS = 90_000;
 
 export function useVcrRoomState(studentId: string | null, selfId: string | null) {
   const [state, setState] = useState<VcrRoomState | null>(null);
