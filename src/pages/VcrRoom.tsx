@@ -1183,7 +1183,7 @@ export default function VcrRoom() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-3 p-2 sm:p-4">
         {/* The workspace — the material is the page */}
-        <main className="relative min-w-0 flex-1">
+        <main ref={lessonRef} className="relative min-w-0 flex-1 scroll-mt-24">
           
           <div className={cn(activeTab !== 'lesson' && 'hidden')}>
           {/* One slim toolbar over the material */}
