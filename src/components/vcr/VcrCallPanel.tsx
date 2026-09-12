@@ -76,7 +76,22 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
 
   /* Announce / observe the call — either side may be the one on the line. */
   useVcrRingHost(roomId, live && !observer, callerName, notifyRooms);
-  const { ringing } = useVcrRingListener(roomId, !live);
+  /**
+   * Who is actually on the call is read from the room's shared record, not from
+   * a local flag fed by broadcasts: each person writes only their own entry and
+   * clears it when they hang up, so one side ending a call can never leave the
+   * other side showing a stale "is on the call" badge.
+   */
+  const { others, someoneElseOnCall } = useVcrCallPresence(
+    studentId ?? roomId,
+    peerId,
+    live && !observer,
+    displayName,
+    observer ? `${role} (observer)` : role,
+  );
+  const ringing = someoneElseOnCall;
+  const onCallName = others[0]?.name ?? (isCaller ? 'The student' : 'Your teacher');
+
 
   /* Bell: either side can ring the other when no call is up. */
   const { knock, sentAt } = useVcrKnockSender(!live ? roomId : null);
