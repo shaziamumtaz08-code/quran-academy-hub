@@ -7,7 +7,10 @@ interface Props {
   localStream: MediaStream | null;
   localName: string;
   remotes: RemoteVideo[];
+  /** Keep my own tile on screen even when my camera is off. */
+  alwaysShowSelf?: boolean;
 }
+
 
 function Tile({ stream, name, muted, mirrored }: { stream: MediaStream; name: string; muted?: boolean; mirrored?: boolean }) {
   const ref = React.useRef<HTMLVideoElement | null>(null);
