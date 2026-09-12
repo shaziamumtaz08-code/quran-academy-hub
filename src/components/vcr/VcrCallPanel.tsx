@@ -220,11 +220,18 @@ export function VcrCallPanel({ roomId, peerId, isCaller, role = 'participant', a
         </div>
       </div>
 
-      {live && hasVideo && showVideo && (
-        <div className="w-full max-w-2xl">
-          <VcrVideoTiles localStream={localVideo} localName={displayName} remotes={remoteVideos} />
+      {live && showVideo && (
+        <div className="w-full max-w-2xl rounded-xl bg-black/20 p-1.5">
+          <VcrVideoTiles
+            localStream={localVideo}
+            localName={displayName}
+            remotes={remoteVideos}
+            /* Everyone sees their own picture, exactly like the other side does. */
+            alwaysShowSelf
+          />
         </div>
       )}
+
 
       {/* Opt-in call recording — requires the student's explicit consent */}
       <VcrCallRecorder
