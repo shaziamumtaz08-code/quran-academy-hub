@@ -1501,7 +1501,7 @@ export default function VcrRoom() {
               canControl={canControl}
               turnSignal={turnSignal}
               isFollower={isFollower}
-              followState={remoteState}
+              followState={followView}
               onViewChange={publishView}
               onUnitChange={(p) => setCurrentPage(p)}
               jumpRequest={jumpRequest}
