@@ -15,7 +15,8 @@ interface Props {
   adapter: VcrAdapter;
   /** Unit to open on first render. */
   initialUnit?: number;
-  /** Teacher-only navigation; students just mirror the shared view. */
+  /** Whether this account has teaching controls. Reader navigation itself is
+   * available to any local reader; only a follower is locked to the presenter. */
   canControl?: boolean;
   /** Bump this number to replay the 3D page-turn (used after "mark complete"). */
   turnSignal?: number;
@@ -66,7 +67,10 @@ export function VcrReader({
      Front matter carries no unit number, so bookmarks, annotations and
      progress keep pointing at the real pages. */
   const [frontIdx, setFrontIdx] = useState<number | null>(front.length ? 0 : null);
-  const showControls = canControl && !isFollower;
+  /* The person whose screen is local must always be able to turn pages. The
+     previous staff-only gate stranded a student presenter on the cover, and
+     could also hide navigation when a teacher's role was still loading. */
+  const showControls = !isFollower;
   const highlight = isFollower ? followState?.highlight ?? null : null;
 
   /* Follower: mirror the teacher's page and zoom level. */
@@ -188,10 +192,10 @@ export function VcrReader({
   const pastel = adapter.contentType === 'qaida' || adapter.contentType === 'mushaf';
 
   return (
-    <div className={cn('vcr-stage w-full', className)}>
+    <div className={cn('vcr-stage flex w-full flex-col', className)}>
       <div
         className={cn(
-          'mx-auto w-full max-w-4xl rounded-2xl px-5 py-6 sm:px-10 sm:py-9',
+          'order-2 mx-auto w-full max-w-4xl rounded-2xl px-5 py-6 sm:px-10 sm:py-9',
           pastel
             ? 'qaida-pastel border-2 border-white/70 shadow-[0_24px_60px_-24px_rgba(60,50,90,0.55)]'
             : 'vcr-reading-card',
@@ -229,7 +233,7 @@ export function VcrReader({
 
       {showControls && (
         <div className={cn(
-          'mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-between gap-3',
+          'order-1 sticky top-14 z-10 mx-auto mb-3 flex w-full max-w-4xl flex-wrap items-center justify-between gap-2 rounded-xl border border-vcr-chrome/15 bg-vcr-deep/95 p-2 shadow-lg backdrop-blur',
           pastel && 'vcr-controls-light'
         )}>
           <button
@@ -237,7 +241,7 @@ export function VcrReader({
             disabled={atFirst}
             aria-disabled={atFirst}
             title={atFirst ? 'You are on the first page of this book' : undefined}
-            className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
+            className="vcr-btn inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => go(-1)}
           >
             <ChevronLeft className="h-5 w-5" /> Previous {adapter.unitNoun}
@@ -296,7 +300,7 @@ export function VcrReader({
             disabled={atLast}
             aria-disabled={atLast}
             title={atLast ? `You are on the last ${adapter.unitNoun}` : undefined}
-            className="vcr-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-base disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
+            className="vcr-btn inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => go(1)}
           >
             Next {adapter.unitNoun} <ChevronRight className="h-5 w-5" />
