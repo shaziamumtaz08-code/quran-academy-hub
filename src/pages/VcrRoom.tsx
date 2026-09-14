@@ -1018,9 +1018,23 @@ export default function VcrRoom() {
       payload: { title: lessonTitle, docId: docId ?? null, resourceId: resource?.id ?? null },
       view_content: (contentMode ?? null) as any,
       view_library_item_id: contentMode === 'doc' ? (docId ?? null) : null,
-      view_page: currentPage > 0 ? currentPage : null,
+      /* Send where I am standing right now — cover / index included — so the
+         other screen lands on my exact position instead of the cover. */
+      view_page: currentPage > 0 ? currentPage : lastView.current.page,
+      view_front: lastView.current.front,
+      view_font_scale: lastView.current.fontScale,
     });
   }, [mayToggleShare, canControl, iAmPresenter, synced, patchRoom, user?.id, profile, contentMode, docId, resource?.id, lessonTitle, currentPage]);
+
+  /* The moment I become the presenter, push my current position once, so the
+     follower does not sit on the cover until my next page turn. */
+  const drovePos = React.useRef(false);
+  useEffect(() => {
+    if (!isDriving) { drovePos.current = false; return; }
+    if (drovePos.current) return;
+    drovePos.current = true;
+    announceView({ ...lastView.current, highlight: null });
+  }, [isDriving, announceView]);
 
 
 
