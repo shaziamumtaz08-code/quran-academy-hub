@@ -96,7 +96,10 @@ export default function VcrRoom() {
    * she reads and reviews her own syllabus freely, with or without a teacher.
    */
   const { state: roomState, patch: patchRoom, patchThrottled: patchView } = useVcrRoomState(studentId || null, user?.id ?? null);
-  const synced = !!roomState?.sync_enabled;
+  /* Sharing only counts when somebody is actually presenting. A left-over
+     "sharing on" row with no presenter used to freeze both screens: nobody
+     was driving, yet the student was still locked into mirror mode. */
+  const synced = !!roomState?.sync_enabled && !!roomState?.presenter_id;
 
   /**
    * Anyone in the room can share what they are reading, but the teacher wins:
